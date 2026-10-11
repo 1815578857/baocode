@@ -17,6 +17,13 @@
 /icon.png
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 
+# BaoCode's icons, loaded by upstreams' key pages (/upstreams): from any
+# site, kept a day as the rest.
+/brand/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+  Access-Control-Allow-Origin: *
+  Cross-Origin-Resource-Policy: cross-origin
+
 # Not part of the site.
 /README.md
   X-Robots-Tag: noindex

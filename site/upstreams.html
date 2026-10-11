@@ -47,7 +47,18 @@
    - Encode each value with encodeURIComponent.
    - The parameters go after the #, never after a ?: browsers never send what follows a # to any server, so the key goes through neither baocode.dev nor any other server.
 
-3. Don't load any script, style or image from baocode.dev, and don't call baocode.dev from the backend: a plain link is all it takes. Label the button "Import to BaoCode" and style it as the page's other buttons.
+3. Label the button "Import to BaoCode" and style it as the page's other buttons. Put BaoCode's mark before the label: an &lt;img&gt; of the image online at baocode.dev, never a copy downloaded into the project, nor an SVG drawn or inlined.
+   - Address: https://baocode.dev/brand/baocode-mark-&lt;color&gt;-&lt;height&gt;.webp
+   - Color: black on light buttons, white on dark or colored (primary) buttons; where the site has light and dark themes, switch with them.
+   - Size: the mark is 4:3. Pick its size by the label's, src the 1x image, and srcset the 2x and 3x for sharp screens:
+     · Label 13–14px (small buttons, buttons in a table row): shown 16×12, heights 12 / 24 / 36
+     · Label 15–16px (ordinary buttons): shown 24×18, heights 18 / 36 / 54
+     · Label 18px or more (large buttons): shown 32×24, heights 24 / 48 / 72
+     For example: &lt;img src="https://baocode.dev/brand/baocode-mark-black-12.webp" srcset="https://baocode.dev/brand/baocode-mark-black-24.webp 2x, https://baocode.dev/brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt=""&gt;
+   - About 6px between the mark and the label, centered vertically. Give width and height, so nothing moves as it loads; leave alt empty, the label says it.
+   - Where a square app icon fits (on an import guide, a card): https://baocode.dev/brand/baocode-icon-&lt;size&gt;.png, sizes 16, 24, 32, 48, 64, 96, 128, 256, 512. src the size shown, srcset the one twice that, for example: &lt;img src="https://baocode.dev/brand/baocode-icon-32.png" srcset="https://baocode.dev/brand/baocode-icon-64.png 2x" width="32" height="32" alt=""&gt;
+   - Where the site sets a CSP, add https://baocode.dev to its img-src.
+   Besides these images, don't load any script or style from baocode.dev, and don't call baocode.dev from the backend.
 
 4. When done, tell me which files changed and how to check it: the button should open baocode.dev/import, showing the site's name, the protocol, the URL and the key masked; with BaoCode installed, it then asks to import.</code></pre><button class="copy" type="button" data-copy data-done="Copied">Copy</button></div>
 
@@ -73,7 +84,26 @@
     </tbody>
   </table></div>
   <p>Encode each value with <code>encodeURIComponent</code>. Put them after the <code>#</code>, never after a <code>?</code>: browsers never send what follows a <code>#</code> to a server, so the key goes from your page to the user’s BaoCode and nowhere else. baocode.dev’s page reads it, takes it off the address bar and opens BaoCode, which shows the user what it is about to add and asks first.</p>
-  <p>Please don’t load any script from baocode.dev on your key page; a plain link is all it takes.</p>
+  <p>Please don’t load any script from baocode.dev on your key page; a plain link is all it takes. The icons below are fine to load.</p>
+
+  <h2>Icons</h2>
+  <p>Your button may carry BaoCode’s mark. Please load it from these addresses, rather than download it into your project: when the icon changes, your button changes with it. The mark is lossless WebP, in black and in white; the app icon is PNG.</p>
+  <div class="assets">
+    <div class="asset"><div class="swatch"><img src="/brand/baocode-mark-black-36.webp" srcset="/brand/baocode-mark-black-72.webp 2x" width="48" height="36" alt=""></div><p>Black mark, for light buttons</p></div>
+    <div class="asset"><div class="swatch dark"><img src="/brand/baocode-mark-white-36.webp" srcset="/brand/baocode-mark-white-72.webp 2x" width="48" height="36" alt=""></div><p>White mark, for dark or colored buttons</p></div>
+    <div class="asset"><div class="swatch"><img src="/brand/baocode-icon-48.png" srcset="/brand/baocode-icon-96.png 2x" width="48" height="48" alt=""></div><p>App icon</p></div>
+  </div>
+  <p>The mark is at <code>https://baocode.dev/brand/baocode-mark-&lt;black|white&gt;-&lt;height&gt;.webp</code>, 4:3, sized by the button’s label:</p>
+  <div class="table"><table>
+    <thead><tr><th>Label</th><th>Shown</th><th>1x</th><th>2x</th><th>3x</th></tr></thead>
+    <tbody>
+      <tr><td>13–14px, small buttons</td><td>16×12</td><td><a href="/brand/baocode-mark-black-12.webp">-12</a></td><td><a href="/brand/baocode-mark-black-24.webp">-24</a></td><td><a href="/brand/baocode-mark-black-36.webp">-36</a></td></tr>
+      <tr><td>15–16px, ordinary buttons</td><td>24×18</td><td><a href="/brand/baocode-mark-black-18.webp">-18</a></td><td><a href="/brand/baocode-mark-black-36.webp">-36</a></td><td><a href="/brand/baocode-mark-black-54.webp">-54</a></td></tr>
+      <tr><td>18px or more, large buttons</td><td>32×24</td><td><a href="/brand/baocode-mark-black-24.webp">-24</a></td><td><a href="/brand/baocode-mark-black-48.webp">-48</a></td><td><a href="/brand/baocode-mark-black-72.webp">-72</a></td></tr>
+    </tbody>
+  </table></div>
+  <pre><code>&lt;img src="https://baocode.dev/brand/baocode-mark-black-12.webp" srcset="https://baocode.dev/brand/baocode-mark-black-24.webp 2x, https://baocode.dev/brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt=""&gt;</code></pre>
+  <p>The app icon is at <code>https://baocode.dev/brand/baocode-icon-&lt;size&gt;.png</code>, in <a href="/brand/baocode-icon-16.png">16</a> · <a href="/brand/baocode-icon-24.png">24</a> · <a href="/brand/baocode-icon-32.png">32</a> · <a href="/brand/baocode-icon-48.png">48</a> · <a href="/brand/baocode-icon-64.png">64</a> · <a href="/brand/baocode-icon-96.png">96</a> · <a href="/brand/baocode-icon-128.png">128</a> · <a href="/brand/baocode-icon-256.png">256</a> · <a href="/brand/baocode-icon-512.png">512</a>. src the size shown, and srcset the one twice that.</p>
 
   <h2>Get listed</h2>
   <p>Once the import works, <a href="https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml">open an issue</a> with your site’s name, the link for your card, your API’s hosts and a line about it. A maintainer tries the import, asks you for your logo, and adds your card in the next release.</p>

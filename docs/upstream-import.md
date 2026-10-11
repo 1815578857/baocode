@@ -75,7 +75,17 @@
 放在官网 /upstreams 页面最上面，站长复制后直接丢给 AI 编程助手：
 `site/upstreams.html` 和 `site/zh/upstreams.html` 的「交给 AI 来做」一节，两边要一起改。
 它让 AI 先判断站点是 new-api 系（只给配置，不改代码）还是 sub2api / 自研（在令牌列表加按钮），
-链接参数、`#` 不能换成 `?`、不引用 baocode.dev 资源、验证方法都写在里面。
+链接参数、`#` 不能换成 `?`、图标怎么选、验证方法都写在里面。
+
+按钮用的图标放在 `site/brand/`，由 `tool/make_brand_assets.py` 生成，接入方直接引用
+`https://baocode.dev/brand/...` 的在线地址，不下载、不拿 SVG：
+
+- 标志：`baocode-mark-<black|white>-<高度>.webp`，无损 WebP，4:3。显示 16×12 / 24×18 / 32×24
+  三档（对应 13–14px / 15–16px / 18px 以上的按钮文字），每档 1x、2x、3x，所以高度有
+  12、18、24、36、48、54、72。
+- 应用图标：`baocode-icon-<尺寸>.png`，16、24、32、48、64、96、128、256、512。
+
+这些文件名接入方会写死在页面里，只能加不能改名或删除。`/brand/*` 允许跨站引用（`_headers`）。
 
 new-api 不用改代码：系统设置 → 聊天设置 里加一行即可（`{address}`、`{key}` 由
 new-api 替换）：

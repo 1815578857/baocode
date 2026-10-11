@@ -47,7 +47,18 @@
    - 每个值都用 encodeURIComponent 编码。
    - 参数必须放在 # 后面，绝不能放在 ? 后面：浏览器不会把 # 后面的内容发给任何服务器，key 不经过 baocode.dev 或任何服务器。
 
-3. 不要引用 baocode.dev 的任何脚本、样式或图片，后端也不要请求 baocode.dev，一个普通链接就够了。按钮文字用「导入到 BaoCode」，样式和页面上现有的按钮保持一致。
+3. 按钮文字用「导入到 BaoCode」，样式和页面上现有的按钮保持一致。文字前放 BaoCode 标志：用 &lt;img&gt; 引用 baocode.dev 上的在线图片，不要把图片下载进项目，也不要自己画或内联 SVG。
+   - 地址：https://baocode.dev/brand/baocode-mark-&lt;颜色&gt;-&lt;高度&gt;.webp
+   - 颜色：black 用在浅色按钮上，white 用在深色或彩色（主色）按钮上；站点有深浅两种主题的，跟着主题切换。
+   - 尺寸：标志宽高比 4:3。按按钮文字大小选显示尺寸，src 用 1x 那张，srcset 给高分屏加 2x、3x：
+     · 文字 13–14px（小按钮、表格行里的按钮）：显示 16×12，高度 12 / 24 / 36
+     · 文字 15–16px（普通按钮）：显示 24×18，高度 18 / 36 / 54
+     · 文字 18px 以上（大按钮）：显示 32×24，高度 24 / 48 / 72
+     例：&lt;img src="https://baocode.dev/brand/baocode-mark-black-12.webp" srcset="https://baocode.dev/brand/baocode-mark-black-24.webp 2x, https://baocode.dev/brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt=""&gt;
+   - 标志和文字间隔 6px 左右，垂直居中。写上 width 和 height，加载前不会跳动；alt 留空，按钮文字已经说明了。
+   - 地方够、想放方形应用图标时（比如导入说明、卡片里）：https://baocode.dev/brand/baocode-icon-&lt;尺寸&gt;.png，尺寸有 16、24、32、48、64、96、128、256、512。src 用显示尺寸那张，srcset 加 2 倍那张，例：&lt;img src="https://baocode.dev/brand/baocode-icon-32.png" srcset="https://baocode.dev/brand/baocode-icon-64.png 2x" width="32" height="32" alt=""&gt;
+   - 站点设了 CSP 的，把 https://baocode.dev 加进 img-src。
+   除了这些图片，不要引用 baocode.dev 的脚本或样式，后端也不要请求 baocode.dev。
 
 4. 做完后告诉我改了哪些文件，以及怎么验证：点按钮应打开 baocode.dev/import，页面上显示站点名、协议、地址和打码后的 key；装了 BaoCode 的话，会弹出导入确认。</code></pre><button class="copy" type="button" data-copy data-done="已复制">复制</button></div>
 
@@ -73,7 +84,26 @@
     </tbody>
   </table></div>
   <p>每个参数值都要用 <code>encodeURIComponent</code> 编码。参数必须放在 <code>#</code> 后面，不能放在 <code>?</code> 后面：浏览器不会把 <code>#</code> 后的内容发给任何服务器，key 只会从你的页面直接到用户的 BaoCode。baocode.dev 的页面读取后会把它从地址栏中清除并打开 BaoCode，BaoCode 会先向用户展示要添加的内容，经确认后才添加。</p>
-  <p>请不要在令牌页引用 baocode.dev 的任何脚本，一个普通链接就够了。</p>
+  <p>请不要在令牌页引用 baocode.dev 的任何脚本，一个普通链接就够了；下面的图标可以引用。</p>
+
+  <h2>图标</h2>
+  <p>按钮上可以放 BaoCode 的标志。请直接引用下面的在线图片，不要下载进你的项目：图标更新时，你的按钮会跟着更新。标志是无损 WebP，黑白两色；应用图标是 PNG。</p>
+  <div class="assets">
+    <div class="asset"><div class="swatch"><img src="/brand/baocode-mark-black-36.webp" srcset="/brand/baocode-mark-black-72.webp 2x" width="48" height="36" alt=""></div><p>黑色标志，用在浅色按钮上</p></div>
+    <div class="asset"><div class="swatch dark"><img src="/brand/baocode-mark-white-36.webp" srcset="/brand/baocode-mark-white-72.webp 2x" width="48" height="36" alt=""></div><p>白色标志，用在深色或彩色按钮上</p></div>
+    <div class="asset"><div class="swatch"><img src="/brand/baocode-icon-48.png" srcset="/brand/baocode-icon-96.png 2x" width="48" height="48" alt=""></div><p>应用图标</p></div>
+  </div>
+  <p>标志的地址是 <code>https://baocode.dev/brand/baocode-mark-&lt;black|white&gt;-&lt;高度&gt;.webp</code>，宽高比 4:3，按按钮文字大小选：</p>
+  <div class="table"><table>
+    <thead><tr><th>按钮文字</th><th>显示尺寸</th><th>1x</th><th>2x</th><th>3x</th></tr></thead>
+    <tbody>
+      <tr><td>13–14px，小按钮</td><td>16×12</td><td><a href="/brand/baocode-mark-black-12.webp">-12</a></td><td><a href="/brand/baocode-mark-black-24.webp">-24</a></td><td><a href="/brand/baocode-mark-black-36.webp">-36</a></td></tr>
+      <tr><td>15–16px，普通按钮</td><td>24×18</td><td><a href="/brand/baocode-mark-black-18.webp">-18</a></td><td><a href="/brand/baocode-mark-black-36.webp">-36</a></td><td><a href="/brand/baocode-mark-black-54.webp">-54</a></td></tr>
+      <tr><td>18px 以上，大按钮</td><td>32×24</td><td><a href="/brand/baocode-mark-black-24.webp">-24</a></td><td><a href="/brand/baocode-mark-black-48.webp">-48</a></td><td><a href="/brand/baocode-mark-black-72.webp">-72</a></td></tr>
+    </tbody>
+  </table></div>
+  <pre><code>&lt;img src="https://baocode.dev/brand/baocode-mark-black-12.webp" srcset="https://baocode.dev/brand/baocode-mark-black-24.webp 2x, https://baocode.dev/brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt=""&gt;</code></pre>
+  <p>应用图标的地址是 <code>https://baocode.dev/brand/baocode-icon-&lt;尺寸&gt;.png</code>，尺寸有 <a href="/brand/baocode-icon-16.png">16</a> · <a href="/brand/baocode-icon-24.png">24</a> · <a href="/brand/baocode-icon-32.png">32</a> · <a href="/brand/baocode-icon-48.png">48</a> · <a href="/brand/baocode-icon-64.png">64</a> · <a href="/brand/baocode-icon-96.png">96</a> · <a href="/brand/baocode-icon-128.png">128</a> · <a href="/brand/baocode-icon-256.png">256</a> · <a href="/brand/baocode-icon-512.png">512</a>。src 用显示尺寸那张，srcset 加 2 倍那张。</p>
 
   <h2>申请展示</h2>
   <p>导入可用后，<a href="https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml">提交 issue</a>，写明站点名称、卡片链接、API 域名和一句话介绍。维护者会实际试一次导入、联系你要 Logo，并在下个版本中加上你的卡片。</p>
