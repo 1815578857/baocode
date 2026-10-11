@@ -163,3 +163,14 @@ dialog.star h2 { margin: 0 0 10px; font-size: 22px; }
 dialog.star p { margin: 0 0 22px; font: 15px/1.6 var(--sans); color: var(--muted); }
 dialog.star .get { display: flex; flex-wrap: wrap; gap: 8px; }
 dialog.star button.button { background: var(--paper); cursor: pointer; }
+
+/* The one-click import of an upstream (import.js): what it is, then the
+   button that hands it to the app. */
+dl.import { display: grid; grid-template-columns: max-content 1fr; gap: 8px 20px; margin: 28px 0 0; padding: 18px 22px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); font: 15px/1.5 var(--sans); }
+dl.import dt { color: var(--muted); }
+dl.import dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+dl.import dd[data-field="url"], dl.import dd[data-field="key"] { font-family: var(--mono); font-size: 14px; }
+.page .note { margin-top: 18px; font: 14px/1.6 var(--sans); color: var(--muted); }
+.page .missing { margin-top: 18px; padding: 12px 16px; border-radius: 8px; background: var(--tint); font: 14.5px/1.6 var(--sans); color: var(--body); }
+pre { margin: 0 0 1.1em; padding: 14px 16px; overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; background: var(--tint); }
+pre code { padding: 0; background: none; font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }

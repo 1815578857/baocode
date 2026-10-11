@@ -3,7 +3,7 @@
 BaoCode 的版本号怎么定、一个版本怎么发出去、发到哪里、已安装的应用怎么拿到它，以及第一次发布前要准备什么。应用这一侧怎么检查、下载、校验、安装，见 [auto-update.md](auto-update.md)。
 
 - 下载与更新：`https://dl.baocode.dev`（Cloudflare R2）
-- 官网：`https://baocode.dev`（Cloudflare Pages，`site/`）
+- 官网：`https://baocode.dev`（Cloudflare Worker `baocode` 的静态资源，`site/`；Workers Builds 从 GitHub 部署）
 - 构建与发布：GitHub Actions，`.github/workflows/release.yml`
 - 工具：`tool/bump_version.dart`、`tool/build_macos.dart`、`tool/build_windows.dart`、`tool/build_remote_server.dart`、`tool/release_manifest.dart`
 
@@ -45,11 +45,12 @@ BaoCode 的版本号怎么定、一个版本怎么发出去、发到哪里、已
                                      已安装的 BaoCode：每 6 小时读清单 ┘          │
                                      baocode.dev/download：读清单显示版本和链接 ──┘
 
- git push main（site/ 有改动）──────────────────────────────────▶ Pages：baocode.dev
+ git push main ──────────────────────────────────────▶ Workers Builds ─▶ Worker baocode：baocode.dev
+ git push 其他分支 ─────────────────────────────────▶ Workers Builds ─▶ 预览版本（不上线）
 ```
 
-- **网站和安装包分开放**：网站在 Pages 上，推送 `main` 时自动发布；安装包在 R2 上，只有推送 `v*` 标签时才由 CI 发布。Pages 单个文件不能超过 25 MiB，dmg 放不下。
-- **流量不收钱**：Pages 的流量不限；R2 的下载流量免费，存储每月 10 GB 以内免费。
+- **网站和安装包分开放**：网站是 Worker 的静态资源，推送 `main` 就发布，和应用的版本无关（见 3 节“发布官网”）；安装包在 R2 上，只有推送 `v*` 标签时才由 CI 发布。静态资源单个文件不能超过 25 MiB，dmg 放不下。
+- **流量不收钱**：Worker 静态资源的请求不计费；R2 的下载流量免费，存储每月 10 GB 以内免费。
 - **旧地址**：`site/_redirects` 把 `baocode.dev/releases/*` 302 到 `dl.baocode.dev/releases/*`，给改地址前打出来的构建用（应用的 `HttpClient` 会跟随重定向）。
 
 ## 2. 版本号
@@ -120,7 +121,26 @@ git tag -f v1.2.0 && git push origin v1.2.0      # 打在现在的提交上，�
 
 CI 会照常构建，覆盖 R2 上的文件，重新建 GitHub Release。
 
-**只想试一下构建**：Actions → Release → Run workflow。只构建、不发布，产物在这次运行的 Artifacts 里（macOS 包这时是 ad hoc 签名，只能在自己机器上打开）。
+**只想试一下构建**：Actions → Release → Run workflow。只构建、不发布，产物在这次运行的 Artifacts 里（要登录 GitHub 才能下载）。
+
+**打测试包给别人**：在要测的提交上打一个 `test-` 开头的标签并推送：
+
+```sh
+git tag test-upstream-import && git push origin test-upstream-import
+```
+
+CI 照常构建，然后把安装包传到 `dl.baocode.dev/test/<版本>-<标签去掉 test->-<运行编号>/`，链接写在这次运行的 Summary 里，直接发给测试的人，不用登录 GitHub。用的是 `release` 环境里已有的 R2 令牌（环境允许 `test-*` 标签，见 7.2），不签更新清单。同一个标签再测一次：`git tag -f … && git push -f origin …`。
+
+- 不是更新：`test/` 不在 `releases/` 下，`latest.json` 不变，已安装的应用不会收到它。
+- 版本号就是分支上 `pubspec.yaml` 的版本。测试的人之后会照常收到比它新的正式版。
+- macOS 包的签名和正式版一样（现在是 ad hoc，第一次打开要在 系统设置 → 隐私与安全性 里点“仍要打开”；配上 7.3 的证书后两者都会正式签名）。
+- 远程服务端也会传到 `releases/remote/<它的版本>/`（按内容定版本，不影响已发布的），测试包连 SSH 主机时要用。
+- 旧测试包不会自动删：可以在 R2 存储桶的 Settings → Object lifecycle rules 给前缀 `test/` 加一条“30 天后删除”。
+
+**发布官网**：和应用发版无关，推送到 `main` 就由 Cloudflare Workers Builds 部署到 baocode.dev（GitHub 上这个提交的检查里有“Workers Builds: baocode”）。
+
+- 先预览：推送任何别的分支，Workers Builds 只上传一个预览版本、不上线。预览地址是 `https://<版本 ID 前 8 位>-baocode.leokun-cn.workers.dev`，版本 ID 在那个提交的“Workers Builds: baocode”检查详情里。
+- 只发官网：把 `site/` 的改动单独提交推到 `main` 即可，`main` 上没发版的应用代码不受影响（应用只在推 `v*` 标签时发布）。
 
 ## 4. CI 做了什么
 
@@ -222,12 +242,12 @@ releases/
    ]
    ```
 4. **API 令牌**：R2 → Manage R2 API Tokens → Create API token，权限 **Object Read & Write**，范围**只选这个存储桶**。记下 Access Key ID 和 Secret Access Key（只显示一次），以及页面上的 Account ID。
-5. **Pages**（网站）：Workers & Pages → Create → Pages → 连接 GitHub 仓库；生产分支 `main`，构建命令留空，输出目录 `site`，Build watch paths 填 `site/*`；自定义域名 `baocode.dev`。
+5. **网站**：Worker `baocode`，静态资源是 `site/`（`_headers`、`_redirects` 照常生效），Settings → Builds 连着 GitHub 仓库（生产分支 `main`），自定义域名 `baocode.dev`。
 
 ### 7.2 GitHub
 
 1. **环境**：Settings → Environments → New environment，名字 `release`。
-   - Deployment branches and tags → Selected branches and tags → 加一条 **Tag**，规则 `v*`。只有 `v*` 标签触发的运行能用这个环境里的密钥。
+   - Deployment branches and tags → Selected branches and tags → 加两条 **Tag**，规则 `v*` 和 `test-*`。只有这两种标签触发的运行能用这个环境里的密钥；`test-*` 的运行只往 R2 的 `test/` 传安装包，不签、不传 `latest.json`。
    - 可选：Required reviewers 加上你自己。每次发布要你在 Actions 里点一下批准，多一道保险。
 2. **环境密钥**（`release` 环境 → Environment secrets）：
 

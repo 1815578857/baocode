@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>接入 BaoCode 一键导入</title>
+<meta name="description" content="让用户一键把你的 API 添加到 BaoCode，并在 BaoCode 中免费展示你的站点。">
+<link rel="icon" href="/icon.png">
+<link rel="stylesheet" href="/style.css">
+<link rel="alternate" hreflang="en" href="https://baocode.dev/upstreams">
+<link rel="alternate" hreflang="zh" href="https://baocode.dev/zh/upstreams">
+</head>
+<body>
+<canvas class="grid" aria-hidden="true"></canvas>
+<svg class="sprite" aria-hidden="true">
+  <!-- Lucide (ISC), https://lucide.dev -->
+  <symbol id="ic-github" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5c.08-1.25-.27-2.48-1-3.5c.28-1.15.28-2.35 0-3.5c0 0-1 0-3 1.5c-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.4 5.4 0 0 0 4 9c0 3.5 3 5.5 6 5.5c-.39.49-.68 1.05-.85 1.65S8.93 17.38 9 18v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></g></symbol>
+</svg>
+<header class="top">
+  <a class="brand" href="/zh/"><img src="/icon.png" alt="">BaoCode</a>
+  <a href="/zh/download">下载</a>
+  <a href="/zh/changelog">更新日志</a>
+  <a href="https://github.com/baocode-dev/baocode"><svg class="ic" aria-hidden="true"><use href="#ic-github"/></svg>GitHub</a>
+  <a class="lang" href="/upstreams" hreflang="en" lang="en">English</a>
+</header>
+
+<main class="page">
+  <h1>接入 BaoCode 一键导入</h1>
+  <p class="subtitle">用户在你的令牌页点一下，就能把你的 API 添加到 BaoCode。只要导入一直可用，BaoCode 就在 设置 → 模型 中免费展示你的站点。</p>
+
+  <h2>你能得到什么</h2>
+  <p>在 BaoCode 的 设置 → 模型 中，和其他接入了一键导入的上游一起展示一张卡片，每次打开页面顺序随机。点击卡片打开你的站点，可以带推广参数。展示不收费，也不代表 BaoCode 为你担保。</p>
+
+  <h2>new-api：加一行配置，不用改代码</h2>
+  <p>在 系统设置 → 聊天设置 中加入下面这一项。new-api 会替换 <code>{address}</code> 和 <code>{key}</code>，令牌列表里的每个令牌都会多出 BaoCode 选项：</p>
+  <pre><code>{ "BaoCode": "https://baocode.dev/import#v=1&amp;name=你的站点&amp;protocol=anthropic&amp;url={address}&amp;key={key}" }</code></pre>
+  <p>如果用户应该走 OpenAI 接口，把协议换成 <code>protocol=openai-chat</code> 或 <code>openai-responses</code>。请用自己的令牌试一次：部分 new-api 版本替换出的 key 不带 <code>sk-</code>，这时写成 <code>key=sk-{key}</code>。</p>
+
+  <h2>其他站点：放一个链接</h2>
+  <p>在每个令牌旁放一个链接，在新标签页打开：</p>
+  <pre><code>https://baocode.dev/import#v=1&amp;name=…&amp;protocol=…&amp;url=…&amp;key=…</code></pre>
+  <div class="table"><table>
+    <thead><tr><th>参数</th><th></th><th>含义</th></tr></thead>
+    <tbody>
+      <tr><td><code>url</code></td><td>必填</td><td>Base URL，http 或 https；Anthropic 协议不带 <code>/v1</code>。</td></tr>
+      <tr><td><code>protocol</code></td><td>可选</td><td><code>anthropic</code>（默认）、<code>openai-chat</code> 或 <code>openai-responses</code>。</td></tr>
+      <tr><td><code>name</code></td><td>可选</td><td>站点名称，即 BaoCode 中上游的名称。</td></tr>
+      <tr><td><code>key</code></td><td>可选</td><td>用户的完整 key。</td></tr>
+      <tr><td><code>v</code></td><td>可选</td><td><code>1</code>。</td></tr>
+    </tbody>
+  </table></div>
+  <p>每个参数值都要用 <code>encodeURIComponent</code> 编码。参数必须放在 <code>#</code> 后面，不能放在 <code>?</code> 后面：浏览器不会把 <code>#</code> 后的内容发给任何服务器，key 只会从你的页面直接到用户的 BaoCode。baocode.dev 的页面读取后会把它从地址栏中清除并打开 BaoCode，BaoCode 会先向用户展示要添加的内容，经确认后才添加。</p>
+  <p>请不要在令牌页引用 baocode.dev 的任何脚本，一个普通链接就够了。</p>
+
+  <h2>申请展示</h2>
+  <p>导入可用后，<a href="https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml">提交 issue</a>，写明站点名称、卡片链接、API 域名和一句话介绍。维护者会实际试一次导入、联系你要 Logo，并在下个版本中加上你的卡片。</p>
+  <p>导入失效或误导用户的站点会被下架。</p>
+</main>
+
+<script src="/site.js"></script>
+</body>
+</html>

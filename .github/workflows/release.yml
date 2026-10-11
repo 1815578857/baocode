@@ -3,6 +3,10 @@
 # has the whole of it: versions, secrets, what goes where.
 #
 #   git tag v1.2.0 && git push origin v1.2.0   build and publish 1.2.0
+#   git tag test-foo && git push origin test-foo
+#                                              build, and put the installers
+#                                              at dl.baocode.dev/test/…, to
+#                                              send to testers (no update)
 #   Actions → Release → Run workflow           build only, to try the build
 #
 # A version may be published again (the tag moved to a fixed commit): the
@@ -12,16 +16,17 @@ name: Release
 
 on:
   push:
-    tags: ['v*']
+    tags: ['v*', 'test-*']
   workflow_dispatch:
 
 permissions:
   contents: read
 
 # One release at a time; one that started is never cancelled halfway
-# through its upload.
+# through its upload. A build for testers, or run by hand, publishes no
+# release, and waits for none.
 concurrency:
-  group: release
+  group: ${{ startsWith(github.ref, 'refs/tags/v') && 'release' || format('build-{0}', github.run_id) }}
   cancel-in-progress: false
 
 env:
@@ -35,6 +40,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       marketing: ${{ steps.version.outputs.marketing }}
       publish: ${{ steps.version.outputs.publish }}
+      share: ${{ steps.version.outputs.share }}
     steps:
       - uses: actions/checkout@v4
       - id: version
@@ -53,7 +59,10 @@ jobs:
             exit 1
           fi
           publish=false
-          if [ "$GITHUB_REF_TYPE" = tag ]; then
+          share=false
+          if [ "$GITHUB_REF_TYPE" = tag ] && [[ "$GITHUB_REF_NAME" == test-* ]]; then
+            share=true
+          elif [ "$GITHUB_REF_TYPE" = tag ]; then
             if [ "$GITHUB_REF_NAME" != "v$marketing" ]; then
               echo "::error::Tag $GITHUB_REF_NAME, but pubspec.yaml is $version: the tag has to be v$marketing"
               exit 1
@@ -64,6 +73,7 @@ jobs:
             echo "version=$version"
             echo "marketing=$marketing"
             echo "publish=$publish"
+            echo "share=$share"
           } >> "$GITHUB_OUTPUT"
       - name: Be no older than the version published
         if: steps.version.outputs.publish == 'true'
@@ -158,10 +168,11 @@ jobs:
     needs: [check, remote]
     runs-on: macos-15
     # The Developer ID certificate and the notary key are the release
-    # environment's secrets, for tags only. Without them (a build only, or
-    # before they are set) the app is signed ad hoc, and only opens on the
-    # machine that built it.
-    environment: ${{ needs.check.outputs.publish == 'true' && 'release' || '' }}
+    # environment's secrets, for its tags only (v*, and test-* for testers).
+    # Without them (a build only, or before they are set) the app is signed
+    # ad hoc, and opens only after Open Anyway (System Settings → Privacy &
+    # Security).
+    environment: ${{ (needs.check.outputs.publish == 'true' || needs.check.outputs.share == 'true') && 'release' || '' }}
     env:
       MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
       MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
@@ -263,6 +274,61 @@ jobs:
           name: windows
           if-no-files-found: error
           path: build/installers/BaoCode-*-setup.exe
+
+  share:
+    name: Put it at dl.baocode.dev/test/ for testers
+    needs: [check, macos, windows]
+    if: needs.check.outputs.share == 'true'
+    runs-on: ubuntu-latest
+    # The release environment's R2 token (it lets test-* tags in): test/ is
+    # outside releases/, and latest.json is not touched, so no installed app
+    # is offered what goes there.
+    environment: release
+    env:
+      MARKETING: ${{ needs.check.outputs.marketing }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      AWS_ENDPOINT_URL: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos
+          path: dist/macos
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows
+          path: dist/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: remote
+          path: dist/remote
+      - name: Upload
+        run: |
+          # A folder of its own each time: the version, the tag, the run.
+          name=$(printf '%s' "${GITHUB_REF_NAME#test-}" | tr -c 'A-Za-z0-9.-' '-' | sed 's/-*$//')
+          dir="test/$MARKETING-$name-$GITHUB_RUN_NUMBER"
+          # The remote server too, where the app downloads it for an SSH
+          # host: under its own version, which a release never changes.
+          aws s3 cp dist/remote "s3://$R2_BUCKET/releases/remote/$(cat dist/remote/VERSION)/" \
+            --recursive --exclude '*' --include '*.gz' \
+            --cache-control 'public, max-age=31536000, immutable'
+          {
+            echo "## For testers: $MARKETING, \`$GITHUB_REF_NAME\` (${GITHUB_SHA::7})"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+          for file in dist/macos/BaoCode-*.dmg dist/windows/BaoCode-*-setup.exe; do
+            name=$(basename "$file")
+            aws s3 cp "$file" "s3://$R2_BUCKET/$dir/$name" --cache-control 'public, max-age=86400'
+            url="https://dl.baocode.dev/$dir/$name"
+            served=$(curl -fsSI "$url" | tr -d '\r' | awk 'tolower($1) == "content-length:" { print $2 }')
+            [ "$served" = "$(stat -c %s "$file")" ] || { echo "::error::$url is not served as uploaded"; exit 1; }
+            echo "- [$name]($url)" >> "$GITHUB_STEP_SUMMARY"
+          done
+          cat "$GITHUB_STEP_SUMMARY"
 
   publish:
     name: Publish to dl.baocode.dev
