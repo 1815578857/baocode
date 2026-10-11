@@ -19,12 +19,14 @@ import '../keybindings/keybinding_service.dart';
 import '../l10n/l10n.dart';
 import '../platform/app_paths.dart';
 import '../theme/codicons.dart';
+import 'ide_hover.dart';
 import '../theme/material_file_icons.dart';
 import '../theme/workbench_theme.dart' show themeColors;
 import '../workspace/window_controls.dart';
 
 import 'package:bao_editor/monaco/vs/base/common/labels.dart';
 
+import 'explorer_history.dart';
 import 'file_service.dart';
 import 'git/git_model.dart';
 import 'git/git_repository.dart';
@@ -45,6 +47,7 @@ class IdeExplorerRow {
     required this.isDirectory,
     this.expanded = false,
     this.message,
+    this.error,
     this.isRoot = false,
   });
 
@@ -61,6 +64,9 @@ class IdeExplorerRow {
   /// A non-selectable note under a folder instead of an entry: the error
   /// reading it.
   final String? message;
+
+  /// What reading the folder failed with, for [message].
+  final Object? error;
 }
 
 /// The explorer's tree state, kept by the workbench so the expansion survives
@@ -154,6 +160,9 @@ class IdeExplorerController extends ChangeNotifier {
   Timer? _changesTimer;
   final Map<String, List<IdeFile>> _children = {};
   final Map<String, Object> _errors = {};
+
+  /// The file operations done here, to undo and redo.
+  final ExplorerHistory history = ExplorerHistory();
   final Set<String> _expanded = {};
   final Map<String, Future<void>> _loads = {};
   List<IdeExplorerRow>? _rows;
@@ -193,6 +202,7 @@ class IdeExplorerController extends ChangeNotifier {
             depth: depth,
             isDirectory: false,
             message: '$error',
+            error: error,
           ),
         );
         return;
@@ -807,6 +817,8 @@ class IdeExplorerState extends State<IdeExplorer> {
       'list.selectAll': (_) => selectAll(),
       'list.clear': (_) => clearSelection(),
       'list.collapseAll': (_) => _controller.collapseAll(),
+      explorerUndoCommandId: (_) => unawaited(undo()),
+      explorerRedoCommandId: (_) => unawaited(redo()),
     };
   }
 
@@ -919,6 +931,184 @@ class IdeExplorerState extends State<IdeExplorer> {
 
   /// `list.clear`: selects nothing.
   void clearSelection() => _controller.select(null);
+
+  /// The largest file kept to make again on Undo once deleted for good.
+  static const _undoableBytes = 20 * 1024 * 1024;
+
+  /// [path]'s bytes, to make it again on Undo; null for one too large, or
+  /// that cannot be read.
+  Future<Uint8List?> _bytesOf(String path) async {
+    try {
+      final bytes = await readBytesThrough(_controller.files, path);
+      return bytes.length > _undoableBytes ? null : bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool get canUndo => _controller.history.canUndo;
+  bool get canRedo => _controller.history.canRedo;
+
+  /// Undoes the last file operation (VS Code's Undo in the explorer): one
+  /// that fails is dropped, said why.
+  Future<void> undo() async {
+    final history = _controller.history;
+    final operation = history.takeUndo();
+    if (operation == null) return;
+    final files = _controller.files;
+    String? reveal;
+    try {
+      switch (operation) {
+        case ExplorerMoved(:final moves):
+          for (final (:from, :to) in moves.reversed) {
+            await files.rename(to, from);
+            _controller.forget(to);
+            widget.onMoved?.call(to, from);
+            reveal = from;
+          }
+        case ExplorerCreated(:final paths):
+          for (final (:path, :directory) in paths.reversed) {
+            if (!await _untouched(path, directory: directory)) return;
+            await files.delete(path);
+            _controller.forget(path);
+            widget.onDeleted?.call(path);
+          }
+        case ExplorerCopied(:final copies):
+          for (final (:copy, source: _) in copies.reversed) {
+            await files.delete(copy);
+            _controller.forget(copy);
+            widget.onDeleted?.call(copy);
+          }
+        case ExplorerDeleted(:final path, :final bytes):
+          await files.writeBytes(path, bytes);
+          reveal = path;
+      }
+      history.undone(operation);
+    } catch (error) {
+      _report(error);
+    } finally {
+      await _controller.refresh();
+      if (reveal != null) await _controller.reveal(reveal);
+    }
+  }
+
+  /// Does again the last file operation undone.
+  Future<void> redo() async {
+    final history = _controller.history;
+    final operation = history.takeRedo();
+    if (operation == null) return;
+    final files = _controller.files;
+    String? reveal;
+    try {
+      switch (operation) {
+        case ExplorerMoved(:final moves):
+          for (final (:from, :to) in moves) {
+            await files.rename(from, to);
+            _controller.forget(from);
+            widget.onMoved?.call(from, to);
+            reveal = to;
+          }
+        case ExplorerCreated(:final paths):
+          for (final (:path, :directory) in paths) {
+            await files.create(path, directory: directory);
+            reveal = path;
+          }
+        case ExplorerCopied(:final copies, :final upload):
+          for (final (:source, :copy) in copies) {
+            if (upload) {
+              await copyLocalTo(files, source, copy);
+            } else {
+              await files.copy(source, copy);
+            }
+            reveal = copy;
+          }
+        case ExplorerDeleted(:final path):
+          await files.delete(path);
+          _controller.forget(path);
+          widget.onDeleted?.call(path);
+      }
+      history.redone(operation);
+    } catch (error) {
+      _report(error);
+    } finally {
+      await _controller.refresh();
+      if (reveal != null) await _controller.reveal(reveal);
+    }
+  }
+
+  /// Whether [path], made here, is as it was made (an empty file or
+  /// folder), or the user lets Undo delete it anyway.
+  Future<bool> _untouched(String path, {required bool directory}) async {
+    final files = _controller.files;
+    final empty = directory
+        ? (await files.list(path)).isEmpty
+        : (await files.read(path, force: true)).isEmpty;
+    if (empty || !mounted) return empty;
+    final l10n = context.l10n;
+    final pick = await showIdeDialog(
+      context,
+      type: IdeDialogType.question,
+      message: l10n.explorerUndoCreateChanged(_controller.paths.basename(path)),
+      detail: l10n.explorerIrreversible,
+      buttons: [l10n.commonDelete],
+    );
+    return pick == 0;
+  }
+
+  // --- Dragging within the tree ---------------------------------------------
+
+  /// What is dragged from this tree, while it is.
+  List<String>? _dragging;
+
+  /// The folder a drag would move into, highlighted with what is in it.
+  String? _dropFolder;
+
+  /// Whether what is dragged moves into [folder]: none of it is [folder]
+  /// or above it, and some of it is elsewhere.
+  bool _takes(String folder) {
+    final dragging = _dragging;
+    if (dragging == null || dragging.isEmpty) return false;
+    final paths = _controller.paths;
+    if (dragging.any(
+      (path) => path == folder || paths.isWithin(path, folder),
+    )) {
+      return false;
+    }
+    return dragging.any((path) => paths.dirname(path) != folder);
+  }
+
+  /// Where a drop on [row] goes: a folder itself, a file's folder.
+  String _folderFor(IdeExplorerRow row) =>
+      row.isDirectory ? row.path : _controller.paths.dirname(row.path);
+
+  void _hoverDrop(String? folder) {
+    if (folder == _dropFolder) return;
+    setState(() => _dropFolder = folder);
+  }
+
+  /// Moves [sources] (dragged here) into [folder], as one operation.
+  Future<void> _moveInto(List<String> sources, String folder) async {
+    final files = _controller.files;
+    final paths = _controller.paths;
+    final moved = <({String from, String to})>[];
+    String? last;
+    try {
+      for (final source in sources) {
+        if (paths.dirname(source) == folder) continue;
+        final target = paths.join(folder, paths.basename(source));
+        await files.rename(source, target);
+        _controller.forget(source);
+        widget.onMoved?.call(source, target);
+        moved.add((from: source, to: target));
+        last = target;
+      }
+    } catch (error) {
+      _report(error);
+    }
+    if (moved.isNotEmpty) _controller.history.done(ExplorerMoved(moved));
+    await _controller.refresh();
+    if (last != null) await _controller.reveal(last);
+  }
 
   /// `list.expand`: opens the folder, or goes to its first child.
   void expandSelected() {
@@ -1109,22 +1299,27 @@ class IdeExplorerState extends State<IdeExplorer> {
         await files.rename(from, to);
         _controller.forget(from);
         widget.onMoved?.call(from, to);
+        _controller.history.done(ExplorerMoved([(from: from, to: to)]));
         await _controller.refresh();
         await _controller.reveal(to);
       } else {
         // `a/b/c.txt` makes the folders too.
         final parts = name.split(RegExp(r'[\\/]')).where((n) => n.isNotEmpty);
         var folder = edit.parent;
+        final made = <({String path, bool directory})>[];
         for (final part in parts.take(parts.length - 1)) {
           folder = _controller.paths.join(folder, part);
           try {
             await files.create(folder, directory: true);
+            made.add((path: folder, directory: true));
           } on IdeFileExistsException {
             // Already there.
           }
         }
         final path = _controller.paths.join(folder, parts.last);
         await files.create(path, directory: edit.directory);
+        made.add((path: path, directory: edit.directory));
+        _controller.history.done(ExplorerCreated(made));
         await _controller.refresh();
         await _controller.reveal(path);
         if (!edit.directory) widget.onOpen(path, true);
@@ -1226,7 +1421,14 @@ class IdeExplorerState extends State<IdeExplorer> {
             toTrash = null;
           }
         }
-        if (!trashed) await _controller.files.delete(row.path);
+        if (!trashed) {
+          // A file's bytes, to make it again on Undo.
+          final kept = row.isDirectory ? null : await _bytesOf(row.path);
+          await _controller.files.delete(row.path);
+          if (kept != null) {
+            _controller.history.done(ExplorerDeleted(row.path, kept));
+          }
+        }
         _controller.forget(row.path);
         widget.onDeleted?.call(row.path);
       } catch (error) {
@@ -1247,6 +1449,8 @@ class IdeExplorerState extends State<IdeExplorer> {
     // This machine's files, into a remote project's.
     final upload = toPaste.external && !widget.local;
     String? last;
+    final moved = <({String from, String to})>[];
+    final copied = <({String source, String copy})>[];
     try {
       await _controller.expand(folder);
       final taken = {
@@ -1269,6 +1473,7 @@ class IdeExplorerState extends State<IdeExplorer> {
           await files.rename(source, target);
           _controller.forget(source);
           widget.onMoved?.call(source, target);
+          moved.add((from: source, to: target));
           last = target;
         } else {
           var name = sourceName;
@@ -1282,12 +1487,17 @@ class IdeExplorerState extends State<IdeExplorer> {
           } else {
             await files.copy(source, copy);
           }
+          copied.add((source: source, copy: copy));
           last = copy;
         }
       }
       if (toPaste.cut) _controller.clipboard = null;
     } catch (error) {
       _report(error);
+    }
+    if (moved.isNotEmpty) _controller.history.done(ExplorerMoved(moved));
+    if (copied.isNotEmpty) {
+      _controller.history.done(ExplorerCopied(copied, upload: upload));
     }
     await _controller.refresh();
     if (last != null) await _controller.reveal(last);
@@ -1558,64 +1768,140 @@ class IdeExplorerState extends State<IdeExplorer> {
         onKeyEvent: _onKey,
         child: GestureDetector(
           behavior: HitTestBehavior.translucent,
-          onTap: _focusNode.requestFocus,
+          // Below the rows: none selected, as VS Code's list does, so that
+          // New File… and the rest are at the top folder.
+          onTap: () {
+            _focusNode.requestFocus();
+            clearSelection();
+          },
           onSecondaryTapUp: (details) {
             _focusNode.requestFocus();
+            clearSelection();
             unawaited(_showMenu(details.globalPosition, null));
           },
-          child: ListView.builder(
-            controller: _scroll,
-            itemExtent: IdeExplorer.rowHeight,
-            padding: const EdgeInsets.only(bottom: 12),
-            itemCount: rows.length,
-            itemBuilder: (context, index) {
-              final (row, editing) = rows[index];
-              if (editing) {
-                final edit = _edit!;
-                return _ExplorerEditRow(
-                  key: ValueKey(('edit', row.path)),
+          child: _rootDropTarget(
+            ListView.builder(
+              controller: _scroll,
+              itemExtent: IdeExplorer.rowHeight,
+              padding: const EdgeInsets.only(bottom: 12),
+              itemCount: rows.length,
+              itemBuilder: (context, index) {
+                final (row, editing) = rows[index];
+                if (editing) {
+                  final edit = _edit!;
+                  return _ExplorerEditRow(
+                    key: ValueKey(('edit', row.path)),
+                    row: row,
+                    edit: edit,
+                    paths: _controller.paths,
+                    validate: (name) => _validate(edit, name),
+                    onSubmit: (name) => unawaited(_commitEdit(edit, name)),
+                    onCancel: _cancelEdit,
+                  );
+                }
+                final view = _ExplorerRowView(
                   row: row,
-                  edit: edit,
-                  paths: _controller.paths,
-                  validate: (name) => _validate(edit, name),
-                  onSubmit: (name) => unawaited(_commitEdit(edit, name)),
-                  onCancel: _cancelEdit,
+                  selected: _controller.isSelected(row.path),
+                  focusedItem: row.path == _controller.selected,
+                  focused: focused,
+                  decoration: switch (decorationsOf(row.path)) {
+                    _ when row.message != null => null,
+                    null => null,
+                    final decorations when row.isDirectory =>
+                      decorations.folder(row.path),
+                    final decorations => decorations.file(row.path),
+                  },
+                  onTap: () {
+                    _focusNode.requestFocus();
+                    _click(row);
+                  },
+                  onContextMenu: (position) {
+                    _focusNode.requestFocus();
+                    unawaited(_showMenu(position, row));
+                  },
                 );
-              }
-              final view = _ExplorerRowView(
-                row: row,
-                selected: _controller.isSelected(row.path),
-                focusedItem: row.path == _controller.selected,
-                focused: focused,
-                decoration: switch (decorationsOf(row.path)) {
-                  _ when row.message != null => null,
-                  null => null,
-                  final decorations when row.isDirectory => decorations.folder(
-                    row.path,
+                if (row.message != null) {
+                  return KeyedSubtree(key: ValueKey(row.path), child: view);
+                }
+                // Dragged onto the chat's composer, it goes in as a file;
+                // within the tree, it moves into the folder dropped on.
+                final folder = _folderFor(row);
+                final drop = _dropFolder;
+                final inDrop =
+                    drop != null &&
+                    (row.path == drop ||
+                        _controller.paths.isWithin(drop, row.path));
+                return FileDraggable(
+                  key: ValueKey(row.path),
+                  files: dragged(row),
+                  onDragStarted: () =>
+                      _dragging = [for (final file in dragged(row)) file.path],
+                  onDragEnd: () {
+                    _dragging = null;
+                    _hoverDrop(null);
+                  },
+                  child: DragTarget<FileDragData>(
+                    onWillAcceptWithDetails: (_) {
+                      final takes = _takes(folder);
+                      _hoverDrop(takes ? folder : null);
+                      return takes;
+                    },
+                    onLeave: (_) {
+                      if (_dropFolder == folder) _hoverDrop(null);
+                    },
+                    onAcceptWithDetails: (_) {
+                      final sources = _dragging ?? const <String>[];
+                      _hoverDrop(null);
+                      unawaited(_moveInto(sources, folder));
+                    },
+                    builder: (context, _, _) => inDrop
+                        ? DecoratedBox(
+                            position: DecorationPosition.foreground,
+                            decoration: BoxDecoration(
+                              color: themeColors['list.dropBackground'],
+                            ),
+                            child: view,
+                          )
+                        : view,
                   ),
-                  final decorations => decorations.file(row.path),
-                },
-                onTap: () {
-                  _focusNode.requestFocus();
-                  _click(row);
-                },
-                onContextMenu: (position) {
-                  _focusNode.requestFocus();
-                  unawaited(_showMenu(position, row));
-                },
-              );
-              // Dragged onto the chat's composer, it goes in as a file.
-              return row.message != null
-                  ? KeyedSubtree(key: ValueKey(row.path), child: view)
-                  : FileDraggable(
-                      key: ValueKey(row.path),
-                      files: dragged(row),
-                      child: view,
-                    );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  /// [list], dropped on below its rows: what is dragged moves to the top
+  /// folder (the only one; a workspace's folders take drops on their rows),
+  /// all of the tree highlighted.
+  Widget _rootDropTarget(Widget list) {
+    if (_controller.roots.length > 1) return list;
+    final root = _controller.root;
+    return DragTarget<FileDragData>(
+      onWillAcceptWithDetails: (_) {
+        final takes = _takes(root);
+        _hoverDrop(takes ? root : null);
+        return takes;
+      },
+      onLeave: (_) {
+        if (_dropFolder == root) _hoverDrop(null);
+      },
+      onAcceptWithDetails: (_) {
+        final sources = _dragging ?? const <String>[];
+        _hoverDrop(null);
+        unawaited(_moveInto(sources, root));
+      },
+      builder: (context, _, _) => _dropFolder == root
+          ? DecoratedBox(
+              position: DecorationPosition.foreground,
+              decoration: BoxDecoration(
+                color: themeColors['list.dropBackground'],
+              ),
+              child: list,
+            )
+          : list,
     );
   }
 }
@@ -1672,6 +1958,7 @@ class _ExplorerRowView extends StatelessWidget {
       child: const SizedBox.expand(),
     );
     if (row.message case final message?) {
+      final denied = row.error is IdeFileAccessDeniedException;
       return Stack(
         children: [
           Positioned.fill(child: guides),
@@ -1679,13 +1966,44 @@ class _ExplorerRowView extends StatelessWidget {
             padding: EdgeInsets.only(left: left + 24, right: 8),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text(
-                context.l10n.explorerCannotReadFolder(message),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: IdeListColors.errorForeground,
-                  fontSize: 12,
+              child: IdeHover(
+                message: switch (row.error) {
+                  final error? => localizedFileError(context.l10n, error),
+                  null => message,
+                },
+                followMouse: true,
+                child: Row(
+                  children: [
+                    if (denied) ...[
+                      Icon(
+                        Codicons.lock,
+                        size: 12,
+                        color: IdeListColors.errorForeground,
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    Flexible(
+                      child: Text(
+                        denied
+                            ? context.l10n.explorerNoPermission
+                            : context.l10n.explorerCannotReadFolder(
+                                switch (row.error) {
+                                  final error? => localizedFileError(
+                                    context.l10n,
+                                    error,
+                                  ),
+                                  null => message,
+                                },
+                              ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: IdeListColors.errorForeground,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

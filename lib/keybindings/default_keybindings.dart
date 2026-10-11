@@ -10,6 +10,8 @@ import 'package:flutter/foundation.dart';
 
 import 'package:bao_editor/monaco/flutter/editor_keybindings.dart';
 
+import '../ide/explorer_history.dart'
+    show explorerRedoCommandId, explorerUndoCommandId;
 import 'chat_keybindings.dart';
 import 'key_chord.dart';
 
@@ -392,6 +394,8 @@ final Map<String, CommandInfo> commandCatalog = {
     const CommandInfo('filesExplorer.copy', 'Copy', category: 'File'),
     const CommandInfo('filesExplorer.cut', 'Cut', category: 'File'),
     const CommandInfo('filesExplorer.paste', 'Paste', category: 'File'),
+    const CommandInfo(explorerUndoCommandId, 'Undo', category: 'File'),
+    const CommandInfo(explorerRedoCommandId, 'Redo', category: 'File'),
     const CommandInfo(
       'filesExplorer.openFilePreserveFocus',
       'Open File, Keeping the Focus',
@@ -808,6 +812,24 @@ final List<KeybindingEntry> defaultKeybindings = List.unmodifiable([
     when:
         'filesExplorerFocus && foldersViewVisible && '
         '!explorerResourceReadonly && !inputFocus',
+  ),
+  const KeybindingEntry(
+    key: 'ctrl+z',
+    mac: 'cmd+z',
+    command: explorerUndoCommandId,
+    when: _explorer,
+  ),
+  const KeybindingEntry(
+    key: 'ctrl+y',
+    mac: 'shift+cmd+z',
+    command: explorerRedoCommandId,
+    when: _explorer,
+  ),
+  const KeybindingEntry(
+    win: 'ctrl+shift+z',
+    linux: 'ctrl+shift+z',
+    command: explorerRedoCommandId,
+    when: _explorer,
   ),
   for (final MapEntry(key: id, value: chords)
       in editorCommandDefaultChords.entries)

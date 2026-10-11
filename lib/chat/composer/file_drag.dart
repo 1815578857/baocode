@@ -8,10 +8,20 @@ import 'composer_files.dart';
 /// [child], to drag [files] from onto the composer (the IDE's explorer
 /// rows, its tabs…), as files are dragged in from other apps.
 class FileDraggable extends StatelessWidget {
-  const FileDraggable({super.key, required this.files, required this.child});
+  const FileDraggable({
+    super.key,
+    required this.files,
+    required this.child,
+    this.onDragStarted,
+    this.onDragEnd,
+  });
 
   final List<ComposerFile> files;
   final Widget child;
+
+  /// The drag began, and ended (dropped or not).
+  final VoidCallback? onDragStarted;
+  final VoidCallback? onDragEnd;
 
   @override
   Widget build(BuildContext context) => Draggable<FileDragData>(
@@ -19,6 +29,8 @@ class FileDraggable extends StatelessWidget {
     // The composer places what is let go at the pointer.
     dragAnchorStrategy: pointerDragAnchorStrategy,
     feedback: _Feedback(files),
+    onDragStarted: onDragStarted,
+    onDragEnd: onDragEnd == null ? null : (_) => onDragEnd!(),
     child: child,
   );
 }

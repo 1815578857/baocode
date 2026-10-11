@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:bao_remote/files.dart';
@@ -68,17 +69,18 @@ abstract interface class IdeHostFiles implements IdeFileService {
 
 /// [error] as a message in [l10n]'s language: the file service's own
 /// exceptions translated, others as they describe themselves.
-String localizedFileError(AppLocalizations l10n, Object error) =>
-    switch (error) {
-      IdeFileConflictException(:final path) => l10n.fileErrorConflict(path),
-      IdeFileNotFoundException(:final path) => l10n.fileErrorNotFound(path),
-      IdeBinaryFileException(:final path) => l10n.fileErrorBinary(path),
-      IdeFileTooLargeException(:final path) => l10n.fileErrorTooLarge(path),
-      IdeFileExistsException(:final path) => l10n.fileErrorExists(
-        p.basename(path),
-      ),
-      _ => '$error',
-    };
+String localizedFileError(
+  AppLocalizations l10n,
+  Object error,
+) => switch (error) {
+  IdeFileConflictException(:final path) => l10n.fileErrorConflict(path),
+  IdeFileNotFoundException(:final path) => l10n.fileErrorNotFound(path),
+  IdeBinaryFileException(:final path) => l10n.fileErrorBinary(path),
+  IdeFileTooLargeException(:final path) => l10n.fileErrorTooLarge(path),
+  IdeFileExistsException(:final path) => l10n.fileErrorExists(p.basename(path)),
+  IdeFileAccessDeniedException(:final path) => l10n.fileErrorAccessDenied(path),
+  _ => '$error',
+};
 
 /// [path]'s bytes, for a preview (an image's): read whole, without the
 /// editor's binary and size checks. Throws [IdeFileNotFoundException] when
@@ -126,6 +128,14 @@ const ideImageExtensions = <String>{
 /// Whether [path] opens in the image preview.
 bool ideIsImagePath(String path) =>
     ideImageExtensions.contains(p.extension(path).toLowerCase());
+
+/// [path]'s bytes through [files]: read here for a local project, on the
+/// host for a remote one; other services give their text.
+Future<Uint8List> readBytesThrough(IdeFileService files, String path) async {
+  if (files is platform.LocalIdeFileService) return readFileBytes(path);
+  if (files is IdeHostFiles) return files.readBytes(path);
+  return utf8.encode(await files.read(path, force: true));
+}
 
 /// Every regular file under [root], skipping [ideIndexExcludedDirectories],
 /// at most [limit]. Local projects are walked on a background isolate;

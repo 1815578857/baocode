@@ -5289,5 +5289,67 @@
   },
   "extsPopularThemes": "Popular Themes",
   "extsTabThemes": "Themes",
-  "extsTabLanguageServers": "Language Servers"
+  "extsTabLanguageServers": "Language Servers",
+  "sidebarThisMachine": "This Computer",
+  "sidebarSwitchHost": "Switch between this computer and SSH hosts",
+  "sidebarAddSshHost": "Add SSH Host...",
+  "sidebarOpenFolderOn": "Open Folder on {host}...",
+  "@sidebarOpenFolderOn": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "sidebarNoProjectsOn": "No projects on {host} yet.",
+  "@sidebarNoProjectsOn": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "sidebarHostConnected": "Connected",
+  "sidebarHostConnecting": "Connecting...",
+  "sidebarHostDisconnected": "Disconnected",
+  "sidebarHostIdle": "Not connected",
+  "sidebarDisconnectHost": "Disconnect",
+  "sidebarRemoveHost": "Remove Host",
+  "sidebarRemoveHostTitle": "Remove {host}?",
+  "@sidebarRemoveHostTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "sidebarRemoveHostMessage": "Its projects are taken off the sidebar. Their conversations are kept, and come back once the host is added again.",
+  "sidebarRemove": "Remove",
+  "sidebarElsewhereNeedsYou": "{count, plural, =1{1 agent on another machine needs you} other{{count} agents on other machines need you}}",
+  "@sidebarElsewhereNeedsYou": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sidebarRenameHost": "Rename Host",
+  "explorerNoPermission": "No permission to read this folder",
+  "fileErrorAccessDenied": "Permission denied: {path}",
+  "@fileErrorAccessDenied": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteAddedHosts": "Added",
+  "explorerUndoCreateChanged": "{name} has changed since it was made. Undo deletes it anyway?",
+  "@explorerUndoCreateChanged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

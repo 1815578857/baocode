@@ -1,6 +1,8 @@
 // Command titles in the display language, by command id, as VS Code's
 // `localize2` titles: the palette lists the localized `Category: Title` and
 // also matches the English one (upstream `commandAlias`).
+import '../ide/explorer_history.dart'
+    show explorerRedoCommandId, explorerUndoCommandId;
 import '../ide/ide_commands.dart';
 import '../keybindings/chat_keybindings.dart';
 import '../keybindings/default_keybindings.dart';
@@ -167,6 +169,8 @@ String localizedCommandLabel(AppLocalizations l10n, String id, String english) {
     'filesExplorer.copy' => l10n.commonCopy,
     'filesExplorer.cut' => l10n.commonCut,
     'filesExplorer.paste' => l10n.commonPaste,
+    explorerUndoCommandId => l10n.commonUndo,
+    explorerRedoCommandId => l10n.commonRedo,
     'filesExplorer.openFilePreserveFocus' => l10n.cmdOpenFilePreserveFocus,
     'workbench.scm.focus' => l10n.cmdScmFocus,
     'scm.acceptInput' => l10n.cmdScmAcceptInput,

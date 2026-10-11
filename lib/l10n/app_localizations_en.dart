@@ -7278,4 +7278,83 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get extsTabLanguageServers => 'Language Servers';
+
+  @override
+  String get sidebarThisMachine => 'This Computer';
+
+  @override
+  String get sidebarSwitchHost => 'Switch between this computer and SSH hosts';
+
+  @override
+  String get sidebarAddSshHost => 'Add SSH Host...';
+
+  @override
+  String sidebarOpenFolderOn(String host) {
+    return 'Open Folder on $host...';
+  }
+
+  @override
+  String sidebarNoProjectsOn(String host) {
+    return 'No projects on $host yet.';
+  }
+
+  @override
+  String get sidebarHostConnected => 'Connected';
+
+  @override
+  String get sidebarHostConnecting => 'Connecting...';
+
+  @override
+  String get sidebarHostDisconnected => 'Disconnected';
+
+  @override
+  String get sidebarHostIdle => 'Not connected';
+
+  @override
+  String get sidebarDisconnectHost => 'Disconnect';
+
+  @override
+  String get sidebarRemoveHost => 'Remove Host';
+
+  @override
+  String sidebarRemoveHostTitle(String host) {
+    return 'Remove $host?';
+  }
+
+  @override
+  String get sidebarRemoveHostMessage =>
+      'Its projects are taken off the sidebar. Their conversations are kept, and come back once the host is added again.';
+
+  @override
+  String get sidebarRemove => 'Remove';
+
+  @override
+  String sidebarElsewhereNeedsYou(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count agents on other machines need you',
+      one: '1 agent on another machine needs you',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sidebarRenameHost => 'Rename Host';
+
+  @override
+  String get explorerNoPermission => 'No permission to read this folder';
+
+  @override
+  String fileErrorAccessDenied(String path) {
+    return 'Permission denied: $path';
+  }
+
+  @override
+  String get remoteAddedHosts => 'Added';
+
+  @override
+  String explorerUndoCreateChanged(String name) {
+    return '$name has changed since it was made. Undo deletes it anyway?';
+  }
 }

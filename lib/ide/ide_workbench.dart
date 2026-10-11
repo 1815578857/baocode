@@ -53,6 +53,8 @@ import 'package:bao_editor/monaco/vs/editor/contrib/gotoError/browser/marker_nav
 
 import 'extensions/ide_extensions.dart';
 import 'extensions/ide_extensions_view.dart';
+import 'explorer_history.dart'
+    show explorerRedoCommandId, explorerUndoCommandId;
 import 'file_service.dart'
     show IdeFileListing, IdeHostFiles, localizedFileError, readFileBytes;
 import 'git/commit_message.dart';
@@ -2576,6 +2578,16 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       ),
       // What the system's clipboard holds is only known once read.
       command('filesExplorer.paste', () => unawaited(explorer.pasteSelected())),
+      command(
+        explorerUndoCommandId,
+        () => unawaited(explorer.undo()),
+        enabled: explorer.canUndo,
+      ),
+      command(
+        explorerRedoCommandId,
+        () => unawaited(explorer.redo()),
+        enabled: explorer.canRedo,
+      ),
       command(
         'filesExplorer.openFilePreserveFocus',
         explorer.previewSelected,

@@ -12008,6 +12008,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Language Servers'**
   String get extsTabLanguageServers;
+
+  /// No description provided for @sidebarThisMachine.
+  ///
+  /// In en, this message translates to:
+  /// **'This Computer'**
+  String get sidebarThisMachine;
+
+  /// No description provided for @sidebarSwitchHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch between this computer and SSH hosts'**
+  String get sidebarSwitchHost;
+
+  /// No description provided for @sidebarAddSshHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Add SSH Host...'**
+  String get sidebarAddSshHost;
+
+  /// No description provided for @sidebarOpenFolderOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Folder on {host}...'**
+  String sidebarOpenFolderOn(String host);
+
+  /// No description provided for @sidebarNoProjectsOn.
+  ///
+  /// In en, this message translates to:
+  /// **'No projects on {host} yet.'**
+  String sidebarNoProjectsOn(String host);
+
+  /// No description provided for @sidebarHostConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get sidebarHostConnected;
+
+  /// No description provided for @sidebarHostConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting...'**
+  String get sidebarHostConnecting;
+
+  /// No description provided for @sidebarHostDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnected'**
+  String get sidebarHostDisconnected;
+
+  /// No description provided for @sidebarHostIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected'**
+  String get sidebarHostIdle;
+
+  /// No description provided for @sidebarDisconnectHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get sidebarDisconnectHost;
+
+  /// No description provided for @sidebarRemoveHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Host'**
+  String get sidebarRemoveHost;
+
+  /// No description provided for @sidebarRemoveHostTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {host}?'**
+  String sidebarRemoveHostTitle(String host);
+
+  /// No description provided for @sidebarRemoveHostMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Its projects are taken off the sidebar. Their conversations are kept, and come back once the host is added again.'**
+  String get sidebarRemoveHostMessage;
+
+  /// No description provided for @sidebarRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get sidebarRemove;
+
+  /// No description provided for @sidebarElsewhereNeedsYou.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 agent on another machine needs you} other{{count} agents on other machines need you}}'**
+  String sidebarElsewhereNeedsYou(int count);
+
+  /// No description provided for @sidebarRenameHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename Host'**
+  String get sidebarRenameHost;
+
+  /// No description provided for @explorerNoPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'No permission to read this folder'**
+  String get explorerNoPermission;
+
+  /// No description provided for @fileErrorAccessDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission denied: {path}'**
+  String fileErrorAccessDenied(String path);
+
+  /// No description provided for @remoteAddedHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'Added'**
+  String get remoteAddedHosts;
+
+  /// No description provided for @explorerUndoCreateChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has changed since it was made. Undo deletes it anyway?'**
+  String explorerUndoCreateChanged(String name);
 }
 
 class _AppLocalizationsDelegate

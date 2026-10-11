@@ -6857,4 +6857,81 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get extsTabLanguageServers => '语言服务器';
+
+  @override
+  String get sidebarThisMachine => '本机';
+
+  @override
+  String get sidebarSwitchHost => '在本机和 SSH 主机之间切换';
+
+  @override
+  String get sidebarAddSshHost => '添加 SSH 主机...';
+
+  @override
+  String sidebarOpenFolderOn(String host) {
+    return '在 $host 上打开文件夹...';
+  }
+
+  @override
+  String sidebarNoProjectsOn(String host) {
+    return '$host 上还没有项目。';
+  }
+
+  @override
+  String get sidebarHostConnected => '已连接';
+
+  @override
+  String get sidebarHostConnecting => '正在连接...';
+
+  @override
+  String get sidebarHostDisconnected => '已断开';
+
+  @override
+  String get sidebarHostIdle => '未连接';
+
+  @override
+  String get sidebarDisconnectHost => '断开连接';
+
+  @override
+  String get sidebarRemoveHost => '移除主机';
+
+  @override
+  String sidebarRemoveHostTitle(String host) {
+    return '移除 $host？';
+  }
+
+  @override
+  String get sidebarRemoveHostMessage => '它的项目会从侧栏移走。对话不会删除，重新添加这台主机后会回来。';
+
+  @override
+  String get sidebarRemove => '移除';
+
+  @override
+  String sidebarElsewhereNeedsYou(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '其他环境有 $count 个对话需要处理',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sidebarRenameHost => '重命名主机';
+
+  @override
+  String get explorerNoPermission => '没有权限读取此文件夹';
+
+  @override
+  String fileErrorAccessDenied(String path) {
+    return '没有权限访问: $path';
+  }
+
+  @override
+  String get remoteAddedHosts => '已添加';
+
+  @override
+  String explorerUndoCreateChanged(String name) {
+    return '$name 创建后已被修改，仍要撤销（删除它）吗？';
+  }
 }

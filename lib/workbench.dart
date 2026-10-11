@@ -71,6 +71,7 @@ import 'settings/settings_dialog.dart';
 import 'settings/shell_command_actions.dart';
 import 'sidebar/sidebar.dart';
 import 'theme/codicons.dart';
+import 'icons/project_icon_view.dart';
 import 'theme/app_theme.dart';
 import 'theme/workbench_theme.dart' show WorkbenchThemeService, themeColors;
 import 'tips/feature_tip.dart';
@@ -2313,6 +2314,12 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         onOpened?.call();
       },
       onOpenFolder: WindowControls.canPickDirectory ? _openFolder : null,
+      onAddSshHost: WindowControls.canPickDirectory
+          ? () => _openRemoteProject(switchTo: true)
+          : null,
+      onOpenFolderOn: WindowControls.canPickDirectory
+          ? (host) => _openRemoteProject(host: host)
+          : null,
       onOpenSettings: () => unawaited(openSettings()),
       updates: widget.settings?.updates?.service,
       onUpdate: _restartToUpdate,
@@ -2573,25 +2580,52 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   }
 
   /// Open Remote Project…: a folder of a host reached over SSH, opened as
-  /// a project (in the IDE when asked [inIde]), or given to [onOpen].
-  void _openRemoteProject({bool inIde = false, ValueChanged<String>? onOpen}) {
+  /// a project (in the IDE when asked [inIde]), or given to [onOpen]. The
+  /// host is kept among the sidebar's once connected, and switched to when
+  /// asked [switchTo]; [host] one known, not asked for.
+  void _openRemoteProject({
+    bool inIde = false,
+    ValueChanged<String>? onOpen,
+    String? host,
+    bool switchTo = false,
+  }) {
     final held = _newWindowHeld;
-    unawaited(
-      OpenRemoteFlow(
-        show: showQuickPick,
-        l10n: context.l10n,
-        onOpen: (location) {
-          if (!mounted) return;
-          if (onOpen != null) {
-            onOpen(location);
-          } else if (inIde) {
-            _openIdeFolder(location, held: held);
-          } else {
-            unawaited(_workspace.openFolder(location));
-          }
-        },
-      ).start(),
+    final flow = OpenRemoteFlow(
+      show: showQuickPick,
+      l10n: context.l10n,
+      added: _workspace.sshHosts,
+      labelOf: _workspace.hostLabel,
+      iconOf: (host) =>
+          switch (_workspace.iconOf(_workspace.hostIconProject(host))) {
+            null => null,
+            final icon => ProjectIconView(
+              icon: icon,
+              library: _workspace.icons,
+              size: 16,
+              color: AppColors.textMuted,
+            ),
+          },
+      onConnected: (host) {
+        if (!mounted) return;
+        _workspace.addSshHost(host);
+        if (switchTo) _workspace.sidebarHost = host;
+      },
+      onOpen: (location) {
+        if (!mounted) return;
+        if (onOpen != null) {
+          onOpen(location);
+        } else if (inIde) {
+          _openIdeFolder(location, held: held);
+        } else {
+          unawaited(_workspace.openFolder(location));
+        }
+      },
     );
+    if (host != null) {
+      flow.startAt(host);
+    } else {
+      unawaited(flow.start());
+    }
   }
 
   Future<void> _openFolder() async {
