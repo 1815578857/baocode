@@ -15,6 +15,7 @@ import '../../l10n/l10n.dart';
 import '../../models/codex/codex_api.dart' show codexClientVersion;
 import '../../models/codex/codex_service.dart';
 import '../../models/codex/codex_usage.dart';
+import '../../models/featured_upstreams.dart';
 import '../../models/model_icons.dart';
 import '../../models/model_provider.dart';
 import '../../models/model_providers.dart';
@@ -25,6 +26,7 @@ import '../../theme/codicons.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
 import '../../chat/widgets/hover_builder.dart';
 import '../../workspace/workspace.dart';
+import 'featured_upstreams_strip.dart';
 import 'model_dialogs.dart';
 import 'settings_dropdown.dart';
 import 'settings_widgets.dart';
@@ -67,6 +69,7 @@ class ModelsSettingsPage extends StatefulWidget {
     this.testModel = testModelThroughClaudeCode,
     this.codex,
     this.workspace,
+    this.featured,
   });
 
   final ModelProviders providers;
@@ -79,6 +82,14 @@ class ModelsSettingsPage extends StatefulWidget {
   /// Whose icon picker an upstream's icon is picked in (its pictures, the
   /// icons picked last); none picked when null.
   final Workspace? workspace;
+
+  /// The upstreams shown cards of; the app's when null (see
+  /// [FeaturedUpstreamsStrip]).
+  final Future<List<FeaturedUpstream>>? featured;
+
+  /// An upstream to open the page of, as the page shows next (or now, if
+  /// it does): one just imported. Taken as it is opened.
+  static final ValueNotifier<String?> reveal = ValueNotifier(null);
 
   /// The protocol's name, as the list and the detail show it.
   static String protocolName(BuildContext context, ProviderProtocol value) {
@@ -100,6 +111,26 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
   String? _open;
 
   ModelProviders get _providers => widget.providers;
+
+  @override
+  void initState() {
+    super.initState();
+    _reveal();
+    ModelsSettingsPage.reveal.addListener(_reveal);
+  }
+
+  @override
+  void dispose() {
+    ModelsSettingsPage.reveal.removeListener(_reveal);
+    super.dispose();
+  }
+
+  void _reveal() {
+    final id = ModelsSettingsPage.reveal.value;
+    if (id == null) return;
+    ModelsSettingsPage.reveal.value = null;
+    if (mounted) setState(() => _open = id);
+  }
 
   Future<void> _add() async {
     final name = context.l10n.modelsNewProviderName;
@@ -196,7 +227,8 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
     final shown = _defaultName(context, current);
     return SettingsPage(
       title: l10n.modelsTitle,
-      description: l10n.modelsDescription,
+      info: l10n.modelsDescription,
+      lead: FeaturedUpstreamsStrip(upstreams: widget.featured),
       children: [
         SettingsCard(
           children: [

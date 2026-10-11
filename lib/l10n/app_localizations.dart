@@ -9477,6 +9477,108 @@ abstract class AppLocalizations {
   /// **'Offer {name} in the model picker'**
   String modelsEnableProvider(String name);
 
+  /// No description provided for @modelsFeaturedWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Why am I seeing this?'**
+  String get modelsFeaturedWhy;
+
+  /// No description provided for @modelsFeaturedWhyDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'These upstreams added BaoCode\'s one-click import: a click on their key page adds the upstream, key and all, right here. In return BaoCode lists them for free, in a random order. Nobody pays to be here, and being listed is not an endorsement.\n\nRun a site? Add the one-click import and open an issue on BaoCode\'s GitHub to be listed for as long as the import works.'**
+  String get modelsFeaturedWhyDetail;
+
+  /// No description provided for @modelsFeaturedJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Your site here'**
+  String get modelsFeaturedJoin;
+
+  /// No description provided for @modelsFeaturedJoinDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Add one-click import, listed free'**
+  String get modelsFeaturedJoinDescription;
+
+  /// No description provided for @modelsImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import an upstream from {host}?'**
+  String modelsImportTitle(String host);
+
+  /// No description provided for @modelsImportKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Key: {key}'**
+  String modelsImportKey(String key);
+
+  /// No description provided for @modelsImportNoKey.
+  ///
+  /// In en, this message translates to:
+  /// **'none, add it afterwards'**
+  String get modelsImportNoKey;
+
+  /// No description provided for @modelsImportListed.
+  ///
+  /// In en, this message translates to:
+  /// **'Listed in BaoCode as {name}.'**
+  String modelsImportListed(String name);
+
+  /// No description provided for @modelsImportExisting.
+  ///
+  /// In en, this message translates to:
+  /// **'You have this upstream already: {name}.'**
+  String modelsImportExisting(String name);
+
+  /// No description provided for @modelsImportWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Your conversations and code go to this address. Import only from sites you trust.'**
+  String get modelsImportWarning;
+
+  /// No description provided for @modelsImportNamePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get modelsImportNamePlaceholder;
+
+  /// No description provided for @modelsImportAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get modelsImportAdd;
+
+  /// No description provided for @modelsImportUpdateKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Update {name}\'s Key'**
+  String modelsImportUpdateKey(String name);
+
+  /// No description provided for @modelsImportOpenExisting.
+  ///
+  /// In en, this message translates to:
+  /// **'Open {name}'**
+  String modelsImportOpenExisting(String name);
+
+  /// No description provided for @modelsImportAsNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Add as New Upstream'**
+  String get modelsImportAsNew;
+
+  /// No description provided for @modelsImportInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This import link can\'t be used'**
+  String get modelsImportInvalid;
+
+  /// No description provided for @modelsImportInvalidDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'It needs a base URL (http or https) and a protocol BaoCode knows. Ask the site for a new link, or add the upstream by hand in Settings → Models.'**
+  String get modelsImportInvalidDetail;
+
   /// No description provided for @modelsAddProvider.
   ///
   /// In en, this message translates to:

@@ -5718,6 +5718,73 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get modelsFeaturedWhy => 'Why am I seeing this?';
+
+  @override
+  String get modelsFeaturedWhyDetail =>
+      'These upstreams added BaoCode\'s one-click import: a click on their key page adds the upstream, key and all, right here. In return BaoCode lists them for free, in a random order. Nobody pays to be here, and being listed is not an endorsement.\n\nRun a site? Add the one-click import and open an issue on BaoCode\'s GitHub to be listed for as long as the import works.';
+
+  @override
+  String get modelsFeaturedJoin => 'Your site here';
+
+  @override
+  String get modelsFeaturedJoinDescription =>
+      'Add one-click import, listed free';
+
+  @override
+  String modelsImportTitle(String host) {
+    return 'Import an upstream from $host?';
+  }
+
+  @override
+  String modelsImportKey(String key) {
+    return 'Key: $key';
+  }
+
+  @override
+  String get modelsImportNoKey => 'none, add it afterwards';
+
+  @override
+  String modelsImportListed(String name) {
+    return 'Listed in BaoCode as $name.';
+  }
+
+  @override
+  String modelsImportExisting(String name) {
+    return 'You have this upstream already: $name.';
+  }
+
+  @override
+  String get modelsImportWarning =>
+      'Your conversations and code go to this address. Import only from sites you trust.';
+
+  @override
+  String get modelsImportNamePlaceholder => 'Name';
+
+  @override
+  String get modelsImportAdd => 'Import';
+
+  @override
+  String modelsImportUpdateKey(String name) {
+    return 'Update $name\'s Key';
+  }
+
+  @override
+  String modelsImportOpenExisting(String name) {
+    return 'Open $name';
+  }
+
+  @override
+  String get modelsImportAsNew => 'Add as New Upstream';
+
+  @override
+  String get modelsImportInvalid => 'This import link can\'t be used';
+
+  @override
+  String get modelsImportInvalidDetail =>
+      'It needs a base URL (http or https) and a protocol BaoCode knows. Ask the site for a new link, or add the upstream by hand in Settings → Models.';
+
+  @override
   String get modelsAddProvider => 'Add Upstream';
 
   @override

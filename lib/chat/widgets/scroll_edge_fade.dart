@@ -14,6 +14,7 @@ class ScrollEdgeFade extends StatefulWidget {
     this.topCover,
     this.coverFade = 16,
     this.repaint,
+    this.axis = Axis.vertical,
   });
 
   final Widget child;
@@ -26,6 +27,9 @@ class ScrollEdgeFade extends StatefulWidget {
   final ValueGetter<double?>? topCover;
   final double coverFade;
   final Listenable? repaint;
+
+  /// The scroll view's: [Axis.horizontal] fades its left and right edges.
+  final Axis axis;
 
   @override
   State<ScrollEdgeFade> createState() => _ScrollEdgeFadeState();
@@ -59,6 +63,7 @@ class _ScrollEdgeFadeState extends State<ScrollEdgeFade> {
           child: EdgeFadeMask(
             top: _moreBefore,
             bottom: _moreAfter,
+            axis: widget.axis,
             fadeLength: widget.fadeLength,
             fadeOffset: widget.fadeOffset,
             topCover: widget.topCover,
