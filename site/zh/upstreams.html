@@ -26,10 +26,36 @@
 
 <main class="page">
   <h1>接入 BaoCode 一键导入</h1>
-  <p class="subtitle">用户在你的令牌页点一下，就能把你的 API 添加到 BaoCode。只要导入一直可用，BaoCode 就在 设置 → 模型 中免费展示你的站点。</p>
+  <p class="subtitle">一旦您的 API 站点接入 BaoCode 的一键导入功能，您的站点就在 BaoCode 内部被广泛用户优先看到！这是百分之百免费的。</p>
 
-  <h2>交给 AI 来做</h2>
-  <p>在你站点的代码仓库里，把下面这段发给 AI 编程助手（Claude Code、Codex、Cursor……）。它会判断站点用的是什么并完成接入；细节见后文。</p>
+  <div class="mock" role="img" aria-label="示意图：BaoCode 的 设置 → 模型 页面，顶部的卡片里有您的站点，上游列表里有刚刚一键导入的您的站点">
+    <div class="win">
+      <div class="side">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <div class="back">← 返回</div>
+        <div class="search">搜索设置</div>
+        <div class="nav">通用</div><div class="nav">外观</div><div class="nav on">模型</div><div class="nav">网络</div><div class="nav">通知</div><div class="nav">区域和语言</div>
+      </div>
+      <div class="main">
+        <div class="title">模型 <span class="info">i</span></div>
+        <div class="strip">
+          <div class="card you"><span class="logo">Logo</span><span class="txt"><b>您的站点</b><small>您的一句话介绍</small></span></div>
+          <div class="card"><span class="logo c1">A</span><span class="txt"><b>Aurora API</b><small>Claude、GPT 中转</small></span></div><div class="card"><span class="logo c2">N</span><span class="txt"><b>Nimbus</b><small>按量计费，不限速</small></span></div><div class="card"><span class="logo c3">Q</span><span class="txt"><b>Quanta</b><small>企业级稳定线路</small></span></div>
+          <div class="card join">展示你的站点</div>
+        </div>
+        <div class="under"><span class="here">↑ 接入后，您的站点出现在这里</span><span class="why">ⓘ 为什么我看到这个？</span></div>
+        <div class="label">上游</div>
+        <div class="list">
+          <div class="row"><i class="dot"></i><span class="txt"><b>Claude Code（跟随本机配置）</b><small>使用本机的登录和配置，不做任何改动</small></span><i class="toggle"></i></div>
+          <div class="row new"><i class="dot"></i><span class="txt"><b>您的站点 <em>刚刚一键导入</em></b><small>Anthropic · https://api.your-site.com</small></span><i class="toggle"></i></div>
+          <div class="row"><span class="txt"><b>添加上游</b></span><span class="add">+ 添加上游</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>交给 AI 来做，瞬间完成曝光</h2>
+  <p>在您站点的代码仓库里，把下面这段发给 AI 编程助手（Claude Code、Codex、Cursor……）。它会判断站点用的是什么并完成接入，new-api 系的站点连代码都不用改。</p>
   <div class="copyable"><pre><code>请帮我在我的 API 站点上接入「导入到 BaoCode」一键导入。BaoCode 是一个桌面 AI 编程客户端，接入说明见 https://baocode.dev/zh/upstreams 。
 
 1. 先看清这个站点是什么：
@@ -73,15 +99,23 @@
     <div class="style" id="style-link" data-style="表格里的链接" data-note="文字颜色用站点链接或正文的颜色，深色主题下图标换 white。"><div class="stage"><a class="sample" aria-hidden="true" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;gap:4px;padding:0;font-size:13px;border:0;background:none;color:#1B1A17;"><img src="/brand/baocode-mark-black-12.webp" srcset="/brand/baocode-mark-black-24.webp 2x, /brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt="">导入到 BaoCode</a></div><div class="pick"><span>表格里的链接</span><button type="button" data-use-style data-done="已复制提示词">使用这个样式</button></div></div>
   </div>
 
-  <h2>你能得到什么</h2>
-  <p>在 BaoCode 的 设置 → 模型 中，和其他接入了一键导入的上游一起展示一张卡片，每次打开页面顺序随机。点击卡片打开你的站点，可以带推广参数。展示不收费，也不代表 BaoCode 为你担保。</p>
+  <h2>提交收录，下个版本就上线</h2>
+  <p>导入可用后，<a href="https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml">提交 issue</a>，写明站点名称、卡片链接、API 域名和一句话介绍。维护者会实际试一次导入、联系您要 Logo，并在下个版本中加上您的卡片。</p>
 
-  <h2>new-api：加一行配置，不用改代码</h2>
+  <h2>展示规则</h2>
+  <ul>
+    <li>卡片在 BaoCode 的 设置 → 模型 顶部，和其他接入了一键导入的站点一起展示，每次打开顺序随机，谁也不会一直排在后面。</li>
+    <li>点击卡片打开您的站点，卡片链接可以带您的推广参数。</li>
+    <li>展示完全免费，只要导入一直可用就一直展示；展示不代表 BaoCode 为您担保。</li>
+    <li>导入失效、域名易主或误导用户（比如冒充官方）的站点会被下架。</li>
+  </ul>
+
+  <h2>自己动手：new-api 加一行配置</h2>
   <p>在 系统设置 → 聊天设置 中加入下面这一项。new-api 会替换 <code>{address}</code> 和 <code>{key}</code>，令牌列表里的每个令牌都会多出 BaoCode 选项：</p>
-  <pre><code>{ "BaoCode": "https://baocode.dev/import#v=1&amp;name=你的站点&amp;protocol=anthropic&amp;url={address}&amp;key={key}" }</code></pre>
+  <pre><code>{ "BaoCode": "https://baocode.dev/import#v=1&amp;name=您的站点&amp;protocol=anthropic&amp;url={address}&amp;key={key}" }</code></pre>
   <p>如果用户应该走 OpenAI 接口，把协议换成 <code>protocol=openai-chat</code> 或 <code>openai-responses</code>。请用自己的令牌试一次：部分 new-api 版本替换出的 key 不带 <code>sk-</code>，这时写成 <code>key=sk-{key}</code>。</p>
 
-  <h2>其他站点：放一个链接</h2>
+  <h2>自己动手：其他站点放一个链接</h2>
   <p>在每个令牌旁放一个链接，在新标签页打开：</p>
   <pre><code>https://baocode.dev/import#v=1&amp;name=…&amp;protocol=…&amp;url=…&amp;key=…</code></pre>
   <div class="table"><table>
@@ -94,11 +128,11 @@
       <tr><td><code>v</code></td><td>可选</td><td><code>1</code>。</td></tr>
     </tbody>
   </table></div>
-  <p>每个参数值都要用 <code>encodeURIComponent</code> 编码。参数必须放在 <code>#</code> 后面，不能放在 <code>?</code> 后面：浏览器不会把 <code>#</code> 后的内容发给任何服务器，key 只会从你的页面直接到用户的 BaoCode。baocode.dev 的页面读取后会把它从地址栏中清除并打开 BaoCode，BaoCode 会先向用户展示要添加的内容，经确认后才添加。</p>
+  <p>每个参数值都要用 <code>encodeURIComponent</code> 编码。参数必须放在 <code>#</code> 后面，不能放在 <code>?</code> 后面：浏览器不会把 <code>#</code> 后的内容发给任何服务器，key 只会从您的页面直接到用户的 BaoCode。baocode.dev 的页面读取后会把它从地址栏中清除并打开 BaoCode，BaoCode 会先向用户展示要添加的内容，经确认后才添加。</p>
   <p>请不要在令牌页引用 baocode.dev 的任何脚本，一个普通链接就够了；下面的图标可以引用。</p>
 
-  <h2>图标</h2>
-  <p>按钮上可以放 BaoCode 的标志。请直接引用下面的在线图片，不要下载进你的项目：图标更新时，你的按钮会跟着更新。标志是无损 WebP，黑白两色；应用图标是 PNG。</p>
+  <h2>按钮图标</h2>
+  <p>按钮上可以放 BaoCode 的标志。请直接引用下面的在线图片，不要下载进您的项目：图标更新时，您的按钮会跟着更新。标志是无损 WebP，黑白两色；应用图标是 PNG。</p>
   <div class="assets">
     <div class="asset"><div class="swatch"><img src="/brand/baocode-mark-black-36.webp" srcset="/brand/baocode-mark-black-72.webp 2x" width="48" height="36" alt=""></div><p>黑色标志，用在浅色按钮上</p></div>
     <div class="asset"><div class="swatch dark"><img src="/brand/baocode-mark-white-36.webp" srcset="/brand/baocode-mark-white-72.webp 2x" width="48" height="36" alt=""></div><p>白色标志，用在深色或彩色按钮上</p></div>
@@ -115,10 +149,6 @@
   </table></div>
   <pre><code>&lt;img src="https://baocode.dev/brand/baocode-mark-black-12.webp" srcset="https://baocode.dev/brand/baocode-mark-black-24.webp 2x, https://baocode.dev/brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt=""&gt;</code></pre>
   <p>应用图标的地址是 <code>https://baocode.dev/brand/baocode-icon-&lt;尺寸&gt;.png</code>，尺寸有 <a href="/brand/baocode-icon-16.png">16</a> · <a href="/brand/baocode-icon-24.png">24</a> · <a href="/brand/baocode-icon-32.png">32</a> · <a href="/brand/baocode-icon-48.png">48</a> · <a href="/brand/baocode-icon-64.png">64</a> · <a href="/brand/baocode-icon-96.png">96</a> · <a href="/brand/baocode-icon-128.png">128</a> · <a href="/brand/baocode-icon-256.png">256</a> · <a href="/brand/baocode-icon-512.png">512</a>。src 用显示尺寸那张，srcset 加 2 倍那张。</p>
-
-  <h2>申请展示</h2>
-  <p>导入可用后，<a href="https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml">提交 issue</a>，写明站点名称、卡片链接、API 域名和一句话介绍。维护者会实际试一次导入、联系你要 Logo，并在下个版本中加上你的卡片。</p>
-  <p>导入失效或误导用户的站点会被下架。</p>
 </main>
 
 <script src="/site.js"></script>

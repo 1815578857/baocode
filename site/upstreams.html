@@ -26,10 +26,36 @@
 
 <main class="page">
   <h1>Add one-click import to BaoCode</h1>
-  <p class="subtitle">Your users add your API to BaoCode with one click from their key page. BaoCode lists your site in Settings → Models for free, for as long as the import works.</p>
+  <p class="subtitle">Once your API site supports BaoCode’s one-click import, BaoCode puts your site in front of its users, right inside the app. It is 100% free.</p>
 
-  <h2>Have your AI do it</h2>
-  <p>Send this to your AI coding assistant (Claude Code, Codex, Cursor…) in your site’s repository. It works out what your site runs and does the rest; read on for the details.</p>
+  <div class="mock" role="img" aria-label="Illustration: BaoCode’s Settings → Models page, your site among the cards at the top, and in the upstreams, your site just imported in one click">
+    <div class="win">
+      <div class="side">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <div class="back">← Back</div>
+        <div class="search">Search settings</div>
+        <div class="nav">General</div><div class="nav">Appearance</div><div class="nav on">Models</div><div class="nav">Network</div><div class="nav">Notifications</div><div class="nav">Language</div>
+      </div>
+      <div class="main">
+        <div class="title">Models <span class="info">i</span></div>
+        <div class="strip">
+          <div class="card you"><span class="logo">Logo</span><span class="txt"><b>Your site</b><small>A line about it</small></span></div>
+          <div class="card"><span class="logo c1">A</span><span class="txt"><b>Aurora API</b><small>Claude and GPT relay</small></span></div><div class="card"><span class="logo c2">N</span><span class="txt"><b>Nimbus</b><small>Pay as you go</small></span></div><div class="card"><span class="logo c3">Q</span><span class="txt"><b>Quanta</b><small>Business-grade lines</small></span></div>
+          <div class="card join">List your site</div>
+        </div>
+        <div class="under"><span class="here">↑ Once you add the import, your site shows here</span><span class="why">ⓘ Why am I seeing this?</span></div>
+        <div class="label">Upstreams</div>
+        <div class="list">
+          <div class="row"><i class="dot"></i><span class="txt"><b>Claude Code (as set up here)</b><small>Uses this machine’s sign-in and settings, as they are</small></span><i class="toggle"></i></div>
+          <div class="row new"><i class="dot"></i><span class="txt"><b>Your site <em>just imported</em></b><small>Anthropic · https://api.your-site.com</small></span><i class="toggle"></i></div>
+          <div class="row"><span class="txt"><b>Add Upstream</b></span><span class="add">+ Add Upstream</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Have your AI do it, and be listed in no time</h2>
+  <p>Send this to your AI coding assistant (Claude Code, Codex, Cursor…) in your site’s repository. It works out what your site runs and adds the import; on new-api it is a line of settings, no code.</p>
   <div class="copyable"><pre><code>Add one-click "Import to BaoCode" to my API site. BaoCode is a desktop AI coding app; how the import works: https://baocode.dev/upstreams
 
 1. First find out what this site is:
@@ -73,15 +99,23 @@ Keep its colors, border, corners, padding, font size and icon size, written as t
     <div class="style" id="style-link" data-style="Link in a table row" data-note="Color it as the site&#x27;s links or text; the white mark in a dark theme."><div class="stage"><a class="sample" aria-hidden="true" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;gap:4px;padding:0;font-size:13px;border:0;background:none;color:#1B1A17;"><img src="/brand/baocode-mark-black-12.webp" srcset="/brand/baocode-mark-black-24.webp 2x, /brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt="">Import to BaoCode</a></div><div class="pick"><span>Link in a table row</span><button type="button" data-use-style data-done="Prompt copied">Use this style</button></div></div>
   </div>
 
-  <h2>What you get</h2>
-  <p>A card in BaoCode’s Settings → Models, among the upstreams that added the import, in a random order each time the page opens. A click on it opens your site, with your promotion parameters if you like. Nobody pays to be listed, and a listing is not an endorsement.</p>
+  <h2>Get listed in the next release</h2>
+  <p>Once the import works, <a href="https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml">open an issue</a> with your site’s name, the link for your card, your API’s hosts and a line about it. A maintainer tries the import, asks you for your logo, and adds your card in the next release.</p>
 
-  <h2>new-api: one line, no code</h2>
+  <h2>How the listing works</h2>
+  <ul>
+    <li>Your card is at the top of BaoCode’s Settings → Models, among the sites that added the import, in a random order each time the page opens: nobody is always last.</li>
+    <li>A click on it opens your site, with your promotion parameters if you like.</li>
+    <li>Nobody pays to be listed, and a site stays listed as long as its import works. A listing is not an endorsement.</li>
+    <li>A site is taken off when its import stops working, its domain changes hands, or it misleads users (passing itself off as an official API, say).</li>
+  </ul>
+
+  <h2>By hand: new-api, one line of settings</h2>
   <p>In System Settings → Chat Settings, add this entry. new-api fills in <code>{address}</code> and <code>{key}</code>, and every key in the token list gets a BaoCode option:</p>
   <pre><code>{ "BaoCode": "https://baocode.dev/import#v=1&amp;name=YourSite&amp;protocol=anthropic&amp;url={address}&amp;key={key}" }</code></pre>
   <p>Use <code>protocol=openai-chat</code> or <code>openai-responses</code> instead if that is what your users should speak to. Try it once with a key of your own: some versions of new-api give the key without its <code>sk-</code>; write <code>key=sk-{key}</code> then.</p>
 
-  <h2>Any other site: a link</h2>
+  <h2>By hand: any other site, a link</h2>
   <p>Next to each key, a link that opens, in a new tab:</p>
   <pre><code>https://baocode.dev/import#v=1&amp;name=…&amp;protocol=…&amp;url=…&amp;key=…</code></pre>
   <div class="table"><table>
@@ -97,7 +131,7 @@ Keep its colors, border, corners, padding, font size and icon size, written as t
   <p>Encode each value with <code>encodeURIComponent</code>. Put them after the <code>#</code>, never after a <code>?</code>: browsers never send what follows a <code>#</code> to a server, so the key goes from your page to the user’s BaoCode and nowhere else. baocode.dev’s page reads it, takes it off the address bar and opens BaoCode, which shows the user what it is about to add and asks first.</p>
   <p>Please don’t load any script from baocode.dev on your key page; a plain link is all it takes. The icons below are fine to load.</p>
 
-  <h2>Icons</h2>
+  <h2>Button icons</h2>
   <p>Your button may carry BaoCode’s mark. Please load it from these addresses, rather than download it into your project: when the icon changes, your button changes with it. The mark is lossless WebP, in black and in white; the app icon is PNG.</p>
   <div class="assets">
     <div class="asset"><div class="swatch"><img src="/brand/baocode-mark-black-36.webp" srcset="/brand/baocode-mark-black-72.webp 2x" width="48" height="36" alt=""></div><p>Black mark, for light buttons</p></div>
@@ -115,10 +149,6 @@ Keep its colors, border, corners, padding, font size and icon size, written as t
   </table></div>
   <pre><code>&lt;img src="https://baocode.dev/brand/baocode-mark-black-12.webp" srcset="https://baocode.dev/brand/baocode-mark-black-24.webp 2x, https://baocode.dev/brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt=""&gt;</code></pre>
   <p>The app icon is at <code>https://baocode.dev/brand/baocode-icon-&lt;size&gt;.png</code>, in <a href="/brand/baocode-icon-16.png">16</a> · <a href="/brand/baocode-icon-24.png">24</a> · <a href="/brand/baocode-icon-32.png">32</a> · <a href="/brand/baocode-icon-48.png">48</a> · <a href="/brand/baocode-icon-64.png">64</a> · <a href="/brand/baocode-icon-96.png">96</a> · <a href="/brand/baocode-icon-128.png">128</a> · <a href="/brand/baocode-icon-256.png">256</a> · <a href="/brand/baocode-icon-512.png">512</a>. src the size shown, and srcset the one twice that.</p>
-
-  <h2>Get listed</h2>
-  <p>Once the import works, <a href="https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml">open an issue</a> with your site’s name, the link for your card, your API’s hosts and a line about it. A maintainer tries the import, asks you for your logo, and adds your card in the next release.</p>
-  <p>A site is taken off when its import stops working, or when it misleads users.</p>
 </main>
 
 <script src="site.js"></script>
