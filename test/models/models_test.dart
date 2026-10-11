@@ -510,6 +510,8 @@ void main() {
         'ANTHROPIC_DEFAULT_SONNET_MODEL': 'big',
         'ANTHROPIC_DEFAULT_HAIKU_MODEL': 'small',
         'CLAUDE_CODE_SUBAGENT_MODEL': 'sub',
+        // Over what a subagent's definition or the agent's call names.
+        'CLAUDE_CODE_SUBAGENT_MODEL_FORCE': '1',
         'CLAUDE_CODE_ALWAYS_ENABLE_EFFORT': '1',
         'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC': '1',
         'API_TIMEOUT_MS': '600000',
@@ -529,6 +531,7 @@ void main() {
       expect(env['ANTHROPIC_API_KEY'], 'sk-ant');
       expect(env['ANTHROPIC_AUTH_TOKEN'], '');
       expect(env.containsKey('CLAUDE_CODE_SUBAGENT_MODEL'), isFalse);
+      expect(env.containsKey('CLAUDE_CODE_SUBAGENT_MODEL_FORCE'), isFalse);
     });
 
     test('an OpenAI upstream goes through the proxy, never through the '

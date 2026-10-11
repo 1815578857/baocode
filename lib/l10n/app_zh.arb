@@ -1683,7 +1683,7 @@
   "modelsRoleHaikuDescription": "ANTHROPIC_DEFAULT_HAIKU_MODEL：Claude Code 的后台任务，以及会话标题生成。",
   "modelsRoleHaikuWarning": "未设置时，后台任务会使用所选模型，可能更慢、更贵。建议选一个小而快的模型。",
   "modelsRoleSubagent": "子 Agent",
-  "modelsRoleSubagentDescription": "CLAUDE_CODE_SUBAGENT_MODEL：子 Agent 使用的模型。",
+  "modelsRoleSubagentDescription": "CLAUDE_CODE_SUBAGENT_MODEL：所有子 Agent 使用的模型，优先于子 Agent 定义或调用时指定的模型（定义为 inherit 的除外）。",
   "modelsAdvanced": "高级",
   "modelsAuth": "认证方式",
   "modelsAuthDescription": "Key 的发送方式。自动：api.anthropic.com 用 x-api-key，其他用 Bearer。",

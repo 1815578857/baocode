@@ -4402,7 +4402,7 @@
   "modelsRoleHaikuDescription": "ANTHROPIC_DEFAULT_HAIKU_MODEL: Claude Code's background work, and agents' titles.",
   "modelsRoleHaikuWarning": "Unset, background work runs on the model picked, which may be slower and cost more. Pick a small, fast model.",
   "modelsRoleSubagent": "Subagents",
-  "modelsRoleSubagentDescription": "CLAUDE_CODE_SUBAGENT_MODEL: the model subagents run on.",
+  "modelsRoleSubagentDescription": "CLAUDE_CODE_SUBAGENT_MODEL: the model every subagent runs on, over the one its definition or the agent's call names (but inherit).",
   "modelsAdvanced": "Advanced",
   "modelsAuth": "Authentication",
   "modelsAuthDescription": "How the key is sent. Automatic: x-api-key to api.anthropic.com, a bearer token elsewhere.",

@@ -5792,7 +5792,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modelsRoleSubagentDescription =>
-      'CLAUDE_CODE_SUBAGENT_MODEL：子 Agent 使用的模型。';
+      'CLAUDE_CODE_SUBAGENT_MODEL：所有子 Agent 使用的模型，优先于子 Agent 定义或调用时指定的模型（定义为 inherit 的除外）。';
 
   @override
   String get modelsAdvanced => '高级';
