@@ -9063,6 +9063,12 @@ abstract class AppLocalizations {
   /// **'Customize'**
   String get sidebarCustomize;
 
+  /// No description provided for @sidebarOpenProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Project'**
+  String get sidebarOpenProject;
+
   /// No description provided for @palettePlaceholder.
   ///
   /// In en, this message translates to:

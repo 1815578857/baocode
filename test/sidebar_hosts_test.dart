@@ -35,6 +35,20 @@ void main() {
     expect(inSidebar(find.text('This Computer')), findsNothing);
   });
 
+  testWidgets('a project is opened from under New Chat, on this machine or '
+      'the host listed', (tester) async {
+    final workspace = await pumpLoaded(tester);
+    double top(String label) =>
+        tester.getTopLeft(inSidebar(find.text(label)).first).dy;
+    expect(top('Open Project'), greaterThan(top('New Chat')));
+    expect(top('Open Project'), lessThan(top('Search')));
+
+    workspace.addSshHost('box');
+    workspace.sidebarHost = 'box';
+    await tester.pump();
+    expect(inSidebar(find.text('Open Project')), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   testWidgets('a folder opened on a host: the sidebar lists that host, and '
       'this machine once switched back', (tester) async {
     final workspace = await pumpLoaded(tester);

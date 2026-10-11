@@ -1493,6 +1493,7 @@
   "menuMore": "更多…",
   "sidebarSearch": "搜索",
   "sidebarCustomize": "自定义",
+  "sidebarOpenProject": "打开项目",
   "palettePlaceholder": "搜索智能体、对话内容、文件、操作…",
   "paletteFilterAll": "全部",
   "paletteFilterAgents": "智能体",

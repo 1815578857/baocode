@@ -5513,6 +5513,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paletteMessages => 'In Conversations';
 
   @override
+  String get sidebarOpenProject => 'Open Project';
+
+  @override
   String paletteFilesIn(String project) {
     return 'Files in $project';
   }

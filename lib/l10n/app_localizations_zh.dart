@@ -5150,6 +5150,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get paletteFilterActions => '操作';
 
   @override
+  String get sidebarOpenProject => '打开项目';
+
+  @override
   String get paletteFilterSettings => '设置';
 
   @override

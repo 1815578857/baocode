@@ -515,6 +515,18 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
                 },
               ),
             ),
+            if (switch (_workspace.sidebarHost) {
+                  final host? when widget.onOpenFolderOn != null =>
+                    () => widget.onOpenFolderOn!(host),
+                  null => widget.onOpenFolder,
+                  _ => null,
+                }
+                case final open?)
+              _NavRow(
+                icon: Codicons.folderOpened,
+                label: context.l10n.sidebarOpenProject,
+                onTap: open,
+              ),
             if (widget.onSearch case final search?)
               _NavRow(
                 icon: Codicons.search,

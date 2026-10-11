@@ -3954,6 +3954,7 @@
   "menuMore": "More…",
   "sidebarSearch": "Search",
   "sidebarCustomize": "Customize",
+  "sidebarOpenProject": "Open Project",
   "palettePlaceholder": "Search agents, conversations, files, actions…",
   "paletteFilterAll": "All",
   "paletteFilterAgents": "Agents",
