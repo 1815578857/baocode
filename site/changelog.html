@@ -48,6 +48,10 @@
     <li>Wherever a file can be revealed in Finder, it can be saved as a copy with Save As; a remote project's file is downloaded.</li>
     <li>The sidebar's Archived menu adds Unarchive All and Delete All Archived.</li>
     <li>In a multi-folder workspace, the agent's changes in every folder show in the review.</li>
+    <li>The agent is told which file is open in the editor, the cursor's line and what is selected, as Claude Code is in an IDE.</li>
+    <li>With no folder open, open a single file to chat with an agent about it.</li>
+    <li>The context usage panel adds Prompt cache: the cache hit rate of the last request and of the main conversation, with what was read, written and uncached on hover. It is not shown for third-party models that don't report their cache.</li>
+    <li>File icon themes can use WOFF fonts (Chalice, for one), with font icons sized as in VS Code.</li>
     </ul>
     <p>Interface</p>
     <ul>
@@ -71,6 +75,8 @@
     <li>Requests to upstreams send Claude Code's user agent, so relays such as agentrouter.org no longer answer 401 &quot;unauthorized client detected&quot;.</li>
     <li>shields.io badges in READMEs and the Markdown preview no longer show their text far too large.</li>
     <li>Fixed the code area's scroll shadow turning black in some themes.</li>
+    <li>The first review snapshot of a project with many files no longer freezes the interface for seconds.</li>
+    <li>On a Chinese Windows, saving keys and running commands no longer fail when PowerShell's output isn't UTF-8.</li>
     </ul>
     <p>Changed</p>
     <ul>
