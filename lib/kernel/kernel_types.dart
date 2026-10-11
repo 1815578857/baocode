@@ -155,6 +155,40 @@ enum LimitsState {
   off,
 }
 
+/// The input of requests to the model by what the prompt cache made of it.
+class CacheTokens {
+  const CacheTokens({this.read = 0, this.written = 0, this.uncached = 0});
+
+  /// Read from the cache.
+  final int read;
+
+  /// Written to it, for the requests after.
+  final int written;
+
+  /// Neither: past the last cache breakpoint, or on a model without one.
+  final int uncached;
+
+  int get total => read + written + uncached;
+
+  /// What of the input was read from the cache, 0 to 1.
+  double get hitRate => total == 0 ? 0 : read / total;
+
+  CacheTokens operator +(CacheTokens other) => CacheTokens(
+    read: read + other.read,
+    written: written + other.written,
+    uncached: uncached + other.uncached,
+  );
+}
+
+/// How the prompt cache served the conversation: its last request, and
+/// all of them.
+class PromptCache {
+  const PromptCache({required this.last, required this.conversation});
+
+  final CacheTokens last;
+  final CacheTokens conversation;
+}
+
 /// What the session has cost so far, and the account's limits.
 class UsageStats {
   const UsageStats({
@@ -162,6 +196,7 @@ class UsageStats {
     this.limits = const [],
     this.limitsState = LimitsState.idle,
     this.limitsOffBy,
+    this.cache,
   });
 
   final double? costUsd;
@@ -170,6 +205,9 @@ class UsageStats {
 
   /// The setting that turned asking for the limits [LimitsState.off].
   final String? limitsOffBy;
+
+  /// Null until a request to the model is known.
+  final PromptCache? cache;
 }
 
 /// What the agent is busy with while nothing of it shows: waiting on its

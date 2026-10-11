@@ -1723,6 +1723,76 @@ void main() {
       kernel.dispose();
     });
 
+    test('reports the prompt cache, from the session file then live', () async {
+      Map<String, Object?> assistant(
+        String id,
+        int read,
+        int written, {
+        int uncached = 2,
+        Object? parent,
+        bool sidechain = false,
+      }) => {
+        'type': 'assistant',
+        'parent_tool_use_id': ?parent,
+        if (sidechain) 'isSidechain': true,
+        'message': {
+          'id': id,
+          'role': 'assistant',
+          'content': const [],
+          'usage': {
+            'input_tokens': uncached,
+            'cache_read_input_tokens': read,
+            'cache_creation_input_tokens': written,
+          },
+        },
+      };
+      final cli = FakeCli();
+      final kernel = ClaudeCodeKernel(
+        MockKernels.claudeCode,
+        KernelContext(
+          cwd: '/p',
+          resume: SessionRecord(
+            id: 's',
+            title: 't',
+            updatedAt: DateTime(2026),
+            cwd: '/p',
+          ),
+        ),
+        start: (_) async => cli,
+        readHistory: (_) async => [
+          // A message comes a content block a line, each with its usage.
+          assistant('m1', 0, 20000),
+          assistant('m1', 0, 20000),
+          assistant('sub', 900, 900, sidechain: true),
+          // Resumed elsewhere: all written again.
+          assistant('m2', 0, 30000),
+        ],
+      );
+      final transcript = Transcript();
+      kernel.events.listen(transcript.apply);
+      await pumpEventQueue();
+      var cache = transcript.stats!.cache!;
+      expect(cache.last.written, 30000);
+      expect(cache.conversation.written, 50000);
+      expect(cache.conversation.uncached, 4);
+
+      kernel.send(const KernelTurn(id: 'u1', text: 'hi'));
+      await pumpEventQueue();
+      cli
+        ..push(assistant('m3', 30000, 500))
+        ..push(assistant('m3', 30000, 500))
+        ..push(assistant('agent', 5000, 5000, parent: 'toolu_1'))
+        // An API error's: no usage of the model's.
+        ..push(assistant('err', 0, 0, uncached: 0));
+      await pumpEventQueue();
+      cache = transcript.stats!.cache!;
+      expect(cache.last.read, 30000);
+      expect(cache.last.hitRate, closeTo(30000 / 30502, 1e-9));
+      expect(cache.conversation.read, 30000);
+      expect(cache.conversation.written, 50500);
+      kernel.dispose();
+    });
+
     test('the account limits one session hears of show in every one', () async {
       ClaudeCodeKernel.forgetAccount();
       final first = claude(FakeCli());

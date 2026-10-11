@@ -55,6 +55,48 @@ void main() {
     );
   });
 
+  testWidgets('the prompt cache shows its last request and the conversation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ContextUsagePanel(
+            usage: const ContextUsage(window: 200000, used: 64000),
+            stats: const UsageStats(
+              costUsd: 0.27,
+              cache: PromptCache(
+                last: CacheTokens(read: 61330, written: 2408, uncached: 2),
+                conversation: CacheTokens(
+                  read: 1200000,
+                  written: 85300,
+                  uncached: 40,
+                ),
+              ),
+            ),
+            onClose: () {},
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Prompt cache'), findsOneWidget);
+    expect(find.text('96% hit on the last request'), findsOneWidget);
+    expect(find.text('61.3k'), findsOneWidget);
+    expect(find.text('2.4k'), findsOneWidget);
+    expect(
+      find.text('Whole conversation: 1.2M read · 85.3k written · 93% hit'),
+      findsOneWidget,
+    );
+    // Between the context and the plan.
+    expect(
+      tester.getTopLeft(find.text('Prompt cache')).dy,
+      allOf(
+        greaterThan(tester.getTopLeft(find.text('Context window')).dy),
+        lessThan(tester.getTopLeft(find.text('Plan usage')).dy),
+      ),
+    );
+  });
+
   testWidgets('without limits or cost, no plan section', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

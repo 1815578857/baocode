@@ -230,6 +230,12 @@ class ClaudeCodeKernel
   static final Map<String, int> _modelWindows = {};
   double? _cost;
 
+  /// The conversation's requests to the model, by their message's id, and
+  /// how the cache took their input: from the session's file when resumed
+  /// (turns in the terminal's CLI too), then as they come.
+  final Map<String, CacheTokens> _requests = {};
+  String? _lastRequest;
+
   // The account's limits are the same in every session: the last any of
   // them was told, shown in all of them.
   static List<RateLimitWindow> _limits = const [];
@@ -1244,6 +1250,9 @@ class ClaudeCodeKernel
           commands: _commandsFrom(message['commands']),
         );
         emitInfoChanged();
+      case 'assistant':
+        if (_countRequest(message)) _reportStats();
+        _translator.translate(message);
       case 'result':
         _result(message);
       case 'rate_limit_event':
@@ -1649,9 +1658,50 @@ class ClaudeCodeKernel
         limits: _limits,
         limitsState: _limitsState,
         limitsOffBy: _limitsOffBy,
+        cache: switch (_requests[_lastRequest]) {
+          final last? => PromptCache(
+            last: last,
+            conversation: _requests.values.reduce((a, b) => a + b),
+          ),
+          null => null,
+        },
       ),
     ),
   );
+
+  /// Counts the request to the model [message] answers, if it is the
+  /// conversation's: once, as a message comes a content block at a time,
+  /// each with its request's usage. A subagent's is left out, as its
+  /// transcript is apart. Whether it was not counted yet.
+  bool _countRequest(Map<String, Object?> message) {
+    if (message['parent_tool_use_id'] != null ||
+        message['isSidechain'] == true) {
+      return false;
+    }
+    final (id, usage) = switch (message['message']) {
+      {'id': final String id, 'usage': final Map<Object?, Object?> usage} => (
+        id,
+        usage,
+      ),
+      _ => (null, null),
+    };
+    if (id == null || usage == null) return false;
+    int count(String key) => switch (usage[key]) {
+      final num n => n.toInt(),
+      _ => 0,
+    };
+    final tokens = CacheTokens(
+      read: count('cache_read_input_tokens'),
+      written: count('cache_creation_input_tokens'),
+      uncached: count('input_tokens'),
+    );
+    // None at all: one of the CLI's own (an API error), not the model's.
+    if (tokens.total == 0) return false;
+    _lastRequest = id;
+    if (_requests.containsKey(id)) return false;
+    _requests[id] = tokens;
+    return true;
+  }
 
   /// The conversation was compacted, maybe mid-turn: the context shown
   /// drops to what is left at once, then to what the CLI counts.
@@ -1788,10 +1838,13 @@ class ClaudeCodeKernel
     try {
       final lines = await read(session);
       _translator.replaying = true;
+      var counted = false;
       for (final line in lines) {
+        if (line['type'] == 'assistant') counted |= _countRequest(line);
         _translator.translate(line);
       }
       _translator.endReplay();
+      if (counted) _reportStats();
     } on Object catch (error) {
       emit(
         ItemUpserted(

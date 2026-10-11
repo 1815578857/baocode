@@ -4442,6 +4442,42 @@ abstract class AppLocalizations {
   /// **'Reserved for compaction'**
   String get usageReservedForCompaction;
 
+  /// No description provided for @usagePromptCache.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt cache'**
+  String get usagePromptCache;
+
+  /// percent a whole number: what of the last request's input was read from the cache.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% hit on the last request'**
+  String usageCacheLastHit(String percent);
+
+  /// No description provided for @usageCacheRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache read'**
+  String get usageCacheRead;
+
+  /// No description provided for @usageCacheWritten.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache write'**
+  String get usageCacheWritten;
+
+  /// No description provided for @usageCacheUncached.
+  ///
+  /// In en, this message translates to:
+  /// **'Uncached'**
+  String get usageCacheUncached;
+
+  /// read and written are formatted counts (8.2k); percent a whole number.
+  ///
+  /// In en, this message translates to:
+  /// **'Whole conversation: {read} read · {written} written · {percent}% hit'**
+  String usageCacheConversation(String read, String written, String percent);
+
   /// No description provided for @usagePlanUsage.
   ///
   /// In en, this message translates to:

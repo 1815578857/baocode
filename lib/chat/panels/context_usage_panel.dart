@@ -153,6 +153,10 @@ class ContextUsagePanel extends StatelessWidget {
                 ],
               ),
             ],
+            if (stats?.cache case final cache?) ...[
+              const SizedBox(height: 10),
+              _PromptCacheMeter(cache: cache),
+            ],
             if (stats != null &&
                 (stats.costUsd != null ||
                     stats.limits.isNotEmpty ||
@@ -165,6 +169,93 @@ class ContextUsagePanel extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// How the prompt cache took the last request's input, as a strip of it
+/// whole, and the conversation's in all.
+class _PromptCacheUsage extends StatelessWidget {
+  const _PromptCacheUsage({required this.cache});
+
+  final PromptCache cache;
+
+  static String _percent(CacheTokens tokens) =>
+      (tokens.hitRate * 100).toStringAsFixed(0);
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final last = cache.last;
+    final all = cache.conversation;
+    final colors = themeColors;
+    final parts = [
+      (l10n.usageCacheRead, last.read, colors['charts.green']),
+      (l10n.usageCacheWritten, last.written, colors['charts.yellow']),
+      (l10n.usageCacheUncached, last.uncached, colors['charts.red']),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Text(
+              l10n.usagePromptCache,
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                l10n.usageCacheLastHit(_percent(last)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: AppColors.textFaint, fontSize: 11),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 6,
+          width: double.infinity,
+          child: CustomPaint(
+            painter: _UsageBarPainter(
+              window: last.total,
+              used: [
+                for (final (_, tokens, color) in parts) (tokens, color),
+              ],
+              track: colors['editorWidget.border'],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 16,
+          runSpacing: 6,
+          children: [
+            for (final (label, tokens, color) in parts)
+              if (tokens > 0)
+                _Legend(
+                  color: color,
+                  label: label,
+                  value: ContextUsagePanel._format(tokens),
+                ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          l10n.usageCacheConversation(
+            ContextUsagePanel._format(all.read),
+            ContextUsagePanel._format(all.written),
+            _percent(all),
+          ),
+          style: TextStyle(color: AppColors.textFaint, fontSize: 11),
+        ),
+      ],
     );
   }
 }

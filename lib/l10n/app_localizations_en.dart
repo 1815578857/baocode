@@ -2436,6 +2436,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get usageReservedForCompaction => 'Reserved for compaction';
 
   @override
+  String get usagePromptCache => 'Prompt cache';
+
+  @override
+  String usageCacheLastHit(String percent) {
+    return '$percent% hit on the last request';
+  }
+
+  @override
+  String get usageCacheRead => 'Cache read';
+
+  @override
+  String get usageCacheWritten => 'Cache write';
+
+  @override
+  String get usageCacheUncached => 'Uncached';
+
+  @override
+  String usageCacheConversation(String read, String written, String percent) {
+    return 'Whole conversation: $read read · $written written · $percent% hit';
+  }
+
+  @override
   String get usagePlanUsage => 'Plan usage';
 
   @override

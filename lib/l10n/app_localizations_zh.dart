@@ -2352,6 +2352,28 @@ class AppLocalizationsZh extends AppLocalizations {
   String get usageReservedForCompaction => '为压缩预留';
 
   @override
+  String get usagePromptCache => '提示缓存';
+
+  @override
+  String usageCacheLastHit(String percent) {
+    return '最近一次请求命中 $percent%';
+  }
+
+  @override
+  String get usageCacheRead => '缓存读取';
+
+  @override
+  String get usageCacheWritten => '缓存写入';
+
+  @override
+  String get usageCacheUncached => '未缓存';
+
+  @override
+  String usageCacheConversation(String read, String written, String percent) {
+    return '整个对话：读取 $read · 写入 $written · 命中 $percent%';
+  }
+
+  @override
   String get usagePlanUsage => '套餐用量';
 
   @override
