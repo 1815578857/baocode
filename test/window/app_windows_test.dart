@@ -245,6 +245,15 @@ void main() {
     Future<void> code(_Harness harness, List<String> args) =>
         harness.windows.handleCode(CodeArgs.parse(args, cwd: '/w'));
 
+    testWidgets('code --version and the like (tools asking in the '
+        'background) open no window', (tester) async {
+      final harness = await started(tester);
+      await code(harness, ['--version']);
+      await code(harness, ['--list-extensions']);
+      await code(harness, ['--install-extension', 'anthropic.claude-code']);
+      expect(harness.host.created, isEmpty);
+    });
+
     testWidgets('code <folder>: its window, opened once', (tester) async {
       final harness = await started(tester);
       await code(harness, ['a']);

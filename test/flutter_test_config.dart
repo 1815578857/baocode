@@ -60,6 +60,9 @@ class _NoShellCommand implements ShellCommandInstaller {
 
   @override
   Future<void> uninstall() async {}
+
+  @override
+  Future<void> refresh() async {}
 }
 
 class _NoContextMenu implements ContextMenuInstaller {

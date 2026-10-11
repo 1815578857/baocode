@@ -43,6 +43,7 @@ import 'platform/app_platform.dart';
 import 'platform/data_dir.dart';
 import 'platform/error_log.dart';
 import 'platform/open_requests.dart';
+import 'platform/shell_command.dart';
 import 'remote/project_host.dart';
 import 'remote/remote_claude.dart';
 import 'remote/ssh_host.dart';
@@ -209,6 +210,8 @@ Future<void> main(List<String> arguments) async {
         .layoutAtLaunch(workspace.layout);
   }
   WindowControls.trackActiveView();
+  // An older `code` script opened windows for `code --version`.
+  unawaited(ShellCommand.refresh());
   final ColorThemeStorage colorTheme = files == null
       ? workspace
       : ColorThemeSettings(settings: files.settings, state: workspace);

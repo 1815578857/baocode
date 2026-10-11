@@ -751,6 +751,12 @@ class AppWindows extends ChangeNotifier implements WindowHostEvents {
 
   /// What the `code` command asks (see [CodeArgs]).
   Future<void> handleCode(CodeArgs args) async {
+    if (args.opensNothing) {
+      // The app started for it (an older script's request) shows its own
+      // window, not none.
+      if (_started && !_mru.any((window) => window.shown)) showChat();
+      return;
+    }
     final folders = <CodeTarget>[], files = <CodeTarget>[];
     for (final target in args.paths) {
       (await _isDirectory(target.path) ? folders : files).add(target);
