@@ -118,6 +118,17 @@ class ClaudeCodeKernel
       final tokens? when tokens > 0 => tokens,
       _ => null,
     };
+    final efforts = '${KernelChoiceKind.effort.name}@';
+    final contexts = '${KernelChoiceKind.context.name}@';
+    for (final MapEntry(:key, :value) in settings.entries) {
+      if (key.startsWith(efforts)) {
+        _pickedEfforts[key.substring(efforts.length)] = value;
+      } else if (key.startsWith(contexts)) {
+        if (parseTokens(value) case final tokens? when tokens > 0) {
+          _pickedWindows[key.substring(contexts.length)] = tokens;
+        }
+      }
+    }
     if ((_context.resume, readHistory) case (final session?, final read?)) {
       _history = _replay(read, session);
     }
@@ -216,6 +227,12 @@ class ClaudeCodeKernel
   /// The context the conversation may fill before it is compacted, as
   /// picked (the CLI's `autoCompactWindow`); null to leave the CLI's own.
   int? _window;
+
+  /// The effort and context each model (by option id) was last on: one
+  /// switched back to takes up its own, not the one before's. Kept with
+  /// the settings (see [modelSettingKey]).
+  final Map<String, String> _pickedEfforts = {};
+  final Map<String, int> _pickedWindows = {};
 
   /// The [_window] the process was started with: the CLI takes it only
   /// at start, so another is taken up by a restart (see [_applyWindow]).
@@ -345,6 +362,10 @@ class ClaudeCodeKernel
           env: env,
           directories: workspace?.folders ?? const [],
           instructions: workspace?.instructions,
+          models: switch (custom) {
+            (final provider, _) => _requestedModels(provider),
+            null => const [],
+          },
         ),
       );
       if (_disposed) {
@@ -2050,15 +2071,41 @@ class ClaudeCodeKernel
   bool switchRestarts(String model) =>
       _conversationStarted && _providerKeyOf(model) != _providerKey;
 
-  /// Switches to [id], an option of [model]: on the provider in use, as
+  /// Switches to [id], an option of [model], on the effort and context it
+  /// was last on (those of the model in use noted first, unless [keep] is
+  /// false: a setting picked with it already was): on the provider in use, as
   /// the CLI is told; on another, by starting again on it (at once, if
   /// the conversation has not begun; else as the next message is sent,
   /// which resumes it there).
-  void _selectModel(String id) {
+  void _selectModel(String id, {bool keep = true}) {
+    if (keep) _keepModelSettings();
     final target = _providers.resolve(id);
     final sameProvider = _providerKeyOf(id) == _providerKey;
+    // Its own effort and context, if it had them: not the one before's.
+    if (_pickedWindows[id] case final window?) _window = window;
+    final recalled = _pickedEfforts[id];
+    if (recalled != null) _effort = recalled;
     if (sameProvider && target == null) {
-      _change([?_modelChange(_variantOf(id)?.value)]);
+      final variant = _pickedWindows[id] == null
+          ? _variantOf(id)
+          : _variantFor(id, long: _window! > _windows['200k']!);
+      final effort =
+          recalled != null &&
+              recalled != _appliedEffort &&
+              _effortLevelsOf(id).contains(recalled)
+          ? recalled
+          : null;
+      if (effort != null) _appliedEffort = effort;
+      _change([
+        ?_modelChange(variant?.value),
+        if (effort != null)
+          (
+            'apply_flag_settings',
+            {
+              'settings': {'effortLevel': effort},
+            },
+          ),
+      ]);
       return;
     }
     if (sameProvider) {
@@ -2082,6 +2129,37 @@ class ClaudeCodeKernel
     // Taken up with the next message (see _applyWindow).
     emitInfoChanged();
   }
+
+  /// Notes the effort and context of the model in use, to go back to.
+  void _keepModelSettings() {
+    final current = model.selected;
+    if (current == null) return;
+    if (effort.selected case final level?) _pickedEfforts[current] = level;
+    final window = switch (_custom) {
+      (_, final info) => _windowFor(info),
+      null => _windows[contextSize.selected],
+    };
+    if (window != null) _pickedWindows[current] = window;
+  }
+
+  /// [model]'s variant with the long context or without, as there is one.
+  _ModelInfo? _variantFor(String model, {required bool long}) {
+    final variants = _models[model];
+    if (variants == null) return null;
+    return variants.where((v) => v.long == long).firstOrNull ?? variants.first;
+  }
+
+  /// Each name [provider]'s models are asked for by, with each effort
+  /// through the proxy.
+  static List<String> _requestedModels(ModelProvider provider) => {
+    for (final info in provider.models)
+      if (info.enabled) ...[
+        requestedModel(provider, info),
+        if (provider.protocol.proxied)
+          for (final effort in info.effortLevels)
+            requestedModel(provider, info, effort: effort),
+      ],
+  }.toList();
 
   /// The efforts Claude Code itself takes (`--effort`, `effortLevel`).
   static const _cliEfforts = {'low', 'medium', 'high', 'xhigh', 'max'};
@@ -2246,14 +2324,27 @@ class ClaudeCodeKernel
           .firstOrNull
           ?.key;
     },
+    selectedFor: (model) {
+      if (model == this.model.selected) return contextSize.selected;
+      final window = _pickedWindows[model] ?? _window;
+      if (_providers.resolve(model) case (_, final info)) {
+        return '${info.contextOptions.contains(window) ? window : info.initialContext}';
+      }
+      return _windows.entries
+          .where((entry) => entry.value == window)
+          .firstOrNull
+          ?.key;
+    },
     select: (model, id) {
+      final switching = model != this.model.selected;
+      if (switching) _keepModelSettings();
       if (_providers.resolve(model) != null) {
         final tokens = parseTokens(id);
         if (tokens == null || tokens <= 0) return;
-        _window = tokens;
+        _window = _pickedWindows[model] = tokens;
         // Taken up with the next message (see _applyWindow).
         if (model != _model) {
-          _selectModel(model);
+          _selectModel(model, keep: false);
         } else {
           emitInfoChanged();
         }
@@ -2266,7 +2357,7 @@ class ClaudeCodeKernel
       final variant = variants.length > 1
           ? variants.where((v) => v.long == long).firstOrNull
           : _variantOf(model);
-      _window = window;
+      _window = _pickedWindows[model] = window;
       // Taken up with the next message (see _applyWindow); the model,
       // now.
       _change([?_modelChange(variant?.value)]);
@@ -2475,11 +2566,21 @@ class ClaudeCodeKernel
       final effort = _running ? _appliedEffort : _effort;
       return levels.contains(effort) ? effort : null;
     },
+    selectedFor: (model) {
+      if (model == this.model.selected) return effort.selected;
+      final level = _pickedEfforts[model] ?? _effort;
+      if (_providers.resolve(model) case (_, final info)) {
+        return info.effortLevels.contains(level) ? level : info.initialEffort;
+      }
+      return _effortLevelsOf(model).contains(level) ? level : null;
+    },
     select: (model, id) {
+      if (model != this.model.selected) _keepModelSettings();
+      _pickedEfforts[model] = id;
       if (_providers.resolve(model) case (final provider, final info)) {
         _effort = _appliedEffort = id;
         if (model != _model || _providerKeyOf(model) != _launchedProvider) {
-          _selectModel(model);
+          _selectModel(model, keep: false);
           return;
         }
         // Through the proxy, the effort goes with the model's name;
@@ -2629,11 +2730,13 @@ class _ModelSetting implements ModelSetting {
   _ModelSetting({
     required this._optionsFor,
     required this._selected,
+    required this._selectedFor,
     required this._select,
   });
 
   final List<KernelOption> Function(String model) _optionsFor;
   final String? Function() _selected;
+  final String? Function(String model) _selectedFor;
   final void Function(String model, String id) _select;
 
   @override
@@ -2641,6 +2744,9 @@ class _ModelSetting implements ModelSetting {
 
   @override
   String? get selected => _selected();
+
+  @override
+  String? selectedFor(String model) => _selectedFor(model);
 
   @override
   void select(String model, String id) => _select(model, id);

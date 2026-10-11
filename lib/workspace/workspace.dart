@@ -2109,6 +2109,19 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
       remember(KernelChoiceKind.model, before.model, snapshot.model);
       remember(KernelChoiceKind.effort, before.effort, snapshot.effort);
       remember(KernelChoiceKind.context, before.context, snapshot.context);
+      // And each model's own, for it to go back to (see modelSettingKey).
+      if (snapshot.model case final model?) {
+        for (final (kind, value) in [
+          (KernelChoiceKind.effort, snapshot.effort),
+          (KernelChoiceKind.context, snapshot.context),
+        ]) {
+          final key = modelSettingKey(kind, model);
+          if (value != null && _settings[key] != value) {
+            _settings[key] = value;
+            changed = true;
+          }
+        }
+      }
       if (before.status != snapshot.status) thread.updatedAt = DateTime.now();
     }
     if (changed) _save();

@@ -344,7 +344,10 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
         ModelSettingChoice(
           kind: kind,
           options: options,
-          selected: options.where((o) => o.id == setting.selected).firstOrNull,
+          // Another model's own, not the one in use's.
+          selected: options
+              .where((o) => o.id == setting.selectedFor(model))
+              .firstOrNull,
           onSelected: (option) => setting.select(model, option.id),
         ),
   ];
