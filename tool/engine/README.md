@@ -110,3 +110,18 @@ C:\src\flutter-wintext\bin\flutter.bat build windows --release `
 or copy `engine\src\out\host_release\flutter_windows.dll` over the one next to
 `baocode.exe` in a stock build of the same tag. Only that DLL differs; the
 Dart snapshot is the same because the tag (and so the Dart SDK) is.
+
+## Shipping
+
+`flutter_windows.dll` here is that release build. `tool/build_windows.dart`
+(and so the release workflow) puts it in the bundle in place of Flutter's,
+after checking the hashes it keeps: the bundle's must be the stock engine of
+the same Flutter. `--stock-engine` leaves Flutter's in.
+
+When `FLUTTER_VERSION` changes, the check stops the build. Then:
+
+1. `build_windows_engine.ps1 -Tag <new version> -Mode release` (the patch may
+   need its context refreshed).
+2. Copy `engine\src\out\host_release\flutter_windows.dll` here.
+3. Update `_stockEngineSha256` (the new stock release DLL) and
+   `_patchedEngineSha256` in `tool/build_windows.dart`.

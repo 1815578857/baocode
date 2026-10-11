@@ -7,12 +7,19 @@
 //                                                  already in build\remote\
 //                                                  (CI builds it once, for
 //                                                  both apps)
+//   dart run tool/build_windows.dart --stock-engine keep Flutter's own
+//                                                  flutter_windows.dll
+//
+// The bundle's flutter_windows.dll is replaced by tool/engine's, the engine
+// built with tool/engine/windows_text.patch (see tool/engine/README.md).
 //
 // The installer lands in build/installers/; beside it, remote\<VERSION>\,
 // the remote server's gzipped builds, which the app downloads instead of
 // carrying them (tool/build_remote_server.dart), to upload with the
 // release.
 import 'dart:io';
+
+import 'package:crypto/crypto.dart';
 
 /// Where the bundle flutter leaves behind goes, and where the installer is
 /// written. Under build/, which the repository already ignores and flutter
@@ -37,6 +44,14 @@ const _required = [
   r'data\flutter_assets',
 ];
 
+/// SHA-256 of Flutter's own release flutter_windows.dll that
+/// tool/engine/flutter_windows.dll was built to replace (3.47.5), and of that
+/// one. The patched engine only fits the Dart snapshot of the same Flutter.
+const _stockEngineSha256 =
+    '8bd7b61eee31aa436edb182db41624d1cd3b2688a7e03622320dbeae067b5251';
+const _patchedEngineSha256 =
+    'd20feefdf335b0e3ae92f4e2f1b1892b5bd9d4c80b194b14b8bb87b34b9591d5';
+
 Future<void> main(List<String> arguments) async {
   if (!Platform.isWindows) {
     _fail(
@@ -46,6 +61,7 @@ Future<void> main(List<String> arguments) async {
   }
   final skipBuild = arguments.contains('--skip-build');
   final remoteBuilt = arguments.contains('--remote-built');
+  final stockEngine = arguments.contains('--stock-engine');
 
   // The script lives in tool/, so the repository is one level above it.
   final root = File.fromUri(Platform.script).parent.parent.absolute;
@@ -62,6 +78,13 @@ Future<void> main(List<String> arguments) async {
 
   _step('Checking the bundle');
   _checkBundle(bundle, _required);
+
+  if (stockEngine) {
+    _step('Keeping Flutter\'s own engine');
+  } else {
+    _step('Putting in the patched engine');
+    _swapEngine(root, bundle);
+  }
 
   // The server remote projects run on their host (Linux and macOS, x64 and
   // arm64; macOS ones only when built on a Mac):
@@ -91,9 +114,9 @@ Future<void> main(List<String> arguments) async {
     File('${remote.path}\\$name').copySync('${bundleRemote.path}\\$name');
   }
   _checkBundle(bundle, [r'remote\VERSION', r'remote\servers.json']);
-  final remoteVersion = File(
-    '${remote.path}\\VERSION',
-  ).readAsStringSync().trim();
+  final remoteVersion = File('${remote.path}\\VERSION')
+      .readAsStringSync()
+      .trim();
 
   _step('Compiling the installer');
   final iscc = _findIscc();
@@ -183,6 +206,40 @@ void _checkBundle(Directory directory, List<String> required) {
     'LNK1104, a running baocode.exe is holding the output file — close it and\n'
     'build again.',
   );
+}
+
+/// Replaces the bundle's flutter_windows.dll with tool/engine's, provided the
+/// bundle's is the stock engine that one was built from (or it already is).
+void _swapEngine(Directory root, Directory bundle) {
+  final patched = File('${root.path}\\tool\\engine\\flutter_windows.dll');
+  final target = File('${bundle.path}\\flutter_windows.dll');
+  String sha256Of(File file) =>
+      sha256.convert(file.readAsBytesSync()).toString();
+
+  if (!patched.existsSync()) _fail('No patched engine at ${patched.path}.');
+  if (sha256Of(patched) != _patchedEngineSha256) {
+    _fail(
+      '${patched.path} is not the engine this script expects.\n'
+      'After rebuilding it, update _patchedEngineSha256 in this script.',
+    );
+  }
+  final current = sha256Of(target);
+  if (current == _patchedEngineSha256) {
+    stdout.writeln('  The bundle already has it.');
+    return;
+  }
+  if (current != _stockEngineSha256) {
+    _fail(
+      'The bundle\'s flutter_windows.dll is not the stock engine the patched\n'
+      'one replaces, so Flutter has changed version. Rebuild the engine with\n'
+      'tool/engine/build_windows_engine.ps1 -Tag <the new version> -Mode release,\n'
+      'put its flutter_windows.dll in tool/engine, and update both hashes in\n'
+      'this script; or build with --stock-engine.\n'
+      '  bundle: $current',
+    );
+  }
+  patched.copySync(target.path);
+  stdout.writeln('  ${target.path} replaced.');
 }
 
 /// The Inno Setup compiler: where winget puts it, then where a manual
