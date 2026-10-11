@@ -13,6 +13,10 @@ abstract interface class ChatFeed implements Listenable {
   /// Whether it is still being written.
   bool get isStreaming;
 
+  /// Whether what is being written the agent took up on its own (a
+  /// background task's report, a scheduled prompt), not sent by the user.
+  bool get isUnprompted;
+
   bool get canEditMessages;
 
   /// The sent message being edited, if any, and what is typed in its place.
@@ -114,6 +118,9 @@ class SubagentFeed extends ChangeNotifier implements ChatFeed {
 
   @override
   bool get isStreaming => _agent?.status == CommandStatus.running;
+
+  @override
+  bool get isUnprompted => false;
 
   @override
   bool get canEditMessages => false;

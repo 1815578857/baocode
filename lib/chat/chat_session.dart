@@ -494,6 +494,9 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
   @override
   bool get isStreaming => _transcript.activeTurn != null;
 
+  @override
+  bool get isUnprompted => _transcript.activeTurnUnprompted;
+
   /// Whether the composer may send now.
   bool get canSend => !isStreaming || canQueue;
 

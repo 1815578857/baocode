@@ -34,6 +34,9 @@ class _Feed extends ChangeNotifier implements ChatFeed {
   bool get isStreaming => streaming;
 
   @override
+  bool get isUnprompted => false;
+
+  @override
   bool get canEditMessages => false;
 
   @override

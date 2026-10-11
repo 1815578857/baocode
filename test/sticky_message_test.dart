@@ -38,6 +38,9 @@ class _TwoTurnFeed extends ChangeNotifier implements ChatFeed {
   bool get isStreaming => false;
 
   @override
+  bool get isUnprompted => false;
+
+  @override
   bool get canEditMessages => false;
 
   @override

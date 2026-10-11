@@ -59,6 +59,9 @@ class Transcript {
   bool lastTurnUnprompted = false;
   bool _activeUnprompted = false;
 
+  /// Whether the turn under way is one the agent took up on its own.
+  bool get activeTurnUnprompted => activeTurn != null && _activeUnprompted;
+
   final Map<String, InteractionRequest> _pending = {};
 
   /// Every file change reported, with its sequence and turn, oldest

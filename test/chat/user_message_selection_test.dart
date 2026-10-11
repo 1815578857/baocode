@@ -28,6 +28,9 @@ class _Feed extends ChangeNotifier implements ChatFeed {
   ChatItem itemAt(int index) => items[index];
   @override
   bool get isStreaming => false;
+
+  @override
+  bool get isUnprompted => false;
   @override
   bool get canEditMessages => false;
   @override
