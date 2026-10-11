@@ -186,6 +186,31 @@ void main() {
     expect(describe(transcript), startsWith('text:one\ntext:TWO\n'));
   });
 
+  test('a queued message waits apart, and joins the conversation after all '
+      'before it once taken up', () {
+    final transcript = Transcript()
+      ..apply(const ItemUpserted(1, 'u1', UserMessageItem(text: 'one')))
+      ..apply(
+        const ItemUpserted(2, 'u2', UserMessageItem(text: 'two', queued: true)),
+      )
+      ..apply(
+        const ItemUpserted(
+          3,
+          'u3',
+          UserMessageItem(text: 'three', queued: true),
+        ),
+      )
+      ..apply(const ItemUpserted(4, 'a', AssistantTextItem('answer')));
+    expect(transcript.length, 2);
+    expect([for (final (id, _) in transcript.queued) id], ['u2', 'u3']);
+
+    expect(transcript.apply(const ItemRemoved(5, 'u3')), isTrue);
+    transcript.apply(const ItemUpserted(6, 'u2', UserMessageItem(text: 'two')));
+    expect(transcript.queued, isEmpty);
+    expect(transcript.indexOf('u2'), 2);
+    expect(describe(transcript), startsWith('user:one\ntext:answer\nuser:two'));
+  });
+
   test('a turn done is timed on its message; a stopped one is not', () {
     const worked = Duration(minutes: 4, seconds: 32);
     Duration? workedOn(Transcript transcript) =>

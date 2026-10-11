@@ -50,9 +50,6 @@ class _LiveFeed extends ChangeNotifier implements ChatFeed {
   void editMessage(int index, ComposerMessage message) {}
 
   @override
-  void cancelQueued(int index) {}
-
-  @override
   VoidCallback? moveToBackgroundAt(int index) => null;
 
   @override

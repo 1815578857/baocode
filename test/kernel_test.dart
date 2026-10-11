@@ -1258,15 +1258,25 @@ void main() {
         ..send(const KernelTurn(id: 'u3', text: 'third'));
       await pumpEventQueue();
       expect(cli.users.map((m) => m['uuid']), ['u1', 'u2', 'u3']);
-      bool queued(String id) => (transcript.itemAt(
-        transcript.indexOf(id)!,
-      ) as UserMessageItem).queued;
-      expect([queued('u2'), queued('u3')], [true, true]);
-
-      kernel.cancelQueued('u3');
+      List<String> queued() => [for (final (id, _) in transcript.queued) id];
+      // Waiting apart, not in the conversation yet.
+      expect(queued(), ['u2', 'u3']);
+      expect(transcript.indexOf('u2'), isNull);
+      cli.push({
+        'type': 'assistant',
+        'message': {
+          'id': 'm1',
+          'role': 'assistant',
+          'content': [
+            {'type': 'text', 'text': 'working on it'},
+          ],
+        },
+      });
       await pumpEventQueue();
+
+      expect(await kernel.cancelQueued('u3'), isTrue);
       expect(cli.requests('cancel_async_message').single['message_uuid'], 'u3');
-      expect(transcript.indexOf('u3'), isNull);
+      expect(queued(), ['u2']);
 
       cli
         ..push({'type': 'result', 'subtype': 'success', 'is_error': false})
@@ -1276,7 +1286,10 @@ void main() {
           'state': 'started',
         });
       await pumpEventQueue();
-      expect(queued('u2'), isFalse);
+      expect(queued(), isEmpty);
+      // Taken up: after what the turn before it said while it waited.
+      expect(transcript.indexOf('u2'), 2);
+      expect(transcript.length, 3);
       expect(transcript.activeTurn, 'u2');
 
       kernel
@@ -1285,6 +1298,57 @@ void main() {
       await pumpEventQueue();
       expect(cli.requests('interrupt'), hasLength(1));
       expect(transcript.activeTurn, isNull);
+      kernel.dispose();
+    });
+
+    test('a queued message sent now goes before those queued ahead of it, '
+        'the turn running stopped for it', () async {
+      final cli = FakeCli(
+        answers: {
+          'cancel_async_message': {'cancelled': true},
+        },
+      );
+      final (:kernel, :transcript, events: _) = claude(cli);
+      kernel
+        ..send(const KernelTurn(id: 'u1', text: 'first'))
+        ..send(const KernelTurn(id: 'u2', text: 'second'))
+        ..send(const KernelTurn(id: 'u3', text: 'third'));
+      await pumpEventQueue();
+
+      // The next anyway: only the turn running is stopped.
+      kernel.sendQueuedNow('u2');
+      await pumpEventQueue();
+      expect(cli.requests('interrupt'), hasLength(1));
+      expect(cli.requests('cancel_async_message'), isEmpty);
+
+      cli.push({
+        'type': 'command_lifecycle',
+        'command_uuid': 'u2',
+        'state': 'started',
+      });
+      await pumpEventQueue();
+      kernel.send(const KernelTurn(id: 'u4', text: 'fourth'));
+      await pumpEventQueue();
+      kernel.sendQueuedNow('u4');
+      await pumpEventQueue();
+      expect(
+        cli.requests('cancel_async_message').map((r) => r['message_uuid']),
+        ['u4', 'u3'],
+      );
+      // Sent again, in its new place: it first, the turn stopped for it.
+      expect(cli.users.skip(4).map((m) => (m['message'] as Map)['content']), [
+        [
+          {'type': 'text', 'text': 'fourth'},
+        ],
+        [
+          {'type': 'text', 'text': 'third'},
+        ],
+      ]);
+      expect(cli.requests('interrupt'), hasLength(2));
+      expect(
+        [for (final (_, item) in transcript.queued) item.text],
+        ['fourth', 'third'],
+      );
       kernel.dispose();
     });
 
@@ -1374,12 +1438,7 @@ void main() {
       expect(transcript.activeTurn, 's2');
       // A message meanwhile waits its turn, as the CLI has it.
       kernel.send(const KernelTurn(id: 'u2', text: 'and lint'));
-      expect(
-        (transcript.itemAt(
-          transcript.indexOf('u2')!,
-        ) as UserMessageItem).queued,
-        isTrue,
-      );
+      expect(transcript.queued.single.$1, 'u2');
       cli.push(result);
       await pumpEventQueue();
       expect(transcript.activeTurn, isNull);

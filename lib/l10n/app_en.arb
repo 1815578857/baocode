@@ -1699,7 +1699,25 @@
       }
     }
   },
-  "messageQueued": "Queued",
+  "queuedMessages": "{count, plural, =1{1 queued} other{{count} queued}} · sent when the agent is done",
+  "@queuedMessages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "queuedImages": "{count, plural, =1{1 image} other{{count} images}}",
+  "@queuedImages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "queuedEdit": "Take back to edit",
+  "queuedSendNow": "Stop the agent and send this now",
+  "queuedRemove": "Remove from the queue",
   "tabClose": "Close",
   "tabCloseOthers": "Close Others",
   "tabCloseToTheRight": "Close to the Right",

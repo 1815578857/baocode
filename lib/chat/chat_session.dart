@@ -884,12 +884,34 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
     return '${hex(8)}-${hex(4)}-4${hex(3)}-$variant${hex(3)}-${hex(12)}';
   }
 
-  /// Takes back the queued message at [index].
-  @override
-  void cancelQueued(int index) {
-    final id = _transcript.idAt(index);
-    if (id == null) return;
-    if (_kernel case final QueuesMessages kernel) kernel.cancelQueued(id);
+  /// The messages sent while the agent works, waiting their turn, with
+  /// their ids: the next first. Not in the conversation until taken up.
+  List<(String, UserMessageItem)> get queued => _transcript.queued;
+
+  /// Takes back the queued message [id].
+  void cancelQueued(String id) {
+    if (_kernel case final QueuesMessages kernel) {
+      unawaited(kernel.cancelQueued(id));
+    }
+  }
+
+  /// Takes back the queued message [id] to be edited: into the composer's
+  /// [draft], once taken back (not if it started meanwhile).
+  Future<void> editQueued(String id) async {
+    final message = _transcript.queued
+        .where((queued) => queued.$1 == id)
+        .firstOrNull
+        ?.$2;
+    if (message == null) return;
+    if (_kernel case final QueuesMessages kernel
+        when await kernel.cancelQueued(id) && !_disposed) {
+      draft.restore(message.text, message.images);
+    }
+  }
+
+  /// Takes up the queued message [id] now: the turn running stops for it.
+  void sendQueuedNow(String id) {
+    if (_kernel case final QueuesMessages kernel) kernel.sendQueuedNow(id);
   }
 
   /// Resends the user message at [index] as [message]: everything after it

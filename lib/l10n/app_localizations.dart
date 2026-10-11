@@ -4844,11 +4844,35 @@ abstract class AppLocalizations {
   /// **'Todos {done}/{total}'**
   String todoCount(int done, int total);
 
-  /// No description provided for @messageQueued.
+  /// No description provided for @queuedMessages.
   ///
   /// In en, this message translates to:
-  /// **'Queued'**
-  String get messageQueued;
+  /// **'{count, plural, =1{1 queued} other{{count} queued}} · sent when the agent is done'**
+  String queuedMessages(int count);
+
+  /// No description provided for @queuedImages.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 image} other{{count} images}}'**
+  String queuedImages(int count);
+
+  /// No description provided for @queuedEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Take back to edit'**
+  String get queuedEdit;
+
+  /// No description provided for @queuedSendNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the agent and send this now'**
+  String get queuedSendNow;
+
+  /// No description provided for @queuedRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from the queue'**
+  String get queuedRemove;
 
   /// No description provided for @tabClose.
   ///

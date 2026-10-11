@@ -649,18 +649,52 @@ class ClaudeCodeKernel
   }
 
   @override
-  void cancelQueued(String turnId) {
+  Future<bool> cancelQueued(String turnId) async {
+    if (!_queued.contains(turnId) || !_running) return false;
+    try {
+      final response = await _control!.request('cancel_async_message', {
+        'message_uuid': turnId,
+      });
+      if (response['cancelled'] != true || !_queued.remove(turnId)) {
+        return false;
+      }
+    } on Object {
+      return false;
+    }
+    emit(ItemRemoved(nextSeq, turnId));
+    return true;
+  }
+
+  @override
+  void sendQueuedNow(String turnId) {
     if (!_queued.contains(turnId) || !_running) return;
-    unawaited(
-      _control!
-          .request('cancel_async_message', {'message_uuid': turnId})
-          .then((response) {
-            if (response['cancelled'] == true && _queued.remove(turnId)) {
-              emit(ItemRemoved(nextSeq, turnId));
-            }
-          })
-          .catchError((_) {}),
-    );
+    final ahead = _queued.takeWhile((id) => id != turnId).toList();
+    // Next anyway: only the turn running is in the way.
+    if (ahead.isEmpty) {
+      cancel();
+      return;
+    }
+    // The CLI runs what it queued in the order sent: those ahead are taken
+    // back, and sent again after it.
+    unawaited(() async {
+      final taken = [
+        for (final id in [turnId, ...ahead])
+          if (await cancelQueued(id)) id,
+      ];
+      for (final id in taken) {
+        final turn = _sent[id]!;
+        send(
+          KernelTurn(
+            id: _newSessionId(),
+            text: turn.text,
+            mentions: turn.mentions,
+            images: turn.images,
+            notes: turn.notes,
+            now: id == turnId,
+          ),
+        );
+      }
+    }());
   }
 
   /// Dropped here only once the CLI has: turned down, it goes on with all

@@ -191,8 +191,13 @@ abstract interface class RunsBackgroundTasks {
 
 /// Takes messages while busy, and runs them in turn.
 abstract interface class QueuesMessages {
-  /// Takes back a queued message not yet started.
-  void cancelQueued(String turnId);
+  /// Takes back a queued message not yet started; completes with whether
+  /// it was (it may have started meanwhile).
+  Future<bool> cancelQueued(String turnId);
+
+  /// Takes up the queued message [turnId] at once, before any queued ahead
+  /// of it: the turn running is stopped for it.
+  void sendQueuedNow(String turnId);
 }
 
 abstract interface class RevertsChanges {

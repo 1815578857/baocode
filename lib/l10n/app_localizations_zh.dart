@@ -2595,7 +2595,23 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get messageQueued => '排队中';
+  String queuedMessages(int count) {
+    return '$count 条排队中 · 当前任务结束后依次发送';
+  }
+
+  @override
+  String queuedImages(int count) {
+    return '$count 张图片';
+  }
+
+  @override
+  String get queuedEdit => '撤回并编辑';
+
+  @override
+  String get queuedSendNow => '中断当前任务，立即发送';
+
+  @override
+  String get queuedRemove => '移出队列';
 
   @override
   String get tabClose => '关闭';
@@ -5135,6 +5151,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sidebarCustomize => '自定义';
 
   @override
+  String get sidebarOpenProject => '打开项目';
+
+  @override
   String get palettePlaceholder => '搜索智能体、对话内容、文件、操作…';
 
   @override
@@ -5148,9 +5167,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get paletteFilterActions => '操作';
-
-  @override
-  String get sidebarOpenProject => '打开项目';
 
   @override
   String get paletteFilterSettings => '设置';

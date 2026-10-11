@@ -37,8 +37,6 @@ class _Feed extends ChangeNotifier implements ChatFeed {
   @override
   void editMessage(int index, ComposerMessage message) {}
   @override
-  void cancelQueued(int index) {}
-  @override
   VoidCallback? moveToBackgroundAt(int index) => null;
   @override
   VoidCallback? stopAt(int index) => null;
@@ -255,34 +253,6 @@ void main() {
     await _drag(tester, _paragraph(_answer), reverse: true, inset: 4);
     await _copy(tester);
     expect(copied, _answer.substring(4, _answer.length - 4));
-  });
-
-  testWidgets('a queued message taking its turn stays selectable', (
-    tester,
-  ) async {
-    const text = 'Sent while the agent was busy.';
-    final feed = _Feed([const UserMessageItem(text: text, queued: true)]);
-    addTearDown(feed.dispose);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: buildAppTheme(),
-        home: Scaffold(body: ChatHistoryView(feed: feed)),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    // Out of the queue: the bubble moves out of its queued frame.
-    feed.update([const UserMessageItem(text: text)]);
-    await tester.pumpAndSettle();
-    await _drag(
-      tester,
-      find.descendant(
-        of: find.byType(SuperListView),
-        matching: _paragraph(text),
-      ),
-    );
-    await _copy(tester);
-    expect(copied, text);
   });
 
   testWidgets('the visible request remains selectable and select all keeps '

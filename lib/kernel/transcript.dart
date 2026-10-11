@@ -32,6 +32,10 @@ class Transcript {
   final Map<String, int> _indexOf = {};
   final Set<String> _streaming = {};
 
+  /// Messages sent while the agent works, waiting their turn: not in the
+  /// conversation until taken up, where they go after all before them.
+  final Map<String, UserMessageItem> _queued = {};
+
   /// Highest event sequence applied.
   int lastSeq = 0;
 
@@ -88,6 +92,12 @@ class Transcript {
 
   InteractionRequest? get pendingInteraction =>
       _pending.isEmpty ? null : _pending.values.first;
+
+  /// The messages waiting their turn (see [UserMessageItem.queued]), with
+  /// their ids, the next first.
+  List<(String, UserMessageItem)> get queued => [
+    for (final MapEntry(:key, :value) in _queued.entries) (key, value),
+  ];
 
   /// The items of this session (not the earlier history), with their ids.
   Iterable<(String, ChatItem)> get liveItems sync* {
@@ -167,12 +177,19 @@ class Transcript {
       _items[index] = item;
       return;
     }
+    if (item case UserMessageItem(queued: true)) {
+      _queued[id] = item;
+      return;
+    }
+    // Taken up: after what came while it waited.
+    _queued.remove(id);
     _indexOf[id] = _items.length;
     _ids.add(id);
     _items.add(item);
   }
 
   bool _remove(String id) {
+    if (_queued.remove(id) != null) return true;
     final index = _indexOf.remove(id);
     if (index == null) return false;
     _items.removeAt(index);

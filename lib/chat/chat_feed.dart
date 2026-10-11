@@ -20,7 +20,6 @@ abstract interface class ChatFeed implements Listenable {
   set editing(({int index, ComposerDraft draft})? value);
 
   void editMessage(int index, ComposerMessage message);
-  void cancelQueued(int index);
 
   /// Moves what the item at [index] runs to the background; null when it
   /// cannot be.
@@ -127,9 +126,6 @@ class SubagentFeed extends ChangeNotifier implements ChatFeed {
 
   @override
   void editMessage(int index, ComposerMessage message) {}
-
-  @override
-  void cancelQueued(int index) {}
 
   @override
   VoidCallback? moveToBackgroundAt(int index) => switch (_items[index]) {

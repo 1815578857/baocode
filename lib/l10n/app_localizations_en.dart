@@ -2685,7 +2685,35 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get messageQueued => 'Queued';
+  String queuedMessages(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count queued',
+      one: '1 queued',
+    );
+    return '$_temp0 · sent when the agent is done';
+  }
+
+  @override
+  String queuedImages(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count images',
+      one: '1 image',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get queuedEdit => 'Take back to edit';
+
+  @override
+  String get queuedSendNow => 'Stop the agent and send this now';
+
+  @override
+  String get queuedRemove => 'Remove from the queue';
 
   @override
   String get tabClose => 'Close';
@@ -5485,6 +5513,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sidebarCustomize => 'Customize';
 
   @override
+  String get sidebarOpenProject => 'Open Project';
+
+  @override
   String get palettePlaceholder =>
       'Search agents, conversations, files, actions…';
 
@@ -5511,9 +5542,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paletteMessages => 'In Conversations';
-
-  @override
-  String get sidebarOpenProject => 'Open Project';
 
   @override
   String paletteFilesIn(String project) {

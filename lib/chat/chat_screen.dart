@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -26,6 +27,7 @@ import 'panels/health_banner.dart';
 import 'panels/interaction_panel.dart';
 import 'panels/context_usage_panel.dart';
 import 'panels/goal_panel.dart';
+import 'panels/queue_panel.dart';
 import 'panels/todo_panel.dart';
 import 'side_panel/file_link.dart';
 import 'side_panel/file_open.dart';
@@ -800,6 +802,18 @@ class _ChatScreenState extends State<ChatScreen>
           child: TodoPanel.hasContent(_session.todos)
               ? TodoPanel(todos: _session.todos)
               : null,
+        ),
+        // Last over the composer: what is sent next.
+        _PanelSlot(
+          child: switch (_session.queued) {
+            final queued when queued.isNotEmpty => QueuePanel(
+              messages: queued,
+              onEdit: (id) => unawaited(_session.editQueued(id)),
+              onSendNow: _session.sendQueuedNow,
+              onRemove: _session.cancelQueued,
+            ),
+            _ => null,
+          },
         ),
         _PanelSlot(gap: 0, child: _buildActivityStrip()),
         ChatComposer(

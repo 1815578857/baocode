@@ -23,7 +23,6 @@ class ChatItemView extends StatelessWidget {
     this.expanded = false,
     this.onToggle,
     this.onEdit,
-    this.onCancelQueued,
     this.onMoveToBackground,
     this.onStop,
     this.onOpen,
@@ -36,9 +35,6 @@ class ChatItemView extends StatelessWidget {
 
   /// Starts editing a user message.
   final VoidCallback? onEdit;
-
-  /// Takes back a queued message.
-  final VoidCallback? onCancelQueued;
 
   /// Moves a running command or subagent to the background.
   final VoidCallback? onMoveToBackground;
@@ -62,14 +58,11 @@ class ChatItemView extends StatelessWidget {
 
   Widget _build() {
     return switch (item) {
-      UserMessageItem(:final text, :final queued, :final images) =>
-        UserMessageBubble(
-          text: text,
-          images: images,
-          onEdit: queued ? null : onEdit,
-          queued: queued,
-          onCancel: queued ? onCancelQueued : null,
-        ),
+      UserMessageItem(:final text, :final images) => UserMessageBubble(
+        text: text,
+        images: images,
+        onEdit: onEdit,
+      ),
       AssistantTextItem(:final text) => AssistantText(text),
       ThinkingItem(:final text, :final seconds, :final startedAt) =>
         ThinkingSection(

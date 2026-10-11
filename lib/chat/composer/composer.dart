@@ -329,6 +329,7 @@ class ChatComposerState extends State<ChatComposer>
       if (!mounted) return;
       _focusNode.requestFocus();
       _takeDraftFiles();
+      _takeDraftMessage();
     });
   }
 
@@ -549,6 +550,48 @@ class ChatComposerState extends State<ChatComposer>
     if (files.isNotEmpty) unawaited(insertFiles(files));
   }
 
+  /// The message put back in the draft to be edited (see
+  /// [ComposerDraft.restore]): after what is typed, the caret at its end.
+  void _takeDraftMessage() {
+    final message = widget.draft?.takeMessage();
+    if (message == null) return;
+    _pool = {
+      for (final image in message.images) ?image.number: image,
+      ..._pool,
+    };
+    var text = message.text;
+    final referred = {
+      for (final match in imageReferencePattern.allMatches(text))
+        int.parse(match[1]!),
+    };
+    final unreferred = [
+      for (final image in message.images)
+        if (image.number case final number? when !referred.contains(number))
+          number,
+    ];
+    if (unreferred.isNotEmpty) {
+      text = [unreferred.map(imageReference).join(' '), text].join(' ');
+    }
+    final content = composerDeltaFromText(
+      text,
+      ComposerVocabulary.read(context),
+      images: _pool.keys.toSet(),
+    );
+    final current = _controller.document.toDelta();
+    final typed = _controller.document.length > 1;
+    _controller
+      ..compose(
+        current.diff(typed ? current.concat(content) : content),
+        _controller.selection,
+        ChangeSource.local,
+      )
+      ..updateSelection(
+        TextSelection.collapsed(offset: _controller.document.length - 1),
+        ChangeSource.local,
+      );
+    _focusNode.requestFocus();
+  }
+
   /// Keeps what is typed, and where the caret is, in the draft.
   void _saveDraft() {
     if (_takingDraft) return;
@@ -568,6 +611,7 @@ class ChatComposerState extends State<ChatComposer>
   void _handleDraftChanged() {
     final draft = widget.draft;
     if (draft != null && draft.pendingFiles.isNotEmpty) _takeDraftFiles();
+    if (draft?.pendingMessage != null) _takeDraftMessage();
     if (draft == null || identical(draft.savedBy, this) || !draft.saved) {
       return;
     }

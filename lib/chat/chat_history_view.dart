@@ -1293,7 +1293,6 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
         expanded: _isExpanded(index),
         onToggle: () => _toggle(index),
         onEdit: item is UserMessageItem ? () => _startEditing(index) : null,
-        onCancelQueued: () => _feed.cancelQueued(index),
         onMoveToBackground: _feed.moveToBackgroundAt(index),
         onStop: _feed.stopAt(index),
         onOpen: switch ((item, widget.onOpenAgent)) {
