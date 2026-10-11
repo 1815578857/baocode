@@ -2439,18 +2439,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get usagePromptCache => 'Prompt cache';
 
   @override
-  String usageCacheLastHit(String percent) {
-    return '$percent% hit on the last request';
+  String usageCacheLast(String read, String written, String uncached) {
+    return 'Last request: $read read · $written written · $uncached uncached';
   }
 
   @override
-  String get usageCacheRead => 'Cache read';
-
-  @override
-  String get usageCacheWritten => 'Cache write';
-
-  @override
-  String get usageCacheUncached => 'Uncached';
+  String usageCacheOverall(String percent) {
+    return 'overall $percent%';
+  }
 
   @override
   String usageCacheConversation(String read, String written, String percent) {

@@ -4448,29 +4448,17 @@ abstract class AppLocalizations {
   /// **'Prompt cache'**
   String get usagePromptCache;
 
-  /// percent a whole number: what of the last request's input was read from the cache.
+  /// The counts are formatted (8.2k).
   ///
   /// In en, this message translates to:
-  /// **'{percent}% hit on the last request'**
-  String usageCacheLastHit(String percent);
+  /// **'Last request: {read} read · {written} written · {uncached} uncached'**
+  String usageCacheLast(String read, String written, String uncached);
 
-  /// No description provided for @usageCacheRead.
+  /// percent a whole number: what of the whole conversation's input was read from the cache.
   ///
   /// In en, this message translates to:
-  /// **'Cache read'**
-  String get usageCacheRead;
-
-  /// No description provided for @usageCacheWritten.
-  ///
-  /// In en, this message translates to:
-  /// **'Cache write'**
-  String get usageCacheWritten;
-
-  /// No description provided for @usageCacheUncached.
-  ///
-  /// In en, this message translates to:
-  /// **'Uncached'**
-  String get usageCacheUncached;
+  /// **'overall {percent}%'**
+  String usageCacheOverall(String percent);
 
   /// read and written are formatted counts (8.2k); percent a whole number.
   ///

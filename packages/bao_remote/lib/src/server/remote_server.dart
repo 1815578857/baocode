@@ -245,8 +245,12 @@ class RemoteServer {
         includeParentEnvironment: args['login'] != true,
       );
       unawaited(call.cancelled.then((_) => process.kill()));
-      final stdout = process.stdout.transform(utf8.decoder).join();
-      final stderr = process.stderr.transform(utf8.decoder).join();
+      final stdout = process.stdout
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .join();
+      final stderr = process.stderr
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .join();
       if (args['stdin'] case final String input) {
         process.stdin.add(utf8.encode(input));
       }

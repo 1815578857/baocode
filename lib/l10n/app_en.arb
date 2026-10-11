@@ -1472,18 +1472,30 @@
   },
   "usageReservedForCompaction": "Reserved for compaction",
   "usagePromptCache": "Prompt cache",
-  "usageCacheLastHit": "{percent}% hit on the last request",
-  "@usageCacheLastHit": {
-    "description": "percent a whole number: what of the last request's input was read from the cache.",
+  "usageCacheLast": "Last request: {read} read · {written} written · {uncached} uncached",
+  "@usageCacheLast": {
+    "description": "The counts are formatted (8.2k).",
+    "placeholders": {
+      "read": {
+        "type": "String"
+      },
+      "written": {
+        "type": "String"
+      },
+      "uncached": {
+        "type": "String"
+      }
+    }
+  },
+  "usageCacheOverall": "overall {percent}%",
+  "@usageCacheOverall": {
+    "description": "percent a whole number: what of the whole conversation's input was read from the cache.",
     "placeholders": {
       "percent": {
         "type": "String"
       }
     }
   },
-  "usageCacheRead": "Cache read",
-  "usageCacheWritten": "Cache write",
-  "usageCacheUncached": "Uncached",
   "usageCacheConversation": "Whole conversation: {read} read · {written} written · {percent}% hit",
   "@usageCacheConversation": {
     "description": "read and written are formatted counts (8.2k); percent a whole number.",

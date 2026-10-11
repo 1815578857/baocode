@@ -173,10 +173,11 @@ class ContextUsagePanel extends StatelessWidget {
   }
 }
 
-/// How the prompt cache took the last request's input, as a strip of it
-/// whole, and the conversation's in all.
-class _PromptCacheUsage extends StatelessWidget {
-  const _PromptCacheUsage({required this.cache});
+/// How the prompt cache took the last request's input, in a row as the
+/// plan's limits: a strip of it whole (read, written, neither), its hit
+/// rate, and the conversation's; the counts on hover.
+class _PromptCacheMeter extends StatelessWidget {
+  const _PromptCacheMeter({required this.cache});
 
   final PromptCache cache;
 
@@ -189,73 +190,72 @@ class _PromptCacheUsage extends StatelessWidget {
     final last = cache.last;
     final all = cache.conversation;
     final colors = themeColors;
-    final parts = [
-      (l10n.usageCacheRead, last.read, colors['charts.green']),
-      (l10n.usageCacheWritten, last.written, colors['charts.yellow']),
-      (l10n.usageCacheUncached, last.uncached, colors['charts.red']),
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Text(
+    final format = ContextUsagePanel._format;
+    return IdeHover(
+      message: [
+        l10n.usageCacheLast(
+          format(last.read),
+          format(last.written),
+          format(last.uncached),
+        ),
+        l10n.usageCacheConversation(
+          format(all.read),
+          format(all.written),
+          _percent(all),
+        ),
+      ].join('\n'),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 150,
+            child: Text(
               l10n.usagePromptCache,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 11.5),
+            ),
+          ),
+          Expanded(
+            child: SizedBox(
+              height: 4,
+              child: CustomPaint(
+                painter: _UsageBarPainter(
+                  window: last.total,
+                  used: [
+                    (last.read, colors['charts.green']),
+                    (last.written, colors['charts.yellow']),
+                    (last.uncached, colors['charts.red']),
+                  ],
+                  track: colors['editorWidget.border'],
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 44,
+            child: Text(
+              '${_percent(last)}%',
+              textAlign: TextAlign.right,
               style: TextStyle(
                 color: AppColors.text,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+                fontFamily: AppFonts.mono,
+                fontFamilyFallback: AppFonts.monoFallbacks,
+                fontSize: 11,
               ),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                l10n.usageCacheLastHit(_percent(last)),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: AppColors.textFaint, fontSize: 11),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 6,
-          width: double.infinity,
-          child: CustomPaint(
-            painter: _UsageBarPainter(
-              window: last.total,
-              used: [
-                for (final (_, tokens, color) in parts) (tokens, color),
-              ],
-              track: colors['editorWidget.border'],
+          ),
+          SizedBox(
+            width: 104,
+            child: Text(
+              l10n.usageCacheOverall(_percent(all)),
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: AppColors.textFaint, fontSize: 11),
             ),
           ),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 16,
-          runSpacing: 6,
-          children: [
-            for (final (label, tokens, color) in parts)
-              if (tokens > 0)
-                _Legend(
-                  color: color,
-                  label: label,
-                  value: ContextUsagePanel._format(tokens),
-                ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          l10n.usageCacheConversation(
-            ContextUsagePanel._format(all.read),
-            ContextUsagePanel._format(all.written),
-            _percent(all),
-          ),
-          style: TextStyle(color: AppColors.textFaint, fontSize: 11),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

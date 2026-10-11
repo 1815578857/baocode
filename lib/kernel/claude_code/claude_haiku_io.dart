@@ -114,10 +114,12 @@ Future<(String, int)> _run(
     }),
   );
   final stdout = process.stdout
-      .transform(utf8.decoder)
+      .transform(const Utf8Decoder(allowMalformed: true))
       .transform(const LineSplitter())
       .forEach(onLine);
-  final stderr = process.stderr.transform(utf8.decoder).join();
+  final stderr = process.stderr
+      .transform(const Utf8Decoder(allowMalformed: true))
+      .join();
   process.stdin.add(utf8.encode(prompt));
   unawaited(process.stdin.close().catchError((Object _) {}));
   final code = await process.exitCode.timeout(

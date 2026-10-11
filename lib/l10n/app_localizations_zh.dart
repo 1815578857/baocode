@@ -2355,18 +2355,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get usagePromptCache => '提示缓存';
 
   @override
-  String usageCacheLastHit(String percent) {
-    return '最近一次请求命中 $percent%';
+  String usageCacheLast(String read, String written, String uncached) {
+    return '最近一次请求：读取 $read · 写入 $written · 未缓存 $uncached';
   }
 
   @override
-  String get usageCacheRead => '缓存读取';
-
-  @override
-  String get usageCacheWritten => '缓存写入';
-
-  @override
-  String get usageCacheUncached => '未缓存';
+  String usageCacheOverall(String percent) {
+    return '整个对话 $percent%';
+  }
 
   @override
   String usageCacheConversation(String read, String written, String percent) {

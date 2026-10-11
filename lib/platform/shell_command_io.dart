@@ -31,8 +31,10 @@ Future<ProcessResult> _runProcess(
   executable,
   arguments,
   environment: environment,
-  stdoutEncoding: utf8,
-  stderrEncoding: utf8,
+  // Leniently: not every command says it in UTF-8 (PowerShell's errors,
+  // in the system's code page on a Chinese Windows).
+  stdoutEncoding: const Utf8Codec(allowMalformed: true),
+  stderrEncoding: const Utf8Codec(allowMalformed: true),
 );
 
 /// The line a script of ours carries, by which it is told from another
@@ -486,13 +488,14 @@ $answer = [UIntPtr]::Zero
 
 /// Runs [script] in Windows PowerShell through [run], encoded
 /// (`-EncodedCommand`, its UTF-16 in base64) so no quoting stands between
-/// it and the shell; values go to it through [environment].
+/// it and the shell; values go to it through [environment]. Without
+/// progress records: those of a session's first run would be its stderr.
 Future<ProcessResult> runPowerShell(
   ShellCommandRunner run,
   String script, {
   Map<String, String>? environment,
 }) {
-  final units = script.codeUnits;
+  final units = "\$ProgressPreference = 'SilentlyContinue'\n$script".codeUnits;
   final bytes = Uint8List(units.length * 2);
   for (var i = 0; i < units.length; i++) {
     bytes[2 * i] = units[i] & 0xff;

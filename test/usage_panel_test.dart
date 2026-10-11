@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:baocode/chat/panels/context_usage_panel.dart';
+import 'package:baocode/ide/ide_hover.dart';
 import 'package:baocode/kernel/kernel_types.dart';
 
 void main() {
@@ -80,12 +81,13 @@ void main() {
       ),
     );
     expect(find.text('Prompt cache'), findsOneWidget);
-    expect(find.text('96% hit on the last request'), findsOneWidget);
-    expect(find.text('61.3k'), findsOneWidget);
-    expect(find.text('2.4k'), findsOneWidget);
+    expect(find.text('96%'), findsOneWidget);
+    expect(find.text('overall 93%'), findsOneWidget);
+    // The counts on hover.
     expect(
-      find.text('Whole conversation: 1.2M read · 85.3k written · 93% hit'),
-      findsOneWidget,
+      tester.widget<IdeHover>(find.byType(IdeHover).last).message,
+      'Last request: 61.3k read · 2.4k written · 2 uncached\n'
+      'Whole conversation: 1.2M read · 85.3k written · 93% hit',
     );
     // Between the context and the plan.
     expect(
