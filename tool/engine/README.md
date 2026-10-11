@@ -113,7 +113,11 @@ Dart snapshot is the same because the tag (and so the Dart SDK) is.
 
 ## Shipping
 
-`flutter_windows.dll` here is that release build. `tool/build_windows.dart`
+`flutter_windows.dll` here is that release build: Flutter 3.47.5 with
+`windows_text.patch` as of f36847d, built with
+`build_windows_engine.ps1 -Mode release`; SHA-256
+`d20feefdf335b0e3ae92f4e2f1b1892b5bd9d4c80b194b14b8bb87b34b9591d5`.
+`tool/build_windows.dart`
 (and so the release workflow) puts it in the bundle in place of Flutter's,
 after checking the hashes it keeps: the bundle's must be the stock engine of
 the same Flutter. `--stock-engine` leaves Flutter's in.
