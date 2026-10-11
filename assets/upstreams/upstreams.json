@@ -1,4 +1,266 @@
 {
   "version": 1,
-  "upstreams": []
+  "upstreams": [
+    {
+      "id": "sample-01",
+      "name": "CMD（示例）",
+      "url": "https://commandcode.ai/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: Imports from api.commandcode.ai show as listed",
+        "zh": "示例：从 api.commandcode.ai 导入会显示已收录"
+      },
+      "hosts": [
+        "api.commandcode.ai",
+        "commandcode.ai"
+      ]
+    },
+    {
+      "id": "sample-02",
+      "name": "包子中转",
+      "url": "https://baozi.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: Claude and GPT at cost price",
+        "zh": "示例：Claude、GPT 成本价直供"
+      },
+      "hosts": [
+        "api.baozi.example.com"
+      ]
+    },
+    {
+      "id": "sample-03",
+      "name": "Moonlight API",
+      "url": "https://moonlight.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: Direct in China, pay as you go",
+        "zh": "示例：国内直连，按量计费"
+      },
+      "hosts": [
+        "api.moonlight.example.com"
+      ]
+    },
+    {
+      "id": "sample-04",
+      "name": "SubHub",
+      "url": "https://subhub.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: Shared Claude Max, steady and fast",
+        "zh": "示例：Claude Max 拼车，稳定低延迟"
+      },
+      "hosts": [
+        "api.subhub.example.com"
+      ]
+    },
+    {
+      "id": "sample-05",
+      "name": "GPT Plus Station",
+      "url": "https://gptplus.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: Codex and every GPT",
+        "zh": "示例：Codex / GPT 全系列"
+      },
+      "hosts": [
+        "api.gptplus.example.com"
+      ]
+    },
+    {
+      "id": "sample-06",
+      "name": "DeepRelay",
+      "url": "https://deeprelay.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: DeepSeek, Kimi and GLM in one place",
+        "zh": "示例：DeepSeek、Kimi、GLM 一站接入"
+      },
+      "hosts": [
+        "api.deeprelay.example.com"
+      ]
+    },
+    {
+      "id": "sample-07",
+      "name": "星河 AI",
+      "url": "https://xinghe.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: Enterprise SLA, invoices",
+        "zh": "示例：企业级 SLA，支持开票"
+      },
+      "hosts": [
+        "api.xinghe.example.com"
+      ]
+    },
+    {
+      "id": "sample-08",
+      "name": "OpenGate",
+      "url": "https://opengate.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: OpenAI Responses, natively",
+        "zh": "示例：OpenAI Responses 原生支持"
+      },
+      "hosts": [
+        "api.opengate.example.com"
+      ]
+    },
+    {
+      "id": "sample-09",
+      "name": "CloudCode Hub",
+      "url": "https://cloudcode.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: Routes tuned for Claude Code, long contexts that hold, billed by the token",
+        "zh": "示例：为 Claude Code 优化的线路，长上下文不掉线，按 token 计费"
+      },
+      "hosts": [
+        "api.cloudcode.example.com"
+      ]
+    },
+    {
+      "id": "sample-10",
+      "name": "闪电 API",
+      "url": "https://shandian.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: First token under 300 ms",
+        "zh": "示例：首字延迟 < 300ms"
+      },
+      "hosts": [
+        "api.shandian.example.com"
+      ]
+    },
+    {
+      "id": "sample-11",
+      "name": "Anthropic Mirror",
+      "url": "https://anmirror.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: The official protocol, passed through",
+        "zh": "示例：官方协议，原样转发"
+      },
+      "hosts": [
+        "api.anmirror.example.com"
+      ]
+    },
+    {
+      "id": "sample-12",
+      "name": "Kimi Plus",
+      "url": "https://kimiplus.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: A line of its own for Kimi K2",
+        "zh": "示例：Kimi K2 专线"
+      },
+      "hosts": [
+        "api.kimiplus.example.com"
+      ]
+    },
+    {
+      "id": "sample-13",
+      "name": "零点中转",
+      "url": "https://lingdian.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: $5 of credit for new users",
+        "zh": "示例：新用户送 5 美元额度"
+      },
+      "hosts": [
+        "api.lingdian.example.com"
+      ]
+    },
+    {
+      "id": "sample-14",
+      "name": "RelayX",
+      "url": "https://relayx.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: Spread across many accounts",
+        "zh": "示例：多账号负载均衡"
+      },
+      "hosts": [
+        "api.relayx.example.com"
+      ]
+    },
+    {
+      "id": "sample-15",
+      "name": "TokenBox",
+      "url": "https://tokenbox.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: Daily and monthly plans, no request cap",
+        "zh": "示例：按天包月，不限次数"
+      },
+      "hosts": [
+        "api.tokenbox.example.com"
+      ]
+    },
+    {
+      "id": "sample-16",
+      "name": "青云 API",
+      "url": "https://qingyun.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: Alipay and WeChat Pay",
+        "zh": "示例：支持支付宝、微信支付"
+      },
+      "hosts": [
+        "api.qingyun.example.com"
+      ]
+    },
+    {
+      "id": "sample-17",
+      "name": "Sonnet Store",
+      "url": "https://sonnet.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: Sonnet 5.5 on sale",
+        "zh": "示例：Sonnet 5.5 特价"
+      },
+      "hosts": [
+        "api.sonnet.example.com"
+      ]
+    },
+    {
+      "id": "sample-18",
+      "name": "Codex Lab",
+      "url": "https://codexlab.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: ChatGPT plan quota as an API",
+        "zh": "示例：ChatGPT 订阅额度转 API"
+      },
+      "hosts": [
+        "api.codexlab.example.com"
+      ]
+    },
+    {
+      "id": "sample-19",
+      "name": "NewAPI Demo",
+      "url": "https://newapidemo.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: A new-api demo of the one-click import",
+        "zh": "示例：new-api 一键导入演示站"
+      },
+      "hosts": [
+        "api.newapidemo.example.com"
+      ]
+    },
+    {
+      "id": "sample-20",
+      "name": "A Very Long Upstream Name To See Ellipsis",
+      "url": "https://longname.example.com/register?aff=baocode",
+      "logo": "sample-bao.png",
+      "description": {
+        "en": "Sample: A very long line, to see that the card cuts it short with an ellipsis rather than overflowing",
+        "zh": "示例：一个特别长的介绍，用来看卡片里的文字会不会正确地截断成省略号而不是溢出"
+      },
+      "hosts": [
+        "api.longname.example.com"
+      ]
+    }
+  ]
 }
