@@ -375,6 +375,7 @@ dart run tool/build_remote_server.dart --all        # 四份没编全就失败�
 安装包**不带服务端二进制**，只带 `VERSION` 和 `servers.json`。四个二进制原本占 30 多 MB，大多数用户不连远程，而每台主机只需要其中一个平台。
 
 - **打包**：`tool/build_macos.dart` 和 `tool/build_windows.dart` 先编译到 `build/remote/`（CI 里由单独的 `remote` 任务在 macOS 机器上把四份都编一次，在那台 Mac 上直接跑一遍两份 macOS 版（`tool/test_remote_server_macos.sh`，Intel 版经 Rosetta），再由 `remote-linux` 任务在 Docker 里的几个 Linux 发行版上各跑一遍 `tool/test_remote_server.sh`，两个打包脚本带 `--remote-built` 直接用它），再只把 `VERSION`、`servers.json` 放进 `BaoCode.app/Contents/Resources/remote/`（Windows 是 `<bundle>\remote\`），`.gz` 放到 `build/installers/remote/<VERSION>/`。
+- **单独发布**：推一个 `server-*` 标签，CI（`remote.yml`）编译、测试并上传到 `releases/remote/<VERSION>/`，更新 `releases/remote/latest.json`；本机打包时用 `--remote-release [VERSION]` 带上这份的 `servers.json`，不在本机编译（docs/release.md 第 3 节）。
 - **发布**：把 `build/installers/remote/<VERSION>/` 里的 `.gz` 上传到 `https://dl.baocode.dev/releases/remote/<VERSION>/`。**要在安装包发出去之前上传**，否则这个版本连不了远程（CI 会按这个顺序传，见 docs/release.md）。旧版本的目录要一直保留，因为装着旧版的用户还要下载。
 - **下载**：第一次连某个平台的主机时，应用下载对应的 `.gz`，按 `servers.json` 校验大小和 SHA-256，存到数据目录的 `cache/remote-server/<VERSION>/`，之后照旧经 ssh 推送到主机（第 4 节第 4 步）。远端主机不需要能上网。下载完会删掉其他版本的缓存；同时连多台同平台的主机只下载一次。
 - **安全**：`servers.json` 在安装包里，跟着应用一起签名，所以下载到的只能是这个版本编出来的那份；被替换的文件校验不过，连接报 `server` 失败。
@@ -432,7 +433,7 @@ flutter analyze
 
 | 现象 / 报错 | 原因 | 处理 |
 | --- | --- | --- |
-| The BaoCode server for Linux x64（或 macOS arm64 等）could not be downloaded（详情里是 HTTP 404） | 这个构建的服务端没有上传到 dl.baocode.dev。常见于本机打包的应用：每次构建的 `VERSION` 都不同，CI 发布的那份对不上 | 把打包时 `build/installers/remote/<VERSION>/` 里的 `.gz` 上传到 `dl.baocode.dev/releases/remote/<VERSION>/`；只在本机用的话，也可以把它们放进数据目录的 `cache/remote-server/<VERSION>/`。或者改装 CI 发布的版本 |
+| The BaoCode server for Linux x64（或 macOS arm64 等）could not be downloaded（详情里是 HTTP 404） | 这个构建的服务端没有上传到 dl.baocode.dev。常见于本机打包的应用：每次构建的 `VERSION` 都不同，CI 发布的那份对不上 | 推一个 `server-*` 标签发布服务端，打包时加 `--remote-release`；或把打包时 `build/installers/remote/<VERSION>/` 里的 `.gz` 上传到 `dl.baocode.dev/releases/remote/<VERSION>/`；只在本机用的话，也可以把它们放进数据目录的 `cache/remote-server/<VERSION>/`。或者改装 CI 发布的版本 |
 | No ssh here | 本机没有 `ssh` | 安装 OpenSSH 客户端；Windows 上在“可选功能”里安装 |
 | 认证失败（authentication） | 密码不对、取消了登录，或密钥没加载（Windows 上 ssh 低于 8.4 时不问密码） | 重连时重新输入密码；用密钥的话，把密钥加到 ssh-agent，或在 `~/.ssh/config` 里写 `IdentityFile` |
 | 主机密钥问题（hostKey） | 主机还不在 `known_hosts` 里，或密钥变了 | 先在终端里 `ssh <主机>` 一次，接受密钥；密钥确实换过的话，用 `ssh-keygen -R <主机>` 删掉旧记录 |

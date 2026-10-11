@@ -11,6 +11,12 @@
 //                                                remote server already in
 //                                                build/remote/ (CI builds
 //                                                it once, for both apps)
+//   dart run tool/build_macos.dart --remote-release [VERSION]
+//                                                take the remote server
+//                                                published (the newest
+//                                                without VERSION; tool/
+//                                                fetch_remote_server.dart)
+//                                                instead of building one
 //
 // They land in build/installers/: BaoCode-<version>-<arch>.dmg and
 // BaoCode-<version>-mac-<arch>.zip, arch arm64 or x64; beside them,
@@ -58,6 +64,9 @@ const _architectures = {'arm64': 'arm64', 'x86_64': 'x64'};
 /// Where the remote server is built (tool/build_remote_server.dart).
 const _remoteRelative = 'build/remote';
 
+/// Where one published is taken to (tool/fetch_remote_server.dart).
+const _remoteReleaseRelative = 'build/remote-release';
+
 /// What has to be in the .app for it to start. As on Windows, a build that
 /// failed late still leaves an .app behind that looks complete — these are
 /// what tell the difference.
@@ -87,13 +96,25 @@ Future<void> main(List<String> arguments) async {
     );
   }
   final skipBuild = arguments.contains('--skip-build');
-  final remoteBuilt = skipBuild || arguments.contains('--remote-built');
+  final releaseAt = arguments.indexOf('--remote-release');
+  final remoteRelease = releaseAt < 0
+      ? null
+      : releaseAt + 1 < arguments.length &&
+            !arguments[releaseAt + 1].startsWith('--')
+      ? arguments[releaseAt + 1]
+      : 'latest';
+  final remoteBuilt =
+      skipBuild ||
+      remoteRelease != null ||
+      arguments.contains('--remote-built');
 
   // The script lives in tool/, so the repository is one level above it.
   final root = File.fromUri(Platform.script).parent.parent.absolute;
   final bundle = Directory('${root.path}/$_bundleRelative');
   final installers = Directory('${root.path}/$_installersRelative');
-  final remote = Directory('${root.path}/$_remoteRelative');
+  final remote = Directory(
+    '${root.path}/${remoteRelease == null ? _remoteRelative : _remoteReleaseRelative}',
+  );
   final version = _readVersion(File('${root.path}/pubspec.yaml'));
 
   if (!skipBuild) {
@@ -102,7 +123,16 @@ Future<void> main(List<String> arguments) async {
   } else {
     _step('Using the app already built');
   }
-  if (!remoteBuilt) {
+  if (remoteRelease != null) {
+    _step('Taking the remote server published');
+    await _run(Platform.resolvedExecutable, [
+      'run',
+      'tool/fetch_remote_server.dart',
+      remoteRelease,
+      '--out',
+      remote.path,
+    ], root.path);
+  } else if (!remoteBuilt) {
     _step('Building the remote server');
     await _run(Platform.resolvedExecutable, [
       'run',
@@ -236,13 +266,19 @@ Future<void> main(List<String> arguments) async {
     made.addAll([dmg, zip]);
   }
 
-  _step('Putting the remote server\'s builds beside them');
-  final downloads = Directory('${installers.path}/remote/$remoteVersion')
-    ..createSync(recursive: true);
-  final servers = [
+  // None when published already (--remote-release).
+  final downloads = Directory('${installers.path}/remote/$remoteVersion');
+  final builds = [
     for (final file in remote.listSync())
-      if (file is File && file.path.endsWith('.gz'))
-        file.copySync('${downloads.path}/${file.uri.pathSegments.last}'),
+      if (file is File && file.path.endsWith('.gz')) file,
+  ];
+  if (builds.isNotEmpty) {
+    _step('Putting the remote server\'s builds beside them');
+    downloads.createSync(recursive: true);
+  }
+  final servers = [
+    for (final file in builds)
+      file.copySync('${downloads.path}/${file.uri.pathSegments.last}'),
   ];
 
   _step('Done');
@@ -251,13 +287,22 @@ Future<void> main(List<String> arguments) async {
     stdout.writeln('  ${file.path}  ($mb MB)');
   }
   final base = '${installers.path}/BaoCode-${version.marketing}';
+  stdout.writeln();
+  if (servers.isEmpty) {
+    stdout
+      ..writeln('The app downloads the remote server published:')
+      ..writeln('  https://dl.baocode.dev/releases/remote/$remoteVersion/');
+  } else {
+    stdout
+      ..writeln('Upload the remote server\'s builds, which the app downloads')
+      ..writeln('(or publish them with a server-* tag and package with')
+      ..writeln('--remote-release):')
+      ..writeln(
+        '  ${downloads.path}/*  ->  '
+        'https://dl.baocode.dev/releases/remote/$remoteVersion/',
+      );
+  }
   stdout
-    ..writeln()
-    ..writeln('Upload the remote server\'s builds, which the app downloads:')
-    ..writeln(
-      '  ${downloads.path}/*  ->  '
-      'https://dl.baocode.dev/releases/remote/$remoteVersion/',
-    )
     ..writeln()
     ..writeln('To publish it as an update, sign the zips into the manifest:')
     ..writeln('  dart run tool/release_manifest.dart \\')

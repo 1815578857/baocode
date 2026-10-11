@@ -7,6 +7,12 @@
 //                                                  already in build\remote\
 //                                                  (CI builds it once, for
 //                                                  both apps)
+//   dart run tool/build_windows.dart --remote-release [VERSION]
+//                                                  take the remote server
+//                                                  published (the newest
+//                                                  without VERSION; tool/
+//                                                  fetch_remote_server.dart)
+//                                                  instead of building one
 //   dart run tool/build_windows.dart --stock-engine keep Flutter's own
 //                                                  flutter_windows.dll
 //
@@ -61,6 +67,13 @@ Future<void> main(List<String> arguments) async {
   }
   final skipBuild = arguments.contains('--skip-build');
   final remoteBuilt = arguments.contains('--remote-built');
+  final releaseAt = arguments.indexOf('--remote-release');
+  final remoteRelease = releaseAt < 0
+      ? null
+      : releaseAt + 1 < arguments.length &&
+            !arguments[releaseAt + 1].startsWith('--')
+      ? arguments[releaseAt + 1]
+      : 'latest';
   final stockEngine = arguments.contains('--stock-engine');
 
   // The script lives in tool/, so the repository is one level above it.
@@ -91,8 +104,19 @@ Future<void> main(List<String> arguments) async {
   // which build, and where it is downloaded from, beside the executable
   // (the installer takes the bundle whole); not the builds themselves,
   // which the app downloads.
-  final remote = Directory('${root.path}\\build\\remote');
-  if (remoteBuilt) {
+  final remote = Directory(
+    '${root.path}\\build\\${remoteRelease == null ? 'remote' : 'remote-release'}',
+  );
+  if (remoteRelease != null) {
+    _step('Taking the remote server published');
+    await _run(Platform.resolvedExecutable, [
+      'run',
+      '${root.path}\\tool\\fetch_remote_server.dart',
+      remoteRelease,
+      '--out',
+      remote.path,
+    ], root.path);
+  } else if (remoteBuilt) {
     _step('Using the remote server already built');
     if (!File('${remote.path}\\servers.json').existsSync()) {
       _fail('No remote server built in ${remote.path}.');
@@ -128,13 +152,19 @@ Future<void> main(List<String> arguments) async {
     '${root.path}\\tool\\baocode.iss',
   ], root.path);
 
-  _step('Putting the remote server\'s builds beside it');
-  final downloads = Directory('${installers.path}\\remote\\$remoteVersion')
-    ..createSync(recursive: true);
-  final servers = [
+  // None when published already (--remote-release).
+  final downloads = Directory('${installers.path}\\remote\\$remoteVersion');
+  final builds = [
     for (final file in remote.listSync())
-      if (file is File && file.path.endsWith('.gz'))
-        file.copySync('${downloads.path}\\${file.uri.pathSegments.last}'),
+      if (file is File && file.path.endsWith('.gz')) file,
+  ];
+  if (builds.isNotEmpty) {
+    _step('Putting the remote server\'s builds beside it');
+    downloads.createSync(recursive: true);
+  }
+  final servers = [
+    for (final file in builds)
+      file.copySync('${downloads.path}\\${file.uri.pathSegments.last}'),
   ];
 
   _step('Done');
@@ -146,15 +176,23 @@ Future<void> main(List<String> arguments) async {
     final mb = (file.lengthSync() / (1024 * 1024)).toStringAsFixed(1);
     stdout.writeln('  ${file.path}  ($mb MB)');
   }
-  stdout
-    ..writeln()
-    ..writeln('Upload the remote server\'s builds, which the app downloads')
-    ..writeln('(their folder is named by the build: the macOS one\'s, if it')
-    ..writeln('differs, goes beside it):')
-    ..writeln(
-      '  ${downloads.path}\\*  ->  '
-      'https://dl.baocode.dev/releases/remote/$remoteVersion/',
-    );
+  if (servers.isEmpty) {
+    stdout
+      ..writeln()
+      ..writeln('The app downloads the remote server published:')
+      ..writeln('  https://dl.baocode.dev/releases/remote/$remoteVersion/');
+  } else {
+    stdout
+      ..writeln()
+      ..writeln('Upload the remote server\'s builds, which the app downloads')
+      ..writeln('(their folder is named by the build: the macOS one\'s, if it')
+      ..writeln('differs, goes beside it; or publish them with a server-* tag')
+      ..writeln('and package with --remote-release):')
+      ..writeln(
+        '  ${downloads.path}\\*  ->  '
+        'https://dl.baocode.dev/releases/remote/$remoteVersion/',
+      );
+  }
   stdout.writeln();
   stdout.writeln(
     'The app needs the Microsoft Visual C++ Redistributable (x64). Windows\n'
