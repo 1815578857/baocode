@@ -91,6 +91,15 @@ void main() {
       expect(find.text('Alpha API'), findsNWidgets(2));
       expect(find.text('Alpha API, cheaply'), findsNWidgets(2));
       expect(find.text('alpha.example.com'), findsOneWidget);
+      // Its host, a link to it.
+      await gesture.moveTo(tester.getCenter(find.text('alpha.example.com')));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.tap(find.text('alpha.example.com'));
+      expect(
+        opened.single,
+        Uri.parse('https://alpha.example.com/register?aff=bao'),
+      );
+      await tester.pump(const Duration(seconds: 1));
 
       await gesture.moveTo(
         tester.getCenter(find.text('Why am I seeing this?')),
@@ -104,7 +113,7 @@ void main() {
       await gesture.moveTo(tester.getCenter(find.text('How to get listed?')));
       await tester.pump(const Duration(seconds: 1));
       await tester.tap(find.text('How to get listed?'));
-      expect(opened.single, Uri.parse('https://baocode.dev/upstreams'));
+      expect(opened.last, Uri.parse('https://baocode.dev/upstreams'));
     });
 
     testWidgets('a user of a listed site sees it first, whatever the draw, '

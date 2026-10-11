@@ -126,18 +126,38 @@ class _FeaturedUpstreamsStripState extends State<FeaturedUpstreamsStrip> {
               ),
               if (about != null) ...[const SizedBox(height: 6), Text(about)],
               const SizedBox(height: 6),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Codicons.linkExternal, size: 12, color: dim),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      upstream.url.host,
-                      style: TextStyle(color: dim),
-                    ),
-                  ),
-                ],
+              // Opens it, as the card does.
+              Semantics(
+                link: true,
+                child: HoverBuilder(
+                  cursor: SystemMouseCursors.click,
+                  builder: (context, hovered) {
+                    final link = themeColors['textLink.foreground'];
+                    return GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => widget.open(upstream.url),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Codicons.linkExternal, size: 12, color: link),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              upstream.url.host,
+                              style: TextStyle(
+                                color: link,
+                                decoration: hovered
+                                    ? TextDecoration.underline
+                                    : null,
+                                decorationColor: link,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
             ],
           ),
