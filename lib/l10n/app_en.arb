@@ -5049,6 +5049,15 @@
       }
     }
   },
+  "newChatHostProjects": "{count, plural, =1{1 project} other{{count} projects}}",
+  "@newChatHostProjects": {
+    "description": "Under an SSH host in the menu of where a new chat works: how many of its projects are listed at its side.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "newChatCreateWorkspace": "Create Workspace…",
   "@newChatCreateWorkspace": {
     "description": "The menu's choice that makes a workspace of several folders for a new chat to work in."

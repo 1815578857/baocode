@@ -11463,6 +11463,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 folder} other{{count} folders}} · {names}'**
   String newChatWorkspaceDetail(int count, String names);
 
+  /// Under an SSH host in the menu of where a new chat works: how many of its projects are listed at its side.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 project} other{{count} projects}}'**
+  String newChatHostProjects(int count);
+
   /// The menu's choice that makes a workspace of several folders for a new chat to work in.
   ///
   /// In en, this message translates to:

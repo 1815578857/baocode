@@ -37,6 +37,7 @@ class ComposerPicker extends StatefulWidget {
     this.label,
     this.describes = true,
     this.settingsOf,
+    this.submenuOf,
     this.emphasized = false,
     this.title,
     this.tooltip,
@@ -45,7 +46,7 @@ class ComposerPicker extends StatefulWidget {
     this.focusNode,
     this.searchPlaceholder,
     this.footer,
-  });
+  }) : assert(settingsOf == null || submenuOf == null);
 
   final List<KernelOption> options;
   final KernelOption selected;
@@ -60,6 +61,12 @@ class ComposerPicker extends StatefulWidget {
   /// The settings picked beside an option, e.g. a model's effort: in a
   /// menu at its side, shown when it is pointed at.
   final List<ModelSettingChoice> Function(KernelOption option)? settingsOf;
+
+  /// The options an option groups (an SSH host's projects): in a menu at
+  /// its side, as [settingsOf]'s, picked there. It is not picked itself,
+  /// but opens them; checked when [selected] is among them. None for an
+  /// empty list. Not with [settingsOf].
+  final List<KernelOption> Function(KernelOption option)? submenuOf;
 
   /// Draws a filled pill, used for the mode picker.
   final bool emphasized;
@@ -375,9 +382,7 @@ class ComposerPickerState extends State<ComposerPicker> {
     _searchText.clear();
     _settings.clear();
     if (open) {
-      _highlighted = widget.options
-          .indexOf(widget.selected)
-          .clamp(0, widget.options.length - 1);
+      _highlighted = _selectedIndex.clamp(0, widget.options.length - 1);
       _settingsOf = null;
       _setting = null;
       _pointer = null;
@@ -394,7 +399,26 @@ class ComposerPickerState extends State<ComposerPicker> {
     }
   }
 
+  /// The option checked: [ComposerPicker.selected], or the one whose
+  /// submenu it is in; -1 for none.
+  int get _selectedIndex {
+    final at = widget.options.indexOf(widget.selected);
+    final submenuOf = widget.submenuOf;
+    if (at >= 0 || submenuOf == null) return at;
+    return widget.options.indexWhere(
+      (option) => submenuOf(option).contains(widget.selected),
+    );
+  }
+
+  /// Picks option [index]; one with a submenu opens it, as → does.
   void _select(int index) {
+    if (widget.submenuOf != null) {
+      if (_settingsFor(index).isNotEmpty) {
+        _highlighted = index;
+        _openSettings();
+        return;
+      }
+    }
     _setOpen(false);
     widget.onSelected(widget.options[index]);
   }
@@ -405,8 +429,25 @@ class ComposerPickerState extends State<ComposerPicker> {
     null => const [],
   };
 
-  List<ModelSettingChoice> _settingsFor(int index) => _settings[index] ??=
-      widget.settingsOf?.call(widget.options[index]) ?? const [];
+  List<ModelSettingChoice> _settingsFor(int index) =>
+      _settings[index] ??= _settingsOfOption(widget.options[index]);
+
+  /// [option]'s settings; its submenu, as one setting of the menu's own
+  /// kind, with no heading.
+  List<ModelSettingChoice> _settingsOfOption(KernelOption option) {
+    final submenuOf = widget.submenuOf;
+    if (submenuOf == null) return widget.settingsOf?.call(option) ?? const [];
+    final submenu = submenuOf(option);
+    if (submenu.isEmpty) return const [];
+    return [
+      ModelSettingChoice(
+        kind: KernelChoiceKind.model,
+        options: submenu,
+        selected: submenu.contains(widget.selected) ? widget.selected : null,
+        onSelected: widget.onSelected,
+      ),
+    ];
+  }
 
   /// Each setting's options in turn, as the keys go through them.
   static List<(ModelSettingChoice, KernelOption)> _flatten(
@@ -509,14 +550,7 @@ class ComposerPickerState extends State<ComposerPicker> {
       _settingsOf = null;
       _reveal(_highlighted, down: step > 0);
     } else if (key == LogicalKeyboardKey.arrowRight) {
-      final settings = _settingsFor(_highlighted);
-      if (settings.isEmpty) return null;
-      // At what is in effect, or the first.
-      final at = _flatten(settings)
-          .indexWhere((row) => row.$1.selected == row.$2);
-      _cancelSwitch();
-      _settingsOf = _settingsAt = _highlighted;
-      _setting = at < 0 ? 0 : at;
+      if (!_openSettings()) return null;
     } else if (key == LogicalKeyboardKey.enter ||
         key == LogicalKeyboardKey.numpadEnter) {
       if (event is KeyDownEvent && count > 0) {
@@ -545,6 +579,19 @@ class ComposerPickerState extends State<ComposerPicker> {
       return null;
     }
     return KeyEventResult.handled;
+  }
+
+  /// Into the highlighted option's settings, at what is in effect or the
+  /// first; false when it has none.
+  bool _openSettings() {
+    final settings = _settingsFor(_highlighted);
+    if (settings.isEmpty) return false;
+    final at = _flatten(settings)
+        .indexWhere((row) => row.$1.selected == row.$2);
+    _cancelSwitch();
+    _settingsOf = _settingsAt = _highlighted;
+    _setting = at < 0 ? 0 : at;
+    return true;
   }
 
   /// Typing over the menu goes on in its search line: it takes the keys
@@ -787,8 +834,10 @@ class ComposerPickerState extends State<ComposerPicker> {
       starts.add(count);
       count += setting.options.length;
     }
+    // A submenu: options as the menu's, as wide.
+    final submenu = widget.submenuOf != null;
     return Container(
-      width: 148,
+      width: submenu ? widget.menuWidth : 148,
       padding: const EdgeInsets.all(_menuPadding),
       decoration: _panel,
       child: Column(
@@ -805,28 +854,35 @@ class ComposerPickerState extends State<ComposerPicker> {
                 ),
                 color: themeColors['editorHoverWidget.border'],
               ),
-            SizedBox(
-              height: _settingHeaderHeight,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    switch (setting.kind) {
-                      KernelChoiceKind.context =>
-                        context.l10n.composerSettingContext,
-                      KernelChoiceKind.effort =>
-                        context.l10n.composerSettingEffort,
-                      _ => '',
-                    },
-                    style: TextStyle(color: AppColors.textFaint, fontSize: 11),
+            if (switch (setting.kind) {
+                  KernelChoiceKind.context =>
+                    context.l10n.composerSettingContext,
+                  KernelChoiceKind.effort => context.l10n.composerSettingEffort,
+                  _ => null,
+                }
+                case final heading?)
+              SizedBox(
+                height: _settingHeaderHeight,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      heading,
+                      style: TextStyle(
+                        color: AppColors.textFaint,
+                        fontSize: 11,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
             for (final (j, option) in setting.options.indexed)
               _SettingRow(
                 option: option,
+                full: submenu,
+                describes: submenu && widget.describes,
+                height: submenu ? _rowHeight : _settingRowHeight,
                 selected: option == setting.selected,
                 index: starts[i] + j,
                 highlight: _settingHighlight,
@@ -911,6 +967,7 @@ class ComposerPickerState extends State<ComposerPicker> {
     final options = widget.options;
     final grouped = _grouped;
     final matching = _matching;
+    final selected = _selectedIndex;
     const sides = EdgeInsets.symmetric(horizontal: _menuPadding);
     final rows = <Widget>[];
     final headings = <({KernelOptionGroup group, bool first, GlobalKey key})>[];
@@ -943,7 +1000,7 @@ class ComposerPickerState extends State<ComposerPicker> {
             height: _rowHeight,
             describes: widget.describes,
             hasSettings: _settingsFor(i).isNotEmpty,
-            selected: option == widget.selected,
+            selected: i == selected,
             index: i,
             highlight: _highlight,
             onHover: (position) => _pointAt(i, position),
@@ -1012,7 +1069,7 @@ class ComposerPickerState extends State<ComposerPicker> {
         ],
       ),
     );
-    if (widget.settingsOf == null) return menu;
+    if (widget.settingsOf == null && widget.submenuOf == null) return menu;
     // To the right of the option, level with it; to the left when the
     // right has no room; slid up or down to stay in the window. The menu
     // stays where it is: the same widget, not built again as they move.
@@ -1458,10 +1515,14 @@ BoxDecoration? _highlightOutline(bool highlighted) {
 }
 
 /// An option of a setting at the side of the menu: its label, checked when
-/// in effect.
+/// in effect; of a submenu, with its icon too ([full]), and its
+/// description under it if [describes].
 class _SettingRow extends StatelessWidget {
   const _SettingRow({
     required this.option,
+    required this.full,
+    required this.describes,
+    required this.height,
     required this.selected,
     required this.index,
     required this.highlight,
@@ -1470,6 +1531,9 @@ class _SettingRow extends StatelessWidget {
   });
 
   final KernelOption option;
+  final bool full;
+  final bool describes;
+  final double height;
   final bool selected;
 
   /// Highlighted while [highlight] is [index], counting across the
@@ -1490,18 +1554,39 @@ class _SettingRow extends StatelessWidget {
         child: _Highlighted(
           index: index,
           highlight: highlight,
-          height: ComposerPickerState._settingRowHeight,
+          height: height,
           child: Row(
             children: [
+              if (full) ...[
+                option.iconBuilder?.call(15, AppColors.textMuted) ??
+                    Icon(option.icon, size: 15, color: AppColors.textMuted),
+                const SizedBox(width: 10),
+              ],
               Expanded(
-                child: Text(
-                  option.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 12.5,
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      option.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                    if (describes)
+                      Text(
+                        option.description,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppColors.textFaint,
+                          fontSize: 11,
+                        ),
+                      ),
+                  ],
                 ),
               ),
               if (selected)

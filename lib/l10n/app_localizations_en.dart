@@ -6981,6 +6981,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String newChatHostProjects(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count projects',
+      one: '1 project',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get newChatCreateWorkspace => 'Create Workspace…';
 
   @override

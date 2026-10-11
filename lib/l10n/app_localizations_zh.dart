@@ -6552,6 +6552,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String newChatHostProjects(int count) {
+    return '$count 个项目';
+  }
+
+  @override
   String get newChatCreateWorkspace => '创建工作区…';
 
   @override

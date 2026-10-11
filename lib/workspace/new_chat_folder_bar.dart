@@ -1,8 +1,8 @@
 // Over a new chat's input: where it is to work. A menu of the projects
 // (none, the Desktop, first; multi-folder workspaces under their own
-// heading, with Create Workspace…; those on SSH hosts under theirs, with
-// Open Remote Project…) and a button to pick a folder in the system's file
-// manager.
+// heading, with Create Workspace…; SSH hosts under theirs, each with its
+// projects at its side, and Open Remote Project…) and a button to pick a
+// folder in the system's file manager.
 
 import 'package:flutter/material.dart';
 
@@ -44,6 +44,10 @@ class NewChatFolderBar extends StatelessWidget {
 
   /// The menu's row for Create Workspace….
   static const _createWorkspaceId = 'baocode.workspace.create';
+
+  /// Before an SSH host, the menu's row for it, which lists its projects
+  /// at its side.
+  static const _hostId = 'baocode.remote.host:';
 
   /// The projects the menu lists of this machine, and of SSH hosts, the
   /// most recent first: the rest are reached by picking their folder.
@@ -100,6 +104,27 @@ class NewChatFolderBar extends StatelessWidget {
       'workspaces',
       l10n.newChatWorkspaceGroup,
     );
+    // Takes the room of a glyph of [size]; a picture spills over it a
+    // little, as large as the glyph looks.
+    Widget Function(double size, Color color)? iconOf(Project project) =>
+        switch (workspace.iconOf(project)) {
+          null => null,
+          final icon => (size, color) => SizedBox.square(
+            dimension: size,
+            child: OverflowBox(
+              maxWidth: size + 3,
+              maxHeight: size + 3,
+              child: ProjectIconView(
+                icon: icon,
+                library: workspace.icons,
+                size: size + 3,
+                color: color,
+              ),
+            ),
+          ),
+        };
+    // A host's projects are at its side, under its name: each of them
+    // with its folder there only.
     KernelOption option(Project project) => KernelOption(
       project.path,
       project.name,
@@ -113,7 +138,7 @@ class NewChatFolderBar extends StatelessWidget {
           multi.folders.length,
           multi.folders.map(RemoteLocation.nameOf).join(', '),
         ),
-        (final host?, _) => '$host:${project.root}',
+        (_?, _) => project.root,
         (null, _) => project.path,
       },
       group: workspace.workspaceOf(project) != null
@@ -121,24 +146,7 @@ class NewChatFolderBar extends StatelessWidget {
           : project.host == null
           ? null
           : remoteGroup,
-      iconBuilder: switch (workspace.iconOf(project)) {
-        null => null,
-        // Takes the room of a glyph of [size]; a picture spills over it a
-        // little, as large as the glyph looks.
-        final icon => (size, color) => SizedBox.square(
-          dimension: size,
-          child: OverflowBox(
-            maxWidth: size + 3,
-            maxHeight: size + 3,
-            child: ProjectIconView(
-              icon: icon,
-              library: workspace.icons,
-              size: size + 3,
-              color: color,
-            ),
-          ),
-        ),
-      },
+      iconBuilder: iconOf(project),
     );
     final projects = [
       for (final project in workspace.sidebarProjects)
@@ -151,21 +159,35 @@ class NewChatFolderBar extends StatelessWidget {
           .take(_listed),
     ];
     final workspaces = [...projects.where(isWorkspace).take(_listed)];
-    final remote = [
-      ...projects.where((project) => project.host != null).take(_listed),
-    ];
+    // Each host's, the host of the most recent first.
+    final remote = <String, List<Project>>{};
+    for (final project in projects) {
+      if (project.host case final host? when !isWorkspace(project)) {
+        final listed = remote.putIfAbsent(host, () => []);
+        if (listed.length < _listed) listed.add(project);
+      }
+    }
     if (current.path != desktop &&
         !workspace.isHidden(current) &&
         !local.contains(current) &&
         !workspaces.contains(current) &&
-        !remote.contains(current)) {
-      (isWorkspace(current)
-              ? workspaces
-              : current.host == null
-              ? local
-              : remote)
-          .add(current);
+        !(remote[current.host]?.contains(current) ?? false)) {
+      switch ((isWorkspace(current), current.host)) {
+        case (true, _):
+          workspaces.add(current);
+        case (false, final host?):
+          remote.putIfAbsent(host, () => []).add(current);
+        case (false, null):
+          local.add(current);
+      }
     }
+    // The menu's row for each host, by id: its projects at its side.
+    final onHosts = {
+      for (final MapEntry(key: host, value: projects) in remote.entries)
+        '${NewChatFolderBar._hostId}$host': [
+          for (final project in projects) option(project),
+        ],
+    };
     final canCreate = workspace.workspaceDirectories.root != null;
     final options = [
       ?noFolder,
@@ -179,7 +201,15 @@ class NewChatFolderBar extends StatelessWidget {
           l10n.newChatCreateWorkspaceDetail,
           group: workspaceGroup,
         ),
-      for (final project in remote) option(project),
+      for (final MapEntry(key: host, value: projects) in remote.entries)
+        KernelOption(
+          '${NewChatFolderBar._hostId}$host',
+          workspace.hostLabel(host),
+          Codicons.remote,
+          l10n.newChatHostProjects(projects.length),
+          group: remoteGroup,
+          iconBuilder: iconOf(workspace.hostIconProject(host)),
+        ),
       if (openRemote != null)
         KernelOption(
           NewChatFolderBar._openRemoteId,
@@ -201,6 +231,7 @@ class NewChatFolderBar extends StatelessWidget {
             selected: selected,
             title: l10n.newChatWorkingFolder,
             menuWidth: 290,
+            submenuOf: (option) => onHosts[option.id] ?? const [],
             onSelected: (option) => switch (option.id) {
               NewChatFolderBar._openRemoteId => openRemote?.call(_moveTo),
               NewChatFolderBar._createWorkspaceId => _createWorkspace(

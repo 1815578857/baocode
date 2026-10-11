@@ -1893,6 +1893,7 @@
   "cmdResetFeatureTips": "重置功能推荐",
   "newChatWorkspaceGroup": "工作区",
   "newChatWorkspaceDetail": "{count} 个文件夹 · {names}",
+  "newChatHostProjects": "{count} 个项目",
   "newChatCreateWorkspace": "创建工作区…",
   "newChatCreateWorkspaceDetail": "在多个文件夹中工作",
   "workspaceCreateTitle": "创建工作区",
