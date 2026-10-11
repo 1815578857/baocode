@@ -1766,6 +1766,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get iconPickerDeleteFromLibrary => '从图库删除';
 
   @override
+  String get iconPickerBrands => '品牌';
+
+  @override
+  String get iconPickerSiteIcon => '使用网站图标';
+
+  @override
+  String iconPickerSiteIconNone(String host) {
+    return '没有在 $host 找到图标';
+  }
+
+  @override
   String get iconUploadTooLarge => '文件超过 5 MB';
 
   @override
@@ -5486,6 +5497,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modelsName => '名称';
+
+  @override
+  String get modelsIcon => '图标';
+
+  @override
+  String get modelsIconDescription =>
+      '显示在模型选择器中它的分组标题前：厂商标识、网站图标或自定义图片。未设置时按 Base URL 识别厂商。';
+
+  @override
+  String get modelsIconChange => '更换图标';
 
   @override
   String get modelsProtocol => '协议';

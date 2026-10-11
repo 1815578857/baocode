@@ -8,17 +8,23 @@ import '../../ide/ide_dialog.dart';
 import '../../ide/ide_hover.dart';
 import '../../ide/ide_input.dart';
 import '../../ide/ide_menu.dart';
+import '../../icons/project_icon.dart';
+import '../../icons/project_icon_picker.dart';
 import '../../kernel/claude_code/claude_haiku.dart';
 import '../../l10n/l10n.dart';
 import '../../models/codex/codex_api.dart' show codexClientVersion;
 import '../../models/codex/codex_service.dart';
 import '../../models/codex/codex_usage.dart';
+import '../../models/model_icons.dart';
 import '../../models/model_provider.dart';
 import '../../models/model_providers.dart';
 import '../../models/model_runtime.dart';
+import '../../models/upstream.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
+import '../../chat/widgets/hover_builder.dart';
+import '../../workspace/workspace.dart';
 import 'model_dialogs.dart';
 import 'settings_dropdown.dart';
 import 'settings_widgets.dart';
@@ -60,6 +66,7 @@ class ModelsSettingsPage extends StatefulWidget {
     this.listModels = listUpstreamModels,
     this.testModel = testModelThroughClaudeCode,
     this.codex,
+    this.workspace,
   });
 
   final ModelProviders providers;
@@ -68,6 +75,10 @@ class ModelsSettingsPage extends StatefulWidget {
 
   /// The ChatGPT (Codex) providers' accounts; the app's when null.
   final CodexService? codex;
+
+  /// Whose icon picker an upstream's icon is picked in (its pictures, the
+  /// icons picked last); none picked when null.
+  final Workspace? workspace;
 
   /// The protocol's name, as the list and the detail show it.
   static String protocolName(BuildContext context, ProviderProtocol value) {
@@ -112,6 +123,7 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
           listModels: widget.listModels,
           testModel: widget.testModel,
           codex: widget.codex ?? codexService,
+          workspace: widget.workspace,
           onBack: () => setState(() => _open = null),
         );
       }
@@ -239,6 +251,7 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
           title: l10n.modelsProviders,
           children: [
             _ProviderRow(
+              icon: const ProviderIcon(builtinProviderId, size: 16),
               name: l10n.modelsBuiltinName,
               badge: l10n.modelsBuiltinBadge,
               detail: l10n.modelsBuiltinDescription,
@@ -250,6 +263,10 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
             ),
             for (final provider in _providers.providers)
               _ProviderRow(
+                icon: ProviderIconView(
+                  icon: providerIconOf(provider),
+                  size: 16,
+                ),
                 name: provider.name,
                 badge: ModelsSettingsPage.protocolName(
                   context,
@@ -300,6 +317,7 @@ enum _Status { ready, incomplete, failed, off }
 /// and whether the picker offers it; a click opens it.
 class _ProviderRow extends StatelessWidget {
   const _ProviderRow({
+    required this.icon,
     required this.name,
     required this.badge,
     required this.detail,
@@ -311,6 +329,8 @@ class _ProviderRow extends StatelessWidget {
     this.onOpen,
   });
 
+  /// What the picker heads its models with.
+  final Widget icon;
   final String name;
   final String badge;
   final String detail;
@@ -353,6 +373,14 @@ class _ProviderRow extends StatelessWidget {
               children: [
                 Row(
                   children: [
+                    IconTheme.merge(
+                      data: IconThemeData(color: SettingsColors.textSecondary),
+                      child: DefaultTextStyle.merge(
+                        style: TextStyle(color: SettingsColors.textSecondary),
+                        child: icon,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
                     Flexible(
                       child: Text(
                         name,
@@ -421,6 +449,7 @@ class ProviderSettingsPage extends StatefulWidget {
     required this.onBack,
     this.testModel = testModelThroughClaudeCode,
     this.codex,
+    this.workspace,
   });
 
   final ModelProviders providers;
@@ -431,6 +460,9 @@ class ProviderSettingsPage extends StatefulWidget {
 
   /// The ChatGPT (Codex) providers' accounts; the app's when null.
   final CodexService? codex;
+
+  /// See [ModelsSettingsPage.workspace].
+  final Workspace? workspace;
 
   @override
   State<ProviderSettingsPage> createState() => _ProviderSettingsPageState();
@@ -481,6 +513,7 @@ class _ProviderSettingsPageState extends State<ProviderSettingsPage> {
 
   @override
   void dispose() {
+    if (ProjectIconPicker.showsFor(_iconOwner)) ProjectIconPicker.close();
     _login?.cancel();
     _closed.complete();
     _search.dispose();
@@ -538,6 +571,31 @@ class _ProviderSettingsPageState extends State<ProviderSettingsPage> {
   }
 
   Future<void> _save(ModelProvider provider) => _providers.save(provider);
+
+  /// Whose icon picker it is: the upstream's.
+  (String, String) get _iconOwner => ('provider', _provider.id);
+
+  /// Shows the icon picker under [anchor] (global), or closes it.
+  void _toggleIconPicker(Workspace workspace, Rect anchor) {
+    final provider = _providerNow;
+    final site = provider.protocol == ProviderProtocol.codex
+        ? Uri.https('chatgpt.com')
+        : UpstreamUrls.parse(provider.baseUrl);
+    ProjectIconPicker.toggleFor(
+      context,
+      workspace: workspace,
+      target: IconPickerTarget(
+        icon: () => _providerNow.icon,
+        setIcon: (icon) =>
+            unawaited(_save(_providerNow.copyWith(icon: () => icon))),
+        changes: _providers,
+        site: site,
+        brands: true,
+      ),
+      of: _iconOwner,
+      anchor: anchor,
+    );
+  }
 
   Future<void> _setKey(String key) async {
     try {
@@ -866,9 +924,21 @@ class _ProviderSettingsPageState extends State<ProviderSettingsPage> {
       context,
       provider.protocol,
     );
+    final workspace = widget.workspace;
     return SettingsGroup(
       title: l10n.modelsConnection,
       children: [
+        SettingsRow(
+          label: l10n.modelsIcon,
+          description: l10n.modelsIconDescription,
+          trailing: _IconButton(
+            icon: providerIconOf(provider),
+            label: l10n.modelsIconChange,
+            onTap: workspace == null
+                ? null
+                : (anchor) => _toggleIconPicker(workspace, anchor),
+          ),
+        ),
         SettingsRow(
           label: l10n.modelsName,
           trailing: _Field(
@@ -1677,6 +1747,70 @@ class _QuotaLine extends StatelessWidget {
 }
 
 /// A group whose heading folds it.
+/// An upstream's [icon], as large as a field is high; a click opens the
+/// icon picker under it ([onTap] with where it is), none when null.
+class _IconButton extends StatelessWidget {
+  const _IconButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final ProjectIcon? icon;
+  final String label;
+  final ValueChanged<Rect>? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final onTap = this.onTap;
+    final colors = themeColors;
+    return IdeHover(
+      message: label,
+      excludeFromSemantics: true,
+      child: Semantics(
+        button: true,
+        enabled: onTap != null,
+        label: label,
+        // A press on it toggles the picker, not closes it as one outside.
+        child: TapRegion(
+          groupId: ProjectIconPicker.tapRegion,
+          child: HoverBuilder(
+            cursor: onTap == null
+                ? MouseCursor.defer
+                : SystemMouseCursors.click,
+            builder: (context, hovered) => GestureDetector(
+              onTap: onTap == null
+                  ? null
+                  : () {
+                      final box = context.findRenderObject() as RenderBox?;
+                      if (box == null || !box.hasSize) return;
+                      onTap(box.localToGlobal(Offset.zero) & box.size);
+                    },
+              child: Container(
+                width: 32,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: hovered && onTap != null
+                      ? colors['toolbar.hoverBackground']
+                      : colors['input.background'],
+                  border: Border.all(color: colors['input.border']),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: ProviderIconView(
+                  icon: icon,
+                  size: 16,
+                  color: SettingsColors.textPrimary,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Folding extends StatelessWidget {
   const _Folding({
     required this.title,

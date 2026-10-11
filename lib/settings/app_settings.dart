@@ -14,6 +14,7 @@ import '../tips/builtin_tips.dart';
 import '../tips/feature_tip.dart';
 import '../tips/feature_tips_controller.dart';
 import '../update/update_controller.dart';
+import '../workspace/workspace.dart';
 import 'app_locale.dart';
 import 'pages/appearance_page.dart';
 import 'pages/data_dir_page.dart';
@@ -39,6 +40,7 @@ class AppSettings {
     this.sync,
     this.installs,
     this.updates,
+    this.workspace,
   }) : keybindings = keybindings ?? KeybindingService.instance;
 
   final AppLocale locale;
@@ -49,6 +51,9 @@ class AppSettings {
 
   /// The keymaps to pick from.
   final KeymapCatalog? catalog;
+
+  /// The app's, for the icon picker (an upstream of models' icon).
+  final Workspace? workspace;
 
   /// Follows keybindings.json and the selected keymap into [keybindings].
   final KeybindingsSync? sync;
@@ -106,7 +111,10 @@ class AppSettings {
           settings: files?.settings,
         );
       case SettingsSection.models:
-        return ModelsSettingsPage(providers: ModelProviders.current);
+        return ModelsSettingsPage(
+          providers: ModelProviders.current,
+          workspace: workspace,
+        );
       case SettingsSection.network:
         return NetworkSettingsPage(settings: files?.settings);
       case SettingsSection.notifications:

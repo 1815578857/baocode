@@ -45,13 +45,22 @@ class KernelOption {
 
 /// Options listed together under a heading, e.g. a provider's models.
 class KernelOptionGroup {
-  const KernelOptionGroup(this.id, this.label, {this.warning});
+  const KernelOptionGroup(
+    this.id,
+    this.label, {
+    this.warning,
+    this.iconBuilder,
+  });
 
   final String id;
   final String label;
 
   /// What went wrong with it, marked on its heading.
   final String? warning;
+
+  /// Drawn before its heading, at a size and in a color (an upstream's
+  /// icon); none when null.
+  final Widget Function(double size, Color color)? iconBuilder;
 
   @override
   bool operator ==(Object other) =>

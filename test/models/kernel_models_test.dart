@@ -140,6 +140,42 @@ void main() {
     kernel.dispose();
   });
 
+  test('Claude Code with no models of its own (not logged in) is left out '
+      'for a provider\'s, unless in use; each heading and model has an '
+      'icon', () async {
+    final clis = <FakeCli>[];
+    final kernel = ClaudeCodeKernel(
+      MockKernels.claudeCode,
+      const KernelContext(cwd: '/p'),
+      start: (launch) async {
+        final cli = FakeCli(
+          answers: {
+            'initialize': {'commands': const [], 'models': const []},
+          },
+        );
+        clis.add(cli);
+        return cli;
+      },
+      providers: providers,
+      providerEnvironment: (provider, model) async => const {},
+    );
+    kernel.prepare();
+    await pumpEventQueue();
+    // In use: its "Default" stays, to show what is.
+    expect(kernel.model.options.first.id, 'default');
+    expect(kernel.model.options.first.group!.iconBuilder, isNotNull);
+    kernel.model.select('@gw/gpt-5');
+    await pumpEventQueue();
+    final options = kernel.model.options;
+    expect(options.map((o) => o.id), isNot(contains('default')));
+    expect(options.map((o) => o.group?.id), isNot(contains(builtinProviderId)));
+    for (final option in options) {
+      expect(option.iconBuilder, isNotNull, reason: option.id);
+      expect(option.group!.iconBuilder, isNotNull, reason: option.id);
+    }
+    kernel.dispose();
+  });
+
   test('a provider\'s model offers every effort and context, unless it has '
       'its own; Medium and its default context are picked', () async {
     final (:kernel, :launches, clis: _, environments: _) = start(providers, {

@@ -145,8 +145,8 @@ Future<void> main(List<String> arguments) async {
         : PreferenceStore.file(
             p.join(DataDirectory.current.stateDir, 'drafts.json'),
           ),
-    // The data folder's icons/.
-    icons: IconLibrary(storage: IconStorage.directory()),
+    // The data folder's icons/, the upstreams of models' pictures too.
+    icons: IconLibrary.current = IconLibrary(storage: IconStorage.directory()),
     titler: claudeAgentTitle,
     l10n: () =>
         lookupAppLocalizations(locale.locale ?? AppLocale.systemLocale()),
@@ -228,6 +228,7 @@ Future<void> main(List<String> arguments) async {
       sync: sync,
       installs: VsCodeInstalls.current(),
       updates: _startUpdates(files),
+      workspace: workspace,
     );
     _startTelemetry(files);
   }

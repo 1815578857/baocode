@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../chat/chat_models.dart';
 import '../../models/launch_environment.dart';
+import '../../models/model_icons.dart';
 import '../../models/model_provider.dart';
 import '../../models/model_providers.dart';
 import '../../models/model_runtime.dart';
@@ -727,9 +728,9 @@ class ClaudeCodeKernel
 
   /// A random UUID (v4), as Claude Code names its sessions.
   static String _newSessionId() {
-    String hex(int length) => [
-      for (var i = 0; i < length; i++) _random.nextInt(16).toRadixString(16),
-    ].join();
+    String hex(int length) =>
+        [for (var i = 0; i < length; i++) _random.nextInt(16).toRadixString(16)]
+            .join();
     final variant = (8 + _random.nextInt(4)).toRadixString(16);
     return '${hex(8)}-${hex(4)}-4${hex(3)}-$variant${hex(3)}-${hex(12)}';
   }
@@ -2027,10 +2028,23 @@ class ClaudeCodeKernel
   }
 
   /// The heading Claude Code's own models are listed under.
-  static const _builtinGroup = KernelOptionGroup(
+  static final _builtinGroup = KernelOptionGroup(
     builtinProviderId,
     'Claude Code',
+    iconBuilder: _providerIcon(builtinProviderId),
   );
+
+  /// Provider [id]'s icon, as its models' heading shows it.
+  static Widget Function(double, Color) _providerIcon(String id) =>
+      (size, color) => ProviderIcon(id, size: size, color: color);
+
+  /// [model]'s of [provider], as its option shows it.
+  static Widget Function(double, Color) _modelIcon(
+    String provider,
+    String model,
+  ) =>
+      (size, color) =>
+          ModelIcon(provider: provider, model: model, size: size, color: color);
 
   @override
   bool switchRestarts(String model) =>
@@ -2119,15 +2133,19 @@ class ClaudeCodeKernel
       return [
         // Hidden only with a provider's models to pick instead.
         if (!_providers.builtinHidden || providers.isEmpty || current == null)
-          if (_models.isEmpty)
-            const KernelOption(
-              'default',
-              'Default',
-              Icons.bolt_rounded,
-              '',
-              group: _builtinGroup,
-            )
-          else
+          if (_models.isEmpty) ...[
+            // Its models not known (it is not logged in, or has not
+            // started): left out for a provider's, unless in use.
+            if (providers.isEmpty || current == null)
+              KernelOption(
+                'default',
+                'Default',
+                Icons.bolt_rounded,
+                '',
+                group: _builtinGroup,
+                iconBuilder: _modelIcon(builtinProviderId, 'default'),
+              ),
+          ] else
             for (final MapEntry(key: id, value: variants) in _models.entries)
               KernelOption(
                 id,
@@ -2140,6 +2158,7 @@ class ClaudeCodeKernel
                 Icons.bolt_rounded,
                 variants.first.description,
                 group: _builtinGroup,
+                iconBuilder: _modelIcon(builtinProviderId, id),
               ),
         for (final provider in providers)
           for (final info in provider.enabledModels)
@@ -2155,7 +2174,9 @@ class ClaudeCodeKernel
                 provider.id,
                 provider.name,
                 warning: _providers.error(provider.id),
+                iconBuilder: _providerIcon(provider.id),
               ),
+              iconBuilder: _modelIcon(provider.id, info.id),
             ),
       ];
     },

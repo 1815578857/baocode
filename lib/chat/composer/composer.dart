@@ -14,7 +14,6 @@ import '../../kernel/agent_kernel.dart';
 import '../../kernel/kernel_types.dart';
 import '../../keybindings/chat_keybindings.dart';
 import '../../l10n/l10n.dart';
-import '../../models/model_provider.dart' show builtinProviderId;
 import '../../settings/settings_dialog.dart'
     show SettingsOpener, SettingsSection;
 import '../../theme/app_theme.dart';
@@ -1679,13 +1678,9 @@ class ChatComposerState extends State<ChatComposer>
                       options: model.options,
                       selected: model.selected,
                       label: _modelLabel(model.selected, model.options),
-                      // The id and the context window: once there are
-                      // upstreams' models.
-                      describes: model.options.any(
-                        (option) =>
-                            option.group != null &&
-                            option.group!.id != builtinProviderId,
-                      ),
+                      // Each its name alone, one line; its maker's logo
+                      // and its upstream's heading tell the rest.
+                      describes: false,
                       settingsOf: (option) => [
                         for (final setting in session.modelSettings(option.id))
                           ModelSettingChoice(

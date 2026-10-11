@@ -784,6 +784,10 @@ class _GroupHeading extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(8, first ? 4 : 8, 8, 3),
       child: Row(
         children: [
+          if (group?.iconBuilder case final icon?) ...[
+            icon(12, AppColors.textFaint),
+            const SizedBox(width: 6),
+          ],
           Flexible(
             child: Text(
               group?.label ?? '',

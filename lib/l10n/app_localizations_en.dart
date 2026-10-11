@@ -1830,6 +1830,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get iconPickerDeleteFromLibrary => 'Delete from Library';
 
   @override
+  String get iconPickerBrands => 'Logos';
+
+  @override
+  String get iconPickerSiteIcon => 'Use the site\'s icon';
+
+  @override
+  String iconPickerSiteIconNone(String host) {
+    return 'No icon found on $host';
+  }
+
+  @override
   String get iconUploadTooLarge => 'The file is larger than 5 MB';
 
   @override
@@ -5864,6 +5875,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelsName => 'Name';
+
+  @override
+  String get modelsIcon => 'Icon';
+
+  @override
+  String get modelsIconDescription =>
+      'Heads its models in the model picker: a maker\'s logo, the site\'s icon or a picture of your own. Unset, the maker\'s logo its base URL names.';
+
+  @override
+  String get modelsIconChange => 'Change Icon';
 
   @override
   String get modelsProtocol => 'Protocol';

@@ -987,6 +987,16 @@
   "iconPickerDropHere": "Drop the image here",
   "iconPickerUploaded": "Uploaded",
   "iconPickerDeleteFromLibrary": "Delete from Library",
+  "iconPickerBrands": "Logos",
+  "iconPickerSiteIcon": "Use the site's icon",
+  "iconPickerSiteIconNone": "No icon found on {host}",
+  "@iconPickerSiteIconNone": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
   "iconUploadTooLarge": "The file is larger than 5 MB",
   "iconUploadUnsupported": "Not a PNG, JPG, WebP, GIF or SVG image",
   "iconUploadUnreadable": "The file could not be read",
@@ -4184,6 +4194,9 @@
   "modelsProtocolAnthropic": "Anthropic-compatible",
   "modelsConnection": "Connection",
   "modelsName": "Name",
+  "modelsIcon": "Icon",
+  "modelsIconDescription": "Heads its models in the model picker: a maker's logo, the site's icon or a picture of your own. Unset, the maker's logo its base URL names.",
+  "modelsIconChange": "Change Icon",
   "modelsProtocol": "Protocol",
   "modelsProtocolDescription": "OpenAI's APIs go through the local proxy, which translates Claude Code's requests and the answers.",
   "modelsBaseUrl": "Base URL",

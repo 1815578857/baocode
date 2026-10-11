@@ -3494,6 +3494,24 @@ abstract class AppLocalizations {
   /// **'Delete from Library'**
   String get iconPickerDeleteFromLibrary;
 
+  /// No description provided for @iconPickerBrands.
+  ///
+  /// In en, this message translates to:
+  /// **'Logos'**
+  String get iconPickerBrands;
+
+  /// No description provided for @iconPickerSiteIcon.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the site\'s icon'**
+  String get iconPickerSiteIcon;
+
+  /// No description provided for @iconPickerSiteIconNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No icon found on {host}'**
+  String iconPickerSiteIconNone(String host);
+
   /// No description provided for @iconUploadTooLarge.
   ///
   /// In en, this message translates to:
@@ -9686,6 +9704,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Name'**
   String get modelsName;
+
+  /// No description provided for @modelsIcon.
+  ///
+  /// In en, this message translates to:
+  /// **'Icon'**
+  String get modelsIcon;
+
+  /// No description provided for @modelsIconDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Heads its models in the model picker: a maker\'s logo, the site\'s icon or a picture of your own. Unset, the maker\'s logo its base URL names.'**
+  String get modelsIconDescription;
+
+  /// No description provided for @modelsIconChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Icon'**
+  String get modelsIconChange;
 
   /// No description provided for @modelsProtocol.
   ///

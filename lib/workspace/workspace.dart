@@ -1533,17 +1533,27 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
       _projectIcons.remove(project.path);
     } else {
       _projectIcons[project.path] = icon;
-      if (remember) {
-        _recentIcons
-          ..remove(icon)
-          ..insert(0, icon);
-        if (_recentIcons.length > _keptRecentIcons) {
-          _recentIcons.removeRange(_keptRecentIcons, _recentIcons.length);
-        }
-      }
+      if (remember) _remember(icon);
     }
     _save();
     notifyListeners();
+  }
+
+  /// Notes [icon], picked for something else than a project (an upstream
+  /// of models), among the [recentIcons].
+  void rememberIcon(ProjectIcon icon) {
+    _remember(icon);
+    _save();
+    notifyListeners();
+  }
+
+  void _remember(ProjectIcon icon) {
+    _recentIcons
+      ..remove(icon)
+      ..insert(0, icon);
+    if (_recentIcons.length > _keptRecentIcons) {
+      _recentIcons.removeRange(_keptRecentIcons, _recentIcons.length);
+    }
   }
 
   /// Whose pictures the emoji are drawn from ([EmojiSheet.style]); null
