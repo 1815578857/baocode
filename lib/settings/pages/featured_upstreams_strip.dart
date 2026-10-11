@@ -19,16 +19,24 @@ import 'settings_widgets.dart';
 /// ([FeaturedUpstream]): a card of each, in an order of chance each time it
 /// shows, scrolled sideways and faded out at an edge with more past it;
 /// last, a card for a site to be among them. Under them, why they show.
+///
+/// A user with an upstream at a listed site's [hosts] (one imported from
+/// it, say) sees that site's card first, or those sites', the rest after
+/// them: their site always leads.
 class FeaturedUpstreamsStrip extends StatefulWidget {
   const FeaturedUpstreamsStrip({
     super.key,
     this.upstreams,
+    this.hosts = const [],
     this.random,
     this.open = _openUrl,
   });
 
   /// Those listed; the app's ([FeaturedUpstream.load]) when null.
   final Future<List<FeaturedUpstream>>? upstreams;
+
+  /// The hosts of the user's upstreams.
+  final Iterable<String> hosts;
 
   /// What their order is drawn with.
   final Random? random;
@@ -78,8 +86,16 @@ class _FeaturedUpstreamsStripState extends State<FeaturedUpstreamsStrip> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final language = Localizations.localeOf(context).languageCode;
-    final cards = [
+    final used = {for (final host in widget.hosts) host.toLowerCase()};
+    final theirs = [
       for (final upstream in _upstreams)
+        if (upstream.hosts.any(used.contains)) upstream,
+    ];
+    final cards = [
+      for (final upstream in [
+        ...theirs,
+        ..._upstreams.where((upstream) => !theirs.contains(upstream)),
+      ])
         _Card(
           key: ValueKey(upstream.id),
           logo: _Logo(upstream),
@@ -125,7 +141,9 @@ class _FeaturedUpstreamsStripState extends State<FeaturedUpstreamsStrip> {
         Align(
           alignment: Alignment.centerRight,
           child: IdeHover(
-            message: l10n.modelsFeaturedWhyDetail,
+            message: theirs.isEmpty
+                ? l10n.modelsFeaturedWhyDetail
+                : l10n.modelsFeaturedWhyTheirsDetail,
             position: IdeHoverPosition.above,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

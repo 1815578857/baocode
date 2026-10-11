@@ -228,7 +228,10 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
     return SettingsPage(
       title: l10n.modelsTitle,
       info: l10n.modelsDescription,
-      lead: FeaturedUpstreamsStrip(upstreams: widget.featured),
+      lead: FeaturedUpstreamsStrip(
+        upstreams: widget.featured,
+        hosts: [for (final provider in _providers.providers) provider.host],
+      ),
       children: [
         SettingsCard(
           children: [

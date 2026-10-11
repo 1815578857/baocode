@@ -5789,6 +5789,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'These upstreams added BaoCode\'s one-click import: a click on their key page adds the upstream, key and all, right here. In return BaoCode lists them for free, in a random order. Nobody pays to be here, and being listed is not an endorsement.\n\nRun a site? Add the one-click import and let BaoCode know with an issue on its GitHub, to be listed for as long as the import works.';
 
   @override
+  String get modelsFeaturedWhyTheirsDetail =>
+      'These upstreams added BaoCode\'s one-click import: a click on their key page adds the upstream, key and all, right here. In return BaoCode lists them for free; the one you use comes first, the rest in a random order. Nobody pays to be here, and being listed is not an endorsement.\n\nRun a site? Add the one-click import and let BaoCode know with an issue on its GitHub, to be listed for as long as the import works.';
+
+  @override
   String get modelsFeaturedJoin => 'Your site here';
 
   @override

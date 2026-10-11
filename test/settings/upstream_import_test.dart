@@ -67,6 +67,37 @@ void main() {
       expect(opened.last, Uri.parse('https://baocode.dev/upstreams'));
     });
 
+    testWidgets('a user of a listed site sees it first, whatever the draw; '
+        'the rest after it', (tester) async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      for (final seed in [1, 2, 3, 4]) {
+        await tester.pumpWidget(
+          _app(
+            FeaturedUpstreamsStrip(
+              key: ValueKey(seed),
+              upstreams: Future.value(_featured),
+              hosts: const ['API.beta.example.com', 'api.anthropic.com'],
+              random: Random(seed),
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(
+          tester.getTopLeft(find.text('Beta Relay')).dx,
+          lessThan(tester.getTopLeft(find.text('Alpha API')).dx),
+          reason: 'seed $seed',
+        );
+        expect(find.text('Your site here'), findsOneWidget);
+      }
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is IdeHover && w.message == l10n.modelsFeaturedWhyTheirsDetail,
+        ),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('the order is drawn by chance', (tester) async {
       final many = [
         for (var i = 0; i < 8; i++)
@@ -122,6 +153,33 @@ void main() {
         findsOneWidget,
       );
     });
+  });
+
+  testWidgets('Settings → Models shows a user of a listed site it first, by '
+      'the upstreams they have', (tester) async {
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await providers.save(
+      const ModelProvider(
+        id: 'beta',
+        name: 'Beta',
+        baseUrl: 'https://api.beta.example.com',
+      ),
+    );
+    await tester.pumpWidget(
+      _app(
+        ModelsSettingsPage(
+          providers: providers,
+          featured: Future.value(_featured),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(
+      tester.getTopLeft(find.text('Beta Relay')).dx,
+      lessThan(tester.getTopLeft(find.text('Alpha API')).dx),
+    );
   });
 
   group('the import', () {
