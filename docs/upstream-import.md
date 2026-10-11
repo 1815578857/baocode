@@ -70,16 +70,12 @@
    - 往 `upstreams.json` 加一条，PR 引用 issue。
 4. 下架：导入失效、域名易主、误导用户（例如冒充官方），删掉条目即可，在 issue 里说明。
 
-## 给站长的接入提示词（草稿）
+## 给站长的接入提示词
 
-官网 /upstreams 页面上放的、让站长直接丢给 AI 的提示词：
-
-> 在我的站点（new-api / sub2api / 自研）令牌列表的每个令牌旁加一个「导入到
-> BaoCode」按钮，点击后在新标签页打开：
-> `https://baocode.dev/import#v=1&name=<站点名>&protocol=<anthropic|openai-chat|openai-responses>&url=<API 地址，不带 /v1>&key=<该令牌的完整 key>`
-> 每个参数值都要 encodeURIComponent。参数必须放在 `#` 后面，不能放在 `?` 后面，
-> 这样 key 不会经过任何服务器。按钮使用 BaoCode 图标（附 SVG）和文字「导入到
-> BaoCode」。不要引用 baocode.dev 的任何脚本。
+放在官网 /upstreams 页面最上面，站长复制后直接丢给 AI 编程助手：
+`site/upstreams.html` 和 `site/zh/upstreams.html` 的「交给 AI 来做」一节，两边要一起改。
+它让 AI 先判断站点是 new-api 系（只给配置，不改代码）还是 sub2api / 自研（在令牌列表加按钮），
+链接参数、`#` 不能换成 `?`、不引用 baocode.dev 资源、验证方法都写在里面。
 
 new-api 不用改代码：系统设置 → 聊天设置 里加一行即可（`{address}`、`{key}` 由
 new-api 替换）：

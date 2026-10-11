@@ -5,6 +5,18 @@ for (const img of document.querySelectorAll('figure img')) {
   if (img.complete && !img.naturalWidth) missing();
 }
 
+// A block's Copy button: copies its text, and says so for a moment.
+for (const button of document.querySelectorAll('[data-copy]')) {
+  const label = button.textContent;
+  button.addEventListener('click', async () => {
+    const text = button.parentElement.querySelector('pre').innerText;
+    try { await navigator.clipboard.writeText(text); } catch { return; }
+    button.textContent = button.dataset.done;
+    clearTimeout(button.reset);
+    button.reset = setTimeout(() => { button.textContent = label; }, 1600);
+  });
+}
+
 // The notification sound, played on the page.
 for (const button of document.querySelectorAll('[data-sound]')) {
   const audio = new Audio(button.dataset.sound);
