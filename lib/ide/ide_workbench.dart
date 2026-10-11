@@ -4454,75 +4454,81 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         final focus = Focus(
           focusNode: _workbenchFocus,
           onKeyEvent: _onWorkbenchKey,
-          child: Material(
-            color: IdeModernUI.shell,
-            child: Stack(
-              children: [
-                Column(
-                  children: [
-                    if (!WindowControls.drawsHeader) _titleBar(),
-                    Expanded(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) =>
-                            _split(constraints.biggest, commands),
+          // The explorer's uploads and downloads show their progress here.
+          child: IdeNotificationsScope(
+            notifications: _notifications,
+            child: Material(
+              color: IdeModernUI.shell,
+              child: Stack(
+                children: [
+                  Column(
+                    children: [
+                      if (!WindowControls.drawsHeader) _titleBar(),
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) =>
+                              _split(constraints.biggest, commands),
+                        ),
+                      ),
+                      _statusBar(),
+                    ],
+                  ),
+                  // VS Code's toasts and center: 8px from the right, 36px
+                  // from the bottom (`notificationsDialogs.css`).
+                  Positioned(
+                    right: 8,
+                    bottom: 36,
+                    top: AppMetrics.titleBarHeight,
+                    left: 8,
+                    child: Align(
+                      alignment: Alignment.bottomRight,
+                      child: IdeNotificationsCenter(
+                        notifications: _notifications,
                       ),
                     ),
-                    _statusBar(),
-                  ],
-                ),
-                // VS Code's toasts and center: 8px from the right, 36px
-                // from the bottom (`notificationsDialogs.css`).
-                Positioned(
-                  right: 8,
-                  bottom: 36,
-                  top: AppMetrics.titleBarHeight,
-                  left: 8,
-                  child: Align(
-                    alignment: Alignment.bottomRight,
-                    child: IdeNotificationsCenter(
-                      notifications: _notifications,
+                  ),
+                  Positioned(
+                    right: 8,
+                    bottom: 36,
+                    left: 8,
+                    child: Align(
+                      alignment: Alignment.bottomRight,
+                      child: IdeNotificationToasts(
+                        notifications: _notifications,
+                      ),
                     ),
                   ),
-                ),
-                Positioned(
-                  right: 8,
-                  bottom: 36,
-                  left: 8,
-                  child: Align(
-                    alignment: Alignment.bottomRight,
-                    child: IdeNotificationToasts(notifications: _notifications),
-                  ),
-                ),
-                if (_quickModel != null || _quickInput != null)
-                  Positioned.fill(
-                    top: WindowControls.drawsHeader
-                        ? 0
-                        : AppMetrics.titleBarHeight,
-                    child: switch (_quickModel) {
-                      final IdeQuickPick pick => IdeQuickInput.pick(
-                        key: _quickInputKey,
-                        pick: pick,
-                        onClose: _closeQuickInput,
-                      ),
-                      final IdeQuickInputBox box => IdeQuickInput.input(
-                        key: _quickInputKey,
-                        inputBox: box,
-                        onClose: _closeQuickInput,
-                      ),
-                      null => IdeQuickInput(
-                        key: _quickInputKey,
-                        initialText: _quickInput!,
-                        itemsFor: _quickItems,
-                        placeholderFor: _quickPlaceholder,
-                        onClose: _closeQuickInput,
-                        refresh: _quickRefresh,
-                        itemActivation: _quickActivation,
-                        quickNavigate: _quickNavigateChords,
-                        hideInput: _quickHideInput,
-                      ),
-                    },
-                  ),
-              ],
+                  if (_quickModel != null || _quickInput != null)
+                    Positioned.fill(
+                      top: WindowControls.drawsHeader
+                          ? 0
+                          : AppMetrics.titleBarHeight,
+                      child: switch (_quickModel) {
+                        final IdeQuickPick pick => IdeQuickInput.pick(
+                          key: _quickInputKey,
+                          pick: pick,
+                          onClose: _closeQuickInput,
+                        ),
+                        final IdeQuickInputBox box => IdeQuickInput.input(
+                          key: _quickInputKey,
+                          inputBox: box,
+                          onClose: _closeQuickInput,
+                        ),
+                        null => IdeQuickInput(
+                          key: _quickInputKey,
+                          initialText: _quickInput!,
+                          itemsFor: _quickItems,
+                          placeholderFor: _quickPlaceholder,
+                          onClose: _closeQuickInput,
+                          refresh: _quickRefresh,
+                          itemActivation: _quickActivation,
+                          quickNavigate: _quickNavigateChords,
+                          hideInput: _quickHideInput,
+                        ),
+                      },
+                    ),
+                ],
+              ),
             ),
           ),
         );

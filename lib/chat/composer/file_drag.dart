@@ -1,19 +1,25 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
+import '../../workspace/window_controls.dart';
 import '../../theme/material_file_icons.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
 import 'composer_files.dart';
 
 /// [child], to drag [files] from onto the composer (the IDE's explorer
-/// rows, its tabs…), as files are dragged in from other apps.
-class FileDraggable extends StatelessWidget {
+/// rows, its tabs…), as files are dragged in from other apps. With
+/// [outward], they go on out of the window as the system drags files, to
+/// let go in another app (Finder…), as VS Code's explorer does.
+class FileDraggable extends StatefulWidget {
   const FileDraggable({
     super.key,
     required this.files,
     required this.child,
     this.onDragStarted,
     this.onDragEnd,
+    this.outward,
   });
 
   final List<ComposerFile> files;
@@ -23,15 +29,73 @@ class FileDraggable extends StatelessWidget {
   final VoidCallback? onDragStarted;
   final VoidCallback? onDragEnd;
 
+  /// [files] as this machine's paths, for other apps once the drag leaves
+  /// the window (a remote project's downloaded first); null when they are
+  /// not to be had. None: the drag stays in the window.
+  final Future<List<String>?> Function()? outward;
+
+  @override
+  State<FileDraggable> createState() => _FileDraggableState();
+}
+
+class _FileDraggableState extends State<FileDraggable> {
+  /// Out of the window, the system's drag: the app's own shows nothing.
+  final ValueNotifier<bool> _out = ValueNotifier(false);
+
+  /// Whether the app's own drag goes on (the pointer held down).
+  bool _dragging = false;
+
+  @override
+  void dispose() {
+    _out.dispose();
+    super.dispose();
+  }
+
+  /// The pointer left the window with the files: the system drags them on,
+  /// once they are this machine's.
+  void _update(DragUpdateDetails details) {
+    if (_out.value) return;
+    final view = View.of(context);
+    final size = view.physicalSize / view.devicePixelRatio;
+    if ((Offset.zero & size).contains(details.globalPosition)) return;
+    final outward = widget.outward;
+    if (outward == null) return;
+    _out.value = true;
+    unawaited(() async {
+      final paths = await outward().catchError((Object _) => null);
+      // Let go while they came: nothing to drag on.
+      final began =
+          paths != null &&
+          _dragging &&
+          await WindowControls.startFileDrag(paths, viewId: view.viewId);
+      if (!began && mounted && _dragging) _out.value = false;
+    }());
+  }
+
   @override
   Widget build(BuildContext context) => Draggable<FileDragData>(
-    data: FileDragData(files),
+    data: FileDragData(widget.files),
     // The composer places what is let go at the pointer.
     dragAnchorStrategy: pointerDragAnchorStrategy,
-    feedback: _Feedback(files),
-    onDragStarted: onDragStarted,
-    onDragEnd: onDragEnd == null ? null : (_) => onDragEnd!(),
-    child: child,
+    feedback: ValueListenableBuilder(
+      valueListenable: _out,
+      builder: (context, out, _) =>
+          out ? const SizedBox.shrink() : _Feedback(widget.files),
+    ),
+    onDragStarted: () {
+      _dragging = true;
+      _out.value = false;
+      widget.onDragStarted?.call();
+    },
+    onDragUpdate: widget.outward != null && WindowControls.canDragFilesOut
+        ? _update
+        : null,
+    onDragEnd: (_) {
+      _dragging = false;
+      _out.value = false;
+      widget.onDragEnd?.call();
+    },
+    child: widget.child,
   );
 }
 

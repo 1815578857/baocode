@@ -2589,6 +2589,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get interactionBack => 'Back';
 
   @override
+  String get interactionCollapse => 'Collapse';
+
+  @override
+  String get interactionExpand => 'Expand';
+
+  @override
   String interactionMoreLines(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -2915,6 +2921,19 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get explorerPasteIntoAncestor =>
       'File to paste is an ancestor of the destination folder';
+
+  @override
+  String explorerUploading(int done, int total) {
+    return 'Uploading files... $done/$total';
+  }
+
+  @override
+  String explorerDownloading(int done, int total) {
+    return 'Downloading files... $done/$total';
+  }
+
+  @override
+  String get explorerPreparingTransfer => 'Preparing files...';
 
   @override
   String get explorerNewFile => 'New File...';

@@ -33,6 +33,9 @@ class _MemoryStore implements CustomizationStore {
   bool get supported => true;
 
   @override
+  bool get isLocal => true;
+
+  @override
   Future<String> config() async => '/c';
 
   @override

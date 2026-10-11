@@ -42,8 +42,7 @@ abstract final class ModelBrand {
       RegExp('(^|[/_.: -])(?:$pattern)', caseSensitive: false);
 
   static final _models = [
-    // Anthropic's own logo, as Claude Code's own models have it.
-    (_word('claude|anthropic'), 'anthropic'),
+    (_word('claude|anthropic'), 'claude'),
     (_word(r'gemini'), 'gemini'),
     (_word(r'gemma'), 'google'),
     (_word(r'deepseek'), 'deepseek'),

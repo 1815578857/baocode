@@ -1,13 +1,16 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../ide/ide_fuzzy.dart';
 import '../../ide/ide_hover.dart';
 import '../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/codicons.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
 import '../chat_session.dart';
 import '../widgets/hover_builder.dart';
@@ -23,7 +26,8 @@ import '../floating/floating_registry.dart';
 /// Behaves like a native menu: opens on press (not release), and a press
 /// can be dragged onto an option and released to pick it. While open, ↑/↓,
 /// Enter and Esc drive it without taking focus from the composer; → and ←
-/// go into an option's settings and back.
+/// go into an option's settings and back; Tab into its search line, if it
+/// has one, and out again. Typing goes into the search line too.
 class ComposerPicker extends StatefulWidget {
   const ComposerPicker({
     super.key,
@@ -131,8 +135,8 @@ class ComposerPickerState extends State<ComposerPicker> {
       widget.searchPlaceholder != null &&
       widget.options.length >= ComposerPicker.searchFrom;
 
-  /// The options shown, by index: those [_query] matches.
-  List<int> get _visible {
+  /// The options [_query] matches, by index; their groups' headings show.
+  List<int> get _matching {
     final query = _query.trim().toLowerCase();
     return [
       for (final (i, option) in widget.options.indexed)
@@ -143,6 +147,49 @@ class ComposerPickerState extends State<ComposerPicker> {
             (option.group?.label.toLowerCase().contains(query) ?? false))
           i,
     ];
+  }
+
+  /// The options shown, by index: those [_query] matches, but for those of
+  /// the groups collapsed (searching, none is).
+  List<int> get _visible => [
+    for (final i in _matching)
+      if (!_collapsedAt(i)) i,
+  ];
+
+  /// Headings only when there is more than one group to tell apart.
+  bool get _grouped =>
+      {for (final option in widget.options) option.group?.id}.length > 1;
+
+  /// The groups collapsed under their headings, by id: open again as the
+  /// menu is, until the picker goes.
+  final Set<String> _collapsed = {};
+
+  bool get _collapses => _query.trim().isEmpty && _grouped;
+
+  bool _collapsedAt(int index) =>
+      _collapses && _collapsed.contains(widget.options[index].group?.id);
+
+  /// Collapses [group], or opens it again. From the heading stuck over the
+  /// list, its own is scrolled to the top: where what it heads was.
+  void _toggleGroup(KernelOptionGroup group, {bool stuck = false}) {
+    setState(() {
+      if (!_collapsed.remove(group.id)) _collapsed.add(group.id);
+    });
+    if (!stuck) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final heading = _headingKeys[group.id]?.currentContext;
+      if (heading == null || !heading.mounted) return;
+      unawaited(Scrollable.ensureVisible(heading));
+    });
+  }
+
+  /// Where [text] has what was searched, if it does.
+  List<int> _matchesIn(String text) {
+    final query = _query.trim().toLowerCase();
+    if (query.isEmpty) return const [];
+    final at = text.toLowerCase().indexOf(query);
+    if (at < 0) return const [];
+    return [for (var i = at; i < at + query.length; i++) i];
   }
 
   void _search(String query) {
@@ -158,25 +205,91 @@ class ComposerPickerState extends State<ComposerPicker> {
     if (visible != null && visible.isNotEmpty) {
       if (!visible.contains(_highlighted)) _highlighted = visible.first;
     }
+    // What is found, from its start.
+    if (_list.hasClients) _list.jumpTo(0);
     setState(() {});
   }
 
-  /// Option [index] scrolled into view, after the keys moved to it.
+  /// Option [index] scrolled into view, after the keys moved to it: below
+  /// the heading stuck over the list, if one is.
   void _reveal(int index, {required bool down}) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (index >= _rowKeys.length) return;
       final row = _rowKeys[index].currentContext;
       if (row == null || !row.mounted) return;
-      unawaited(
-        Scrollable.ensureVisible(
-          row,
-          alignmentPolicy: down
-              ? ScrollPositionAlignmentPolicy.keepVisibleAtEnd
-              : ScrollPositionAlignmentPolicy.keepVisibleAtStart,
-        ),
+      await Scrollable.ensureVisible(
+        row,
+        alignmentPolicy: down
+            ? ScrollPositionAlignmentPolicy.keepVisibleAtEnd
+            : ScrollPositionAlignmentPolicy.keepVisibleAtStart,
       );
+      if (down || !row.mounted || !_list.hasClients) return;
+      final box = row.findRenderObject();
+      final viewport = _listKey.currentContext?.findRenderObject();
+      if (box is! RenderBox || viewport is! RenderBox) return;
+      final top = box.localToGlobal(Offset.zero, ancestor: viewport).dy;
+      final covered = _stuckCover() - top;
+      if (covered > 0) {
+        _list.jumpTo(math.max(0, _list.offset - covered));
+      }
     });
   }
+
+  // --- Stuck headings ------------------------------------------------------
+  //
+  // The heading of the group scrolled into stays over the list, as long as
+  // its options show: pushed up by the next one's as it comes. What is
+  // under it is hidden and fades in below it (not over it).
+
+  final ScrollController _list = ScrollController();
+
+  /// The list's viewport.
+  final GlobalKey _listKey = GlobalKey();
+
+  /// The headings in the list, in order, as last built.
+  List<({KernelOptionGroup group, bool first, GlobalKey key})> _headings =
+      const [];
+
+  /// Each group's heading, by its id: the same as the list is built again.
+  final Map<String, GlobalKey> _headingKeys = {};
+
+  /// How high the stuck heading is ([_GroupHeading] first in the list).
+  static const _stuckHeight = 22.0;
+
+  /// Where a heading's label is when stuck, from the list's top: as the
+  /// first heading's is, unscrolled.
+  static const _stuckLabel = 4.0;
+
+  /// The heading stuck over the list, and how far the next one pushes it
+  /// up (≤ 0); null while none is scrolled past. From the headings' places
+  /// now: scrolling moves them before the next layout.
+  ({KernelOptionGroup group, double shift})? _stuck() {
+    final viewport = _listKey.currentContext?.findRenderObject();
+    if (viewport is! RenderBox || !viewport.attached) return null;
+    ({KernelOptionGroup group, double shift})? stuck;
+    for (final heading in _headings) {
+      final box = heading.key.currentContext?.findRenderObject();
+      if (box is! RenderBox || !box.attached || !box.hasSize) continue;
+      final top = box.localToGlobal(Offset.zero, ancestor: viewport).dy;
+      if (top + _GroupHeading.labelTop(first: heading.first) < _stuckLabel) {
+        stuck = (group: heading.group, shift: 0);
+        continue;
+      }
+      // Pushed up by its line.
+      if (stuck != null) {
+        final line = top + (heading.first ? 0 : _GroupHeading.lineGap);
+        stuck = (group: stuck.group, shift: math.min(0.0, line - _stuckHeight));
+      }
+      break;
+    }
+    return stuck;
+  }
+
+  /// How much of the list's top the stuck heading hides; 0 for none.
+  double _stuckCover() => switch (_stuck()) {
+    (group: _, :final shift) => math.max(0, _stuckHeight + shift),
+    null => 0,
+  };
 
   // An option's settings are one menu, moved from option to option (not
   // one per option): switching between them neither fades nor flickers.
@@ -201,6 +314,9 @@ class ComposerPickerState extends State<ComposerPicker> {
   final Map<int, List<ModelSettingChoice>> _settings = {};
 
   final GlobalKey _menuKey = GlobalKey();
+
+  /// The options whose rows the menu was last built with.
+  Set<int> _rowsBuilt = const {};
   final GlobalKey _settingsKey = GlobalKey();
 
   /// Where the pointer last was over the options: where its next move
@@ -246,6 +362,7 @@ class ComposerPickerState extends State<ComposerPicker> {
     _searchFocus.dispose();
     _highlight.dispose();
     _shown.dispose();
+    _list.dispose();
     _settingHighlight.dispose();
     super.dispose();
   }
@@ -410,22 +527,41 @@ class ComposerPickerState extends State<ComposerPicker> {
       if (event is KeyDownEvent) {
         _query.isEmpty ? _setOpen(false) : _search('');
       }
+    } else if (_searches &&
+        key == LogicalKeyboardKey.tab &&
+        !HardwareKeyboard.instance.isShiftPressed &&
+        !_searchFocus.hasFocus) {
+      // Into the search line, from the keyboard as from a click.
+      if (event is KeyDownEvent) _searchFocus.requestFocus();
     } else if (_searches && key == LogicalKeyboardKey.backspace) {
       if (_query.isNotEmpty) {
         _search(_query.substring(0, _query.length - 1));
+        _activateSearch();
       }
     } else if ((_searches ? _typed(event) : null) case final text?) {
       _search(_query + text);
+      _activateSearch();
     } else {
       return null;
     }
     return KeyEventResult.handled;
   }
 
+  /// Typing over the menu goes on in its search line: it takes the keys
+  /// from then on, ringed, its caret after what was typed.
+  void _activateSearch() {
+    if (!_searchFocus.hasFocus) _searchFocus.requestFocus();
+  }
+
   /// A key in the focused search line: the menu's (↑↓, Enter, Esc; all
   /// of them in the settings), the rest the line's own.
   KeyEventResult _handleSearchKey(KeyEvent event) {
     final key = event.logicalKey;
+    // Back to the input: the focus does not go on out of the menu.
+    if (key == LogicalKeyboardKey.tab) {
+      if (event is KeyDownEvent) widget.focusNode?.requestFocus();
+      return KeyEventResult.handled;
+    }
     final menu =
         _setting != null ||
         key == LogicalKeyboardKey.arrowUp ||
@@ -624,11 +760,14 @@ class ComposerPickerState extends State<ComposerPicker> {
 
   /// The settings' anchor: the option they belong to, across the menu
   /// ([menu], in overlay coordinates), from its border above the option.
+  /// The option filtered out (its settings fading out), the menu: its row
+  /// is on its way out of the tree, not to be asked where it is.
   Rect _settingsAnchor(Rect menu) {
+    if (!_rowsBuilt.contains(_settingsAt)) return menu;
     final box = _menuKey.currentContext?.findRenderObject();
-    if (_settingsAt >= _rowKeys.length) return menu;
     final row = _rowKeys[_settingsAt].currentContext?.findRenderObject();
-    if (box is! RenderBox || row is! RenderBox || !row.hasSize) return menu;
+    if (box is! RenderBox || row is! RenderBox) return menu;
+    if (!row.attached || !row.hasSize) return menu;
     final top = row.localToGlobal(Offset.zero, ancestor: box).dy;
     // The menu may be scaled, opening.
     final scale = menu.height / box.size.height;
@@ -700,42 +839,125 @@ class ComposerPickerState extends State<ComposerPicker> {
     );
   }
 
+  /// [rows] scrolling, the heading of the group scrolled into stuck over
+  /// them. What is scrolled past fades out under the search line and the
+  /// footer, in place of lines between them, and under the stuck heading;
+  /// the scrollbar is over all that, at the menu's edge.
+  Widget _buildList(List<Widget> rows) => Scrollbar(
+    controller: _list,
+    child: ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+      child: Stack(
+        children: [
+          ScrollEdgeFade(
+            fadeLength: 16,
+            topCover: () => _headings.isEmpty ? null : _stuckCover(),
+            coverFade: 12,
+            repaint: _list,
+            child: SingleChildScrollView(
+              key: _listKey,
+              controller: _list,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: rows,
+              ),
+            ),
+          ),
+          ListenableBuilder(
+            listenable: _list,
+            builder: (context, _) => switch (_stuck()) {
+              (:final group, :final shift) => Positioned(
+                top: shift,
+                left: 0,
+                right: 0,
+                height: _stuckHeight,
+                // Takes the pointer: what it hides is not pointed at.
+                child: MouseRegion(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {},
+                    child: _headingOf(group, first: true, stuck: true),
+                  ),
+                ),
+              ),
+              null => const SizedBox.shrink(),
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+
   /// The options' list at most this high; it scrolls past it.
   static const _maxListHeight = 380.0;
 
+  /// [group]'s heading: in the list, or [stuck] over it.
+  Widget _headingOf(
+    KernelOptionGroup group, {
+    Key? key,
+    required bool first,
+    bool stuck = false,
+  }) => _GroupHeading(
+    key: key,
+    group: group,
+    first: first,
+    matches: _matchesIn(group.label),
+    collapsed: _collapses ? _collapsed.contains(group.id) : null,
+    onTap: _collapses ? () => _toggleGroup(group, stuck: stuck) : null,
+  );
+
   Widget _buildOptions() {
     final options = widget.options;
-    // Headings only when there is more than one group to tell apart.
-    final grouped = {for (final option in options) option.group?.id}.length > 1;
-    final visible = _visible;
+    final grouped = _grouped;
+    final matching = _matching;
+    const sides = EdgeInsets.symmetric(horizontal: _menuPadding);
     final rows = <Widget>[];
+    final headings = <({KernelOptionGroup group, bool first, GlobalKey key})>[];
     KernelOptionGroup? group;
-    for (final (n, i) in visible.indexed) {
+    for (final (n, i) in matching.indexed) {
       final option = options[i];
       // Those in no group (first, as a rule) go without one.
       if (grouped &&
           option.group != null &&
           (n == 0 || option.group?.id != group?.id)) {
-        rows.add(_GroupHeading(group: option.group, first: n == 0));
+        final heading = (
+          group: option.group!,
+          first: n == 0,
+          key: _headingKeys[option.group!.id] ??= GlobalKey(),
+        );
+        headings.add(heading);
+        rows.add(
+          _headingOf(heading.group, key: heading.key, first: heading.first),
+        );
       }
       group = option.group;
+      if (_collapsedAt(i)) continue;
       rows.add(
-        _PickerRow(
-          key: _rowKeys[i],
-          option: option,
-          height: _rowHeight,
-          describes: widget.describes,
-          hasSettings: _settingsFor(i).isNotEmpty,
-          selected: option == widget.selected,
-          index: i,
-          highlight: _highlight,
-          onHover: (position) => _pointAt(i, position),
-          onTap: () => _select(i),
+        Padding(
+          padding: sides,
+          child: _PickerRow(
+            key: _rowKeys[i],
+            option: option,
+            matches: _matchesIn(option.label),
+            height: _rowHeight,
+            describes: widget.describes,
+            hasSettings: _settingsFor(i).isNotEmpty,
+            selected: option == widget.selected,
+            index: i,
+            highlight: _highlight,
+            onHover: (position) => _pointAt(i, position),
+            onTap: () => _select(i),
+          ),
         ),
       );
     }
+    _headings = headings;
+    _rowsBuilt = {
+      for (final i in matching)
+        if (!_collapsedAt(i)) i,
+    };
     final footer = widget.footer;
-    const sides = EdgeInsets.symmetric(horizontal: _menuPadding);
     final menu = Container(
       key: _menuKey,
       width: widget.menuWidth,
@@ -761,7 +983,7 @@ class ComposerPickerState extends State<ComposerPicker> {
               focusNode: _searchFocus,
               placeholder: widget.searchPlaceholder!,
             ),
-          if (visible.isEmpty)
+          if (matching.isEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
               child: Text(
@@ -773,19 +995,7 @@ class ComposerPickerState extends State<ComposerPicker> {
             Flexible(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: _maxListHeight),
-                // What is scrolled past fades out under the search line
-                // and the footer, in place of lines between them.
-                child: ScrollEdgeFade(
-                  fadeLength: 16,
-                  child: SingleChildScrollView(
-                    padding: sides,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: rows,
-                    ),
-                  ),
-                ),
+                child: _buildList(rows),
               ),
             ),
           if (footer != null)
@@ -832,45 +1042,114 @@ class ComposerPickerState extends State<ComposerPicker> {
 }
 
 /// A group's heading among the options (an upstream's name), marked when
-/// something went wrong with it.
+/// something went wrong with it; a line across the menu above it, but for
+/// the [first]. A click on it collapses the group, or opens it again
+/// ([onTap]; [collapsed] null where it does not).
 class _GroupHeading extends StatelessWidget {
-  const _GroupHeading({required this.group, required this.first});
+  const _GroupHeading({
+    super.key,
+    required this.group,
+    required this.first,
+    this.matches = const [],
+    this.collapsed,
+    this.onTap,
+  });
 
   final KernelOptionGroup? group;
   final bool first;
 
+  /// Where its label has what was searched.
+  final List<int> matches;
+  final bool? collapsed;
+  final VoidCallback? onTap;
+
+  /// From its top to its line, but for the first's.
+  static const lineGap = 4.0;
+
+  /// From its top to its label's.
+  static double labelTop({required bool first}) => first ? 4 : lineGap + 1 + 6;
+
   @override
   Widget build(BuildContext context) {
     final warning = group?.warning;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(8, first ? 4 : 8, 8, 3),
-      child: Row(
-        children: [
-          if (group?.iconBuilder case final icon?) ...[
-            icon(12, AppColors.textFaint),
-            const SizedBox(width: 6),
-          ],
-          Flexible(
-            child: Text(
-              group?.label ?? '',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: AppColors.textFaint, fontSize: 11),
+    final collapsed = this.collapsed;
+    final heading = HoverBuilder(
+      cursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+      builder: (context, hovered) {
+        final color = hovered && onTap != null
+            ? AppColors.textMuted
+            : AppColors.textFaint;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(12, first ? 4 : 6, 12, 3),
+            child: Row(
+              children: [
+                if (group?.iconBuilder case final icon?) ...[
+                  icon(12, color),
+                  const SizedBox(width: 6),
+                ],
+                // The chevron at the end.
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text.rich(
+                          TextSpan(
+                            children: ideHighlightSpans(
+                              group?.label ?? '',
+                              matches,
+                              TextStyle(
+                                color: themeColors['list.highlightForeground'],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: color, fontSize: 11),
+                        ),
+                      ),
+                      if (warning != null) ...[
+                        const SizedBox(width: 4),
+                        IdeHover(
+                          message: warning,
+                          child: Icon(
+                            Icons.warning_amber_rounded,
+                            size: 13,
+                            color: AppColors.caution,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Collapsed, it says so; open, it shows only pointed at.
+                if (collapsed != null && (collapsed || hovered))
+                  Icon(
+                    collapsed ? Codicons.chevronRight : Codicons.chevronDown,
+                    size: 12,
+                    color: color,
+                  ),
+              ],
             ),
           ),
-          if (warning != null) ...[
-            const SizedBox(width: 4),
-            IdeHover(
-              message: warning,
-              child: Icon(
-                Icons.warning_amber_rounded,
-                size: 13,
-                color: AppColors.caution,
-              ),
-            ),
-          ],
-        ],
-      ),
+        );
+      },
+    );
+    if (first) return heading;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          height: 1,
+          margin: const EdgeInsets.only(top: lineGap),
+          color: themeColors['editorHoverWidget.border'],
+        ),
+        heading,
+      ],
     );
   }
 }
@@ -896,10 +1175,24 @@ class _SearchLine extends StatelessWidget {
     child: GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: focusNode.requestFocus,
-      child: Container(
-        height: 28,
-        margin: const EdgeInsets.fromLTRB(4, 0, 4, 2),
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+      // Ringed while it takes the keys, as the workbench's inputs are; the
+      // line there all along, so that nothing moves.
+      child: ListenableBuilder(
+        listenable: focusNode,
+        builder: (context, row) => Container(
+          height: 28,
+          margin: const EdgeInsets.fromLTRB(4, 0, 4, 2),
+          padding: const EdgeInsets.symmetric(horizontal: 7),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: focusNode.hasFocus
+                  ? themeColors['focusBorder']
+                  : Colors.transparent,
+            ),
+            borderRadius: BorderRadius.circular(5),
+          ),
+          child: row,
+        ),
         child: Row(
           children: [
             Icon(Icons.search_rounded, size: 14, color: AppColors.textFaint),
@@ -911,25 +1204,37 @@ class _SearchLine extends StatelessWidget {
                   ListenableBuilder(
                     listenable: controller,
                     builder: (context, _) => controller.text.isEmpty
-                        ? Text(
-                            placeholder,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: _style.copyWith(color: AppColors.textFaint),
+                        ? ExcludeSemantics(
+                            child: Text(
+                              placeholder,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: _style.copyWith(
+                                color: AppColors.textFaint,
+                              ),
+                            ),
                           )
                         : const SizedBox.shrink(),
                   ),
-                  EditableText(
-                    controller: controller,
-                    focusNode: focusNode,
-                    // Whole, as an editable text wants it: the font around it.
-                    style: DefaultTextStyle.of(context).style
-                        .merge(_style.copyWith(color: AppColors.text)),
-                    cursorColor: AppColors.text,
-                    cursorWidth: 1,
-                    backgroundCursorColor: AppColors.textFaint,
-                    selectionColor: themeColors['editor.selectionBackground'],
-                    maxLines: 1,
+                  // Named for a screen reader by its placeholder, drawn
+                  // apart from it (and not read as well).
+                  Semantics(
+                    container: true,
+                    label: placeholder,
+                    textField: true,
+                    child: EditableText(
+                      controller: controller,
+                      focusNode: focusNode,
+                      // Whole, as an editable text wants it: the font
+                      // around it.
+                      style: DefaultTextStyle.of(context).style
+                          .merge(_style.copyWith(color: AppColors.text)),
+                      cursorColor: AppColors.text,
+                      cursorWidth: 1,
+                      backgroundCursorColor: AppColors.textFaint,
+                      selectionColor: themeColors['editor.selectionBackground'],
+                      maxLines: 1,
+                    ),
                   ),
                 ],
               ),
@@ -983,6 +1288,7 @@ class _PickerRow extends StatelessWidget {
   const _PickerRow({
     super.key,
     required this.option,
+    this.matches = const [],
     required this.height,
     required this.describes,
     required this.hasSettings,
@@ -994,6 +1300,9 @@ class _PickerRow extends StatelessWidget {
   });
 
   final KernelOption option;
+
+  /// Where its label has what was searched.
+  final List<int> matches;
   final double height;
   final bool describes;
 
@@ -1040,8 +1349,18 @@ class _PickerRow extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      option.label,
+                    Text.rich(
+                      // What was searched marked, as the command palette's.
+                      TextSpan(
+                        children: ideHighlightSpans(
+                          option.label,
+                          matches,
+                          TextStyle(
+                            color: themeColors['list.highlightForeground'],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                       // One line, cut with an ellipsis: the row's height is
                       // fixed, and a name too long for the menu would
                       // otherwise wrap within it.

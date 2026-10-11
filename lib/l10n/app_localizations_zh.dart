@@ -2501,6 +2501,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get interactionBack => '上一步';
 
   @override
+  String get interactionCollapse => '收起';
+
+  @override
+  String get interactionExpand => '展开';
+
+  @override
   String interactionMoreLines(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -2804,6 +2810,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get explorerPasteIntoAncestor => '要粘贴的文件是目标文件夹的上级';
+
+  @override
+  String explorerUploading(int done, int total) {
+    return '正在上传文件… $done/$total';
+  }
+
+  @override
+  String explorerDownloading(int done, int total) {
+    return '正在下载文件… $done/$total';
+  }
+
+  @override
+  String get explorerPreparingTransfer => '正在准备文件…';
 
   @override
   String get explorerNewFile => '新建文件...';

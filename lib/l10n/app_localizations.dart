@@ -4688,6 +4688,18 @@ abstract class AppLocalizations {
   /// **'Back'**
   String get interactionBack;
 
+  /// No description provided for @interactionCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get interactionCollapse;
+
+  /// No description provided for @interactionExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand'**
+  String get interactionExpand;
+
   /// No description provided for @interactionMoreLines.
   ///
   /// In en, this message translates to:
@@ -5167,6 +5179,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'File to paste is an ancestor of the destination folder'**
   String get explorerPasteIntoAncestor;
+
+  /// No description provided for @explorerUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading files... {done}/{total}'**
+  String explorerUploading(int done, int total);
+
+  /// No description provided for @explorerDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading files... {done}/{total}'**
+  String explorerDownloading(int done, int total);
+
+  /// No description provided for @explorerPreparingTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing files...'**
+  String get explorerPreparingTransfer;
 
   /// No description provided for @explorerNewFile.
   ///

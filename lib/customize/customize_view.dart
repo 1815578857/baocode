@@ -12,6 +12,7 @@ import '../ide/ide_code_editor.dart';
 import '../ide/ide_dialog.dart';
 import '../l10n/l10n.dart';
 import '../platform/app_platform.dart';
+import '../remote/remote_location.dart';
 import '../sidebar/sidebar.dart' show SidebarIconButton;
 import '../sidebar/sidebar_menu.dart';
 import '../theme/app_theme.dart';
@@ -71,11 +72,18 @@ class CustomizeView extends StatefulWidget {
     this.leading,
     this.titleBarInset = 12,
     this.onOpenFile,
+    this.host,
   });
 
+  /// The customizations of the machine shown: this one's, or [host]'s.
   final CustomizationStore store;
 
-  /// The projects whose customizations can be shown beside the user's.
+  /// The remote host whose customizations these are, as the sidebar names
+  /// it; null for this machine's.
+  final String? host;
+
+  /// The projects whose customizations can be shown beside the user's:
+  /// those of the machine shown.
   final List<Project> projects;
 
   /// The one shown first; the user's alone when null.
@@ -123,8 +131,27 @@ class CustomizeViewState extends State<CustomizeView> {
   @override
   void didUpdateWidget(CustomizeView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.kind != widget.kind) show(widget.kind);
+    if (!identical(oldWidget.store, widget.store)) {
+      // Another machine's: from its own projects, the list again.
+      _project = widget.project;
+      _open = null;
+      _items = null;
+      _error = null;
+      if (oldWidget.kind != widget.kind) _kind = widget.kind;
+      unawaited(_load());
+    } else if (oldWidget.kind != widget.kind) {
+      show(widget.kind);
+    }
   }
+
+  /// The project's folder on its machine (a remote one's path there).
+  String? get _projectPath => switch (_project) {
+    final project? => RemoteLocation.pathOf(project.path),
+    null => null,
+  };
+
+  /// How paths are spelled where the customizations are.
+  p.Context get _paths => widget.store.isLocal ? p.context : p.posix;
 
   @override
   void dispose() {
@@ -144,7 +171,7 @@ class CustomizeViewState extends State<CustomizeView> {
   Future<void> _load() async {
     final generation = ++_generation;
     try {
-      final items = await widget.store.list(_kind, project: _project?.path);
+      final items = await widget.store.list(_kind, project: _projectPath);
       if (!mounted || generation != _generation) return;
       setState(() {
         _items = items;
@@ -188,7 +215,7 @@ class CustomizeViewState extends State<CustomizeView> {
         _kind,
         scope,
         name,
-        project: _project?.path,
+        project: _projectPath,
       );
       await _load();
       if (!mounted) return;
@@ -235,7 +262,7 @@ class CustomizeViewState extends State<CustomizeView> {
                     setState(() => _open = null);
                     unawaited(_load());
                   },
-                  onOpenFile: widget.onOpenFile,
+                  onOpenFile: widget.store.isLocal ? widget.onOpenFile : null,
                 )
               : _buildList(context.l10n),
         ),
@@ -255,16 +282,29 @@ class CustomizeViewState extends State<CustomizeView> {
               leading,
               const SizedBox(width: 10),
             ],
-            Expanded(
-              child: Text(
-                l10n.customizeTitle,
-                style: TextStyle(
-                  color: AppColors.textMuted,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w500,
-                ),
+            Text(
+              l10n.customizeTitle,
+              style: TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
               ),
             ),
+            // Whose: a remote host's, named as the sidebar names it.
+            if (widget.host case final host?) ...[
+              const SizedBox(width: 10),
+              Icon(Codicons.remote, size: 13, color: AppColors.textFaint),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  host,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: AppColors.textFaint, fontSize: 12.5),
+                ),
+              ),
+            ],
+            const Spacer(),
             SidebarIconButton(
               icon: Codicons.close,
               tooltip: l10n.customizeClose,
@@ -561,7 +601,7 @@ class CustomizeViewState extends State<CustomizeView> {
   /// Opens the file [_kind] is kept in for [scope], as it is or, not there
   /// yet, as it would start.
   Future<void> _openConfig(CustomizationScope scope) async {
-    final project = _project?.path;
+    final project = _projectPath;
     final path = await widget.store.configFile(_kind, scope, project: project);
     if (path == null || !mounted) return;
     setState(
@@ -569,8 +609,8 @@ class CustomizeViewState extends State<CustomizeView> {
         kind: _kind,
         scope: scope,
         name: project == null || scope == CustomizationScope.user
-            ? p.basename(path)
-            : p.relative(path, from: project),
+            ? _paths.basename(path)
+            : _paths.relative(path, from: project),
         path: path,
         detail: _kind.configTemplate,
       ),
@@ -579,25 +619,28 @@ class CustomizeViewState extends State<CustomizeView> {
 
   List<SidebarMenuItem> _menu(Customization item) {
     final l10n = context.l10n;
+    // A remote host's files are neither opened nor shown here.
+    final local = widget.store.isLocal;
     return [
       SidebarMenuItem(
         l10n.customizeEdit,
         icon: Icons.edit_outlined,
         onSelected: () => setState(() => _open = item),
       ),
-      if (widget.onOpenFile case final open? when item.editable)
+      if (widget.onOpenFile case final open? when item.editable && local)
         SidebarMenuItem(
           l10n.workspaceOpenIn(Editor.fastIde.localizedPlatformLabel(l10n)),
           icon: Editor.fastIde.icon,
           onSelected: () => open(item.path),
         ),
-      SidebarMenuItem(
-        l10n.revealInFileManager,
-        icon: Editor.folder.icon,
-        onSelected: () => unawaited(
-          CustomizeView.launch(Editor.folder, p.dirname(item.path)),
+      if (local)
+        SidebarMenuItem(
+          l10n.revealInFileManager,
+          icon: Editor.folder.icon,
+          onSelected: () => unawaited(
+            CustomizeView.launch(Editor.folder, p.dirname(item.path)),
+          ),
         ),
-      ),
       SidebarMenuItem(
         l10n.workspaceCopyPath,
         icon: Icons.content_copy_rounded,

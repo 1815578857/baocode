@@ -11,8 +11,11 @@ import 'model_provider.dart';
 import 'model_providers.dart';
 import 'upstream.dart';
 
-/// Claude Code's own models' heading's logo, and its models': Anthropic's.
+/// Claude Code's own models' heading's logo: Anthropic's.
 const builtinProviderLogo = 'anthropic';
+
+/// Claude's logo, Claude Code's own models' (and Claude's elsewhere).
+const claudeLogo = 'claude';
 
 /// The icon [provider] shows: the one picked for it, else its maker's
 /// logo; null when it has neither (its site's icon shows then).
@@ -146,7 +149,7 @@ class ModelIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => switch (provider == builtinProviderId
-      ? builtinProviderLogo
+      ? claudeLogo
       : ModelBrand.ofModel(model)) {
     final brand? => BrandLogo(brand, size: size, color: color),
     null => ProviderIcon(provider, size: size, color: color),

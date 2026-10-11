@@ -91,7 +91,34 @@ Future<Uint8List> readFileBytes(String path) => platform.readFileBytes(path);
 /// system's clipboard), to [to] through [files]: onto a remote project's
 /// host, which is Linux or macOS. Links to folders are left out.
 Future<void> copyLocalTo(IdeFileService files, String from, String to) =>
-    platform.copyLocalTo(files, from, to);
+    platform.uploadTo(files, [(from: from, to: to)]);
+
+/// How far a copy between this machine and a remote host is: [done] of
+/// [total] files.
+typedef TransferProgress = void Function(int done, int total);
+
+/// Copies each of [items] (this machine's files and folders) to its place
+/// on a remote project's host through [files], the folders first, then
+/// the files one by one, [onProgress] told after each. Links to folders
+/// are left out.
+Future<void> uploadTo(
+  IdeFileService files,
+  List<({String from, String to})> items, {
+  TransferProgress? onProgress,
+}) => platform.uploadTo(files, items, onProgress: onProgress);
+
+/// Copies each of [items] (files and folders of a remote host, [files]')
+/// to its place on this machine, as [uploadTo] the other way.
+Future<void> downloadFrom(
+  IdeHostFiles files,
+  List<({String from, String to, bool directory})> items, {
+  TransferProgress? onProgress,
+}) => platform.downloadFrom(files, items, onProgress: onProgress);
+
+/// A new folder of this machine's to download a remote host's files into,
+/// for other apps to take (pasted in Finder, dragged out); those of days
+/// before are deleted.
+Future<String> newDownloadFolder() => platform.newDownloadFolder();
 
 /// Save As… of a file shown: writes it to [to] on this machine, written
 /// over (the save panel asked). [text] when given (an editor's, unsaved

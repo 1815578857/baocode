@@ -15,6 +15,7 @@ import 'package:path/path.dart' as p;
 
 import '../chat/composer/composer_files.dart';
 import '../chat/composer/file_drag.dart';
+import '../chat/composer/file_drop.dart';
 import '../keybindings/keybinding_service.dart';
 import '../l10n/l10n.dart';
 import '../platform/app_paths.dart';
@@ -35,6 +36,7 @@ import 'ide_dialog.dart';
 import 'ide_input.dart';
 import 'ide_list.dart';
 import 'ide_menu.dart';
+import 'ide_notifications.dart';
 import 'save_copy.dart';
 
 /// One visible row of the explorer tree.
@@ -1014,13 +1016,20 @@ class IdeExplorerState extends State<IdeExplorer> {
             reveal = path;
           }
         case ExplorerCopied(:final copies, :final upload):
-          for (final (:source, :copy) in copies) {
-            if (upload) {
-              await copyLocalTo(files, source, copy);
-            } else {
+          if (upload) {
+            final uploading = context.l10n.explorerUploading;
+            await _withProgress(
+              uploading,
+              (onProgress) => uploadTo(files, [
+                for (final (:source, :copy) in copies) (from: source, to: copy),
+              ], onProgress: onProgress),
+            );
+            reveal = copies.lastOrNull?.copy;
+          } else {
+            for (final (:source, :copy) in copies) {
               await files.copy(source, copy);
+              reveal = copy;
             }
-            reveal = copy;
           }
         case ExplorerDeleted(:final path):
           await files.delete(path);
@@ -1060,6 +1069,10 @@ class IdeExplorerState extends State<IdeExplorer> {
   /// What is dragged from this tree, while it is.
   List<String>? _dragging;
 
+  /// Its paths on this machine, once dragged out of the window (a remote
+  /// project's downloaded): back over the tree, the drag is still a move.
+  List<String>? _outward;
+
   /// The folder a drag would move into, highlighted with what is in it.
   String? _dropFolder;
 
@@ -1084,6 +1097,59 @@ class IdeExplorerState extends State<IdeExplorer> {
   void _hoverDrop(String? folder) {
     if (folder == _dropFolder) return;
     setState(() => _dropFolder = folder);
+  }
+
+  // --- Dragging in from other apps ------------------------------------------
+
+  /// The rows shown, as last built: where a drag from another app is.
+  List<(IdeExplorerRow, bool)> _shownRows = const [];
+  final GlobalKey _listKey = GlobalKey();
+
+  /// The folder files let go at [position] (the window's) go into: a
+  /// folder's row, a file's folder, the top folder below the rows (the
+  /// only one); null elsewhere.
+  String? _folderAt(Offset position) {
+    final box = _listKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return null;
+    final local = box.globalToLocal(position);
+    if (!(Offset.zero & box.size).contains(local)) return null;
+    final offset = _scroll.hasClients ? _scroll.offset : 0.0;
+    final index = ((local.dy + offset) / IdeExplorer.rowHeight).floor();
+    if (index >= 0 && index < _shownRows.length) {
+      final (row, editing) = _shownRows[index];
+      if (editing || row.message != null) return null;
+      return _folderFor(row);
+    }
+    return _topFolder;
+  }
+
+  /// What is let go below the rows goes into: the project's folder, or a
+  /// workspace's only one; none among several (their rows take drops).
+  String? get _topFolder => switch (_controller.roots) {
+    [] => _controller.root,
+    [final only] => only,
+    _ => null,
+  };
+
+  /// Files from another app (Finder, Explorer) over the tree: the folder
+  /// they would go into highlighted.
+  void _fileDragOver(Offset position) => _hoverDrop(_folderAt(position));
+
+  /// Files from another app let go over the tree: copied into the folder
+  /// they are over (uploaded to a remote project's host), as VS Code does.
+  /// What was dragged out of this tree and back in moves.
+  void _fileDrop(Offset position, List<ComposerFile> files) {
+    final folder = _folderAt(position);
+    _hoverDrop(null);
+    if (folder == null || files.isEmpty) return;
+    final dropped = {for (final file in files) file.path};
+    if (_dragging case final dragging?
+        when setEquals({...dragging}, dropped) ||
+            setEquals({...?_outward}, dropped)) {
+      if (_takes(folder)) unawaited(_moveInto(dragging, folder));
+      return;
+    }
+    unawaited(_paste(folder, (files: files, cut: false, external: true)));
   }
 
   /// Moves [sources] (dragged here) into [folder], as one operation.
@@ -1172,14 +1238,104 @@ class IdeExplorerState extends State<IdeExplorer> {
     for (final row in rows) row.path,
   ];
 
+  // --- Between this machine and a remote host --------------------------------
+
+  /// Runs [transfer] (an upload, a download), how far it is shown in a
+  /// notification once it takes a moment: [message] of the files done.
+  Future<T> _withProgress<T>(
+    String Function(int done, int total) message,
+    Future<T> Function(TransferProgress onProgress) transfer,
+  ) async {
+    final notifications = IdeNotificationsScope.maybeOf(context);
+    final preparing = context.l10n.explorerPreparingTransfer;
+    var done = 0;
+    int? total;
+    String text() => total == null ? preparing : message(done, total!);
+    IdeNotificationProgress progress() => switch (total) {
+      final total? when total > 0 => IdeNotificationProgress(
+        done.toDouble(),
+        total: total.toDouble(),
+      ),
+      _ => const IdeNotificationProgress.infinite(),
+    };
+    IdeNotification? shown;
+    // Not for what is done at once.
+    final timer = notifications == null
+        ? null
+        : Timer(const Duration(milliseconds: 300), () {
+            shown = notifications.notify(
+              IdeSeverity.info,
+              text(),
+              progress: progress(),
+              sticky: true,
+            );
+          });
+    try {
+      return await transfer((worked, of) {
+        done = worked;
+        total = of;
+        if (shown case final shown?) {
+          notifications!.update(shown, message: text(), progress: progress());
+        }
+      });
+    } finally {
+      timer?.cancel();
+      if (shown case final shown?) notifications!.close(shown);
+    }
+  }
+
+  /// [rows] as this machine's files, for other apps (Finder's paste, a drag
+  /// out): a remote project's downloaded to a folder here first. Null when
+  /// they cannot be had (a remote project's files that do not download).
+  Future<List<String>?> _download(List<ComposerFile> rows) async {
+    if (widget.local) return [for (final row in rows) row.path];
+    final files = _controller.files;
+    if (files is! IdeHostFiles) return null;
+    final downloading = context.l10n.explorerDownloading;
+    final folder = await newDownloadFolder();
+    final taken = <String>{};
+    final items = <({String from, String to, bool directory})>[];
+    for (final (i, row) in rows.indexed) {
+      final name = _controller.paths.basename(row.path);
+      // The same name from two folders: each in a folder of its own.
+      final to = taken.add(name)
+          ? p.join(folder, name)
+          : p.join(folder, '$i', name);
+      items.add((from: row.path, to: to, directory: row.directory));
+    }
+    if (!mounted) return const [];
+    await _withProgress(
+      downloading,
+      (onProgress) => downloadFrom(files, items, onProgress: onProgress),
+    );
+    return [for (final item in items) item.to];
+  }
+
   /// Copied, this machine's files are on the system's clipboard too, as
   /// Finder copies them: to paste into the chat, or into another app.
+  /// A remote project's are downloaded first, to be on it as this
+  /// machine's.
   void _copy(List<IdeExplorerRow> rows, {required bool cut}) {
     final paths = _paths(rows);
-    final written = !cut && widget.local
+    final written = cut
+        ? Future<void>.value()
+        : widget.local
         ? WindowControls.writePasteboardFiles(paths)
               .then((_) {}, onError: (Object _) {})
-        : Future<void>.value();
+        : _download([
+                for (final row in rows)
+                  ComposerFile(row.path, directory: row.isDirectory),
+              ])
+              .then(
+                (paths) async {
+                  if (paths != null) {
+                    await WindowControls.writePasteboardFiles(paths);
+                  }
+                },
+                onError: (Object error) {
+                  if (mounted) _report(error);
+                },
+              );
     _controller.clipboard = IdeExplorerClipboard(
       [
         for (final row in rows)
@@ -1441,13 +1597,19 @@ class IdeExplorerState extends State<IdeExplorer> {
   /// Paste: copies (with VS Code's simple incremental names when taken) or
   /// moves what was cut into [folder]; files from the system's clipboard
   /// are copied, onto a remote project's host too.
-  Future<void> _paste(String folder) async {
-    final toPaste = await _toPaste();
+  Future<void> _paste(
+    String folder, [
+    ({List<ComposerFile> files, bool cut, bool external})? what,
+  ]) async {
+    final toPaste = what ?? await _toPaste();
     if (toPaste == null || !mounted) return;
     final files = _controller.files;
     final ancestor = context.l10n.explorerPasteIntoAncestor;
-    // This machine's files, into a remote project's.
+    final uploading = context.l10n.explorerUploading;
+    // This machine's files, into a remote project's: uploaded together,
+    // how far shown.
     final upload = toPaste.external && !widget.local;
+    final uploads = <({String from, String to})>[];
     String? last;
     final moved = <({String from, String to})>[];
     final copied = <({String source, String copy})>[];
@@ -1483,12 +1645,22 @@ class IdeExplorerState extends State<IdeExplorer> {
           taken.add(name);
           final copy = _controller.paths.join(folder, name);
           if (upload) {
-            await copyLocalTo(files, source, copy);
-          } else {
-            await files.copy(source, copy);
+            uploads.add((from: source, to: copy));
+            continue;
           }
+          await files.copy(source, copy);
           copied.add((source: source, copy: copy));
           last = copy;
+        }
+      }
+      if (uploads.isNotEmpty) {
+        await _withProgress(
+          uploading,
+          (onProgress) => uploadTo(files, uploads, onProgress: onProgress),
+        );
+        for (final (:from, :to) in uploads) {
+          copied.add((source: from, copy: to));
+          last = to;
         }
       }
       if (toPaste.cut) _controller.clipboard = null;
@@ -1726,7 +1898,7 @@ class IdeExplorerState extends State<IdeExplorer> {
 
   @override
   Widget build(BuildContext context) {
-    final rows = _rowsWithEdit();
+    final rows = _shownRows = _rowsWithEdit();
     final focused = _focusNode.hasFocus;
     final decorations = widget.git?.decorations;
     final repositories = widget.repositories;
@@ -1760,7 +1932,7 @@ class IdeExplorerState extends State<IdeExplorer> {
       ];
     }
 
-    return ColoredBox(
+    final tree = ColoredBox(
       // Modern UI: the panes are the side bar's.
       color: widget.background ?? themeColors['sideBar.background'],
       child: Focus(
@@ -1781,6 +1953,7 @@ class IdeExplorerState extends State<IdeExplorer> {
           },
           child: _rootDropTarget(
             ListView.builder(
+              key: _listKey,
               controller: _scroll,
               itemExtent: IdeExplorer.rowHeight,
               padding: const EdgeInsets.only(bottom: 12),
@@ -1834,10 +2007,15 @@ class IdeExplorerState extends State<IdeExplorer> {
                 return FileDraggable(
                   key: ValueKey(row.path),
                   files: dragged(row),
+                  // Out of the window, to other apps: a remote project's
+                  // downloaded first.
+                  outward: () async =>
+                      _outward = await _download(dragged(row)),
                   onDragStarted: () =>
                       _dragging = [for (final file in dragged(row)) file.path],
                   onDragEnd: () {
                     _dragging = null;
+                    _outward = null;
                     _hoverDrop(null);
                   },
                   child: DragTarget<FileDragData>(
@@ -1871,14 +2049,16 @@ class IdeExplorerState extends State<IdeExplorer> {
         ),
       ),
     );
+    // Files dragged in from other apps.
+    return FileDropRegion(delegate: _ExplorerFileDrop(this), child: tree);
   }
 
   /// [list], dropped on below its rows: what is dragged moves to the top
   /// folder (the only one; a workspace's folders take drops on their rows),
   /// all of the tree highlighted.
   Widget _rootDropTarget(Widget list) {
-    if (_controller.roots.length > 1) return list;
-    final root = _controller.root;
+    final root = _topFolder;
+    if (root == null) return list;
     return DragTarget<FileDragData>(
       onWillAcceptWithDetails: (_) {
         final takes = _takes(root);
@@ -1925,6 +2105,28 @@ String ideIncrementFileName(String name, {required bool isFolder}) {
 final String _userHome = kIsWeb ? '' : AppPaths.home(Platform.environment);
 
 String _pathLabel(String path) => tildify(path, _userHome);
+
+/// Files dragged onto the tree from other apps.
+class _ExplorerFileDrop implements FileDropDelegate {
+  _ExplorerFileDrop(this._explorer);
+
+  final IdeExplorerState _explorer;
+
+  @override
+  void fileDragOver(Offset position, List<ComposerFile> files) {
+    if (_explorer.mounted) _explorer._fileDragOver(position);
+  }
+
+  @override
+  void fileDragLeave() {
+    if (_explorer.mounted) _explorer._hoverDrop(null);
+  }
+
+  @override
+  void fileDrop(Offset position, List<ComposerFile> files) {
+    if (_explorer.mounted) _explorer._fileDrop(position, files);
+  }
+}
 
 class _ExplorerRowView extends StatelessWidget {
   const _ExplorerRowView({

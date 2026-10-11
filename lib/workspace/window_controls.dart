@@ -312,6 +312,24 @@ abstract final class WindowControls {
     }
   }
 
+  /// Whether [startFileDrag] can drag files out to other apps.
+  static bool get canDragFilesOut => isDesktop;
+
+  /// Goes on dragging [paths] from [viewId]'s window as the system drags
+  /// files, to let go in another app (Finder, Mail…) or back in this one:
+  /// the pointer, held down, has left the window. Whether it began.
+  static Future<bool> startFileDrag(List<String> paths, {int? viewId}) async {
+    if (!canDragFilesOut || paths.isEmpty) return false;
+    try {
+      return await _of(
+            viewId,
+          ).invokeMethod<bool>('startFileDrag', {'paths': paths}) ??
+          false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
   /// Whether [revealInFileManager] can show a file (Finder, or File
   /// Explorer on Windows).
   static bool get canRevealInFileManager => isDesktop;

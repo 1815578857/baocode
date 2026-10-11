@@ -192,6 +192,10 @@ class BaoWindow: NSWindow {
       let pasteboard = NSPasteboard.general
       pasteboard.clearContents()
       result(!urls.isEmpty && pasteboard.writeObjects(urls))
+    case "startFileDrag":
+      // Files dragged in the app, out of the window: on as Finder drags them.
+      let paths = (call.arguments as? [String: Any])?["paths"] as? [String] ?? []
+      result(drops?.drag(paths, flutter: flutterViewController) ?? false)
     case "readImageFile":
       // An image file dropped or pasted, as the composer takes it.
       guard let path = call.arguments as? String else {
@@ -722,6 +726,76 @@ private class FileDropView: NSView {
     let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isPackageKey])
     let directory = (values?.isDirectory ?? false) && !(values?.isPackage ?? false)
     return ["path": url.path, "directory": directory]
+  }
+
+  // --- Dragging out ----------------------------------------------------------
+
+  /// The Flutter view whose drag the system's goes on with.
+  private weak var dragFlutter: FlutterViewController?
+
+  /// Goes on with Flutter's drag of [paths] (the pointer, held down, left
+  /// the window) as the system drags files: let go in Finder they are
+  /// copied, in Mail attached; back over the window, Flutter takes them as
+  /// it takes other apps' files. Whether it began.
+  func drag(_ paths: [String], flutter: FlutterViewController?) -> Bool {
+    guard !paths.isEmpty, let window else { return false }
+    let mouse = window.mouseLocationOutsideOfEventStream
+    let current = NSApp.currentEvent.flatMap {
+      $0.type == .leftMouseDragged || $0.type == .leftMouseDown ? $0 : nil
+    }
+    guard
+      let event = current
+        ?? NSEvent.mouseEvent(
+          with: .leftMouseDragged, location: mouse, modifierFlags: [],
+          timestamp: ProcessInfo.processInfo.systemUptime,
+          windowNumber: window.windowNumber, context: nil, eventNumber: 0,
+          clickCount: 1, pressure: 1)
+    else { return false }
+    let at = convert(mouse, from: nil)
+    let size: CGFloat = 32
+    let items = paths.enumerated().map { index, path in
+      let item = NSDraggingItem(pasteboardWriter: URL(fileURLWithPath: path) as NSURL)
+      let offset = CGFloat(min(index, 4)) * 4
+      item.setDraggingFrame(
+        NSRect(x: at.x - size / 2 + offset, y: at.y - size / 2 - offset, width: size, height: size),
+        contents: NSWorkspace.shared.icon(forFile: path))
+      return item
+    }
+    dragFlutter = flutter
+    let session = beginDraggingSession(with: items, event: event, source: self)
+    session.animatesToStartingPositionsOnCancelOrFail = false
+    session.draggingFormation = .pile
+    return true
+  }
+}
+
+extension FileDropView: NSDraggingSource {
+  func draggingSession(
+    _ session: NSDraggingSession,
+    sourceOperationMaskFor context: NSDraggingContext
+  ) -> NSDragOperation {
+    // Copied, as VS Code's explorer gives them: never moved out of the project.
+    .copy
+  }
+
+  func draggingSession(
+    _ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation
+  ) {
+    // Flutter saw the button go down, not up (the system's drag took the
+    // mouse): it is told it went up, away from all, so its own drag ends
+    // with nothing taking it; after the drop, which Flutter is told first.
+    let flutter = dragFlutter
+    dragFlutter = nil
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+      guard let flutter, let window = self?.window,
+            let up = NSEvent.mouseEvent(
+              with: .leftMouseUp, location: NSPoint(x: -100_000, y: -100_000),
+              modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+              windowNumber: window.windowNumber, context: nil, eventNumber: 0,
+              clickCount: 1, pressure: 0)
+      else { return }
+      flutter.mouseUp(with: up)
+    }
   }
 }
 

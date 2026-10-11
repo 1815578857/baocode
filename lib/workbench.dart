@@ -83,6 +83,7 @@ import 'window/code_args.dart';
 import 'window/window_settings.dart';
 import 'remote/open_remote.dart';
 import 'remote/project_host.dart';
+import 'remote/remote_customization_disk.dart';
 import 'remote/remote_location.dart';
 import 'remote/remote_status.dart';
 import 'remote/ssh_host.dart';
@@ -962,6 +963,9 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   bool _customizing = false;
   CustomizationKind _customizeKind = CustomizationKind.skills;
   final GlobalKey<CustomizeViewState> _customizeKey = GlobalKey();
+
+  /// The customizations of each remote host the sidebar has been on.
+  final Map<String, CustomizationStore> _hostCustomizations = {};
 
   void _showCustomize([CustomizationKind? kind]) {
     _closeDrawer();
@@ -2035,7 +2039,12 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         // The model picker's Manage Models… opens the settings.
         return SettingsOpener(
           open: (section) => unawaited(openSettings(section)),
-          child: content,
+          // The side panel explorer's uploads and downloads show their
+          // progress in the window's toasts.
+          child: IdeNotificationsScope(
+            notifications: _notifications,
+            child: content,
+          ),
         );
       },
     );
@@ -2929,11 +2938,22 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   /// the sidebar's toggle by the traffic lights while it is hidden.
   Widget _buildCustomize(CustomizationStore store, {required bool showToggle}) {
     final header = WindowControls.drawsHeader;
+    // The machine the sidebar is on: a remote host's agents read its own.
+    final host = _workspace.sidebarHost;
+    final projects = _workspace.sidebarProjectsOn(host);
+    final project = _paletteProject;
     return CustomizeView(
       key: _customizeKey,
-      store: store,
-      projects: _workspace.sidebarProjects,
-      project: _paletteProject,
+      store: host == null
+          ? store
+          : _hostCustomizations[host] ??= CustomizationStore(
+              disk: RemoteCustomizationDisk(SshHosts.instance[host]),
+            ),
+      host: host == null ? null : _workspace.hostLabel(host),
+      projects: projects,
+      project: project != null && projects.contains(project)
+          ? project
+          : projects.firstOrNull,
       kind: _customizeKind,
       onClose: _closeCustomize,
       leading: !header && showToggle

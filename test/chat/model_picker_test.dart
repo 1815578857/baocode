@@ -276,6 +276,222 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('the heading of the group scrolled into stays at the top, '
+      'pushed up by the next one\'s', (tester) async {
+    tester.view
+      ..devicePixelRatio = 1
+      ..physicalSize = const Size(800, 900);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await pump(tester, [
+      for (var i = 0; i < 8; i++) _option('c$i', 'Claude $i', _builtin),
+      for (var i = 0; i < 24; i++) _option('@gw/m$i', 'Model $i', _gateway),
+    ]);
+    await open(tester, 'Claude 0');
+    final list = find.byType(SingleChildScrollView);
+    final top = tester.getTopLeft(list).dy;
+    // Unscrolled: only the list's own headings.
+    expect(find.text('Claude Code'), findsOneWidget);
+
+    await tester.drag(list, const Offset(0, -60));
+    await tester.pumpAndSettle();
+    final stuck = find.text('Claude Code');
+    expect(stuck, findsNWidgets(2));
+    final stuckTop = tester.getTopLeft(stuck.last).dy;
+    expect(stuckTop, greaterThanOrEqualTo(top));
+    expect(stuckTop, lessThan(top + 12));
+
+    // The next heading, coming up under it, pushes it out.
+    final position = tester
+        .state<ScrollableState>(
+          find.descendant(of: list, matching: find.byType(Scrollable)),
+        )
+        .position;
+    final gateway = tester.getTopLeft(find.text('Gateway')).dy;
+    // Its label 12 under the list's top, the stuck one's 4 + 22 high.
+    position.jumpTo(position.pixels + gateway - top - 12);
+    await tester.pump();
+    expect(tester.getTopLeft(find.text('Claude Code').last).dy, lessThan(top));
+
+    await tester.drag(list, const Offset(0, -2000));
+    await tester.pumpAndSettle();
+    expect(find.text('Gateway'), findsNWidgets(2));
+    expect(find.text('Claude Code'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Tab goes into the search line and out again; it is ringed '
+      'while in it, and named for a screen reader', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await pump(tester, [
+      _option('default', 'Default', _builtin),
+      for (var i = 0; i < 12; i++) _option('@gw/m$i', 'Model $i', _gateway),
+    ]);
+    await open(tester, 'Default');
+    final input = FocusManager.instance.primaryFocus;
+    final search = find.byType(EditableText);
+    Color ring() {
+      final box = tester
+          .widgetList<Container>(
+            find.ancestor(of: search, matching: find.byType(Container)),
+          )
+          .firstWhere(
+            (box) => (box.decoration as BoxDecoration?)?.border != null,
+          );
+      return ((box.decoration! as BoxDecoration).border! as Border).top.color;
+    }
+
+    expect(ring(), Colors.transparent);
+    expect(
+      tester.getSemantics(search),
+      isSemantics(label: 'Search models', isTextField: true),
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(tester.widget<EditableText>(search).focusNode.hasFocus, isTrue);
+    expect(ring(), isNot(Colors.transparent));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(FocusManager.instance.primaryFocus, input);
+    expect(ring(), Colors.transparent);
+    // Still open.
+    expect(find.text('Model 3'), findsOneWidget);
+    semantics.dispose();
+  });
+
+  testWidgets('typing over the menu goes into its search line: focused, '
+      'its caret after what was typed; Escape twice back to the input', (
+    tester,
+  ) async {
+    await pump(tester, [
+      _option('default', 'Default', _builtin),
+      for (var i = 0; i < 12; i++) _option('@gw/m$i', 'Model $i', _gateway),
+    ]);
+    await open(tester, 'Default');
+    final input = FocusManager.instance.primaryFocus;
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit1, character: '1');
+    await tester.pump();
+    final search = tester.widget<EditableText>(find.byType(EditableText));
+    expect(search.focusNode.hasFocus, isTrue);
+    expect(search.controller.value.text, '1');
+    expect(
+      search.controller.selection,
+      const TextSelection.collapsed(offset: 1),
+    );
+
+    // On in it, as one types there.
+    await tester.enterText(find.byType(EditableText), '11');
+    await tester.pump();
+    expect(find.text('Model 11'), findsOneWidget);
+    expect(find.text('Model 1'), findsNothing);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus, input);
+  });
+
+  testWidgets('searching away the option whose settings show: they fade '
+      'out by the menu, nothing thrown, the search line kept', (tester) async {
+    const effort = [KernelOption('high', 'High', Icons.speed, '')];
+    await pump(
+      tester,
+      [
+        _option('default', 'Default', _builtin),
+        for (var i = 0; i < 12; i++) _option('@gw/m$i', 'Model $i', _gateway),
+      ],
+      settingsOf: (_) => [
+        ModelSettingChoice(
+          kind: KernelChoiceKind.effort,
+          options: effort,
+          selected: effort.first,
+          onSelected: (_) {},
+        ),
+      ],
+    );
+    await open(tester, 'Default');
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: tester.getCenter(find.text('Model 3')));
+    await mouse.moveTo(tester.getCenter(find.text('Model 3')));
+    await tester.pumpAndSettle();
+    expect(find.text('High'), findsOneWidget);
+
+    final search = find.byType(EditableText);
+    tester.widget<EditableText>(search).focusNode.requestFocus();
+    await tester.pump();
+    await tester.enterText(search, 'nothing');
+    for (var frame = 0; frame < 8; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(tester.takeException(), isNull);
+    }
+    await tester.pumpAndSettle();
+    expect(find.byType(ErrorWidget), findsNothing);
+    expect(find.text('High'), findsNothing);
+    expect(tester.widget<EditableText>(search).focusNode.hasFocus, isTrue);
+  });
+
+  testWidgets('a click on a heading collapses its group, the keys going '
+      'past it; another opens it; searching, none is', (tester) async {
+    await pump(tester, [
+      _option('default', 'Default', _builtin),
+      for (var i = 0; i < 12; i++) _option('@gw/m$i', 'Model $i', _gateway),
+    ]);
+    await open(tester, 'Default');
+    await tester.tap(find.text('Gateway'));
+    await tester.pump();
+    expect(find.text('Gateway'), findsOneWidget);
+    expect(find.text('Model 0'), findsNothing);
+    // Default highlighted: ↓ goes round to it, past the collapsed.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(picked, ['default']);
+
+    await open(tester, 'Default');
+    expect(find.text('Model 0'), findsNothing);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyM, character: 'm');
+    await tester.pump();
+    expect(find.text('Model 0'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    await tester.tap(find.text('Gateway'));
+    await tester.pump();
+    expect(find.text('Model 0'), findsOneWidget);
+  });
+
+  testWidgets('what was searched is marked in the names', (tester) async {
+    await pump(tester, [
+      _option('default', 'Default', _builtin),
+      for (var i = 0; i < 12; i++) _option('@gw/m$i', 'GPT-$i', _gateway),
+    ]);
+    await open(tester, 'Default');
+    for (final key in [LogicalKeyboardKey.keyP, LogicalKeyboardKey.keyT]) {
+      await tester.sendKeyEvent(key, character: key.keyLabel.toLowerCase());
+    }
+    await tester.pump();
+    final name = tester.widget<RichText>(
+      find.descendant(
+        of: find.byType(Text),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is RichText && widget.text.toPlainText() == 'GPT-0',
+        ),
+      ),
+    );
+    // Text.rich's span, in the style's.
+    final spans = ((name.text as TextSpan).children!.single as TextSpan)
+        .children!
+        .cast<TextSpan>();
+    expect([for (final span in spans) span.text], ['G', 'PT', '-0']);
+    expect(spans[1].style?.fontWeight, FontWeight.w600);
+    expect(spans[0].style?.fontWeight, isNot(FontWeight.w600));
+  });
+
   testWidgets('few options are not searched', (tester) async {
     await pump(tester, [
       _option('default', 'Default', _builtin),

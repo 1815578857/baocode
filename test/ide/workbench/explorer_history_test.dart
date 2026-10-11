@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:baocode/chat/composer/file_drop.dart';
 import 'package:baocode/ide/ide_explorer.dart';
 
 import 'fake_files.dart';
@@ -92,7 +94,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.timedDrag(
       find.text('lib'),
-      tester.getCenter(find.text('a.dart')) - tester.getCenter(find.text('lib')),
+      tester.getCenter(find.text('a.dart')) -
+          tester.getCenter(find.text('lib')),
       const Duration(milliseconds: 300),
     );
     await tester.pumpAndSettle();
@@ -145,6 +148,106 @@ void main() {
     await tester.pumpAndSettle();
     expect(utf8.decode(files.bytes[inRoot('README.md')]!), 'r');
     expect(find.text('README.md'), findsOneWidget);
+  });
+
+  testWidgets('a file dragged in from another app is copied into the folder '
+      'it is let go on; Undo deletes the copy', (tester) async {
+    final (_, files) = await pumpTree(tester);
+    final outside = p.join(p.separator, 'elsewhere', 'shot.png');
+    files.contents[outside] = 'png';
+    final over = tester.getCenter(find.text('lib'));
+    Future<Object?> send(String method) => FileDrops.handle(
+      MethodCall(method, {
+        'x': over.dx,
+        'y': over.dy,
+        'files': [
+          {'path': outside},
+        ],
+      }),
+    );
+
+    expect(await send('dragUpdate'), isTrue);
+    await tester.pump();
+    final highlighted = find.descendant(
+      of: find.byType(IdeExplorer),
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is DecoratedBox &&
+            widget.position == DecorationPosition.foreground,
+      ),
+    );
+    expect(highlighted, findsOneWidget);
+
+    expect(await send('drop'), isTrue);
+    await tester.pumpAndSettle();
+    expect(files.contents[inRoot('lib/shot.png')], 'png');
+    expect(files.contents[outside], 'png');
+    expect(highlighted, findsNothing);
+
+    await explorer(tester).undo();
+    await tester.pumpAndSettle();
+    expect(files.contents.keys, isNot(contains(inRoot('lib/shot.png'))));
+  });
+
+  testWidgets(
+    'a file dragged out of the window goes on as the system '
+    'drags files',
+    (tester) async {
+      final calls = <MethodCall>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('baocode/window'),
+        (call) async {
+          calls.add(call);
+          return true;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          const MethodChannel('baocode/window'),
+          null,
+        ),
+      );
+      await pumpTree(tester);
+      final start = tester.getCenter(find.text('README.md'));
+      final gesture = await tester.startGesture(start);
+      await gesture.moveBy(const Offset(0, 40));
+      await tester.pump();
+      // Still in the window: the app's own drag.
+      expect(calls, isEmpty);
+      await gesture.moveTo(const Offset(-30, 200));
+      await tester.pump();
+      expect(calls.single.method, 'startFileDrag');
+      expect(calls.single.arguments, {
+        'paths': [inRoot('README.md')],
+      });
+      await gesture.up();
+      await tester.pumpAndSettle();
+    },
+    variant: TargetPlatformVariant({
+      TargetPlatform.macOS,
+      TargetPlatform.windows,
+    }),
+  );
+
+  testWidgets('a file from another app let go under the rows goes into the '
+      "project's folder", (tester) async {
+    final (_, files) = await pumpTree(tester);
+    final outside = p.join(p.separator, 'elsewhere', 'notes.txt');
+    files.contents[outside] = 'n';
+    final under =
+        tester.getBottomLeft(find.byType(IdeExplorer)) + const Offset(40, -20);
+    final taken = await FileDrops.handle(
+      MethodCall('drop', {
+        'x': under.dx,
+        'y': under.dy,
+        'files': [
+          {'path': outside},
+        ],
+      }),
+    );
+    expect(taken, isTrue);
+    await tester.pumpAndSettle();
+    expect(files.contents[inRoot('notes.txt')], 'n');
   });
 
   testWidgets('Cmd+Z in the tree undoes', (tester) async {
