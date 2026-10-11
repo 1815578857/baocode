@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
 
 import '../chat_models.dart';
+import '../../remote/remote_location.dart';
 import 'change_review.dart';
 
 /// The reviews of the folders an agent works in: its directory's and, in a
@@ -28,12 +28,16 @@ class ChangeReviews extends ChangeNotifier {
   }) async {
     final distinct = <String>[];
     for (final root in roots) {
-      if (distinct.any((other) => p.equals(other, root))) continue;
+      final paths = RemoteLocation.pathsOf(root);
+      if (distinct.any((other) => paths.equals(other, root))) continue;
       distinct.add(root);
     }
     final outermost = [
       for (final root in distinct)
-        if (!distinct.any((other) => p.isWithin(other, root))) root,
+        if (!distinct.any(
+          (other) => RemoteLocation.pathsOf(root).isWithin(other, root),
+        ))
+          root,
     ];
     final opened = await Future.wait([
       for (final root in outermost)
@@ -120,13 +124,17 @@ class ChangeReviews extends ChangeNotifier {
   }
 
   /// [path] absolute: one relative is the agent's directory's.
-  String _absolute(String path) =>
-      p.isAbsolute(path) ? path : p.join(root, path);
+  String _absolute(String path) {
+    final paths = _parts.first.paths;
+    return paths.isAbsolute(path) ? path : paths.join(root, path);
+  }
 
   ChangeReview _partOf(String path) {
     final absolute = _absolute(path);
     for (final part in _parts) {
-      if (p.equals(part.root, absolute) || p.isWithin(part.root, absolute)) {
+      final paths = part.paths;
+      if (paths.equals(part.root, absolute) ||
+          paths.isWithin(part.root, absolute)) {
         return part;
       }
     }

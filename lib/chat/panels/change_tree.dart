@@ -29,6 +29,7 @@ class ChangeTree extends StatefulWidget {
     super.key,
     required this.root,
     required this.changes,
+    this.paths,
     this.maxRows = 7,
     this.onOpen,
     this.onKeep,
@@ -38,6 +39,10 @@ class ChangeTree extends StatefulWidget {
   /// The project's directory: the tree's top.
   final String root;
   final List<FileChange> changes;
+
+  /// How [root] and [changes]' paths are spelled (a remote project's
+  /// host's way); this machine's when null.
+  final p.Context? paths;
   final int maxRows;
 
   final ValueChanged<FileChange>? onOpen;
@@ -85,7 +90,8 @@ class _ChangeTreeState extends State<ChangeTree> {
   void didUpdateWidget(ChangeTree oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!identical(oldWidget.changes, widget.changes) ||
-        oldWidget.root != widget.root) {
+        oldWidget.root != widget.root ||
+        oldWidget.paths != widget.paths) {
       _layOut();
     }
   }
@@ -98,6 +104,8 @@ class _ChangeTreeState extends State<ChangeTree> {
           FileChangeKind.modified => IdeGitStatus.modified,
           FileChangeKind.deleted => IdeGitStatus.deleted,
         };
+
+  p.Context get _paths => widget.paths ?? p.context;
 
   void _layOut() {
     final byPath = {for (final change in widget.changes) change.path: change};
@@ -126,7 +134,7 @@ class _ChangeTreeState extends State<ChangeTree> {
             status: _status(change),
             group: IdeGitGroup.workingTree,
           ),
-      ]),
+      ], paths: widget.paths),
       1,
     );
     _rows = rows;
@@ -214,7 +222,7 @@ class _ChangeTreeState extends State<ChangeTree> {
     final collapsed = _collapsed.contains(folder.path);
     return IdeListRow(
       key: ValueKey('folder:${folder.path}'),
-      tooltip: p.relative(folder.path, from: widget.root),
+      tooltip: _paths.relative(folder.path, from: widget.root),
       onTap: () => _toggle(folder.path),
       onContextMenu: (position) => _showMenu(position, row.changes),
       builder: (context, hovered) => Padding(
@@ -264,8 +272,8 @@ class _ChangeTreeState extends State<ChangeTree> {
         : change.shared
         ? l10n.stripChangeShared
         : null;
-    final relative = p.isWithin(widget.root, change.path)
-        ? p.relative(change.path, from: widget.root)
+    final relative = _paths.isWithin(widget.root, change.path)
+        ? _paths.relative(change.path, from: widget.root)
         : change.path;
     final open = widget.onOpen;
     return IdeListRow(
@@ -284,7 +292,7 @@ class _ChangeTreeState extends State<ChangeTree> {
             const SizedBox(width: 6),
             Expanded(
               child: IdeResourceLabel(
-                name: p.basename(change.path),
+                name: _paths.basename(change.path),
                 strikeThrough: row.status.strikeThrough,
                 letter: row.status.letter,
                 letterColor: row.status.color,

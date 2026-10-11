@@ -470,6 +470,7 @@ class _ChatScreenState extends State<ChatScreen>
       tasks: tasks,
       changes: changes,
       root: _session.root ?? '.',
+      paths: _session.paths,
       onKeep: _session.keepAllChanges,
       onUndo: _session.undoAllChanges,
       onKeepFiles: _session.keepChanges,

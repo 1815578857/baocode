@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 
 import '../kernel/agent_kernel.dart';
 import '../kernel/kernel_event.dart';
@@ -709,6 +710,13 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
 
   /// [path] absolute, on the project's host (a remote project's paths are
   /// its host's).
+  /// How the project's paths are spelled: its host's way (POSIX) for a
+  /// remote one, this machine's otherwise.
+  p.Context get paths => switch (kernelContext.cwd) {
+    final cwd? => RemoteLocation.pathsOf(cwd),
+    null => p.context,
+  };
+
   String _absolute(String path) {
     final cwd = kernelContext.cwd;
     if (cwd == null) return path;
