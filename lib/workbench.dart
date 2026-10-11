@@ -1096,7 +1096,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
 
     return [
       ?action(ChatCommandIds.newChat, Codicons.add),
-      ?action(_customizeCommand, Codicons.extensions),
+      ?action(_customizeCommand, Codicons.plug),
       ?action(openSettingsCommandId, Codicons.settingsGear),
       ?action(openKeybindingsCommandId, Codicons.keyboard),
       ?action(ideSelectColorThemeCommandId, Codicons.symbolColor),
@@ -1144,7 +1144,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         for (final kind in CustomizationKind.values)
           PaletteAction(
             id: 'customize.${kind.name}',
-            label: '${l10n.sidebarCustomize}: ${kind.label(l10n)}',
+            label: '${l10n.customizeTitle}: ${kind.label(l10n)}',
             icon: kind.icon,
             run: () => _showCustomize(kind),
           ),

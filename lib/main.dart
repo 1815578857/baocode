@@ -13,6 +13,7 @@ import 'package:bao_editor/monaco/flutter/language_assets.dart';
 import 'chat/chat_width.dart';
 import 'chat/user_message_style.dart';
 import 'customize/customization_store.dart';
+import 'diagnostics/diagnostics_upload.dart';
 import 'extensions/theme_extensions.dart';
 import 'ide/git/git_repository.dart';
 import 'ide/git/repository_scan.dart';
@@ -27,6 +28,7 @@ import 'icons/icon_library.dart';
 import 'icons/icon_storage.dart';
 import 'icons/site_icons.dart';
 import 'kernel/claude_code/claude_onboarding.dart';
+import 'kernel/claude_code/claude_path_setting.dart';
 import 'kernel/claude_code/process_transport.dart';
 import 'kernel/commit_attribution.dart';
 import 'keybindings/keybindings_sync.dart';
@@ -120,6 +122,10 @@ Future<void> main(List<String> arguments) async {
     // Read as each agent starts.
     CommitAttribution.current = () =>
         CommitAttribution.parse(files.settings[CommitAttribution.settingKey]);
+    // Settings → General → Claude Code: the build to run, read as each
+    // agent starts.
+    ClaudePathSetting.current = () =>
+        ClaudePathSetting.parse(files.settings[ClaudePathSetting.settingKey]);
     // Settings → Models: the upstreams, kept in settings.json.
     ModelProviders.current = ModelProviders.settings(files.settings);
     // The upstreams' sites' icons, for those that show no other: in the
@@ -247,7 +253,9 @@ Future<void> main(List<String> arguments) async {
       sync: sync,
       installs: VsCodeInstalls.current(),
       updates: _startUpdates(files),
+      diagnostics: DiagnosticsUploader.platform(),
       workspace: workspace,
+      claudeStatus: localClaudeStatus,
     );
     _startTelemetry(files);
   }

@@ -42,6 +42,13 @@ typedef ClaudeSessionForker = Future<String> Function(
 /// plan usage, if one does.
 typedef ClaudeUsageSwitch = Future<String?> Function();
 
+/// [executable], run in [cwd], refused an option BaoCode starts Claude
+/// Code with: whether another, newer, may be started instead.
+typedef ClaudeTooOldHandler = Future<bool> Function(
+  String cwd,
+  String executable,
+);
+
 /// The environment of a session on [provider] that asks for [model] (see
 /// [providerLaunchEnvironment]).
 typedef ProviderEnvironment = Future<Map<String, String>> Function(
@@ -88,6 +95,7 @@ class ClaudeCodeKernel
     this._readGoal,
     this._forkSession,
     ClaudeUsageSwitch? usageOffBy,
+    this._rejectTooOld,
     ModelProviders? providers,
     ProviderEnvironment? providerEnvironment,
     Future<bool> Function(String url)? openLink,
@@ -144,6 +152,11 @@ class ClaudeCodeKernel
   final ClaudeGoalReader? _readGoal;
   final ClaudeSessionForker? _forkSession;
   final ClaudeUsageSwitch _usageOffBy;
+
+  /// A build that refused an option BaoCode starts it with, run in a
+  /// folder: whether another, newer, may be started instead (see
+  /// [_launch]). None: the user is told to update it.
+  final ClaudeTooOldHandler? _rejectTooOld;
   late final ClaudeTranslator _translator;
 
   /// The providers of the user's (Settings → Models), whose models are
@@ -157,6 +170,10 @@ class ClaudeCodeKernel
   ControlChannel? _control;
   StreamSubscription<Map<String, Object?>>? _subscription;
   Future<void>? _starting;
+
+  /// The build that exited too old as it started, and what it printed:
+  /// another may be started in its place (see [_launch]).
+  (String, String)? _tooOldExit;
   Future<void> _history = Future.value();
 
   /// Writes wait on this: for the process to be ready, and for a rewind to
@@ -410,6 +427,14 @@ class ClaudeCodeKernel
       _fail(error.message, error.detail);
       rethrow;
     } on ControlError catch (error) {
+      // Too old: a newer one, if there is one, started in its place.
+      if (_tooOldExit case (final executable, final stderr)?) {
+        _tooOldExit = null;
+        if (!_disposed && await _rejectTooOld!(_cwd, executable)) {
+          return _launch();
+        }
+        _failExit(stderr, executable);
+      }
       // Exited while starting: what it said is kept (see _exited).
       if (_health.status != KernelHealthStatus.failed) {
         _fail('Claude Code did not start', '$error');
@@ -1840,6 +1865,16 @@ class ClaudeCodeKernel
   void _exited(int code, String stderr, {String? executable}) {
     final wasReady = _health.status == KernelHealthStatus.ready;
     _teardown();
+    if (!wasReady &&
+        _starting != null &&
+        _rejectTooOld != null &&
+        executable != null &&
+        _tooOld(stderr)) {
+      // The launch under way starts a newer one, if there is one, the
+      // turn going on there; else it says this and ends the turn.
+      _tooOldExit = (executable, stderr);
+      return;
+    }
     if (_turn != null) {
       emit(
         ItemUpserted(
@@ -1862,22 +1897,26 @@ class ClaudeCodeKernel
     if (code == 0 && wasReady) {
       _setHealth(KernelHealth.idle);
     } else {
-      final lines = stderr.trim().split('\n');
-      final printed = lines
-          .skip(lines.length > 12 ? lines.length - 12 : 0)
-          .join('\n');
-      _setHealth(
-        KernelHealth(
-          KernelHealthStatus.failed,
-          message: _failureMessage(stderr),
-          // Which one, when it is too old: another, newer, may be the
-          // terminal's.
-          detail: _tooOld(stderr) && executable != null
-              ? '$printed\n\nThe one run: $executable'
-              : printed,
-        ),
-      );
+      _failExit(stderr, executable);
     }
+  }
+
+  void _failExit(String stderr, String? executable) {
+    final lines = stderr.trim().split('\n');
+    final printed = lines
+        .skip(lines.length > 12 ? lines.length - 12 : 0)
+        .join('\n');
+    _setHealth(
+      KernelHealth(
+        KernelHealthStatus.failed,
+        message: _failureMessage(stderr),
+        // Which one, when it is too old: another, newer, may be the
+        // terminal's.
+        detail: _tooOld(stderr) && executable != null
+            ? '$printed\n\nThe one run: $executable'
+            : printed,
+      ),
+    );
   }
 
   /// Whether the CLI refused an option BaoCode starts it with: one from

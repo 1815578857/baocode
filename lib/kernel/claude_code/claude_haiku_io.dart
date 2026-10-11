@@ -7,7 +7,7 @@ import '../../network/network_proxy_io.dart';
 import 'claude_environment.dart';
 import 'claude_haiku.dart';
 import 'claude_settings_file.dart';
-import 'cli_locator.dart';
+import 'local_claude_io.dart';
 
 /// `claude -p --model haiku`: the prompt on stdin, one JSON result on
 /// stdout. No tools, MCP servers or slash commands, and no session kept;
@@ -70,7 +70,7 @@ Future<(String, int)> _run(
   required void Function(String line) onLine,
   void Function()? onStart,
 }) async {
-  final cli = await CliLocator.locate();
+  final cli = await LocalClaude.locate(install: false);
   final settingsFile = env == null
       ? null
       : await ClaudeSettingsFile.write({'env': env});

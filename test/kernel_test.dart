@@ -2152,6 +2152,70 @@ void main() {
       kernel.dispose();
     });
 
+    test('one too old is passed over for a newer one, started in its place: '
+        'the turn goes on there', () async {
+      final old = _SilentCli();
+      final newer = FakeCli();
+      final rejected = <(String, String)>[];
+      var starts = 0;
+      final kernel = ClaudeCodeKernel(
+        MockKernels.claudeCode,
+        const KernelContext(cwd: '/p'),
+        start: (_) async => [old, newer][starts++],
+        rejectTooOld: (cwd, executable) async {
+          rejected.add((cwd, executable));
+          return true;
+        },
+      );
+      final transcript = Transcript();
+      kernel.events.listen(transcript.apply);
+      kernel.send(const KernelTurn(id: 'u1', text: 'hi'));
+      await pumpEventQueue();
+      old.push(
+        ClaudeExit.message(
+          1,
+          "error: unknown option '--prompt-suggestions'",
+          executable: '/usr/local/bin/claude',
+        ),
+      );
+      await pumpEventQueue();
+      expect(rejected, [('/p', '/usr/local/bin/claude')]);
+      expect(starts, 2);
+      expect(kernel.health.status, KernelHealthStatus.ready);
+      expect(newer.users, hasLength(1));
+      expect(shown(transcript), isNot(contains(startsWith('notice error'))));
+      kernel.dispose();
+    });
+
+    test('one too old with none newer to run says to update it', () async {
+      final cli = _SilentCli();
+      var starts = 0;
+      final kernel = ClaudeCodeKernel(
+        MockKernels.claudeCode,
+        const KernelContext(cwd: '/p'),
+        start: (_) async {
+          starts++;
+          return cli;
+        },
+        rejectTooOld: (_, _) async => false,
+      );
+      kernel.send(const KernelTurn(id: 'u1', text: 'hi'));
+      await pumpEventQueue();
+      cli.push(
+        ClaudeExit.message(
+          1,
+          "error: unknown option '--prompt-suggestions'",
+          executable: '/usr/local/bin/claude',
+        ),
+      );
+      await pumpEventQueue();
+      expect(starts, 1);
+      expect(kernel.health.status, KernelHealthStatus.failed);
+      expect(kernel.health.message, contains('older than BaoCode needs'));
+      expect(kernel.health.detail, contains('/usr/local/bin/claude'));
+      kernel.dispose();
+    });
+
     test(
       'a crash fails the turn and says why; retrying starts again',
       () async {
@@ -3468,34 +3532,22 @@ void main() {
   group('claude locator', () {
     tearDown(() => CliLocator.use(null));
 
-    test('runs the build BAOCODE_CLAUDE_PATH names, not the installed '
-        'one', () async {
+    test('BAOCODE_CLAUDE_PATH in the environment is not read: the build '
+        'to run is a setting now', () async {
       final root = await Directory.systemTemp.createTemp('baocode-locator-');
       addTearDown(() => root.delete(recursive: true));
       final variant = File('${root.path}/claude-variant')
         ..writeAsStringSync('#!/bin/sh\n');
+      final installed = File('${root.path}/bin/claude')
+        ..createSync(recursive: true)
+        ..writeAsStringSync('#!/bin/sh\n');
       CliLocator.use({
         'BAOCODE_CLAUDE_PATH': variant.path,
-        'PATH': '${root.path}/none',
+        'PATH': '${root.path}/bin',
       });
 
       final cli = await CliLocator.locate();
-      expect(cli.executable, variant.path);
-    });
-
-    test('an override that is not there fails, naming the variable', () async {
-      CliLocator.use({'BAOCODE_CLAUDE_PATH': '/nonexistent/claude-variant'});
-
-      await expectLater(
-        CliLocator.locate(),
-        throwsA(
-          isA<ClaudeUnavailable>().having(
-            (error) => error.detail,
-            'detail',
-            contains('BAOCODE_CLAUDE_PATH'),
-          ),
-        ),
-      );
+      expect(cli.executable, installed.path);
     });
 
     // What npm leaves at bin/claude.exe when its postinstall did not run.

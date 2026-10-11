@@ -692,7 +692,8 @@ class _ChatScreenState extends State<ChatScreen>
                   // banner above when the agent failed on it.
                   if (!HealthBanner.shows(_session.health))
                     SshHostBanner(location: _session.kernelContext.cwd),
-                  // Claude Code being put on a remote project's host.
+                  // Claude Code being downloaded for this machine, or put on
+                  // a remote project's host.
                   ClaudeInstallBanner(location: _session.kernelContext.cwd),
                   _PanelSlot(
                     child: switch (_session.pendingInteraction) {

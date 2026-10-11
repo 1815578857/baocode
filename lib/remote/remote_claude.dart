@@ -35,6 +35,14 @@ Future<ClaudeCodeTransport> startClaude(ClaudeLaunch launch) {
   return RemoteClaudeTransport.start(SshHosts.instance[host], launch);
 }
 
+/// [executable] refused an option BaoCode starts it with, where [cwd]'s
+/// project is: whether another, newer, may be started instead. On this
+/// machine only: a remote host's is updated there.
+Future<bool> rejectTooOldClaude(String cwd, String executable) async {
+  if (RemoteLocation.hostOf(cwd) != null) return false;
+  return rejectTooOldClaudeProcess(executable);
+}
+
 /// [session]'s conversation, read where it was kept.
 Future<List<Map<String, Object?>>> readClaudeHistory(
   SessionRecord session,

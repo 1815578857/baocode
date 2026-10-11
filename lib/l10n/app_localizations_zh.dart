@@ -4983,6 +4983,37 @@ class AppLocalizationsZh extends AppLocalizations {
   String get generalSettingsWindows => '窗口';
 
   @override
+  String get claudePathSetting => '路径';
+
+  @override
+  String get claudePathSettingDescription =>
+      '留空：自动使用本机已安装的和 BaoCode 下载的 Claude Code 中版本最高的一份（一份都没有时会自动下载）。填入路径：始终使用这一份，例如你自己编译的版本。（claudeCode.path）';
+
+  @override
+  String get claudePathSettingHint => '自动';
+
+  @override
+  String get claudePathChecking => '正在检查…';
+
+  @override
+  String claudePathInUse(String path, String version) {
+    return '当前使用：$path（$version）';
+  }
+
+  @override
+  String claudePathInUseUnknown(String path) {
+    return '当前使用：$path';
+  }
+
+  @override
+  String claudePathInUseDownloaded(String version) {
+    return '当前使用：BaoCode 下载的 Claude Code $version';
+  }
+
+  @override
+  String get claudePathMissing => '尚未找到：开始第一个对话时会自动下载 Claude Code。';
+
+  @override
   String get generalSettingsIdeWindows => 'Fast Ide 窗口';
 
   @override
@@ -5154,7 +5185,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sidebarSearch => '搜索';
 
   @override
-  String get sidebarCustomize => '自定义';
+  String get sidebarCustomize => '技能';
 
   @override
   String get sidebarOpenProject => '打开项目';
@@ -6149,6 +6180,89 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateModeNone => '关闭';
 
   @override
+  String get diagnosticsTitle => '诊断日志';
+
+  @override
+  String get diagnosticsDescription =>
+      '把 BaoCode 的错误日志发给开发者，帮助排查问题。只有点击上传时才会发送。';
+
+  @override
+  String get diagnosticsUpload => '上传…';
+
+  @override
+  String get diagnosticsDialogTitle => '上传诊断日志';
+
+  @override
+  String get diagnosticsNotePlaceholder => '备注（选填）：遇到了什么问题，怎样复现';
+
+  @override
+  String diagnosticsFiles(int count, String size) {
+    return '将上传 $count 个日志文件（$size）。';
+  }
+
+  @override
+  String get diagnosticsNoFiles => '暂时没有日志，只会上传备注和版本信息。';
+
+  @override
+  String diagnosticsDumps(int count, String size) {
+    return '包含卡死时的内存转储（$count 个，$size）';
+  }
+
+  @override
+  String get diagnosticsDumpsDetail => '内存转储可能含有已打开文件的内容和路径。超过 10 MB 时只附带最新的。';
+
+  @override
+  String get diagnosticsPrivacy =>
+      '日志里的用户目录会替换成 ~。同时发送版本、系统和语言，但不包含使用统计的安装 ID。服务器上保存 90 天。';
+
+  @override
+  String get diagnosticsSend => '上传';
+
+  @override
+  String get diagnosticsUploading => '正在上传…';
+
+  @override
+  String get diagnosticsUploaded => '已上传。报告编号：';
+
+  @override
+  String get diagnosticsUploadedDetail => '把这个编号告诉 BaoCode 开发者，就能找到这份日志。';
+
+  @override
+  String diagnosticsOmittedDumps(int count) {
+    return '已省略 $count 个较早的内存转储（超过 10 MB）。';
+  }
+
+  @override
+  String get diagnosticsCopyId => '复制编号';
+
+  @override
+  String get diagnosticsCopied => '已复制';
+
+  @override
+  String get diagnosticsRetry => '重试';
+
+  @override
+  String get diagnosticsTooLarge => '日志超过 10 MB，无法上传。';
+
+  @override
+  String get diagnosticsRateLimited => '上传太频繁，请稍后再试。';
+
+  @override
+  String diagnosticsRefused(int status) {
+    return '服务器没有接受这份日志（HTTP $status）。';
+  }
+
+  @override
+  String diagnosticsServerError(String status) {
+    return '服务器暂时无法接收日志（$status），请稍后再试。';
+  }
+
+  @override
+  String diagnosticsFailed(String error) {
+    return '上传失败：$error';
+  }
+
+  @override
   String get cmdCheckForUpdates => '检查更新...';
 
   @override
@@ -6423,6 +6537,11 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String remoteInstallingClaudeProgress(String host, int percent) {
     return '正在 $host 上安装 Claude Code… $percent%';
+  }
+
+  @override
+  String localDownloadingClaude(int percent) {
+    return '正在下载 Claude Code… $percent%';
   }
 
   @override

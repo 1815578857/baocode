@@ -5343,6 +5343,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get generalSettingsWindows => 'Windows';
 
   @override
+  String get claudePathSetting => 'Path';
+
+  @override
+  String get claudePathSettingDescription =>
+      'Empty: the newest of the Claude Code installed on this machine and the one BaoCode downloaded (downloaded the first time there is none). A path: that one, always, e.g. one you built. (claudeCode.path)';
+
+  @override
+  String get claudePathSettingHint => 'Automatic';
+
+  @override
+  String get claudePathChecking => 'Checking…';
+
+  @override
+  String claudePathInUse(String path, String version) {
+    return 'In use: $path ($version)';
+  }
+
+  @override
+  String claudePathInUseUnknown(String path) {
+    return 'In use: $path';
+  }
+
+  @override
+  String claudePathInUseDownloaded(String version) {
+    return 'In use: Claude Code $version, downloaded by BaoCode';
+  }
+
+  @override
+  String get claudePathMissing =>
+      'None found yet: Claude Code is downloaded as the first conversation starts.';
+
+  @override
   String get generalSettingsIdeWindows => 'Fast Ide Windows';
 
   @override
@@ -5516,7 +5548,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sidebarSearch => 'Search';
 
   @override
-  String get sidebarCustomize => 'Customize';
+  String get sidebarCustomize => 'Skills';
 
   @override
   String get sidebarOpenProject => 'Open Project';
@@ -6563,6 +6595,107 @@ class AppLocalizationsEn extends AppLocalizations {
   String get updateModeNone => 'Off';
 
   @override
+  String get diagnosticsTitle => 'Diagnostic Logs';
+
+  @override
+  String get diagnosticsDescription =>
+      'Send BaoCode\'s error logs to its developers to help track down a problem. Nothing is sent until you upload.';
+
+  @override
+  String get diagnosticsUpload => 'Upload…';
+
+  @override
+  String get diagnosticsDialogTitle => 'Upload Diagnostic Logs';
+
+  @override
+  String get diagnosticsNotePlaceholder =>
+      'Note (optional): what went wrong, and how to make it happen again';
+
+  @override
+  String diagnosticsFiles(int count, String size) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count log files',
+      one: '1 log file',
+    );
+    return '$_temp0 ($size) will be uploaded.';
+  }
+
+  @override
+  String get diagnosticsNoFiles =>
+      'There are no logs yet: only the note and the version details are uploaded.';
+
+  @override
+  String diagnosticsDumps(int count, String size) {
+    return 'Include hang memory dumps ($count, $size)';
+  }
+
+  @override
+  String get diagnosticsDumpsDetail =>
+      'Memory dumps may contain parts of open files and paths. Over 10 MB, only the newest are included.';
+
+  @override
+  String get diagnosticsPrivacy =>
+      'Your home folder is written as ~. The app\'s version, system and language are sent with the logs, but not the usage statistics\' install ID. Kept on the server for 90 days.';
+
+  @override
+  String get diagnosticsSend => 'Upload';
+
+  @override
+  String get diagnosticsUploading => 'Uploading…';
+
+  @override
+  String get diagnosticsUploaded => 'Uploaded. Report ID:';
+
+  @override
+  String get diagnosticsUploadedDetail =>
+      'Give this ID to BaoCode\'s developers so they can find these logs.';
+
+  @override
+  String diagnosticsOmittedDumps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count older memory dumps were',
+      one: '1 older memory dump was',
+    );
+    return '$_temp0 left out: over 10 MB.';
+  }
+
+  @override
+  String get diagnosticsCopyId => 'Copy ID';
+
+  @override
+  String get diagnosticsCopied => 'Copied';
+
+  @override
+  String get diagnosticsRetry => 'Retry';
+
+  @override
+  String get diagnosticsTooLarge =>
+      'The logs are over 10 MB and cannot be uploaded.';
+
+  @override
+  String get diagnosticsRateLimited =>
+      'Too many uploads just now. Try again later.';
+
+  @override
+  String diagnosticsRefused(int status) {
+    return 'The server did not accept the logs (HTTP $status).';
+  }
+
+  @override
+  String diagnosticsServerError(String status) {
+    return 'The server could not take the logs ($status). Try again later.';
+  }
+
+  @override
+  String diagnosticsFailed(String error) {
+    return 'Could not upload: $error';
+  }
+
+  @override
   String get cmdCheckForUpdates => 'Check for Updates...';
 
   @override
@@ -6843,6 +6976,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String remoteInstallingClaudeProgress(String host, int percent) {
     return 'Installing Claude Code on $host… $percent%';
+  }
+
+  @override
+  String localDownloadingClaude(int percent) {
+    return 'Downloading Claude Code… $percent%';
   }
 
   @override

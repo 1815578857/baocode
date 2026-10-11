@@ -540,7 +540,7 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
               ),
             if (widget.onCustomize case final customize?)
               _NavRow(
-                icon: Codicons.extensions,
+                icon: Codicons.plug,
                 label: context.l10n.sidebarCustomize,
                 selected: widget.customizing,
                 onTap: customize,

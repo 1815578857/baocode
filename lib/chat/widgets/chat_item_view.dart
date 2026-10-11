@@ -159,10 +159,16 @@ String chatItemPlainText(
         else if (line.isNotEmpty)
           inline(line),
     ].join('\n'),
-    ThinkingItem(:final text, :final seconds) => [
-      thinkingTitle(seconds: seconds, l10n: strings),
-      if (expanded) text.trimRight(),
-    ].join('\n'),
+    ThinkingItem(:final text, :final seconds) => switch (thoughtSummary(text)) {
+      (:final title, :final body) => [
+        title,
+        if (expanded && body.isNotEmpty) body,
+      ].join('\n'),
+      null => [
+        thinkingTitle(seconds: seconds, l10n: strings),
+        if (expanded) text.trimRight(),
+      ].join('\n'),
+    },
     ToolCallItem(
       :final kind,
       :final target,

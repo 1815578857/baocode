@@ -85,9 +85,9 @@ Default client size 1024×760, minimum 400×540 — same numbers as
 | Concern | Windows |
 | --- | --- |
 | Preferences | `%APPDATA%\baocode\preferences.json` |
-| Claude config | `%USERPROFILE%\.claude` (or `BAOCODE_CLAUDE_PATH` / `CLAUDE_CONFIG_DIR`) |
+| Claude config | `%USERPROFILE%\.claude` (or `BAOCODE_CLAUDE_DATA_PATH` / `CLAUDE_CONFIG_DIR`) |
 | Task temp | `Directory.systemTemp` (not `/tmp`) |
-| Finding `claude` | PATH (`claude.cmd` / `.exe`), `%APPDATA%\npm\claude.cmd`, … |
+| Finding `claude` | Settings → General → Claude Code (`claudeCode.path`), else the newest of PATH (`claude.cmd` / `.exe`), `%APPDATA%\npm\claude.cmd`, … and the one BaoCode downloaded (`win32-x64/claude.exe`, kept as `<data>\claude\claude-<version>.exe`) |
 | Starting CLI | `Process.start(..., runInShell: true)` for `.cmd` / `.bat` shims |
 | Login shell env | not used; the process already has the user's environment |
 

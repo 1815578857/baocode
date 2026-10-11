@@ -11,6 +11,7 @@ import '../ide/git/git_repository.dart';
 import '../ide/git/repository_scan.dart';
 import '../ide/lsp/language_features.dart';
 import '../ide/terminal/terminal_instance.dart';
+import '../kernel/claude_code/claude_install_progress.dart';
 import 'project_host.dart';
 import 'remote_binaries.dart';
 import 'remote_location.dart';
@@ -18,26 +19,8 @@ import 'remote_lsp.dart';
 import 'remote_services.dart';
 import 'ssh_passwords.dart';
 
-/// How far installing Claude Code on a host is: [received] bytes of
-/// [size]; [uploading] once it is sent from here, the host unable to
-/// download it.
-class ClaudeInstallProgress {
-  const ClaudeInstallProgress(
-    this.received,
-    this.size, {
-    this.uploading = false,
-  });
-
-  final int received;
-  final int? size;
-  final bool uploading;
-
-  /// From 0 to 1; null while the size is not known.
-  double? get fraction => switch (size) {
-    final size? when size > 0 => (received / size).clamp(0, 1).toDouble(),
-    _ => null,
-  };
-}
+export '../kernel/claude_code/claude_install_progress.dart'
+    show ClaudeInstallProgress;
 
 /// Where a host's connection is.
 enum SshHostState {

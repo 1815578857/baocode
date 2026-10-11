@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'package:bao_remote/client.dart';
 import 'package:bao_remote/files.dart' show IdeFileExistsException;
 import 'package:bao_remote/local.dart' show ClaudeEnvironment, CliLocator;
+import 'package:bao_remote/server.dart' show ServerClaude;
 import 'package:baocode/chat/panels/health_banner.dart';
 import 'package:baocode/ide/git/git_model.dart' show IdeGitGroup;
 import 'package:baocode/ide/ide_quick_input.dart';
@@ -578,9 +579,9 @@ printf '%s\n' "$line"
           isA<ClaudeUnavailable>()
               .having((e) => e.message, 'message', contains('dev'))
               .having(
-                (e) => e.message,
-                'message',
-                contains(CliLocator.overrideVariable),
+                (e) => e.detail,
+                'detail',
+                contains(ServerClaude.pathVariable),
               ),
         ),
       );

@@ -137,7 +137,7 @@ void main() {
   ) async {
     final store = _MemoryStore();
     final workspace = await _pumpApp(tester, store);
-    await tester.tap(_inSidebar(find.text('Customize')));
+    await tester.tap(_inSidebar(find.text('Skills')));
     await tester.pumpAndSettle();
     expect(find.byType(CustomizeView), findsOneWidget);
     expect(find.byType(ChatScreen), findsNothing);
@@ -166,7 +166,7 @@ void main() {
     await _pumpApp(tester, _MemoryStore());
     await tester.pumpAndSettle();
     expect(find.byType(SidePanelRail), findsOneWidget);
-    final customize = _inSidebar(find.text('Customize'));
+    final customize = _inSidebar(find.text('Skills'));
     await tester.tap(customize);
     await tester.pumpAndSettle();
     expect(find.byType(CustomizeView), findsOneWidget);
@@ -193,7 +193,7 @@ void main() {
   ) async {
     final store = _MemoryStore();
     await _pumpApp(tester, store);
-    await tester.tap(_inSidebar(find.text('Customize')));
+    await tester.tap(_inSidebar(find.text('Skills')));
     await tester.pumpAndSettle();
 
     await tester.tap(_inView(find.text('pdf')));
@@ -264,7 +264,7 @@ void main() {
       'not there yet is made when saved', (tester) async {
     final store = _MemoryStore();
     await _pumpApp(tester, store);
-    await tester.tap(_inSidebar(find.text('Customize')));
+    await tester.tap(_inSidebar(find.text('Skills')));
     await tester.pumpAndSettle();
 
     await tester.tap(_inView(find.text('MCPs')));
@@ -329,7 +329,7 @@ void main() {
             );
     };
     await _pumpApp(tester, store);
-    await tester.tap(_inSidebar(find.text('Customize')));
+    await tester.tap(_inSidebar(find.text('Skills')));
     await tester.pumpAndSettle();
     await tester.tap(_inView(find.text('MCPs')));
     await tester.pump();

@@ -74,8 +74,9 @@ class ModelCheckbox extends StatelessWidget {
 
 /// The dialogs' frame: [title] over [child], [actions] under it, as the
 /// IDE's own dialogs look.
-class _ModelDialogFrame extends StatelessWidget {
-  const _ModelDialogFrame({
+class ModelDialogFrame extends StatelessWidget {
+  const ModelDialogFrame({
+    super.key,
     required this.title,
     required this.child,
     required this.actions,
@@ -496,7 +497,7 @@ class _FetchModelsDialogState extends State<FetchModelsDialog> {
         ],
       );
     }
-    return _ModelDialogFrame(
+    return ModelDialogFrame(
       title: l10n.modelsFetchTitle(widget.provider.name),
       onSubmit: listed == null ? null : _apply,
       actions: [
@@ -751,7 +752,7 @@ class _ModelEditDialogState extends State<ModelEditDialog> {
     final contextError = _tried && parseTokens(_context.text) == -1
         ? l10n.modelsContextInvalid
         : null;
-    return _ModelDialogFrame(
+    return ModelDialogFrame(
       title: _adding ? l10n.modelsAddTitle : l10n.modelsEditTitle,
       onSubmit: _save,
       actions: [

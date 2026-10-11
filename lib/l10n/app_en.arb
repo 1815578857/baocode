@@ -3899,6 +3899,40 @@
   "generalSettingsMainWindowIde": "Always IDE",
   "generalSettingsMainWindowLast": "Where you left off",
   "generalSettingsWindows": "Windows",
+  "claudePathSetting": "Path",
+  "claudePathSettingDescription": "Empty: the newest of the Claude Code installed on this machine and the one BaoCode downloaded (downloaded the first time there is none). A path: that one, always, e.g. one you built. (claudeCode.path)",
+  "claudePathSettingHint": "Automatic",
+  "claudePathChecking": "Checking…",
+  "claudePathInUse": "In use: {path} ({version})",
+  "@claudePathInUse": {
+    "description": "Under the Claude Code path setting: the build conversations run, and its version.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "claudePathInUseUnknown": "In use: {path}",
+  "@claudePathInUseUnknown": {
+    "description": "As claudePathInUse, for a build that does not say its version.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "claudePathInUseDownloaded": "In use: Claude Code {version}, downloaded by BaoCode",
+  "@claudePathInUseDownloaded": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "claudePathMissing": "None found yet: Claude Code is downloaded as the first conversation starts.",
   "generalSettingsIdeWindows": "Fast Ide Windows",
   "generalSettingsIdeWindowsDescription": "Where the Fast Ide opens: in windows of its own, one per folder (New Window, ⇧⌘N / Ctrl+Shift+N, opens an empty one), or in the main window in place of the chat, one folder at a time. Applies at once. (window.ideWindows)",
   "generalSettingsIdeWindowsSeparate": "Separate windows",
@@ -3976,7 +4010,7 @@
   "generalSettingsShellCommandUninstall": "Uninstall",
   "menuMore": "More…",
   "sidebarSearch": "Search",
-  "sidebarCustomize": "Customize",
+  "sidebarCustomize": "Skills",
   "sidebarOpenProject": "Open Project",
   "palettePlaceholder": "Search agents, conversations, files, actions…",
   "paletteFilterAll": "All",
@@ -4658,6 +4692,78 @@
   "@updateModeNone": {
     "description": "Update mode: never checks."
   },
+  "diagnosticsTitle": "Diagnostic Logs",
+  "diagnosticsDescription": "Send BaoCode's error logs to its developers to help track down a problem. Nothing is sent until you upload.",
+  "diagnosticsUpload": "Upload…",
+  "diagnosticsDialogTitle": "Upload Diagnostic Logs",
+  "diagnosticsNotePlaceholder": "Note (optional): what went wrong, and how to make it happen again",
+  "diagnosticsFiles": "{count, plural, =1{1 log file} other{{count} log files}} ({size}) will be uploaded.",
+  "@diagnosticsFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "diagnosticsNoFiles": "There are no logs yet: only the note and the version details are uploaded.",
+  "diagnosticsDumps": "Include hang memory dumps ({count}, {size})",
+  "@diagnosticsDumps": {
+    "description": "Windows only: the minidumps written when the app hung.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "diagnosticsDumpsDetail": "Memory dumps may contain parts of open files and paths. Over 10 MB, only the newest are included.",
+  "diagnosticsPrivacy": "Your home folder is written as ~. The app's version, system and language are sent with the logs, but not the usage statistics' install ID. Kept on the server for 90 days.",
+  "diagnosticsSend": "Upload",
+  "diagnosticsUploading": "Uploading…",
+  "diagnosticsUploaded": "Uploaded. Report ID:",
+  "diagnosticsUploadedDetail": "Give this ID to BaoCode's developers so they can find these logs.",
+  "diagnosticsOmittedDumps": "{count, plural, =1{1 older memory dump was} other{{count} older memory dumps were}} left out: over 10 MB.",
+  "@diagnosticsOmittedDumps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "diagnosticsCopyId": "Copy ID",
+  "diagnosticsCopied": "Copied",
+  "diagnosticsRetry": "Retry",
+  "diagnosticsTooLarge": "The logs are over 10 MB and cannot be uploaded.",
+  "diagnosticsRateLimited": "Too many uploads just now. Try again later.",
+  "diagnosticsRefused": "The server did not accept the logs (HTTP {status}).",
+  "@diagnosticsRefused": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "diagnosticsServerError": "The server could not take the logs ({status}). Try again later.",
+  "@diagnosticsServerError": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "diagnosticsFailed": "Could not upload: {error}",
+  "@diagnosticsFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "cmdCheckForUpdates": "Check for Updates...",
   "@cmdCheckForUpdates": {
     "description": "Command title; the English one is the command catalog's."
@@ -4904,6 +5010,15 @@
       "host": {
         "type": "String"
       },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "localDownloadingClaude": "Downloading Claude Code… {percent}%",
+  "@localDownloadingClaude": {
+    "description": "Shown over the chat while Claude Code is downloaded into BaoCode's data folder, the user having none that runs (or only one too old), before the agent starts.",
+    "placeholders": {
       "percent": {
         "type": "int"
       }

@@ -247,8 +247,9 @@ ssh 参数固定为：
 服务端按这个顺序找（`ServerClaude.locate`）：
 
 1. 远端环境变量 `BAOCODE_CLAUDE_PATH` 指定的路径（文件不存在就报错，不会去装）；
-2. 用户自己装的：远端登录 shell 的 PATH，以及 `~/.claude/local/claude`、`~/.local/bin/claude`、`/opt/homebrew/bin/claude`、`/usr/local/bin/claude`；
-3. BaoCode 自己装的那份：`~/.baocode-server/data/claude/` 里 `CURRENT` 指向的版本。
+2. 否则在用户自己装的（远端登录 shell 的 PATH，以及 `~/.claude/local/claude`、`~/.local/bin/claude`、`/opt/homebrew/bin/claude`、`/usr/local/bin/claude`）和 BaoCode 自己装的那份（`~/.baocode-server/data/claude/` 里 `CURRENT` 指向的版本）中，用版本最高的；一样新时用用户自己的。各份的版本用 `--version` 问一次，按文件缓存在 `~/.baocode-server/data/claude/versions.json`。
+
+本机的项目不读这个环境变量，改在 设置 → 通用 → Claude Code（`claudeCode.path`）里指定。
 
 **优先用用户自己的**，因为他的登录状态、配置和版本都在那份上。
 

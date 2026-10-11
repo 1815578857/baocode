@@ -8775,6 +8775,54 @@ abstract class AppLocalizations {
   /// **'Windows'**
   String get generalSettingsWindows;
 
+  /// No description provided for @claudePathSetting.
+  ///
+  /// In en, this message translates to:
+  /// **'Path'**
+  String get claudePathSetting;
+
+  /// No description provided for @claudePathSettingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty: the newest of the Claude Code installed on this machine and the one BaoCode downloaded (downloaded the first time there is none). A path: that one, always, e.g. one you built. (claudeCode.path)'**
+  String get claudePathSettingDescription;
+
+  /// No description provided for @claudePathSettingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get claudePathSettingHint;
+
+  /// No description provided for @claudePathChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get claudePathChecking;
+
+  /// Under the Claude Code path setting: the build conversations run, and its version.
+  ///
+  /// In en, this message translates to:
+  /// **'In use: {path} ({version})'**
+  String claudePathInUse(String path, String version);
+
+  /// As claudePathInUse, for a build that does not say its version.
+  ///
+  /// In en, this message translates to:
+  /// **'In use: {path}'**
+  String claudePathInUseUnknown(String path);
+
+  /// No description provided for @claudePathInUseDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'In use: Claude Code {version}, downloaded by BaoCode'**
+  String claudePathInUseDownloaded(String version);
+
+  /// No description provided for @claudePathMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'None found yet: Claude Code is downloaded as the first conversation starts.'**
+  String get claudePathMissing;
+
   /// No description provided for @generalSettingsIdeWindows.
   ///
   /// In en, this message translates to:
@@ -9096,7 +9144,7 @@ abstract class AppLocalizations {
   /// No description provided for @sidebarCustomize.
   ///
   /// In en, this message translates to:
-  /// **'Customize'**
+  /// **'Skills'**
   String get sidebarCustomize;
 
   /// No description provided for @sidebarOpenProject.
@@ -10833,6 +10881,144 @@ abstract class AppLocalizations {
   /// **'Off'**
   String get updateModeNone;
 
+  /// No description provided for @diagnosticsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostic Logs'**
+  String get diagnosticsTitle;
+
+  /// No description provided for @diagnosticsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Send BaoCode\'s error logs to its developers to help track down a problem. Nothing is sent until you upload.'**
+  String get diagnosticsDescription;
+
+  /// No description provided for @diagnosticsUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload…'**
+  String get diagnosticsUpload;
+
+  /// No description provided for @diagnosticsDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload Diagnostic Logs'**
+  String get diagnosticsDialogTitle;
+
+  /// No description provided for @diagnosticsNotePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional): what went wrong, and how to make it happen again'**
+  String get diagnosticsNotePlaceholder;
+
+  /// No description provided for @diagnosticsFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 log file} other{{count} log files}} ({size}) will be uploaded.'**
+  String diagnosticsFiles(int count, String size);
+
+  /// No description provided for @diagnosticsNoFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no logs yet: only the note and the version details are uploaded.'**
+  String get diagnosticsNoFiles;
+
+  /// Windows only: the minidumps written when the app hung.
+  ///
+  /// In en, this message translates to:
+  /// **'Include hang memory dumps ({count}, {size})'**
+  String diagnosticsDumps(int count, String size);
+
+  /// No description provided for @diagnosticsDumpsDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory dumps may contain parts of open files and paths. Over 10 MB, only the newest are included.'**
+  String get diagnosticsDumpsDetail;
+
+  /// No description provided for @diagnosticsPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Your home folder is written as ~. The app\'s version, system and language are sent with the logs, but not the usage statistics\' install ID. Kept on the server for 90 days.'**
+  String get diagnosticsPrivacy;
+
+  /// No description provided for @diagnosticsSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get diagnosticsSend;
+
+  /// No description provided for @diagnosticsUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading…'**
+  String get diagnosticsUploading;
+
+  /// No description provided for @diagnosticsUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploaded. Report ID:'**
+  String get diagnosticsUploaded;
+
+  /// No description provided for @diagnosticsUploadedDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Give this ID to BaoCode\'s developers so they can find these logs.'**
+  String get diagnosticsUploadedDetail;
+
+  /// No description provided for @diagnosticsOmittedDumps.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 older memory dump was} other{{count} older memory dumps were}} left out: over 10 MB.'**
+  String diagnosticsOmittedDumps(int count);
+
+  /// No description provided for @diagnosticsCopyId.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy ID'**
+  String get diagnosticsCopyId;
+
+  /// No description provided for @diagnosticsCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get diagnosticsCopied;
+
+  /// No description provided for @diagnosticsRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get diagnosticsRetry;
+
+  /// No description provided for @diagnosticsTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The logs are over 10 MB and cannot be uploaded.'**
+  String get diagnosticsTooLarge;
+
+  /// No description provided for @diagnosticsRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many uploads just now. Try again later.'**
+  String get diagnosticsRateLimited;
+
+  /// No description provided for @diagnosticsRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not accept the logs (HTTP {status}).'**
+  String diagnosticsRefused(int status);
+
+  /// No description provided for @diagnosticsServerError.
+  ///
+  /// In en, this message translates to:
+  /// **'The server could not take the logs ({status}). Try again later.'**
+  String diagnosticsServerError(String status);
+
+  /// No description provided for @diagnosticsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not upload: {error}'**
+  String diagnosticsFailed(String error);
+
   /// Command title; the English one is the command catalog's.
   ///
   /// In en, this message translates to:
@@ -11270,6 +11456,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Installing Claude Code on {host}… {percent}%'**
   String remoteInstallingClaudeProgress(String host, int percent);
+
+  /// Shown over the chat while Claude Code is downloaded into BaoCode's data folder, the user having none that runs (or only one too old), before the agent starts.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading Claude Code… {percent}%'**
+  String localDownloadingClaude(int percent);
 
   /// The host cannot download Claude Code itself: this machine downloaded it and sends it over the SSH connection.
   ///
