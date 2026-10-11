@@ -119,12 +119,7 @@ class FeaturedUpstream {
   static Future<List<FeaturedUpstream>> Function() keptLoader =
       readFeaturedUpstreams;
 
-  /// How long [load] keeps what it got: a site listed shows the next time
-  /// Settings → Models opens after that.
-  static const refreshEvery = Duration(hours: 1);
-
   static Future<List<FeaturedUpstream>>? _loaded;
-  static DateTime? _loadedAt;
 
   /// Those listed as [load] got them last, or [readKept]: for what shows
   /// them as they are, an upstream's icon at one's host, say.
@@ -147,23 +142,17 @@ class FeaturedUpstream {
   /// The one of [known] [host] is at; null for none.
   static FeaturedUpstream? knownAt(String host) => at(host, known.value);
 
-  /// Those the app lists, got again once [refreshEvery] has passed: at
-  /// once those it got last time (in this run, else kept from the last),
-  /// the new list for the next time; where there are none yet, the new
-  /// list. None where none could be got, asked again the next time.
+  /// Those the app lists, asked again on every call, at once those it got
+  /// last time (in this run, else kept from the last), the new list as
+  /// soon as it answers; where there are none yet, the new list. None
+  /// where none could be got.
   static Future<List<FeaturedUpstream>> load() {
-    final now = DateTime.now();
-    final (last, at) = (_loaded, _loadedAt);
-    if (last != null && at != null && now.difference(at) < refreshEvery) {
-      return last;
-    }
-    _loadedAt = now;
+    final last = _loaded;
     final fresh = loader().catchError((Object _) => const <FeaturedUpstream>[]);
     unawaited(
       fresh.then((list) {
         _loaded = Future.value(list);
         known.value = list;
-        if (list.isEmpty) _loadedAt = null;
       }),
     );
     final kept = (last ?? keptLoader()).catchError(
@@ -178,7 +167,7 @@ class FeaturedUpstream {
 
   @visibleForTesting
   static void forget() {
-    _loaded = _loadedAt = null;
+    _loaded = null;
     known.value = const [];
   }
 

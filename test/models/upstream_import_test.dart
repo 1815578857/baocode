@@ -218,8 +218,8 @@ void main() {
       for (final upstream in list) upstream.id,
     ];
 
-    test('the list kept last time shows at once, the new one the next '
-        'time', () async {
+    test('the list kept last time shows at once, the new one as it answers, '
+        'and every load asks again', () async {
       var asked = 0;
       FeaturedUpstream.keptLoader = () async => [site('kept')];
       FeaturedUpstream.loader = () async {
@@ -229,8 +229,9 @@ void main() {
       expect(ids(await FeaturedUpstream.load()), ['kept']);
       await pumpEventQueue();
       expect(ids(FeaturedUpstream.known.value), ['fresh']);
+      // Asked every time, not once in an hour.
       expect(ids(await FeaturedUpstream.load()), ['fresh']);
-      expect(asked, 1);
+      expect(asked, 2);
     });
 
     test('at the start, those known are those kept, with no asking', () async {

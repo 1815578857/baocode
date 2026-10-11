@@ -116,26 +116,45 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
   late final Future<List<FeaturedUpstream>> _featured =
       widget.featured ?? FeaturedUpstream.load();
 
-  /// The hosts of [_featured], once got: their upstreams lead the list.
+  /// The hosts of [_featured], once got, then of the list got again behind
+  /// it as it answers: their upstreams lead the list.
   Set<String> _listedHosts = const {};
+  bool _relisted = false;
+
+  /// Whether [_featured] is the app's, got again behind it.
+  bool get _follows => widget.featured == null;
 
   @override
   void initState() {
     super.initState();
     _reveal();
     ModelsSettingsPage.reveal.addListener(_reveal);
+    if (_follows) FeaturedUpstream.known.addListener(_relist);
     unawaited(
       _featured.then((listed) {
-        if (mounted) {
-          setState(() => _listedHosts = {for (final u in listed) ...u.hosts});
-        }
+        // Not where the new list answered before it.
+        if (mounted && !_relisted) _takeHosts(listed);
       }),
     );
+  }
+
+  void _takeHosts(List<FeaturedUpstream> listed) {
+    setState(() => _listedHosts = {for (final u in listed) ...u.hosts});
+  }
+
+  /// The list [FeaturedUpstream.load] got again; an empty one changes
+  /// nothing.
+  void _relist() {
+    final listed = FeaturedUpstream.known.value;
+    if (listed.isEmpty || !mounted) return;
+    _relisted = true;
+    _takeHosts(listed);
   }
 
   @override
   void dispose() {
     ModelsSettingsPage.reveal.removeListener(_reveal);
+    if (_follows) FeaturedUpstream.known.removeListener(_relist);
     super.dispose();
   }
 
@@ -249,6 +268,7 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
       title: l10n.modelsTitle,
       lead: FeaturedUpstreamsStrip(
         upstreams: _featured,
+        follow: _follows,
         hosts: [for (final provider in _providers.providers) provider.host],
       ),
       children: [

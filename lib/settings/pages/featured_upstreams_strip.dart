@@ -29,11 +29,13 @@ import 'settings_widgets.dart';
 /// taking the place of one before.
 ///
 /// Nothing at all, not the space above it either, until the list is got,
-/// nor where none could be (see [FeaturedUpstream.load] for its cache).
+/// nor where none could be. What shows at once is the list kept last time;
+/// the new one, as baocode.dev answers (see [FeaturedUpstream.load]).
 class FeaturedUpstreamsStrip extends StatefulWidget {
   const FeaturedUpstreamsStrip({
     super.key,
     this.upstreams,
+    this.follow,
     this.hosts = const [],
     this.random,
     this.open = _openUrl,
@@ -41,6 +43,11 @@ class FeaturedUpstreamsStrip extends StatefulWidget {
 
   /// Those listed; the app's ([FeaturedUpstream.load]) when null.
   final Future<List<FeaturedUpstream>>? upstreams;
+
+  /// Whether the list got again behind [upstreams] shows as it answers
+  /// ([FeaturedUpstream.known]): where [upstreams] is the app's. So when
+  /// null, where [upstreams] is null too.
+  final bool? follow;
 
   /// The hosts of the user's upstreams, the oldest first.
   final Iterable<String> hosts;
@@ -71,20 +78,42 @@ class _FeaturedUpstreamsStripState extends State<FeaturedUpstreamsStrip> {
   final ScrollController _scroll = ScrollController();
   List<FeaturedUpstream> _upstreams = const [];
 
+  bool get _follows => widget.follow ?? widget.upstreams == null;
+
   @override
   void initState() {
     super.initState();
+    // Before the list is got: the new one may answer first.
+    if (_follows) FeaturedUpstream.known.addListener(_refresh);
     unawaited(_load());
   }
 
   Future<void> _load() async {
-    final listed = [...await (widget.upstreams ?? FeaturedUpstream.load())]
-      ..shuffle(widget.random);
-    if (mounted) setState(() => _upstreams = listed);
+    final listed = await (widget.upstreams ?? FeaturedUpstream.load());
+    // Not where the new list showed before it.
+    if (mounted && _upstreams.isEmpty) {
+      setState(() => _upstreams = [...listed]..shuffle(widget.random));
+    }
+  }
+
+  /// The list [FeaturedUpstream.load] got again, once it answers: those
+  /// shown keep their places, those new drawn into theirs, those gone
+  /// taken out. An empty one leaves them as they are.
+  void _refresh() {
+    final listed = FeaturedUpstream.known.value;
+    if (listed.isEmpty || !mounted) return;
+    final byId = {for (final upstream in listed) upstream.id: upstream};
+    final kept = [for (final upstream in _upstreams) ?byId.remove(upstream.id)];
+    final random = widget.random ?? Random();
+    for (final upstream in byId.values) {
+      kept.insert(random.nextInt(kept.length + 1), upstream);
+    }
+    setState(() => _upstreams = kept);
   }
 
   @override
   void dispose() {
+    if (_follows) FeaturedUpstream.known.removeListener(_refresh);
     _scroll.dispose();
     super.dispose();
   }

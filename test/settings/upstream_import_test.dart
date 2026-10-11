@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
@@ -216,6 +217,77 @@ void main() {
       await tester.pump();
       expect(find.text('Alpha API'), findsOneWidget);
       expect(find.byIcon(Codicons.info), findsNothing);
+    });
+
+    testWidgets('Settings → Models shows the list kept at once, the new one '
+        'as baocode.dev answers, a site of theirs then leading', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1000, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      for (final (id, url) in [
+        ('gamma', 'https://api.gamma.example.com'),
+        ('beta', 'https://api.beta.example.com'),
+      ]) {
+        await providers.save(
+          ModelProvider(id: id, name: 'Up $id', baseUrl: url),
+        );
+      }
+      final answer = Completer<List<FeaturedUpstream>>();
+      FeaturedUpstream.keptLoader = () async => [_featured.first];
+      FeaturedUpstream.loader = () => answer.future;
+      await tester.pumpWidget(_app(ModelsSettingsPage(providers: providers)));
+      await tester.pump();
+      double top(String name) => tester.getTopLeft(find.text(name)).dy;
+      expect(find.text('Alpha API'), findsOneWidget);
+      expect(find.text('Beta Relay'), findsNothing);
+      expect(top('Up gamma'), lessThan(top('Up beta')));
+
+      answer.complete(_featured);
+      await tester.pump();
+      expect(find.text('Beta Relay'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Beta Relay')).dx,
+        lessThan(tester.getTopLeft(find.text('Alpha API')).dx),
+      );
+      expect(top('Up beta'), lessThan(top('Up gamma')));
+    });
+
+    testWidgets('the new list keeps those shown in their places', (
+      tester,
+    ) async {
+      final many = [
+        for (var i = 0; i < 8; i++)
+          FeaturedUpstream(
+            id: 'u$i',
+            name: 'Upstream $i',
+            url: Uri.parse('https://u$i.example.com'),
+          ),
+      ];
+      await tester.pumpWidget(
+        _app(
+          FeaturedUpstreamsStrip(
+            upstreams: Future.value(many),
+            follow: true,
+            random: Random(1),
+          ),
+        ),
+      );
+      await tester.pump();
+      List<String> order() => tester
+          .widgetList<Text>(find.textContaining('Upstream '))
+          .map((text) => text.data!)
+          .toList();
+      final before = order();
+      // The same sites, in another order: as they were.
+      FeaturedUpstream.known.value = many.reversed.toList();
+      await tester.pump();
+      expect(order(), before);
+      // None: as they were too.
+      FeaturedUpstream.known.value = const [];
+      await tester.pump();
+      expect(order(), before);
     });
   });
 
