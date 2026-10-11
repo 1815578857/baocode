@@ -1487,16 +1487,16 @@
       }
     }
   },
-  "usageCacheOverall": "overall {percent}%",
+  "usageCacheOverall": "main chat {percent}%",
   "@usageCacheOverall": {
-    "description": "percent a whole number: what of the whole conversation's input was read from the cache.",
+    "description": "percent a whole number: what of the main conversation's input was read from the cache.",
     "placeholders": {
       "percent": {
         "type": "String"
       }
     }
   },
-  "usageCacheConversation": "Whole conversation: {read} read · {written} written · {percent}% hit",
+  "usageCacheConversation": "Main conversation: {read} read · {written} written · {percent}% hit",
   "@usageCacheConversation": {
     "description": "read and written are formatted counts (8.2k); percent a whole number.",
     "placeholders": {
@@ -1511,6 +1511,7 @@
       }
     }
   },
+  "usageCacheExcludes": "Not counting subagents, compaction or the CLI's side requests",
   "usagePlanUsage": "Plan usage",
   "usageThisSession": "This session",
   "usageCheckingLimits": "Checking limits…",

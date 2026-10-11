@@ -1729,6 +1729,7 @@ void main() {
         int read,
         int written, {
         int uncached = 2,
+        String model = 'claude-opus-5-5',
         Object? parent,
         bool sidechain = false,
       }) => {
@@ -1738,11 +1739,15 @@ void main() {
         'message': {
           'id': id,
           'role': 'assistant',
+          'model': model,
           'content': const [],
           'usage': {
             'input_tokens': uncached,
-            'cache_read_input_tokens': read,
-            'cache_creation_input_tokens': written,
+            // As the proxy gives a provider's: only what was cached.
+            if (read > 0 || !model.startsWith('p/'))
+              'cache_read_input_tokens': read,
+            if (written > 0 || !model.startsWith('p/'))
+              'cache_creation_input_tokens': written,
           },
         },
       };
@@ -1790,6 +1795,21 @@ void main() {
       expect(cache.last.hitRate, closeTo(30000 / 30502, 1e-9));
       expect(cache.conversation.read, 30000);
       expect(cache.conversation.written, 50500);
+
+      // A provider's model that never says what was cached: not shown,
+      // rather than all uncached.
+      cli.push(assistant('p1', 0, 0, uncached: 31000, model: 'p/plain'));
+      await pumpEventQueue();
+      expect(transcript.stats!.cache, isNull);
+      // One that does, once it is cached.
+      cli
+        ..push(assistant('p2', 0, 0, uncached: 31000, model: 'p/caching'))
+        ..push(assistant('p3', 30000, 0, uncached: 1000, model: 'p/caching'));
+      await pumpEventQueue();
+      expect(transcript.stats!.cache!.last.read, 30000);
+      cli.push(assistant('p4', 0, 0, uncached: 31000, model: 'p/caching'));
+      await pumpEventQueue();
+      expect(transcript.stats!.cache!.last.hitRate, 0);
       kernel.dispose();
     });
 

@@ -2445,13 +2445,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String usageCacheOverall(String percent) {
-    return 'overall $percent%';
+    return 'main chat $percent%';
   }
 
   @override
   String usageCacheConversation(String read, String written, String percent) {
-    return 'Whole conversation: $read read · $written written · $percent% hit';
+    return 'Main conversation: $read read · $written written · $percent% hit';
   }
+
+  @override
+  String get usageCacheExcludes =>
+      'Not counting subagents, compaction or the CLI\'s side requests';
 
   @override
   String get usagePlanUsage => 'Plan usage';

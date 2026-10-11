@@ -203,6 +203,7 @@ class _PromptCacheMeter extends StatelessWidget {
           format(all.written),
           _percent(all),
         ),
+        l10n.usageCacheExcludes,
       ].join('\n'),
       child: Row(
         children: [

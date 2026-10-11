@@ -236,6 +236,13 @@ class ClaudeCodeKernel
   final Map<String, CacheTokens> _requests = {};
   String? _lastRequest;
 
+  /// The models whose replies said what the cache took: Claude's always,
+  /// a provider's through the proxy only when it does (and then only when
+  /// its cache was used). The cache is not shown for the others, as all
+  /// uncached would be a guess.
+  final Set<String?> _cachingModels = {};
+  String? _lastModel;
+
   // The account's limits are the same in every session: the last any of
   // them was told, shown in all of them.
   static List<RateLimitWindow> _limits = const [];
@@ -1659,11 +1666,11 @@ class ClaudeCodeKernel
         limitsState: _limitsState,
         limitsOffBy: _limitsOffBy,
         cache: switch (_requests[_lastRequest]) {
-          final last? => PromptCache(
+          final last? when _cachingModels.contains(_lastModel) => PromptCache(
             last: last,
             conversation: _requests.values.reduce((a, b) => a + b),
           ),
-          null => null,
+          _ => null,
         },
       ),
     ),
@@ -1678,7 +1685,8 @@ class ClaudeCodeKernel
         message['isSidechain'] == true) {
       return false;
     }
-    final (id, usage) = switch (message['message']) {
+    final body = message['message'];
+    final (id, usage) = switch (body) {
       {'id': final String id, 'usage': final Map<Object?, Object?> usage} => (
         id,
         usage,
@@ -1686,6 +1694,7 @@ class ClaudeCodeKernel
       _ => (null, null),
     };
     if (id == null || usage == null) return false;
+    final model = (body as Map)['model'] as String?;
     int count(String key) => switch (usage[key]) {
       final num n => n.toInt(),
       _ => 0,
@@ -1698,6 +1707,11 @@ class ClaudeCodeKernel
     // None at all: one of the CLI's own (an API error), not the model's.
     if (tokens.total == 0) return false;
     _lastRequest = id;
+    _lastModel = model;
+    if (usage.containsKey('cache_read_input_tokens') ||
+        usage.containsKey('cache_creation_input_tokens')) {
+      _cachingModels.add(model);
+    }
     if (_requests.containsKey(id)) return false;
     _requests[id] = tokens;
     return true;

@@ -82,12 +82,13 @@ void main() {
     );
     expect(find.text('Prompt cache'), findsOneWidget);
     expect(find.text('96%'), findsOneWidget);
-    expect(find.text('overall 93%'), findsOneWidget);
+    expect(find.text('main chat 93%'), findsOneWidget);
     // The counts on hover.
     expect(
       tester.widget<IdeHover>(find.byType(IdeHover).last).message,
       'Last request: 61.3k read · 2.4k written · 2 uncached\n'
-      'Whole conversation: 1.2M read · 85.3k written · 93% hit',
+      'Main conversation: 1.2M read · 85.3k written · 93% hit\n'
+      "Not counting subagents, compaction or the CLI's side requests",
     );
     // Between the context and the plan.
     expect(

@@ -2361,13 +2361,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String usageCacheOverall(String percent) {
-    return '整个对话 $percent%';
+    return '主对话 $percent%';
   }
 
   @override
   String usageCacheConversation(String read, String written, String percent) {
-    return '整个对话：读取 $read · 写入 $written · 命中 $percent%';
+    return '主对话：读取 $read · 写入 $written · 命中 $percent%';
   }
+
+  @override
+  String get usageCacheExcludes => '不含子智能体、压缩及 CLI 的附带请求';
 
   @override
   String get usagePlanUsage => '套餐用量';

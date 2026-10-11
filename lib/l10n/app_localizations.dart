@@ -4454,17 +4454,23 @@ abstract class AppLocalizations {
   /// **'Last request: {read} read · {written} written · {uncached} uncached'**
   String usageCacheLast(String read, String written, String uncached);
 
-  /// percent a whole number: what of the whole conversation's input was read from the cache.
+  /// percent a whole number: what of the main conversation's input was read from the cache.
   ///
   /// In en, this message translates to:
-  /// **'overall {percent}%'**
+  /// **'main chat {percent}%'**
   String usageCacheOverall(String percent);
 
   /// read and written are formatted counts (8.2k); percent a whole number.
   ///
   /// In en, this message translates to:
-  /// **'Whole conversation: {read} read · {written} written · {percent}% hit'**
+  /// **'Main conversation: {read} read · {written} written · {percent}% hit'**
   String usageCacheConversation(String read, String written, String percent);
+
+  /// No description provided for @usageCacheExcludes.
+  ///
+  /// In en, this message translates to:
+  /// **'Not counting subagents, compaction or the CLI\'s side requests'**
+  String get usageCacheExcludes;
 
   /// No description provided for @usagePlanUsage.
   ///
