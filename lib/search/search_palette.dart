@@ -391,7 +391,7 @@ class _SearchPaletteState extends State<SearchPalette> {
     leading: SizedBox(
       width: 14,
       child: Center(
-        child: thread.status == ThreadStatus.idle
+        child: thread.shownStatus == ThreadStatus.idle
             ? Container(
                 width: 5,
                 height: 5,
@@ -400,7 +400,7 @@ class _SearchPaletteState extends State<SearchPalette> {
                   shape: BoxShape.circle,
                 ),
               )
-            : StatusIndicator(thread.status),
+            : StatusIndicator(thread.shownStatus),
       ),
     ),
     snippet: snippet,

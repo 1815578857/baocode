@@ -5,13 +5,14 @@ import 'package:path/path.dart' as p;
 
 import '../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/codicons.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
 import '../../ide/ide_hover.dart';
 import '../../kernel/kernel_types.dart';
 import '../chat_models.dart';
 import '../widgets/flip_switcher.dart';
 import '../widgets/hover_builder.dart';
-import '../widgets/orbit_indicator.dart';
+import '../widgets/pixel_loader.dart';
 import 'change_tree.dart';
 import 'interaction_panel.dart';
 
@@ -256,22 +257,13 @@ class _TaskRow extends StatelessWidget {
       children: [
         SizedBox.square(
           dimension: 14,
-          // A subagent left to run on its own.
-          child: task.kind == KernelTaskKind.agent && task.background
-              ? const OrbitIndicator()
-              : Padding(
-                  padding: EdgeInsets.all(1.5),
-                  child: CircularProgressIndicator(
-                    strokeWidth: 1.6,
-                    color: AppColors.textMuted,
-                  ),
-                ),
+          child: task.kind == KernelTaskKind.agent
+              ? const PixelLoader.subagent()
+              // A shell: its icon alone, as the side panel's terminal tab;
+              // the time beside it says it runs.
+              : Icon(Codicons.terminal, size: 14, color: AppColors.textFaint),
         ),
         const SizedBox(width: 8),
-        if (task.kind != KernelTaskKind.agent) ...[
-          Icon(Icons.terminal_rounded, size: 13, color: AppColors.textFaint),
-          const SizedBox(width: 5),
-        ],
         // All the room there is, so the time and the action sit at the end.
         Expanded(
           child: LayoutBuilder(

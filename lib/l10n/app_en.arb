@@ -4801,6 +4801,52 @@
       }
     }
   },
+  "appearanceSettingsAgentLoader": "Agent Working",
+  "appearanceSettingsAgentLoaderDescription": "Beside an agent in the sidebar, tabs and search while it works, or while something it started still runs in the background.",
+  "appearanceSettingsSubagentLoader": "Subagent Running",
+  "appearanceSettingsSubagentLoaderDescription": "On a subagent's card in the conversation, and its row above the input, while it runs.",
+  "appearanceSettingsLoaderLabel": "{what}: {style}",
+  "@appearanceSettingsLoaderLabel": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      },
+      "style": {
+        "type": "String"
+      }
+    }
+  },
+  "appearanceSettingsLoaderSpeed": "Speed",
+  "appearanceSettingsLoaderSpeedLabel": "{what} speed: {speed}",
+  "@appearanceSettingsLoaderSpeedLabel": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      },
+      "speed": {
+        "type": "String"
+      }
+    }
+  },
+  "loaderStyleSnake": "Snake",
+  "loaderStyleStack": "Stack and clear",
+  "loaderStyleTwinkle": "Twinkle",
+  "loaderStyleFill": "Fill and empty",
+  "loaderStylePulse": "Square pulse",
+  "loaderStyleRipple": "Cross ripple",
+  "loaderStyleSweep": "Diagonal sweep",
+  "loaderStyleRain": "Pixel rain",
+  "loaderStyleChecker": "Checkerboard",
+  "loaderStyleSpinner": "Spinner",
+  "loaderStyleTwinSpinner": "Twin spinner",
+  "loaderStyleCorners": "Corners",
+  "loaderStyleDots": "Bouncing dots",
+  "loaderStyleEqualizer": "Equalizer",
+  "loaderStyleBar": "Progress bar",
+  "loaderStyleScan": "Scan line",
+  "loaderStyleHourglass": "Hourglass",
+  "loaderStyleBreathe": "Breathe",
+  "loaderStyleCircle": "Ring (classic)",
   "appearanceSettingsUserMessageStyle": "Your Messages",
   "appearanceSettingsUserMessageStyleDescription": "How the messages you send show in the conversation: as wide as it, the one you are reading under staying at the top as you scroll; or as chat bubbles at the right that scroll away.",
   "appearanceSettingsUserMessageStyleSticky": "Full width, sticks to the top",

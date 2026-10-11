@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:baocode/chat/widgets/pixel_loader.dart';
 import 'package:baocode/chat/chat_screen.dart';
 import 'package:baocode/chat/composer/composer.dart';
 import 'package:baocode/chat/chat_session.dart';
@@ -199,7 +200,7 @@ void main() {
     await tester.pump();
     expect(chatTitle(tester), '整理一下测试');
     expect(find.text('Plan, build, anything'), findsNothing);
-    expect(inSidebar(find.byType(CircularProgressIndicator)), findsOneWidget);
+    expect(inSidebar(find.byType(PixelLoader)), findsOneWidget);
     thread.session.stop();
     await tester.pump(const Duration(seconds: 1));
   });

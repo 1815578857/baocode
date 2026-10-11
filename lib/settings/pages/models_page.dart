@@ -25,6 +25,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
 import '../../chat/widgets/hover_builder.dart';
+import '../../chat/widgets/pixel_loader.dart';
 import '../../workspace/workspace.dart';
 import 'featured_upstreams_strip.dart';
 import 'model_dialogs.dart';
@@ -1600,14 +1601,7 @@ class _ModelTestResult extends StatelessWidget {
       );
     }
     if (answer == null) {
-      return SizedBox(
-        width: 12,
-        height: 12,
-        child: CircularProgressIndicator(
-          strokeWidth: 1.5,
-          color: SettingsColors.textSecondary,
-        ),
-      );
+      return PixelLoader.agent(size: 11, color: SettingsColors.textSecondary);
     }
     final speed = answer.tokensPerSecond;
     return IdeHover(

@@ -12,6 +12,7 @@ import 'package:bao_editor/monaco/flutter/language_assets.dart';
 
 import 'chat/chat_width.dart';
 import 'chat/user_message_style.dart';
+import 'chat/widgets/pixel_loader.dart';
 import 'customize/customization_store.dart';
 import 'diagnostics/diagnostics_upload.dart';
 import 'extensions/theme_extensions.dart';
@@ -151,6 +152,8 @@ Future<void> main(List<String> arguments) async {
       files.settings,
       () => files.settings[UserMessageStyle.settingKey],
     );
+    // Settings → Appearance: what an agent and a subagent show running.
+    PixelLoaderRole.follow(files.settings, (key) => files.settings[key]);
     // Settings → Appearance: the code's font, size and ligatures, and the
     // window's text size.
     CodeFont.follow(files.settings, (key) => files.settings[key]);

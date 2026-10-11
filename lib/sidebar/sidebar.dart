@@ -9,6 +9,7 @@ import '../chat/floating/floating_placement.dart';
 import '../chat/widgets/hover_builder.dart';
 import '../chat/widgets/hover_scrollbar.dart';
 import '../chat/widgets/inline_rename_field.dart';
+import '../chat/widgets/pixel_loader.dart';
 import '../chat/widgets/scroll_edge_fade.dart';
 import '../icons/project_icon_picker.dart';
 import '../icons/project_icon_view.dart';
@@ -457,22 +458,22 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
           _Group(
             'needsInput',
             l10n.sidebarNeedsInput,
-            where((t) => t.status == ThreadStatus.needsInput),
+            where((t) => t.shownStatus == ThreadStatus.needsInput),
           ),
           _Group(
             'running',
             l10n.sidebarRunning,
-            where((t) => t.status == ThreadStatus.running),
+            where((t) => t.shownStatus == ThreadStatus.running),
           ),
           _Group(
             'unread',
             l10n.sidebarUnread,
-            where((t) => t.status == ThreadStatus.unread),
+            where((t) => t.shownStatus == ThreadStatus.unread),
           ),
           _Group(
             'idle',
             l10n.sidebarDone,
-            where((t) => t.status == ThreadStatus.idle),
+            where((t) => t.shownStatus == ThreadStatus.idle),
           ),
         ],
       },
@@ -2386,7 +2387,7 @@ class _ThreadRow extends StatelessWidget {
                 children: [
                   SizedBox(
                     width: 14,
-                    child: Center(child: StatusIndicator(thread.status)),
+                    child: Center(child: StatusIndicator(thread.shownStatus)),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -2425,7 +2426,7 @@ class _ThreadRow extends StatelessWidget {
   /// what it is doing and when it last did.
   Widget _buildHover(AppLocalizations l10n) {
     final diff = thread.diff;
-    final status = switch (thread.status) {
+    final status = switch (thread.shownStatus) {
       ThreadStatus.needsInput => l10n.sidebarNeedsInput,
       ThreadStatus.running => l10n.sidebarRunning,
       ThreadStatus.unread => l10n.sidebarUnread,
@@ -2578,13 +2579,7 @@ class StatusIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (status) {
-      ThreadStatus.running => SizedBox.square(
-        dimension: 10,
-        child: CircularProgressIndicator(
-          strokeWidth: 1.5,
-          color: AppColors.textMuted,
-        ),
-      ),
+      ThreadStatus.running => const PixelLoader.agent(),
       ThreadStatus.needsInput => _Dot(needsInputColor),
       ThreadStatus.unread => _Dot(AppColors.accent),
       ThreadStatus.idle => const SizedBox.shrink(),

@@ -6743,6 +6743,90 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get appearanceSettingsAgentLoader => 'Agent Working';
+
+  @override
+  String get appearanceSettingsAgentLoaderDescription =>
+      'Beside an agent in the sidebar, tabs and search while it works, or while something it started still runs in the background.';
+
+  @override
+  String get appearanceSettingsSubagentLoader => 'Subagent Running';
+
+  @override
+  String get appearanceSettingsSubagentLoaderDescription =>
+      'On a subagent\'s card in the conversation, and its row above the input, while it runs.';
+
+  @override
+  String appearanceSettingsLoaderLabel(String what, String style) {
+    return '$what: $style';
+  }
+
+  @override
+  String get appearanceSettingsLoaderSpeed => 'Speed';
+
+  @override
+  String appearanceSettingsLoaderSpeedLabel(String what, String speed) {
+    return '$what speed: $speed';
+  }
+
+  @override
+  String get loaderStyleSnake => 'Snake';
+
+  @override
+  String get loaderStyleStack => 'Stack and clear';
+
+  @override
+  String get loaderStyleTwinkle => 'Twinkle';
+
+  @override
+  String get loaderStyleFill => 'Fill and empty';
+
+  @override
+  String get loaderStylePulse => 'Square pulse';
+
+  @override
+  String get loaderStyleRipple => 'Cross ripple';
+
+  @override
+  String get loaderStyleSweep => 'Diagonal sweep';
+
+  @override
+  String get loaderStyleRain => 'Pixel rain';
+
+  @override
+  String get loaderStyleChecker => 'Checkerboard';
+
+  @override
+  String get loaderStyleSpinner => 'Spinner';
+
+  @override
+  String get loaderStyleTwinSpinner => 'Twin spinner';
+
+  @override
+  String get loaderStyleCorners => 'Corners';
+
+  @override
+  String get loaderStyleDots => 'Bouncing dots';
+
+  @override
+  String get loaderStyleEqualizer => 'Equalizer';
+
+  @override
+  String get loaderStyleBar => 'Progress bar';
+
+  @override
+  String get loaderStyleScan => 'Scan line';
+
+  @override
+  String get loaderStyleHourglass => 'Hourglass';
+
+  @override
+  String get loaderStyleBreathe => 'Breathe';
+
+  @override
+  String get loaderStyleCircle => 'Ring (classic)';
+
+  @override
   String get appearanceSettingsUserMessageStyle => 'Your Messages';
 
   @override

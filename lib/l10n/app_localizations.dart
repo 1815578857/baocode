@@ -11097,6 +11097,162 @@ abstract class AppLocalizations {
   /// **'Conversation width: {width}'**
   String appearanceSettingsChatWidthLabel(String width);
 
+  /// No description provided for @appearanceSettingsAgentLoader.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent Working'**
+  String get appearanceSettingsAgentLoader;
+
+  /// No description provided for @appearanceSettingsAgentLoaderDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Beside an agent in the sidebar, tabs and search while it works, or while something it started still runs in the background.'**
+  String get appearanceSettingsAgentLoaderDescription;
+
+  /// No description provided for @appearanceSettingsSubagentLoader.
+  ///
+  /// In en, this message translates to:
+  /// **'Subagent Running'**
+  String get appearanceSettingsSubagentLoader;
+
+  /// No description provided for @appearanceSettingsSubagentLoaderDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'On a subagent\'s card in the conversation, and its row above the input, while it runs.'**
+  String get appearanceSettingsSubagentLoaderDescription;
+
+  /// No description provided for @appearanceSettingsLoaderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{what}: {style}'**
+  String appearanceSettingsLoaderLabel(String what, String style);
+
+  /// No description provided for @appearanceSettingsLoaderSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get appearanceSettingsLoaderSpeed;
+
+  /// No description provided for @appearanceSettingsLoaderSpeedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{what} speed: {speed}'**
+  String appearanceSettingsLoaderSpeedLabel(String what, String speed);
+
+  /// No description provided for @loaderStyleSnake.
+  ///
+  /// In en, this message translates to:
+  /// **'Snake'**
+  String get loaderStyleSnake;
+
+  /// No description provided for @loaderStyleStack.
+  ///
+  /// In en, this message translates to:
+  /// **'Stack and clear'**
+  String get loaderStyleStack;
+
+  /// No description provided for @loaderStyleTwinkle.
+  ///
+  /// In en, this message translates to:
+  /// **'Twinkle'**
+  String get loaderStyleTwinkle;
+
+  /// No description provided for @loaderStyleFill.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill and empty'**
+  String get loaderStyleFill;
+
+  /// No description provided for @loaderStylePulse.
+  ///
+  /// In en, this message translates to:
+  /// **'Square pulse'**
+  String get loaderStylePulse;
+
+  /// No description provided for @loaderStyleRipple.
+  ///
+  /// In en, this message translates to:
+  /// **'Cross ripple'**
+  String get loaderStyleRipple;
+
+  /// No description provided for @loaderStyleSweep.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagonal sweep'**
+  String get loaderStyleSweep;
+
+  /// No description provided for @loaderStyleRain.
+  ///
+  /// In en, this message translates to:
+  /// **'Pixel rain'**
+  String get loaderStyleRain;
+
+  /// No description provided for @loaderStyleChecker.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkerboard'**
+  String get loaderStyleChecker;
+
+  /// No description provided for @loaderStyleSpinner.
+  ///
+  /// In en, this message translates to:
+  /// **'Spinner'**
+  String get loaderStyleSpinner;
+
+  /// No description provided for @loaderStyleTwinSpinner.
+  ///
+  /// In en, this message translates to:
+  /// **'Twin spinner'**
+  String get loaderStyleTwinSpinner;
+
+  /// No description provided for @loaderStyleCorners.
+  ///
+  /// In en, this message translates to:
+  /// **'Corners'**
+  String get loaderStyleCorners;
+
+  /// No description provided for @loaderStyleDots.
+  ///
+  /// In en, this message translates to:
+  /// **'Bouncing dots'**
+  String get loaderStyleDots;
+
+  /// No description provided for @loaderStyleEqualizer.
+  ///
+  /// In en, this message translates to:
+  /// **'Equalizer'**
+  String get loaderStyleEqualizer;
+
+  /// No description provided for @loaderStyleBar.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress bar'**
+  String get loaderStyleBar;
+
+  /// No description provided for @loaderStyleScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan line'**
+  String get loaderStyleScan;
+
+  /// No description provided for @loaderStyleHourglass.
+  ///
+  /// In en, this message translates to:
+  /// **'Hourglass'**
+  String get loaderStyleHourglass;
+
+  /// No description provided for @loaderStyleBreathe.
+  ///
+  /// In en, this message translates to:
+  /// **'Breathe'**
+  String get loaderStyleBreathe;
+
+  /// No description provided for @loaderStyleCircle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ring (classic)'**
+  String get loaderStyleCircle;
+
   /// No description provided for @appearanceSettingsUserMessageStyle.
   ///
   /// In en, this message translates to:

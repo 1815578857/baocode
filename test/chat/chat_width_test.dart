@@ -61,7 +61,9 @@ void main() {
 
   testWidgets('the slider picks a step, applied at once and kept in '
       'settings.json; the default is not written', (tester) async {
-    tester.view.physicalSize = const Size(900, 900);
+    // Tall enough for the whole page: one scrolled to its lower part trips
+    // the semantics check as the code preview leaves the list's cache.
+    tester.view.physicalSize = const Size(900, 1400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final data = (await tester.runAsync(
@@ -117,9 +119,7 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 50));
     for (var i = 1; i <= 8; i++) {
-      await drag.moveTo(
-        tester.getTopLeft(slider) + Offset(14 + i * 18.0, 10),
-      );
+      await drag.moveTo(tester.getTopLeft(slider) + Offset(14 + i * 18.0, 10));
       await tester.pump();
       expect(ChatWidth.current.value, ChatWidth.fallback);
     }

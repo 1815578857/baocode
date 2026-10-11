@@ -1,5 +1,6 @@
 import 'package:bao_editor/monaco/flutter/editor_surface.dart';
 import 'package:baocode/chat/user_message_style.dart';
+import 'package:baocode/chat/widgets/pixel_loader.dart';
 import 'package:baocode/ide/ide_color_theme_picker.dart';
 import 'package:baocode/settings/pages/appearance_page.dart';
 import 'package:baocode/settings/pages/settings_dropdown.dart';
@@ -17,6 +18,10 @@ void main() {
     CodeFont.uiScale.value = CodeFont.defaultUiScale;
     CodeFont.terminalSize.value = null;
     UserMessageStyle.current.value = UserMessageStyle.sticky;
+    for (final role in PixelLoaderRole.values) {
+      role.style.value = PixelLoaderStyle.fill;
+      role.speed.value = role.defaultSpeed;
+    }
   });
 
   Future<_RecordingSettings> pumpPage(WidgetTester tester) async {
@@ -28,6 +33,11 @@ void main() {
     final themes = _Themes();
     await tester.pumpWidget(
       MaterialApp(
+        // Its loaders' previews still, for the page to settle.
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          child: child!,
+        ),
         home: Scaffold(
           body: AppearanceSettingsPage(
             themes: themes,
@@ -43,9 +53,9 @@ void main() {
   testWidgets('a code font preset is kept in settings.json; the default is '
       'removed from it', (tester) async {
     final settings = await pumpPage(tester);
-    // The color theme's dropdown comes first, then the user messages', then
-    // the code font's.
-    final dropdown = find.byType(SettingsDropdown).at(2);
+    // The color theme's dropdown comes first, then the user messages', the
+    // two loaders', then the code font's.
+    final dropdown = find.byType(SettingsDropdown).at(4);
     Future<void> choose(String label) async {
       await tester.tap(dropdown);
       await tester.pumpAndSettle();
@@ -91,6 +101,61 @@ void main() {
     await leave(tester);
   });
 
+  testWidgets('an agent\'s and a subagent\'s loaders are picked and paced '
+      'apart, kept in settings.json; the defaults are removed from it', (
+    tester,
+  ) async {
+    final settings = await pumpPage(tester);
+    // After the color theme's and the user messages': the agent's, then
+    // the subagent's.
+    Future<void> choose(int dropdown, String label) async {
+      await tester.tap(find.byType(SettingsDropdown).at(dropdown));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label).last);
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.text('Fill and empty'), findsNWidgets(2));
+    await choose(2, 'Pixel rain');
+    expect(PixelLoaderRole.agent.style.value, PixelLoaderStyle.rain);
+    expect(PixelLoaderRole.subagent.style.value, PixelLoaderStyle.fill);
+    expect(settings.written['chat.agentLoadingStyle'], 'rain');
+
+    SettingsSlider speed(String what) => tester.widget<SettingsSlider>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is SettingsSlider &&
+            widget.semanticLabel.startsWith('$what speed'),
+      ),
+    );
+    expect(speed('Subagent Running').label, '1.3×');
+    speed('Subagent Running').onChanged(PixelLoaderRole.speeds.indexOf(2.0));
+    await tester.pump();
+    expect(PixelLoaderRole.subagent.speed.value, 2.0);
+    expect(settings.written['chat.subagentLoadingSpeed'], 2.0);
+    expect(speed('Subagent Running').label, '2×');
+    speed('Subagent Running').onChanged(PixelLoaderRole.speeds.indexOf(1.3));
+    await tester.pump();
+    expect(settings.written.containsKey('chat.subagentLoadingSpeed'), isTrue);
+    expect(settings.written['chat.subagentLoadingSpeed'], isNull);
+
+    // The ring keeps its own pace: no slider for it.
+    await choose(2, 'Ring (classic)');
+    expect(settings.written['chat.agentLoadingStyle'], 'circle');
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is SettingsSlider &&
+            widget.semanticLabel.startsWith('Agent Working speed'),
+      ),
+      findsNothing,
+    );
+    await choose(2, 'Fill and empty');
+    expect(settings.written.containsKey('chat.agentLoadingStyle'), isTrue);
+    expect(settings.written['chat.agentLoadingStyle'], isNull);
+    await leave(tester);
+  });
+
   testWidgets('the terminal follows the interface text size until Custom '
       'is chosen, which shows a size slider; following again removes it', (
     tester,
@@ -108,6 +173,8 @@ void main() {
     expect(slider(), findsNothing);
     Future<void> choose(String label) async {
       await tester.ensureVisible(dropdown);
+      // Laid out where it was scrolled to, before the tap.
+      await tester.pump();
       await tester.tap(dropdown);
       await tester.pumpAndSettle();
       await tester.tap(find.text(label).last);

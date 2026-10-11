@@ -6309,6 +6309,90 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get appearanceSettingsAgentLoader => '智能体加载中';
+
+  @override
+  String get appearanceSettingsAgentLoaderDescription =>
+      '侧栏、标签页和搜索里，智能体工作时，或它启动的任务仍在后台运行时，显示在它旁边的动画。';
+
+  @override
+  String get appearanceSettingsSubagentLoader => '子代理运行中';
+
+  @override
+  String get appearanceSettingsSubagentLoaderDescription =>
+      '子代理运行时，显示在对话里它的卡片和输入框上方它那一行的动画。';
+
+  @override
+  String appearanceSettingsLoaderLabel(String what, String style) {
+    return '$what：$style';
+  }
+
+  @override
+  String get appearanceSettingsLoaderSpeed => '速度';
+
+  @override
+  String appearanceSettingsLoaderSpeedLabel(String what, String speed) {
+    return '$what速度：$speed';
+  }
+
+  @override
+  String get loaderStyleSnake => '贪吃蛇';
+
+  @override
+  String get loaderStyleStack => '堆积消行';
+
+  @override
+  String get loaderStyleTwinkle => '随机闪烁';
+
+  @override
+  String get loaderStyleFill => '堆满再清空';
+
+  @override
+  String get loaderStylePulse => '方形脉冲';
+
+  @override
+  String get loaderStyleRipple => '十字涟漪';
+
+  @override
+  String get loaderStyleSweep => '斜向扫描';
+
+  @override
+  String get loaderStyleRain => '像素雨';
+
+  @override
+  String get loaderStyleChecker => '棋盘交替';
+
+  @override
+  String get loaderStyleSpinner => '经典转圈';
+
+  @override
+  String get loaderStyleTwinSpinner => '双头转圈';
+
+  @override
+  String get loaderStyleCorners => '四角轮闪';
+
+  @override
+  String get loaderStyleDots => '三点跳动';
+
+  @override
+  String get loaderStyleEqualizer => '均衡器';
+
+  @override
+  String get loaderStyleBar => '不定进度条';
+
+  @override
+  String get loaderStyleScan => '扫描线';
+
+  @override
+  String get loaderStyleHourglass => '沙漏';
+
+  @override
+  String get loaderStyleBreathe => '整体呼吸';
+
+  @override
+  String get loaderStyleCircle => '圆环（原版）';
+
+  @override
   String get appearanceSettingsUserMessageStyle => '用户消息样式';
 
   @override
