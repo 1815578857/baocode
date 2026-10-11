@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 
 import '../../ide/ide_fuzzy.dart';
 import '../../ide/ide_hover.dart';
+import '../../ide/ide_menu.dart' show IdeMenuColors;
 import '../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
@@ -789,18 +790,13 @@ class ComposerPickerState extends State<ComposerPicker> {
 
   double get _rowHeight => widget.describes ? 40 : 30;
 
-  /// As upstream's action widget, its pickers' menu.
+  /// As upstream's action widget, its pickers' menu: in a context menu's
+  /// colors ([IdeMenuColors]), as the other dropdowns.
   static BoxDecoration get _panel => BoxDecoration(
-    color: AppColors.surfaceRaised,
+    color: IdeMenuColors.background,
     borderRadius: BorderRadius.circular(8),
-    border: Border.all(color: themeColors['editorHoverWidget.border']),
-    boxShadow: [
-      BoxShadow(
-        color: themeColors['widget.shadow'],
-        blurRadius: 24,
-        offset: const Offset(0, 8),
-      ),
-    ],
+    border: Border.all(color: IdeMenuColors.border),
+    boxShadow: themeColors.highContrast ? null : IdeHoverColors.shadow,
   );
 
   Widget _buildMenu(BuildContext context) => _buildOptions();
@@ -852,7 +848,7 @@ class ComposerPickerState extends State<ComposerPicker> {
                   vertical: (_settingGap - 1) / 2,
                   horizontal: 4,
                 ),
-                color: themeColors['editorHoverWidget.border'],
+                color: IdeMenuColors.separator,
               ),
             if (switch (setting.kind) {
                   KernelChoiceKind.context =>
@@ -1203,7 +1199,7 @@ class _GroupHeading extends StatelessWidget {
         Container(
           height: 1,
           margin: const EdgeInsets.only(top: lineGap),
-          color: themeColors['editorHoverWidget.border'],
+          color: IdeMenuColors.separator,
         ),
         heading,
       ],
@@ -1331,7 +1327,10 @@ class _FooterRow extends StatelessWidget {
                 footer.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 12.5),
+                style: TextStyle(
+                  color: IdeMenuColors.foreground,
+                  fontSize: 12.5,
+                ),
               ),
             ),
           ],
@@ -1426,7 +1425,7 @@ class _PickerRow extends StatelessWidget {
                       style: TextStyle(
                         color: caution
                             ? AppColors.caution
-                            : AppColors.textPrimary,
+                            : IdeMenuColors.foreground,
                         fontSize: 12.5,
                       ),
                     ),
@@ -1449,7 +1448,7 @@ class _PickerRow extends StatelessWidget {
                 Icon(
                   Icons.check_rounded,
                   size: 15,
-                  color: caution ? AppColors.caution : AppColors.text,
+                  color: caution ? AppColors.caution : IdeMenuColors.foreground,
                 ),
               if (hasSettings)
                 Padding(
@@ -1572,7 +1571,7 @@ class _SettingRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: AppColors.textPrimary,
+                        color: IdeMenuColors.foreground,
                         fontSize: 12.5,
                       ),
                     ),
@@ -1590,7 +1589,11 @@ class _SettingRow extends StatelessWidget {
                 ),
               ),
               if (selected)
-                Icon(Icons.check_rounded, size: 15, color: AppColors.text),
+                Icon(
+                  Icons.check_rounded,
+                  size: 15,
+                  color: IdeMenuColors.foreground,
+                ),
             ],
           ),
         ),
