@@ -10,6 +10,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
 import '../chat_session.dart';
 import '../widgets/hover_builder.dart';
+import '../widgets/scroll_edge_fade.dart';
 import '../../kernel/agent_kernel.dart';
 import '../../kernel/kernel_types.dart';
 import '../floating/floating_layer.dart';
@@ -105,8 +106,17 @@ class ComposerPickerState extends State<ComposerPicker> {
   bool _open = false;
   int _highlighted = 0;
 
-  /// What was typed to filter the options.
+  /// What was typed to filter the options: in the search line, or (it
+  /// not focused) in the input the picker belongs to.
   String _query = '';
+
+  /// The search line's text, [_query] as it is.
+  final TextEditingController _searchText = TextEditingController();
+
+  /// The search line's, once clicked: the menu's keys go on working in it.
+  late final FocusNode _searchFocus = FocusNode(
+    onKeyEvent: (_, event) => _handleSearchKey(event),
+  );
 
   bool get _searches =>
       widget.searchPlaceholder != null &&
@@ -128,6 +138,12 @@ class ComposerPickerState extends State<ComposerPicker> {
 
   void _search(String query) {
     final visible = (_query = query).isEmpty ? null : _visible;
+    if (_searchText.text != query) {
+      _searchText.value = TextEditingValue(
+        text: query,
+        selection: TextSelection.collapsed(offset: query.length),
+      );
+    }
     setState(() {
       _settingsOf = null;
       _setting = null;
@@ -190,6 +206,14 @@ class ComposerPickerState extends State<ComposerPicker> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _searchText.addListener(() {
+      if (_searchText.text != _query) _search(_searchText.text);
+    });
+  }
+
+  @override
   void didUpdateWidget(ComposerPicker oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.options.length != oldWidget.options.length) {
@@ -201,14 +225,19 @@ class ComposerPickerState extends State<ComposerPicker> {
   void dispose() {
     _switch?.cancel();
     if (_open) FloatingRegistry.closePopover(this);
+    _searchText.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
   void _setOpen(bool open) {
     if (open == _open) return;
+    // Back to the input, from the search line.
+    if (!open && _searchFocus.hasFocus) widget.focusNode?.requestFocus();
+    _query = '';
+    _searchText.clear();
     setState(() {
       _open = open;
-      _query = '';
       if (open) {
         _highlighted = widget.options
             .indexOf(widget.selected)
@@ -385,6 +414,21 @@ class ComposerPickerState extends State<ComposerPicker> {
       return null;
     }
     return KeyEventResult.handled;
+  }
+
+  /// A key in the focused search line: the menu's (↑↓, Enter, Esc; all
+  /// of them in the settings), the rest the line's own.
+  KeyEventResult _handleSearchKey(KeyEvent event) {
+    final key = event.logicalKey;
+    final menu =
+        _setting != null ||
+        key == LogicalKeyboardKey.arrowUp ||
+        key == LogicalKeyboardKey.arrowDown ||
+        key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter ||
+        key == LogicalKeyboardKey.escape;
+    if (!menu || event is KeyUpEvent) return KeyEventResult.ignored;
+    return _handleKey(event) ?? KeyEventResult.ignored;
   }
 
   /// What [event] types, if it is a character, not a shortcut.
@@ -687,10 +731,13 @@ class ComposerPickerState extends State<ComposerPicker> {
       );
     }
     final footer = widget.footer;
+    const sides = EdgeInsets.symmetric(horizontal: _menuPadding);
     final menu = Container(
       key: _menuKey,
       width: widget.menuWidth,
-      padding: const EdgeInsets.all(_menuPadding),
+      // Above and below; the sides inside, so that the list's scrollbar
+      // is at the menu's edge.
+      padding: const EdgeInsets.symmetric(vertical: _menuPadding),
       decoration: _panel,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -698,17 +745,21 @@ class ComposerPickerState extends State<ComposerPicker> {
         children: [
           if (widget.title case final title?)
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
               child: Text(
                 title,
                 style: TextStyle(color: AppColors.textMuted, fontSize: 11.5),
               ),
             ),
           if (_searches)
-            _SearchLine(query: _query, placeholder: widget.searchPlaceholder!),
+            _SearchLine(
+              controller: _searchText,
+              focusNode: _searchFocus,
+              placeholder: widget.searchPlaceholder!,
+            ),
           if (visible.isEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
               child: Text(
                 context.l10n.modelsNoMatch,
                 style: TextStyle(color: AppColors.textFaint, fontSize: 12),
@@ -718,29 +769,32 @@ class ComposerPickerState extends State<ComposerPicker> {
             Flexible(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: _maxListHeight),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: rows,
+                // What is scrolled past fades out under the search line
+                // and the footer, in place of lines between them.
+                child: ScrollEdgeFade(
+                  fadeLength: 16,
+                  child: SingleChildScrollView(
+                    padding: sides,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: rows,
+                    ),
                   ),
                 ),
               ),
             ),
-          if (footer != null) ...[
-            Container(
-              height: 1,
-              margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-              color: themeColors['editorHoverWidget.border'],
+          if (footer != null)
+            Padding(
+              padding: sides.copyWith(top: _menuPadding),
+              child: _FooterRow(
+                footer: footer,
+                onTap: () {
+                  _setOpen(false);
+                  footer.onTap();
+                },
+              ),
             ),
-            _FooterRow(
-              footer: footer,
-              onTap: () {
-                _setOpen(false);
-                footer.onTap();
-              },
-            ),
-          ],
         ],
       ),
     );
@@ -813,39 +867,68 @@ class _GroupHeading extends StatelessWidget {
   }
 }
 
-/// What was typed to filter the options, over them.
+/// What was typed to filter the options, over them: clicked, it takes
+/// the keys; else they come from the input the picker belongs to.
 class _SearchLine extends StatelessWidget {
-  const _SearchLine({required this.query, required this.placeholder});
+  const _SearchLine({
+    required this.controller,
+    required this.focusNode,
+    required this.placeholder,
+  });
 
-  final String query;
+  final TextEditingController controller;
+  final FocusNode focusNode;
   final String placeholder;
 
+  static const _style = TextStyle(fontSize: 12.5, height: 1.2);
+
   @override
-  Widget build(BuildContext context) => Container(
-    height: 28,
-    margin: const EdgeInsets.only(bottom: 4),
-    padding: const EdgeInsets.symmetric(horizontal: 8),
-    decoration: BoxDecoration(
-      border: Border(
-        bottom: BorderSide(color: themeColors['editorHoverWidget.border']),
-      ),
-    ),
-    child: Row(
-      children: [
-        Icon(Icons.search_rounded, size: 14, color: AppColors.textFaint),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            query.isEmpty ? placeholder : query,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: query.isEmpty ? AppColors.textFaint : AppColors.text,
-              fontSize: 12.5,
+  Widget build(BuildContext context) => MouseRegion(
+    cursor: SystemMouseCursors.text,
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: focusNode.requestFocus,
+      child: Container(
+        height: 28,
+        margin: const EdgeInsets.fromLTRB(4, 0, 4, 2),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          children: [
+            Icon(Icons.search_rounded, size: 14, color: AppColors.textFaint),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Stack(
+                alignment: Alignment.centerLeft,
+                children: [
+                  ListenableBuilder(
+                    listenable: controller,
+                    builder: (context, _) => controller.text.isEmpty
+                        ? Text(
+                            placeholder,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: _style.copyWith(color: AppColors.textFaint),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                  EditableText(
+                    controller: controller,
+                    focusNode: focusNode,
+                    // Whole, as an editable text wants it: the font around it.
+                    style: DefaultTextStyle.of(context).style
+                        .merge(_style.copyWith(color: AppColors.text)),
+                    cursorColor: AppColors.text,
+                    cursorWidth: 1,
+                    backgroundCursorColor: AppColors.textFaint,
+                    selectionColor: themeColors['editor.selectionBackground'],
+                    maxLines: 1,
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     ),
   );
 }

@@ -123,6 +123,43 @@ void main() {
     expect(picked, ['@gw/glm-4.6']);
   });
 
+  testWidgets('the search line takes the keys once clicked: the menu\'s '
+      'go on working, and Escape gives them back', (tester) async {
+    await pump(tester, [
+      _option('default', 'Default', _builtin),
+      for (var i = 0; i < 12; i++) _option('@gw/m$i', 'Model $i', _gateway),
+      _option('@gw/m1x', 'Model 1x', _gateway),
+    ]);
+    await open(tester, 'Default');
+    final input = FocusManager.instance.primaryFocus;
+    await tester.tap(find.text('Search models'));
+    await tester.pump();
+    final search = find.byType(EditableText);
+    expect(tester.widget<EditableText>(search).focusNode.hasFocus, isTrue);
+
+    await tester.enterText(search, 'model 1');
+    await tester.pump();
+    expect(find.text('Model 3'), findsNothing);
+    expect(find.text('Model 10'), findsOneWidget);
+
+    // Escape clears it, then closes the menu, the input focused again.
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(find.text('Model 3'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.text('Model 3'), findsNothing);
+    expect(FocusManager.instance.primaryFocus, input);
+
+    // Enter in it picks.
+    await open(tester, 'Default');
+    await tester.tap(find.text('Search models'));
+    await tester.enterText(find.byType(EditableText), '1x');
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(picked, ['@gw/m1x']);
+  });
+
   testWidgets(
     'short viewport keeps the scrollable list and footer in the menu',
     (tester) async {
