@@ -29,6 +29,48 @@
   <h1>Changelog</h1>
   <p class="subtitle">What changed in each version of BaoCode.</p>
 
+  <section class="release" id="v1.0.8">
+    <h2 class="plain"><a href="#v1.0.8">1.0.8</a></h2>
+    <p>Much sharper</p>
+    <p>A wide-ranging release: import upstreams from a site in one click, manage SSH hosts from the sidebar, undo and drag files in and out of the explorer, get Claude Code downloaded for you on first use, and a batch of long-standing fixes.</p>
+    <p>New</p>
+    <ul>
+    <li>One-click upstream import: click the import button on a site that offers it and, once you confirm, the upstream is added with your own key (only its name, protocol, address and key are taken). Settings → Models lists the sites officially listed at the top, those you use first; the list follows baocode.dev, with no new release needed.</li>
+    <li>The model picker shows each model's maker logo, and each upstream's heading has an icon. Pick one yourself (a maker's logo, the site's icon, an emoji, a built-in icon or an image you upload); unset, the maker is told from the address, or the site's icon is fetched.</li>
+    <li>Queued messages: what you send while the agent works no longer lands in the conversation. It waits above the input, sent in turn, and each can be taken back to edit, sent now (stopping the current task), or removed.</li>
+    <li>Open Project in the sidebar, and SSH hosts managed there: switch between this machine and a host, add, rename, disconnect or remove hosts. The new chat's folder menu lists SSH hosts and their projects too, and picks a folder on a host directly.</li>
+    <li>SSH password sign-in on Windows (OpenSSH 8.4 or newer).</li>
+    <li>Explorer: creating, deleting and moving files can be undone and redone (Cmd/Ctrl+Z); drag files in from other apps, or out of the window into them (a remote project's are downloaded first); copy a remote project's files to the system clipboard, and paste this machine's files into it to upload them; a folder you cannot read says so.</li>
+    <li>Auto save: turn on Auto Save in the File menu, or set files.autoSave (after a pause in editing, on switching editors or on leaving the window), as in VS Code.</li>
+    <li>The Skills page (formerly Customize) works for remote projects, managing the skills, subagents, commands, rules and MCP servers on the remote host. New ones can have Chinese names.</li>
+    <li>Each MCP server is checked for whether it connects: one that doesn't says why (its exit code, a timeout, a sign-in it needs) with its output log, and can be checked again, one or all.</li>
+    <li>Claude Code installed for you: with none on this machine, your first conversation downloads it, showing progress. By default the newest of those installed and downloaded by BaoCode is used; set a path in Settings → General to use one of your own.</li>
+    <li>Settings → Updates → Diagnostic Logs: when something goes wrong, upload the error logs to the developer with a note, and get a report ID back. Nothing is sent until you click Upload, and your home folder shows as ~ in the logs.</li>
+    <li>The settings' page list can be resized by dragging and hidden with ⌘B; in a narrow window it becomes a drawer.</li>
+    <li>Models that summarize their thinking, such as GPT, show a thought by its summary's title, its text when opened.</li>
+    <li>In the review, a changed image shows as the image, not as text.</li>
+    <li>Question cards can be collapsed and expanded.</li>
+    </ul>
+    <p>Improved</p>
+    <ul>
+    <li>Each model keeps its own effort and context length, and switching models no longer sends a test request first.</li>
+    <li>With a subagent model set, every subagent uses it (except those defined to inherit); subagents could run on the main model before.</li>
+    <li>Sharper text on Windows: sizes are snapped to whole pixels and text is rendered closer to Chrome.</li>
+    <li>Updates are checked 10 seconds after launch, then every 5 minutes, so new releases arrive sooner.</li>
+    <li>Model picker: a search box to click into, list edges that fade out, smoother hovering, and the context menu's colors.</li>
+    <li>Hovers stay within 90% of the window's width, clear of its edges.</li>
+    </ul>
+    <p>Fixed</p>
+    <ul>
+    <li>After stopping a task, tools, commands and subagents still running no longer spin forever: they show as failed (Claude Code and Codex).</li>
+    <li>A long conversation's scrollbar is to scale and no longer jumps as you drag it. A turn the agent takes up on its own (a background task's report, say) no longer jumps to the bottom or folds away what you are reading.</li>
+    <li>Tools running code --version and the like no longer open an empty BaoCode window.</li>
+    <li>Cancelling an SSH sign-in, or a wrong password, no longer brings the password prompt back again and again; remote projects restored at launch no longer each ask.</li>
+    <li>On Windows, opening the changed files of an SSH project no longer shows a grey error box.</li>
+    <li>On macOS, commands the agent runs can send Apple Events to other apps (e.g. with osascript); they were refused outright before.</li>
+    </ul>
+  </section>
+
   <section class="release" id="v1.0.7">
     <h2 class="plain"><a href="#v1.0.7">1.0.7</a></h2>
     <p>The same everywhere, different everywhere</p>
