@@ -31,7 +31,7 @@
   <div class="mock" role="img" aria-label="示意图：BaoCode 的 设置 → 模型 页面，顶部的卡片里有您的站点，上游列表里有刚刚一键导入的您的站点">
     <div class="win">
       <div class="side">
-        <div class="bar"><div class="lights"><i></i><i></i><i></i></div><span class="app"><img src="/brand/baocode-icon-16.png" srcset="/brand/baocode-icon-32.png 2x" width="16" height="16" alt="">BaoCode</span></div>
+        <div class="bar"><span class="app"><img src="/brand/baocode-mark-white-12.webp" srcset="/brand/baocode-mark-white-24.webp 2x, /brand/baocode-mark-white-36.webp 3x" width="16" height="12" alt="">BaoCode</span></div>
         <div class="back">← 返回</div>
         <div class="search">搜索设置</div>
         <div class="nav">通用</div><div class="nav">外观</div><div class="nav on">模型</div><div class="nav">网络</div><div class="nav">通知</div><div class="nav">区域和语言</div>
@@ -88,8 +88,8 @@
 
 4. 做完后告诉我改了哪些文件，以及怎么验证：点按钮应打开 baocode.dev/import，页面上显示站点名、协议、地址和打码后的 key；装了 BaoCode 的话，会弹出导入确认。
 
-5. 验证通过后，帮我申请收录到 BaoCode 的 设置 → 模型（免费）。
-   在 BaoCode 的 GitHub 仓库提交收录 issue：https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml
+5. 验证通过后，帮我通知 BaoCode 收录我的站点，在 BaoCode 的 设置 → 模型 里展示（免费）。
+   在 BaoCode 的 GitHub 仓库开一个 issue 通知收录：https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml
    - 装了 gh 并已登录的，用 gh issue create --repo baocode-dev/baocode --title "[Upstream] &lt;站点名&gt;" --body-file &lt;文件&gt; 直接提交；没有的话，把整理好的内容给我，我打开上面的链接自己贴。
    - 正文按下面的小标题顺序写（和 issue 表单一致），每项一段：
      ### Site name / 站点名称：卡片上显示的名称，不超过 24 个字符。
@@ -99,7 +99,7 @@
      ### What your site runs / 站点系统：new-api、sub2api、one-api 或 Other / 其他。
      ### Where the import is / 一键导入的位置：用户在哪个页面、哪个按钮或菜单里找到「导入到 BaoCode」。
      ### Logo：站点 Logo，正方形，PNG 至少 256×256（透明背景最好）或 SVG。
-     ### Contact / 联系方式：维护者联系我确认素材的方式（邮箱、Telegram、微信等）。
+     ### Contact / 联系方式：BaoCode 联系我确认素材的方式（邮箱、Telegram、微信等）。
      ### Rules / 规则：
      - [x] 登录用户都能在我的站点使用一键导入。
      - [x] 我了解收录不代表担保，卡片顺序随机；导入失效或误导用户的站点会被下架。
@@ -117,11 +117,11 @@
     <button type="button" class="pick" id="style-link" data-style="表格里的链接" data-note="文字颜色用站点链接或正文的颜色，深色主题下图标换 white。" data-hint="表格里的链接 · 使用这个样式" data-done="已复制提示词" aria-label="表格里的链接：使用这个样式"><span class="sample" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;gap:4px;padding:0;font-size:13px;border:0;background:none;color:#1B1A17;"><img src="/brand/baocode-mark-black-12.webp" srcset="/brand/baocode-mark-black-24.webp 2x, /brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt="">导入到 BaoCode</span></button>
   </div>
 
-  <h2>提交收录，审核通过立刻上线</h2>
-  <p>维护者审核通过后，您的卡片立刻出现在所有用户的 BaoCode 里，不用等 BaoCode 发新版本。收录同样交给 AI：把下面这段发给它，它会按 issue 表单整理好材料并提交，拿不准的会先问您。上一节的提示词已经包含这一步；自己手动接入的，用这一段就行。</p>
-  <div class="copyable"><pre><code>我的 API 站点已经接入了 BaoCode 一键导入，请帮我申请收录到 BaoCode 的 设置 → 模型（免费）。说明见 https://baocode.dev/zh/upstreams 。
+  <h2>通知 BaoCode 收录，确认后立刻上线</h2>
+  <p>接好之后，通知 BaoCode 一声：我们确认导入可用后，您的卡片立刻出现在所有用户的 BaoCode 里，不用等 BaoCode 发新版本。这一步同样交给 AI：把下面这段发给它，它会按表单整理好材料，在 BaoCode 的 GitHub 上开一个 issue 通知我们，拿不准的会先问您。上一节的提示词已经包含这一步；自己手动接入的，用这一段就行。</p>
+  <div class="copyable"><pre><code>我的 API 站点已经接入了 BaoCode 一键导入，请帮我通知 BaoCode 收录，在 BaoCode 的 设置 → 模型 里展示（免费）。说明见 https://baocode.dev/zh/upstreams 。
 
-在 BaoCode 的 GitHub 仓库提交收录 issue：https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml
+在 BaoCode 的 GitHub 仓库开一个 issue 通知收录：https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml
 - 装了 gh 并已登录的，用 gh issue create --repo baocode-dev/baocode --title "[Upstream] &lt;站点名&gt;" --body-file &lt;文件&gt; 直接提交；没有的话，把整理好的内容给我，我打开上面的链接自己贴。
 - 正文按下面的小标题顺序写（和 issue 表单一致），每项一段：
   ### Site name / 站点名称：卡片上显示的名称，不超过 24 个字符。
@@ -131,7 +131,7 @@
   ### What your site runs / 站点系统：new-api、sub2api、one-api 或 Other / 其他。
   ### Where the import is / 一键导入的位置：用户在哪个页面、哪个按钮或菜单里找到「导入到 BaoCode」。
   ### Logo：站点 Logo，正方形，PNG 至少 256×256（透明背景最好）或 SVG。
-  ### Contact / 联系方式：维护者联系我确认素材的方式（邮箱、Telegram、微信等）。
+  ### Contact / 联系方式：BaoCode 联系我确认素材的方式（邮箱、Telegram、微信等）。
   ### Rules / 规则：
   - [x] 登录用户都能在我的站点使用一键导入。
   - [x] 我了解收录不代表担保，卡片顺序随机；导入失效或误导用户的站点会被下架。

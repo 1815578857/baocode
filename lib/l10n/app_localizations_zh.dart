@@ -5415,7 +5415,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modelsFeaturedWhyDetail =>
-      '这些上游接入了 BaoCode 的一键导入：在它们的令牌页点一下，就能把上游连同密钥加到这里。作为回报，BaoCode 免费展示它们，顺序随机。展示不收费，也不代表 BaoCode 为其担保。\n\n你是站长？接入一键导入后，在 BaoCode 的 GitHub 提交 issue，只要导入一直可用，就能一直免费展示。';
+      '这些上游接入了 BaoCode 的一键导入：在它们的令牌页点一下，就能把上游连同密钥加到这里。作为回报，BaoCode 免费展示它们，顺序随机。展示不收费，也不代表 BaoCode 为其担保。\n\n你是站长？接入一键导入后，在 GitHub 上开一个 issue 通知 BaoCode 收录，只要导入一直可用，就能一直免费展示。';
 
   @override
   String get modelsFeaturedJoin => '展示你的站点';

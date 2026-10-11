@@ -31,7 +31,7 @@
   <div class="mock" role="img" aria-label="Illustration: BaoCode’s Settings → Models page, your site among the cards at the top, and in the upstreams, your site just imported in one click">
     <div class="win">
       <div class="side">
-        <div class="bar"><div class="lights"><i></i><i></i><i></i></div><span class="app"><img src="/brand/baocode-icon-16.png" srcset="/brand/baocode-icon-32.png 2x" width="16" height="16" alt="">BaoCode</span></div>
+        <div class="bar"><span class="app"><img src="/brand/baocode-mark-white-12.webp" srcset="/brand/baocode-mark-white-24.webp 2x, /brand/baocode-mark-white-36.webp 3x" width="16" height="12" alt="">BaoCode</span></div>
         <div class="back">← Back</div>
         <div class="search">Search settings</div>
         <div class="nav">General</div><div class="nav">Appearance</div><div class="nav on">Models</div><div class="nav">Network</div><div class="nav">Notifications</div><div class="nav">Language</div>
@@ -88,8 +88,8 @@
 
 4. When done, tell me which files changed and how to check it: the button should open baocode.dev/import, showing the site's name, the protocol, the URL and the key masked; with BaoCode installed, it then asks to import.
 
-5. Once it checks out, ask for my site to be listed in BaoCode's Settings → Models (free).
-   Open a listing issue in BaoCode's GitHub repository: https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml
+5. Once it checks out, let BaoCode know, so it lists my site in its Settings → Models (free).
+   Let BaoCode know with an issue in its GitHub repository: https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml
    - With gh installed and signed in, submit it with gh issue create --repo baocode-dev/baocode --title "[Upstream] &lt;site name&gt;" --body-file &lt;file&gt;; otherwise give me the text, and I paste it in at the link above.
    - Write the body under these headings, in this order (as the issue form has them), a paragraph each:
      ### Site name / 站点名称: as the card shows it, at most 24 characters.
@@ -99,7 +99,7 @@
      ### What your site runs / 站点系统: new-api, sub2api, one-api or Other / 其他.
      ### Where the import is / 一键导入的位置: on which page, and in which button or menu, users find "Import to BaoCode".
      ### Logo: the site's logo, square, PNG at least 256×256 (best on a transparent background) or SVG.
-     ### Contact / 联系方式: how a maintainer reaches me about the assets (email, Telegram, WeChat…).
+     ### Contact / 联系方式: how BaoCode reaches me about the assets (email, Telegram, WeChat…).
      ### Rules / 规则:
      - [x] The one-click import works on my site for any signed-in user.
      - [x] I understand a listing is not an endorsement, the order of the cards is random, and a site whose import stops working, or that misleads users, is taken off.
@@ -117,11 +117,11 @@ Keep its colors, border, corners, padding, font size and icon size, written as t
     <button type="button" class="pick" id="style-link" data-style="Link in a table row" data-note="Color it as the site&#x27;s links or text; the white mark in a dark theme." data-hint="Link in a table row · Use this style" data-done="Prompt copied" aria-label="Link in a table row: Use this style"><span class="sample" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;gap:4px;padding:0;font-size:13px;border:0;background:none;color:#1B1A17;"><img src="/brand/baocode-mark-black-12.webp" srcset="/brand/baocode-mark-black-24.webp 2x, /brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt="">Import to BaoCode</span></button>
   </div>
 
-  <h2>Get listed, live once approved</h2>
-  <p>Once a maintainer approves it, your card shows in every user’s BaoCode at once, with no new release of BaoCode to wait for. Have your AI do this too: send it the prompt below, and it gathers what the issue form asks and submits it, asking you what it isn’t sure of. The prompt above ends with this step; if you added the import by hand, this one is all you need.</p>
-  <div class="copyable"><pre><code>My API site has BaoCode's one-click import; ask for it to be listed in BaoCode's Settings → Models (free). How it works: https://baocode.dev/upstreams
+  <h2>Let BaoCode know, live once confirmed</h2>
+  <p>Once it works, let BaoCode know: as soon as we’ve seen the import work, your card shows in every user’s BaoCode, with no new release to wait for. Have your AI do this too: send it the prompt below, and it gathers what the form asks and opens an issue on BaoCode’s GitHub to let us know, asking you what it isn’t sure of. The prompt above ends with this step; if you added the import by hand, this one is all you need.</p>
+  <div class="copyable"><pre><code>My API site has BaoCode's one-click import; let BaoCode know, so it lists the site in its Settings → Models (free). How it works: https://baocode.dev/upstreams
 
-Open a listing issue in BaoCode's GitHub repository: https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml
+Let BaoCode know with an issue in its GitHub repository: https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml
 - With gh installed and signed in, submit it with gh issue create --repo baocode-dev/baocode --title "[Upstream] &lt;site name&gt;" --body-file &lt;file&gt;; otherwise give me the text, and I paste it in at the link above.
 - Write the body under these headings, in this order (as the issue form has them), a paragraph each:
   ### Site name / 站点名称: as the card shows it, at most 24 characters.
@@ -131,7 +131,7 @@ Open a listing issue in BaoCode's GitHub repository: https://github.com/baocode-
   ### What your site runs / 站点系统: new-api, sub2api, one-api or Other / 其他.
   ### Where the import is / 一键导入的位置: on which page, and in which button or menu, users find "Import to BaoCode".
   ### Logo: the site's logo, square, PNG at least 256×256 (best on a transparent background) or SVG.
-  ### Contact / 联系方式: how a maintainer reaches me about the assets (email, Telegram, WeChat…).
+  ### Contact / 联系方式: how BaoCode reaches me about the assets (email, Telegram, WeChat…).
   ### Rules / 规则:
   - [x] The one-click import works on my site for any signed-in user.
   - [x] I understand a listing is not an endorsement, the order of the cards is random, and a site whose import stops working, or that misleads users, is taken off.

@@ -1,5 +1,5 @@
-name: List my upstream / 收录我的上游
-description: Your site added BaoCode's one-click import; ask to be shown in Settings → Models. 你的站点已接入一键导入，申请在 设置 → 模型 中展示。
+name: Let BaoCode list my site / 通知 BaoCode 收录我的站点
+description: Your site added BaoCode's one-click import; let us know, and it shows in Settings → Models. 你的站点已接入一键导入，通知我们后即在 设置 → 模型 中展示。
 title: "[Upstream] "
 labels: ["upstream-listing"]
 body:
@@ -9,8 +9,8 @@ body:
         Thanks for adding the one-click import! How it works: https://baocode.dev/upstreams
         感谢接入一键导入！接入说明：https://baocode.dev/zh/upstreams
 
-        Listing is free, and so is staying listed for as long as the import keeps working. A maintainer will reach out about your logo and anything else needed.
-        收录免费，只要导入一直可用就一直展示。维护者会联系你确认 Logo 等素材。
+        Listing is free, and so is staying listed for as long as the import keeps working. Once we've seen the import work, your card shows at once; we'll get in touch about your logo and anything else needed.
+        收录免费，只要导入一直可用就一直展示。我们确认导入可用后，您的卡片立刻上线；我们会联系您确认 Logo 等素材。
   - type: input
     id: name
     attributes:
@@ -71,7 +71,7 @@ body:
     id: contact
     attributes:
       label: Contact / 联系方式
-      description: How a maintainer can reach you about the logo and the rest (email, Telegram, WeChat…). 维护者联系你确认 Logo 等素材的方式（邮箱、Telegram、微信等）。
+      description: How we can reach you about the logo and the rest (email, Telegram, WeChat…). 我们联系您确认 Logo 等素材的方式（邮箱、Telegram、微信等）。
     validations:
       required: true
   - type: checkboxes

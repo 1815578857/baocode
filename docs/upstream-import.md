@@ -85,8 +85,8 @@
 带它的提示词：第 3、4 条之间多一段，照 `/upstreams#style-<id>` 上的这个按钮做，附上它的
 HTML（图片换成 baocode.dev 的绝对地址，href 是第 2 条导入链接的占位）。拼接逻辑在 `site/site.js`。
 
-提示词第 5 条是提交收录：按 issue 表单的小标题写正文，有 gh 就用 `gh issue create` 提交，
-Logo 和截图提醒站长事后拖进评论。第 2 节「提交收录」单独放了同样内容的提示词，给手动接入的站长。
+提示词第 5 条是通知 BaoCode 收录：按 issue 表单的小标题写正文，有 gh 就用 `gh issue create` 提交，
+Logo 和截图提醒站长事后拖进评论。第 2 节「通知 BaoCode 收录」单独放了同样内容的提示词，给手动接入的站长。
 改 issue 模板（`.github/ISSUE_TEMPLATE/upstream-listing.yml`）的字段时，两份提示词里的小标题要一起改。
 
 按钮用的图标放在 `site/brand/`，由 `tool/make_brand_assets.py` 生成，接入方直接引用
