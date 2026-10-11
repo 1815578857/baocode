@@ -13,20 +13,6 @@
       "hosts": [
         "api.ymeng.cc"
       ]
-    },
-    {
-      "id": "sample-01",
-      "name": "CMD（示例）",
-      "url": "https://commandcode.ai/register?aff=baocode",
-      "logo": "sample-bao.png",
-      "description": {
-        "en": "Sample: Imports from api.commandcode.ai show as listed",
-        "zh": "示例：从 api.commandcode.ai 导入会显示已收录"
-      },
-      "hosts": [
-        "api.commandcode.ai",
-        "commandcode.ai"
-      ]
     }
   ]
 }
