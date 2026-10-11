@@ -237,9 +237,12 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
 
   Widget _list(BuildContext context) {
     final l10n = context.l10n;
-    final pinned = _providers.providers.lastWhereOrNull(
-      (provider) => _listedHosts.contains(provider.host.toLowerCase()),
-    );
+    // The newest such: one imported later takes the place of one before.
+    final providers = _providers.providers;
+    ModelProvider? pinned;
+    for (final provider in providers) {
+      if (_listedHosts.contains(provider.host.toLowerCase())) pinned = provider;
+    }
     final current = _providers.defaultModel;
     final shown = _defaultName(context, current);
     return SettingsPage(
@@ -314,7 +317,10 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
             ),
             // The newest at a site BaoCode lists first (one imported later
             // takes the place of one before); the rest in their order.
-            for (final provider in [?pinned, ..._providers.providers.where((p) => p != pinned)])
+            for (final provider in [
+              ?pinned,
+              ...providers.where((provider) => provider != pinned),
+            ])
               _ProviderRow(
                 icon: ProviderIconView(
                   icon: providerIconOf(provider),

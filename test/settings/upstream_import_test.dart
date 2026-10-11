@@ -268,8 +268,52 @@ void main() {
     );
     await tester.pump();
     double top(String name) => tester.getTopLeft(find.text(name)).dy;
+    // One place only, the newest such: beta, added last.
     expect(top('Up beta'), lessThan(top('Up gamma')));
     expect(top('Up gamma'), lessThan(top('Up delta')));
+  });
+
+  testWidgets('and it goes to one imported later', (tester) async {
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    for (final (id, url) in [
+      ('gamma', 'https://api.gamma.example.com'),
+      ('beta', 'https://api.beta.example.com'),
+    ]) {
+      await providers.save(ModelProvider(id: id, name: 'Up $id', baseUrl: url));
+    }
+    await tester.pumpWidget(
+      _app(
+        ModelsSettingsPage(
+          providers: providers,
+          featured: Future.value(_featured),
+        ),
+      ),
+    );
+    await tester.pump();
+    double top(String name) => tester.getTopLeft(find.text(name)).dy;
+    expect(top('Up beta'), lessThan(top('Up gamma')));
+    // One added later at a listed site takes the place.
+    await providers.save(
+      const ModelProvider(
+        id: 'zeta',
+        name: 'Up zeta',
+        baseUrl: 'https://api.beta.example.com',
+      ),
+    );
+    await tester.pumpWidget(
+      _app(
+        ModelsSettingsPage(
+          providers: providers,
+          featured: Future.value(_featured),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(top('Up zeta'), lessThan(top('Up beta')));
+    // The rest, in their order as added: gamma before beta.
+    expect(top('Up gamma'), lessThan(top('Up beta')));
   });
 
   testWidgets("an upstream at a listed site shows the logo it is listed with", (
