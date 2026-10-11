@@ -75,6 +75,18 @@ case "$dest" in
       pw=$("$SSH_ASKPASS" "me@secret's password: ") || { echo "$denied" >&2; exit 255; }
       [ "$pw" = hunter2 ] && break
     done ;;
+  stubborn)
+    # As OpenSSH does: a prompt not answered taken as a wrong password,
+    # and asked again, up to three times.
+    denied="me@stubborn: Permission denied (publickey,password)."
+    n=0
+    while :; do
+      n=$((n + 1))
+      [ "$n" -gt 3 ] && { echo "$denied" >&2; exit 255; }
+      echo asked >> "$FAKE_LOG.asks"
+      pw=$("$SSH_ASKPASS" "me@stubborn's password: ")
+      [ "$pw" = hunter2 ] && break
+    done ;;
   stranger)
     answer=$("$SSH_ASKPASS" "The authenticity of host 'stranger' can't be established.
 Are you sure you want to continue connecting (yes/no/[fingerprint])? ")
@@ -228,6 +240,30 @@ exec '$dartExecutable' '${p.absolute('packages', 'bao_remote', 'bin', 'baocode_s
     );
     expect(asked, hasLength(1));
   }, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('cancelled, ssh is ended rather than left asking again', () async {
+    final asked = <SshPrompt>[];
+    final launcher = SshLauncher(
+      ssh: fakeSsh,
+      binaries: FakeBinaries('1', const {}),
+      start: starter(),
+      prompter: (prompt) async {
+        asked.add(prompt);
+        return null;
+      },
+    );
+    await expectLater(
+      launcher.connect(SshTarget.parse('stubborn')),
+      throwsA(
+        isA<SshConnectException>()
+            .having((e) => e.failure, 'failure', SshFailure.authentication)
+            .having((e) => e.message, 'message', contains('cancelled')),
+      ),
+    );
+    expect(asked, hasLength(1));
+    // Its askpass run once: ssh did not get to ask again.
+    expect(File('${log.path}.asks').readAsLinesSync(), hasLength(1));
+  }, timeout: const Timeout(Duration(minutes: 1)));
 
   test('a host key it does not know is refused, not asked', () async {
     final asked = <SshPrompt>[];

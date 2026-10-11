@@ -259,6 +259,9 @@ class SshLauncher {
         arguments(target, command),
         environment: askpass?.environment,
       );
+      // Cancelled: ended, lest it ask again (up to NumberOfPasswordPrompts
+      // times for each way of signing in).
+      askpass?.onCancelled = process.kill;
       return (process, askpass);
     } on ProcessException catch (error) {
       await askpass?.close();
@@ -450,13 +453,11 @@ exit 0
       await askpass?.close();
     }
     final result = (exitCode: code, stdout: await stdout, stderr: await stderr);
-    // ssh's own failure: the connection, not the command.
-    if (code == 255) {
-      throw _failure(
-        code,
-        result.stderr,
-        cancelled: askpass?.cancelled ?? false,
-      );
+    final cancelled = askpass?.cancelled ?? false;
+    // ssh's own failure: the connection, not the command; or ended, the
+    // signing in cancelled.
+    if (code == 255 || cancelled) {
+      throw _failure(code, result.stderr, cancelled: cancelled);
     }
     return result;
   }
@@ -484,6 +485,8 @@ exit 0
   }) {
     final detail = _tail(stderr);
     final failure = switch (stderr) {
+      // Ended when cancelled, before ssh could say it was refused.
+      _ when cancelled => SshFailure.authentication,
       _ when stderr.contains('Permission denied') => SshFailure.authentication,
       _
           when stderr.contains('Host key verification failed') ||

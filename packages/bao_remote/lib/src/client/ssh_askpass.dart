@@ -47,7 +47,8 @@ class SshAskpass {
   /// The script `ssh` runs: the prompt to `prompt.<pid>` (by way of a
   /// temporary file, so that it is never read half written), then waits
   /// for `answer.<pid>`: `1` and the answer, or `0` for none (`ssh` then
-  /// takes it as refused). Gives up after ten minutes.
+  /// takes it as refused). Gives up after ten minutes, or once the run's
+  /// folder is gone (its `ssh` ended).
   static const script = r'''#!/bin/sh
 d="$BAOCODE_ASKPASS_DIR"
 [ -d "$d" ] || exit 1
@@ -57,6 +58,7 @@ i=0
 while [ ! -f "$d/answer.$$" ]; do
   i=$((i + 1))
   [ "$i" -gt 6000 ] && exit 1
+  [ -d "$d" ] || exit 1
   sleep 0.1
 done
 a=$(cat "$d/answer.$$")
@@ -92,6 +94,7 @@ $i = 0
 while (-not (Test-Path -LiteralPath $answer)) {
   $i++
   if ($i -gt 6000) { exit 1 }
+  if (-not (Test-Path -LiteralPath $d -PathType Container)) { exit 1 }
   Start-Sleep -Milliseconds 100
 }
 $a = [IO.File]::ReadAllText($answer, $utf8)
@@ -171,6 +174,10 @@ class AskpassRun {
   bool get cancelled => _cancelled;
   bool _cancelled = false;
 
+  /// Told once, when the user cancels: `ssh` would take the cancel as a
+  /// wrong answer and ask again, so its run is ended (see SshLauncher).
+  void Function()? onCancelled;
+
   /// Whether the user is being asked, or answered in the last [within]:
   /// `ssh` is signing in, not stuck.
   bool busy(Duration within) =>
@@ -201,14 +208,20 @@ class AskpassRun {
       await prompt.delete();
       final asked = SshPrompt(target, text, retry: text == _last);
       _last = text;
-      // A host key is not accepted here: refused, as BatchMode would.
-      answer = asked.isHostKey ? 'no' : await _prompter(asked);
+      // Cancelled once, the user is not asked again in this run; a host
+      // key is not accepted here: refused, as BatchMode would.
+      answer = _cancelled
+          ? null
+          : asked.isHostKey
+          ? 'no'
+          : await _prompter(asked);
     } on Object {
       answer = null;
     } finally {
       _answering.remove(p.basename(prompt.path));
       _answered = DateTime.now();
     }
+    final cancelling = answer == null && !_cancelled;
     if (answer == null) _cancelled = true;
     if (_closed) return;
     try {
@@ -219,6 +232,8 @@ class AskpassRun {
     } on FileSystemException {
       // The run is gone.
     }
+    // Once the script has its answer, so that it does not go on waiting.
+    if (cancelling && !_closed) onCancelled?.call();
   }
 
   /// Stops answering, and removes what is left of the run.

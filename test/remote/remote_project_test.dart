@@ -139,6 +139,15 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(connector.attempts, 1);
 
+      // Nor by each part of a project asking for it (its sessions, files,
+      // git…, all restored at start): the user is not asked to sign in
+      // again and again.
+      for (var i = 0; i < 3; i++) {
+        await expectLater(host.ready, throwsA(isA<SshConnectException>()));
+      }
+      expect(connector.attempts, 1);
+      expect(host.state, SshHostState.failed);
+
       connector.failure = null;
       await host.reconnect();
       expect(host.state, SshHostState.connected);

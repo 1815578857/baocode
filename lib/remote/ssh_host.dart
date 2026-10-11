@@ -51,7 +51,8 @@ enum SshHostState {
 
   /// Could not be made: [SshHost.error] says why. Retried only when asked
   /// ([SshHost.reconnect]) where retrying alone would not help (a refused
-  /// key, an unknown host key, an unsupported host).
+  /// key or password, signing in cancelled, an unknown host key, an
+  /// unsupported host): [SshHost.ready] throws that again meanwhile.
   failed,
 }
 
@@ -130,6 +131,11 @@ class SshHost extends ChangeNotifier implements ProjectHost {
   Timer? _retry;
   int _failures = 0;
   bool _closed = false;
+
+  /// Whether the last attempt failed so that trying again alone would not
+  /// help: until [reconnect], not tried again (and the user not asked to
+  /// sign in again by each part of a project restored).
+  bool _permanent = false;
   final StreamController<RemoteClient> _reconnected =
       StreamController.broadcast();
 
@@ -153,10 +159,16 @@ class SshHost extends ChangeNotifier implements ProjectHost {
   /// (language servers, open files) is to be started or read again.
   Stream<RemoteClient> get reconnected => _reconnected.stream;
 
-  /// The client, connecting if need be; throws what connecting failed with.
+  /// The client, connecting if need be; throws what connecting failed with
+  /// (again, without trying, after a failure trying would not help: see
+  /// [SshHostState.failed]).
   Future<RemoteClient> get ready {
     if (client case final client?) return Future.value(client);
-    return _connecting ??= _attempt();
+    if (_connecting case final connecting?) return connecting;
+    if (_state == SshHostState.failed && _permanent) {
+      return Future.error(_error ?? StateError('$host: not connected'));
+    }
+    return _connecting = _attempt();
   }
 
   /// Tries again now, a failed or lost connection.
@@ -164,6 +176,7 @@ class SshHost extends ChangeNotifier implements ProjectHost {
     _retry?.cancel();
     _retry = null;
     _closed = false;
+    _permanent = false;
     return ready;
   }
 
@@ -185,6 +198,7 @@ class SshHost extends ChangeNotifier implements ProjectHost {
       }
       _connection = connection;
       _failures = 0;
+      _permanent = false;
       _error = null;
       _progress = null;
       _set(SshHostState.connected);
@@ -205,6 +219,7 @@ class SshHost extends ChangeNotifier implements ProjectHost {
         },
         _ => false,
       };
+      _permanent = permanent;
       if (wasLost && !permanent && !_closed) {
         _scheduleRetry();
       } else {
