@@ -40,13 +40,12 @@
         <div class="title">Models <span class="info">i</span></div>
         <div class="strip">
           <div class="card you"><span class="logo">Logo</span><span class="txt"><b>Your site</b><small>A line about it</small></span></div>
-          <div class="card"><span class="logo c1">A</span><span class="txt"><b>Aurora API</b><small>Claude and GPT relay</small></span></div><div class="card"><span class="logo c2">N</span><span class="txt"><b>Nimbus</b><small>Pay as you go</small></span></div><div class="card"><span class="logo c3">Q</span><span class="txt"><b>Quanta</b><small>Business-grade lines</small></span></div>
+          <div class="card"><span class="logo c1"></span><span class="txt"><i class="ph"></i><i class="ph sm"></i></span></div><div class="card"><span class="logo c2"></span><span class="txt"><i class="ph"></i><i class="ph sm"></i></span></div><div class="card"><span class="logo c3"></span><span class="txt"><i class="ph"></i><i class="ph sm"></i></span></div>
           <div class="card join">List your site</div>
         </div>
-        <div class="under"><span class="here">↑ Once listed, your site shows here at once</span><span class="why">ⓘ Why am I seeing this?</span></div>
         <div class="label">Upstreams</div>
         <div class="list">
-          <div class="row"><i class="dot"></i><span class="txt"><b>Claude Code (as set up here)</b><small>Uses this machine’s sign-in and settings, as they are</small></span><i class="toggle"></i></div>
+          <div class="row"><i class="dot"></i><span class="txt"><i class="ph"></i><i class="ph sm"></i></span><i class="toggle"></i></div>
           <div class="row new"><i class="dot"></i><span class="txt"><b>Your site <em>just imported</em></b><small>Anthropic · https://api.your-site.com</small></span><i class="toggle"></i></div>
           <div class="row"><span class="txt"><b>Add Upstream</b></span><span class="add">+ Add Upstream</span></div>
         </div>
@@ -61,15 +60,15 @@
 1. First find out what this site is:
    - new-api / one-api (it has System Settings → Chat Settings): no code needed. Tell me to add this entry in Chat Settings:
      { "BaoCode": "https://baocode.dev/import#v=1&amp;name=&lt;site name&gt;&amp;protocol=anthropic&amp;url={address}&amp;key={key}" }
-     and to try it once with a key of my own: if the imported key lacks its sk- prefix, write key=sk-{key} instead.
-   - Anything else (sub2api, or our own code): add an "Import to BaoCode" button next to each key in the key / token list, as in step 2.
+     and to try it once, signed in as an ordinary user, with that user's key: if the imported key lacks its sk- prefix, write key=sk-{key} instead.
+   - Anything else (sub2api, or our own code): add an "Import to BaoCode" button next to each key in the key / token list a signed-in user sees, as in step 2. What is imported is the site's user's own key, never the owner's or an admin's.
 
 2. The button opens, in a new tab (target="_blank" rel="noopener noreferrer"):
    https://baocode.dev/import#v=1&amp;name=&lt;site name&gt;&amp;protocol=&lt;protocol&gt;&amp;url=&lt;API base URL&gt;&amp;key=&lt;the whole key&gt;
    - name: the site's name, as the site's settings have it.
    - protocol: anthropic (the site serves /v1/messages), openai-chat (/v1/chat/completions) or openai-responses (/v1/responses). Use anthropic where the site supports it; where keys differ (by group, say), pick by this key's.
    - url: the base URL users call the API at, as the site shows it to them, http or https; without /v1 for anthropic.
-   - key: the key's whole value, not the masked one shown; if the list only has the masked one, fetch the whole key when the button is clicked.
+   - key: the user's whole key, not the masked one shown; if the list only has the masked one, fetch the whole key, as that user, when the button is clicked.
    - Encode each value with encodeURIComponent.
    - The parameters go after the #, never after a ?: browsers never send what follows a # to any server, so the key goes through neither baocode.dev nor any other server.
 
@@ -149,7 +148,7 @@ Let BaoCode know with an issue in its GitHub repository: https://github.com/baoc
   <h2>By hand: new-api, one line of settings</h2>
   <p>In System Settings → Chat Settings, add this entry. new-api fills in <code>{address}</code> and <code>{key}</code>, and every key in the token list gets a BaoCode option:</p>
   <pre><code>{ "BaoCode": "https://baocode.dev/import#v=1&amp;name=YourSite&amp;protocol=anthropic&amp;url={address}&amp;key={key}" }</code></pre>
-  <p>Use <code>protocol=openai-chat</code> or <code>openai-responses</code> instead if that is what your users should speak to. Try it once with a key of your own: some versions of new-api give the key without its <code>sk-</code>; write <code>key=sk-{key}</code> then.</p>
+  <p>Use <code>protocol=openai-chat</code> or <code>openai-responses</code> instead if that is what your users should speak to. Try it once, signed in as an ordinary user, with that user's key: some versions of new-api give the key without its <code>sk-</code>; write <code>key=sk-{key}</code> then.</p>
 
   <h2>By hand: any other site, a link</h2>
   <p>Next to each key, a link that opens, in a new tab:</p>
