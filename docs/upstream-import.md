@@ -106,5 +106,5 @@ new-api 替换）：
 { "BaoCode": "https://baocode.dev/import#v=1&name=站点名&protocol=anthropic&url={address}&key={key}" }
 ```
 
-待核实：不同 new-api 版本里 `{key}` 替换出来带不带 `sk-` 前缀不一致，审核时在真实
-站点上点一次，确认导入后的 key 能用；不带时模板写成 `key=sk-{key}`。
+key 原样传、原样存，不加也不去任何前缀：不是所有站点的 key 都以 `sk-` 开头。确认收录前在
+真实站点上用普通用户账号点一次，确认导入的 key 和站点上的完整 key 一致、能用。

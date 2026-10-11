@@ -31,15 +31,13 @@
   <div class="mock" role="img" aria-label="Illustration: BaoCode’s Settings → Models page, your site among the cards at the top, and in the upstreams, your site just imported in one click">
     <div class="win">
       <div class="side">
-        <div class="bar"><span class="app"><img src="/brand/baocode-mark-white-12.webp" srcset="/brand/baocode-mark-white-24.webp 2x, /brand/baocode-mark-white-36.webp 3x" width="16" height="12" alt="">BaoCode</span></div>
-        <div class="back">← Back</div>
-        <div class="search">Search settings</div>
-        <div class="nav">General</div><div class="nav">Appearance</div><div class="nav on">Models</div><div class="nav">Network</div><div class="nav">Notifications</div><div class="nav">Language</div>
+        <div class="bar"><span class="app"><img src="/brand/baocode-mark-black-12.webp" srcset="/brand/baocode-mark-black-24.webp 2x, /brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt="">BaoCode</span></div>
+        <div class="nav">General</div><div class="nav">Appearance</div><div class="nav on">Models</div><div class="nav">Network</div>
       </div>
       <div class="main">
-        <div class="title">Models <span class="info">i</span></div>
+        <div class="title">Models</div>
         <div class="strip">
-          <div class="card you"><span class="logo">Logo</span><span class="txt"><b>Your site</b><small>A line about it</small></span></div>
+          <div class="card you"><span class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></g></svg></span><span class="txt"><b>Your site</b><small>A line about it</small></span></div>
           <div class="card"><span class="logo c1"></span><span class="txt"><i class="ph"></i><i class="ph sm"></i></span></div><div class="card"><span class="logo c2"></span><span class="txt"><i class="ph"></i><i class="ph sm"></i></span></div><div class="card"><span class="logo c3"></span><span class="txt"><i class="ph"></i><i class="ph sm"></i></span></div>
           <div class="card join">List your site</div>
         </div>
@@ -47,7 +45,6 @@
         <div class="list">
           <div class="row"><i class="dot"></i><span class="txt"><i class="ph"></i><i class="ph sm"></i></span><i class="toggle"></i></div>
           <div class="row new"><i class="dot"></i><span class="txt"><b>Your site <em>just imported</em></b><small>Anthropic · https://api.your-site.com</small></span><i class="toggle"></i></div>
-          <div class="row"><span class="txt"><b>Add Upstream</b></span><span class="add">+ Add Upstream</span></div>
         </div>
       </div>
     </div>
@@ -60,7 +57,7 @@
 1. First find out what this site is:
    - new-api / one-api (it has System Settings → Chat Settings): no code needed. Tell me to add this entry in Chat Settings:
      { "BaoCode": "https://baocode.dev/import#v=1&amp;name=&lt;site name&gt;&amp;protocol=anthropic&amp;url={address}&amp;key={key}" }
-     and to try it once, signed in as an ordinary user, with that user's key: if the imported key lacks its sk- prefix, write key=sk-{key} instead.
+     and to try it once, signed in as an ordinary user, with that user's key, and to check the key imported is exactly the whole key the site shows.
    - Anything else (sub2api, or our own code): add an "Import to BaoCode" button next to each key in the key / token list a signed-in user sees, as in step 2. What is imported is the site's user's own key, never the owner's or an admin's.
 
 2. The button opens, in a new tab (target="_blank" rel="noopener noreferrer"):
@@ -148,7 +145,7 @@ Let BaoCode know with an issue in its GitHub repository: https://github.com/baoc
   <h2>By hand: new-api, one line of settings</h2>
   <p>In System Settings → Chat Settings, add this entry. new-api fills in <code>{address}</code> and <code>{key}</code>, and every key in the token list gets a BaoCode option:</p>
   <pre><code>{ "BaoCode": "https://baocode.dev/import#v=1&amp;name=YourSite&amp;protocol=anthropic&amp;url={address}&amp;key={key}" }</code></pre>
-  <p>Use <code>protocol=openai-chat</code> or <code>openai-responses</code> instead if that is what your users should speak to. Try it once, signed in as an ordinary user, with that user's key: some versions of new-api give the key without its <code>sk-</code>; write <code>key=sk-{key}</code> then.</p>
+  <p>Use <code>protocol=openai-chat</code> or <code>openai-responses</code> instead if that is what your users should speak to. Try it once, signed in as an ordinary user, with that user's key, and check the key imported is exactly the whole key the site shows.</p>
 
   <h2>By hand: any other site, a link</h2>
   <p>Next to each key, a link that opens, in a new tab:</p>
