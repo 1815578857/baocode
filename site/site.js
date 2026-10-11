@@ -17,6 +17,36 @@ for (const button of document.querySelectorAll('[data-copy]')) {
   });
 }
 
+// A button's style to pick (/upstreams): copies the prompt above with that
+// button in it, its HTML as a site would write it: the images from
+// baocode.dev, the import link for its href.
+for (const button of document.querySelectorAll('[data-use-style]')) {
+  const label = button.textContent;
+  button.addEventListener('click', async () => {
+    const tile = button.closest('[data-style]'), styles = tile.closest('.styles');
+    const a = tile.querySelector('.sample').cloneNode(true);
+    a.removeAttribute('class');
+    a.removeAttribute('aria-hidden');
+    a.setAttribute('href', `{${styles.dataset.href}}`);
+    a.setAttribute('target', '_blank');
+    a.setAttribute('rel', 'noopener noreferrer');
+    for (const img of a.querySelectorAll('img')) {
+      img.setAttribute('src', 'https://baocode.dev' + img.getAttribute('src'));
+      img.setAttribute('srcset', img.getAttribute('srcset').replaceAll('/brand/', 'https://baocode.dev/brand/'));
+    }
+    const style = styles.dataset.template
+      .replace('{url}', `${styles.dataset.page}#${tile.id}`)
+      .replace('{name}', tile.dataset.style)
+      .replace('{html}', a.outerHTML)
+      .replace('{note}', tile.dataset.note).trimEnd();
+    const prompt = document.querySelector('.copyable pre').innerText.trimEnd();
+    try { await navigator.clipboard.writeText(prompt.replace('\n\n4. ', `\n\n${style}\n\n4. `)); } catch { return; }
+    button.textContent = button.dataset.done;
+    clearTimeout(button.reset);
+    button.reset = setTimeout(() => { button.textContent = label; }, 1600);
+  });
+}
+
 // The notification sound, played on the page.
 for (const button of document.querySelectorAll('[data-sound]')) {
   const audio = new Audio(button.dataset.sound);

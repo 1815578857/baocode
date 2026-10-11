@@ -77,6 +77,10 @@
 它让 AI 先判断站点是 new-api 系（只给配置，不改代码）还是 sub2api / 自研（在令牌列表加按钮），
 链接参数、`#` 不能换成 `?`、图标怎么选、验证方法都写在里面。
 
+提示词下面有几种按钮样式（内联 style，CSP 为此放开了 `style-src-attr`）。点「使用这个样式」
+复制的提示词会在第 3、4 条之间多一段：照 `/upstreams#style-<id>` 上的这个按钮做，附上它的
+HTML（图片换成 baocode.dev 的绝对地址，href 是第 2 条导入链接的占位）。拼接逻辑在 `site/site.js`。
+
 按钮用的图标放在 `site/brand/`，由 `tool/make_brand_assets.py` 生成，接入方直接引用
 `https://baocode.dev/brand/...` 的在线地址，不下载、不拿 SVG：
 

@@ -185,3 +185,14 @@ pre code { padding: 0; background: none; font-size: 13.5px; line-height: 1.6; wh
 .asset .swatch.dark { background: var(--ink); border-color: var(--ink); }
 .asset p { margin: 8px 0 0; font: 13.5px/1.5 var(--sans); color: var(--muted); }
 @media (max-width: 560px) { .assets { grid-template-columns: 1fr; } }
+/* Buttons' styles to pick for the prompt (/upstreams): each shown as it is
+   (its own inline style, copied with it), its name and a button to use it. */
+.styles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 0 0 1.1em; }
+.styles .style { display: flex; flex-direction: column; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); overflow: hidden; scroll-margin-top: 24px; }
+.styles .style:target { border-color: var(--ink); }
+.styles .stage { display: flex; flex: 1; align-items: center; justify-content: center; min-height: 88px; }
+.styles .sample { pointer-events: none; }
+.styles .pick { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px 8px 12px; border-top: 1px solid var(--rule); background: var(--tint); font: 13px/1.4 var(--sans); color: var(--muted); }
+.styles .pick button { flex: none; height: 26px; padding: 0 9px; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); color: var(--ink); font: 500 12.5px var(--sans); cursor: pointer; }
+.styles .pick button:hover { border-color: var(--faint); }
+@media (max-width: 640px) { .styles { grid-template-columns: repeat(2, 1fr); } }
