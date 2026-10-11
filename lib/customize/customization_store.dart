@@ -60,7 +60,10 @@ class CustomizationStore {
     final dotClaude = project == null ? null : _paths.join(project, '.claude');
     final items = switch (kind) {
       CustomizationKind.skills => [
-        ...await _skills(CustomizationScope.user, _paths.join(config, 'skills')),
+        ...await _skills(
+          CustomizationScope.user,
+          _paths.join(config, 'skills'),
+        ),
         if (dotClaude != null)
           ...await _skills(
             CustomizationScope.project,
@@ -359,6 +362,21 @@ class CustomizationStore {
   Future<List<Customization>> _servers(String? project) async {
     final claudeJson = await _claudeJson();
     final state = await _json(claudeJson);
+    final projects = state?['projects'];
+    // What `/mcp` turned off in the project: the user's and its private
+    // ones by name, its `.mcp.json`'s apart.
+    final own = switch (projects) {
+      final Map<String, Object?> projects when project != null =>
+        projects[project],
+      _ => null,
+    };
+    Set<String> names(String key) => switch (own) {
+      final Map<String, Object?> own when own[key] is List<Object?> =>
+        (own[key] as List<Object?>).whereType<String>().toSet(),
+      _ => const {},
+    };
+    final disabled = names('disabledMcpServers');
+    final disabledShared = names('disabledMcpjsonServers');
     List<Customization> servers(
       CustomizationScope scope,
       Object? entries,
@@ -375,10 +393,17 @@ class CustomizationStore {
             path: path,
             editable: editable,
             detail: _pretty.convert({name: server}),
+            server: server is Map<String, Object?> ? server : null,
+            enabled:
+                (scope == CustomizationScope.project
+                        ? disabledShared
+                        : disabled)
+                    .contains(name)
+                ? false
+                : null,
           ),
     ];
 
-    final projects = state?['projects'];
     final mcpJson = project == null ? null : _paths.join(project, '.mcp.json');
     return [
       ...servers(

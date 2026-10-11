@@ -2647,6 +2647,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpDisable => 'Disable';
 
   @override
+  String get mcpTest => 'Test connection';
+
+  @override
+  String get mcpTestAll => 'Test all';
+
+  @override
+  String get mcpViewLog => 'View log';
+
+  @override
+  String mcpExitCode(int code) {
+    return 'Exited with code $code';
+  }
+
+  @override
+  String mcpTimedOut(int seconds) {
+    return 'No answer within $seconds seconds';
+  }
+
+  @override
+  String get mcpLog => 'Output (stderr)';
+
+  @override
+  String get mcpNoLog => 'It wrote nothing.';
+
+  @override
+  String get mcpSignInHint =>
+      'Sign in from a chat\'s MCP servers panel, or with /mcp.';
+
+  @override
+  String get mcpProbeNote =>
+      'Started and greeted with MCP\'s initialize, as `claude mcp list` checks it.';
+
+  @override
   String todoCount(int done, int total) {
     return 'Todos $done/$total';
   }

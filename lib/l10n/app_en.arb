@@ -1665,6 +1665,29 @@
   "mcpSignIn": "Sign in",
   "mcpEnable": "Enable",
   "mcpDisable": "Disable",
+  "mcpTest": "Test connection",
+  "mcpTestAll": "Test all",
+  "mcpViewLog": "View log",
+  "mcpExitCode": "Exited with code {code}",
+  "@mcpExitCode": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "mcpTimedOut": "No answer within {seconds} seconds",
+  "@mcpTimedOut": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "mcpLog": "Output (stderr)",
+  "mcpNoLog": "It wrote nothing.",
+  "mcpSignInHint": "Sign in from a chat's MCP servers panel, or with /mcp.",
+  "mcpProbeNote": "Started and greeted with MCP's initialize, as `claude mcp list` checks it.",
   "todoCount": "Todos {done}/{total}",
   "@todoCount": {
     "placeholders": {

@@ -57,6 +57,7 @@ class Customization {
     this.removePath,
     this.detail,
     this.enabled,
+    this.server,
   });
 
   final CustomizationKind kind;
@@ -84,8 +85,13 @@ class Customization {
   /// file starts as if not there yet (a settings file opened for hooks).
   final String? detail;
 
-  /// A plugin's: whether settings enable it.
+  /// A plugin's: whether settings enable it. An MCP server's: false where
+  /// the project has it turned off (`/mcp`'s Disable), else null.
   final bool? enabled;
+
+  /// An MCP server's entry (`command`, `args`, `env`, or `url`): what is
+  /// started to ask whether it answers. Null for a claude.ai connector's.
+  final Map<String, Object?>? server;
 }
 
 /// The front matter of a markdown file (`---` lines around `key: value`

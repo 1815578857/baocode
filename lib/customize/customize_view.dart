@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +11,7 @@ import '../chat/floating/floating_placement.dart';
 import '../chat/widgets/hover_builder.dart';
 import '../ide/ide_code_editor.dart';
 import '../ide/ide_dialog.dart';
+import '../ide/ide_hover.dart';
 import '../l10n/l10n.dart';
 import '../platform/app_platform.dart';
 import '../remote/remote_location.dart';
@@ -23,6 +25,7 @@ import '../workspace/title_bar_double_click.dart';
 import '../workspace/workspace.dart';
 import 'customization_store.dart';
 import 'customizations.dart';
+import 'mcp_probe.dart';
 
 extension CustomizationKindLabels on CustomizationKind {
   String label(AppLocalizations l10n) => switch (this) {
@@ -103,6 +106,11 @@ class CustomizeView extends StatefulWidget {
   static Future<bool> Function(Editor editor, String path) launch =
       openInEditor;
 
+  /// Asks an MCP server whether it answers (this machine's servers alone);
+  /// replaceable under test. None: no status shown.
+  @visibleForTesting
+  static McpProber? mcpProber = platformMcpProber;
+
   @override
   State<CustomizeView> createState() => CustomizeViewState();
 }
@@ -177,6 +185,7 @@ class CustomizeViewState extends State<CustomizeView> {
         _items = items;
         _error = null;
       });
+      _probeNew();
     } on Object catch (error) {
       if (!mounted || generation != _generation) return;
       setState(() {
@@ -189,6 +198,70 @@ class CustomizeViewState extends State<CustomizeView> {
   void _setProject(Project? project) {
     setState(() => _project = project);
     unawaited(_load());
+  }
+
+  // --- MCP servers' status ------------------------------------------------
+
+  /// What asking each MCP server found, by [_probeKey]: kept while the
+  /// page is, so a server is asked again only when asked to or changed.
+  final Map<String, McpProbeResult> _probes = {};
+
+  /// The asking under way for each, the latest winning.
+  final Map<String, int> _probing = {};
+  int _probeCount = 0;
+
+  /// A server as it is configured, for its project: changed, asked anew.
+  String _probeKey(Customization item) =>
+      jsonEncode([item.scope.name, item.name, item.server, _projectPath]);
+
+  /// Whether [item], an MCP server, can be asked: one of this machine's
+  /// with a command or URL (not a claude.ai connector), turned on.
+  bool _probeable(Customization item) =>
+      item.kind == CustomizationKind.mcps &&
+      item.server != null &&
+      item.enabled != false &&
+      widget.store.isLocal &&
+      CustomizeView.mcpProber != null;
+
+  /// Where [item], an MCP server, stands; null for none to show.
+  McpProbeResult? _statusOf(Customization item) {
+    if (item.kind != CustomizationKind.mcps) return null;
+    if (item.enabled == false) return McpProbeResult.disabled;
+    if (!_probeable(item)) return null;
+    return _probes[_probeKey(item)] ?? McpProbeResult.checking;
+  }
+
+  /// The servers listed not yet asked (new, or changed), asked.
+  void _probeNew() {
+    if (_kind != CustomizationKind.mcps) return;
+    for (final item in _items ?? const <Customization>[]) {
+      if (_probeable(item) && !_probing.containsKey(_probeKey(item))) {
+        unawaited(_probe(item));
+      }
+    }
+  }
+
+  /// Asks [item], an MCP server (again, for Test connection).
+  Future<void> _probe(Customization item) async {
+    final prober = CustomizeView.mcpProber;
+    if (prober == null || !_probeable(item)) return;
+    final key = _probeKey(item);
+    final count = _probing[key] = ++_probeCount;
+    setState(() => _probes.remove(key));
+    McpProbeResult result;
+    try {
+      result = await prober(item.server!, cwd: _projectPath);
+    } on Object catch (error) {
+      result = McpProbeResult(McpProbeStatus.failed, message: '$error');
+    }
+    if (!mounted || _probing[key] != count) return;
+    setState(() => _probes[key] = result);
+  }
+
+  void _probeAll(Iterable<Customization> items) {
+    for (final item in items) {
+      unawaited(_probe(item));
+    }
   }
 
   Future<void> _create(CustomizationScope scope) async {
@@ -263,6 +336,15 @@ class CustomizeViewState extends State<CustomizeView> {
                     unawaited(_load());
                   },
                   onOpenFile: widget.store.isLocal ? widget.onOpenFile : null,
+                  status: switch (_statusOf(open)) {
+                    final status? => _McpStatusPanel(
+                      status: status,
+                      onTest: _probeable(open)
+                          ? () => unawaited(_probe(open))
+                          : null,
+                    ),
+                    null => null,
+                  },
                 )
               : _buildList(context.l10n),
         ),
@@ -526,6 +608,22 @@ class CustomizeViewState extends State<CustomizeView> {
                   ],
                 ),
               ),
+            if (items.where(_probeable).toList() case final probeable
+                when probeable.isNotEmpty) ...[
+              _Chip(
+                outlined: true,
+                onTap: () => _probeAll(probeable),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Codicons.refresh, size: 13, color: AppColors.text),
+                    const SizedBox(width: 5),
+                    Text(l10n.mcpTestAll),
+                  ],
+                ),
+              ),
+              if (configurable) const SizedBox(width: 6),
+            ],
             if (configurable)
               _Chip(
                 outlined: true,
@@ -565,6 +663,7 @@ class CustomizeViewState extends State<CustomizeView> {
                 if (i > 0) Divider(height: 1, color: AppColors.partBorder),
                 _ItemRow(
                   item: item,
+                  status: _statusOf(item),
                   onOpen: () => setState(() => _open = item),
                   menu: () => _menu(item),
                 ),
@@ -627,6 +726,18 @@ class CustomizeViewState extends State<CustomizeView> {
         icon: Icons.edit_outlined,
         onSelected: () => setState(() => _open = item),
       ),
+      if (_probeable(item)) ...[
+        SidebarMenuItem(
+          l10n.mcpTest,
+          icon: Icons.refresh_rounded,
+          onSelected: () => unawaited(_probe(item)),
+        ),
+        SidebarMenuItem(
+          l10n.mcpViewLog,
+          icon: Icons.article_outlined,
+          onSelected: () => setState(() => _open = item),
+        ),
+      ],
       if (widget.onOpenFile case final open? when item.editable && local)
         SidebarMenuItem(
           l10n.workspaceOpenIn(Editor.fastIde.localizedPlatformLabel(l10n)),
@@ -757,11 +868,15 @@ class _ItemRow extends StatelessWidget {
     required this.item,
     required this.onOpen,
     required this.menu,
+    this.status,
   });
 
   final Customization item;
   final VoidCallback onOpen;
   final List<SidebarMenuItem> Function() menu;
+
+  /// An MCP server's: whether it answers.
+  final McpProbeResult? status;
 
   @override
   Widget build(BuildContext context) {
@@ -813,7 +928,10 @@ class _ItemRow extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (item.enabled case final enabled?) ...[
+                          if (status case final status?) ...[
+                            const SizedBox(width: 8),
+                            _McpStatusBadge(status),
+                          ] else if (item.enabled case final enabled?) ...[
                             const SizedBox(width: 8),
                             Text(
                               enabled
@@ -837,6 +955,19 @@ class _ItemRow extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                      // Why it failed, at a glance: the whole in its log.
+                      if (status?.reason(l10n) case final reason?) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          reason,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: themeColors['errorForeground'],
                             fontSize: 12,
                           ),
                         ),
@@ -869,12 +1000,16 @@ class _CustomizationEditor extends StatefulWidget {
     required this.store,
     required this.onBack,
     this.onOpenFile,
+    this.status,
   });
 
   final Customization item;
   final CustomizationStore store;
   final VoidCallback onBack;
   final ValueChanged<String>? onOpenFile;
+
+  /// Above its text: an MCP server's status and log.
+  final Widget? status;
 
   @override
   State<_CustomizationEditor> createState() => _CustomizationEditorState();
@@ -1090,6 +1225,11 @@ class _CustomizationEditorState extends State<_CustomizationEditor> {
                     ),
                   ),
                 ),
+              if (widget.status case final status?)
+                Padding(
+                  padding: const EdgeInsets.only(left: 32, bottom: 10),
+                  child: status,
+                ),
               Expanded(
                 child: Container(
                   margin: const EdgeInsets.only(left: 32),
@@ -1112,6 +1252,185 @@ class _CustomizationEditorState extends State<_CustomizationEditor> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+extension on McpProbeResult {
+  String label(AppLocalizations l10n) => switch (status) {
+    McpProbeStatus.checking => l10n.mcpConnecting,
+    McpProbeStatus.connected => l10n.mcpConnected,
+    McpProbeStatus.needsAuth => l10n.mcpNeedsSignIn,
+    McpProbeStatus.failed => l10n.mcpFailed,
+    McpProbeStatus.disabled => l10n.mcpDisabled,
+  };
+
+  /// As the chat's MCP servers panel colors them.
+  Color get color => switch (status) {
+    McpProbeStatus.connected => AppColors.added,
+    McpProbeStatus.needsAuth => themeColors['list.warningForeground'],
+    McpProbeStatus.failed => themeColors['errorForeground'],
+    McpProbeStatus.checking || McpProbeStatus.disabled => AppColors.textFaint,
+  };
+
+  /// One line of why it failed (or what it wants); null otherwise.
+  String? reason(AppLocalizations l10n) {
+    if (status == McpProbeStatus.needsAuth) return null;
+    if (status != McpProbeStatus.failed) return null;
+    final last = log
+        .split('\n')
+        .map((line) => line.trim())
+        .lastWhere((line) => line.isNotEmpty, orElse: () => '');
+    final parts = [
+      ?message,
+      if (timedOut) l10n.mcpTimedOut(mcpProbeTimeout.inSeconds),
+      if (exitCode case final code?) l10n.mcpExitCode(code),
+      if (message == null && last.isNotEmpty) last,
+    ];
+    return parts.isEmpty ? l10n.mcpFailed : parts.join(' · ');
+  }
+}
+
+/// A dot in its color and what it says, in a server's row.
+class _McpStatusBadge extends StatelessWidget {
+  const _McpStatusBadge(this.status);
+
+  final McpProbeResult status;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final color = status.color;
+    final badge = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          status.label(l10n),
+          style: TextStyle(color: color, fontSize: 11.5),
+        ),
+      ],
+    );
+    return switch (status.server) {
+      final server? when server.isNotEmpty => IdeHover(
+        message: server,
+        child: badge,
+      ),
+      _ => badge,
+    };
+  }
+}
+
+/// An MCP server's status over its entry: why it failed and what it
+/// wrote, and the way to ask again.
+class _McpStatusPanel extends StatelessWidget {
+  const _McpStatusPanel({required this.status, this.onTest});
+
+  final McpProbeResult status;
+  final VoidCallback? onTest;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final failed = status.status == McpProbeStatus.failed;
+    final reason = status.reason(l10n);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: themeColors['editorWidget.background'],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.partBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              _McpStatusBadge(status),
+              if (status.server case final server? when server.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    server,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: AppColors.textFaint, fontSize: 12),
+                  ),
+                ),
+              ],
+              const Spacer(),
+              if (onTest case final onTest?)
+                _Button(
+                  label: l10n.mcpTest,
+                  onTap: status.status == McpProbeStatus.checking
+                      ? null
+                      : onTest,
+                ),
+            ],
+          ),
+          if (reason != null) ...[
+            const SizedBox(height: 6),
+            SelectableText(
+              reason,
+              style: TextStyle(
+                color: themeColors['errorForeground'],
+                fontSize: 12,
+              ),
+            ),
+          ],
+          if (status.status == McpProbeStatus.needsAuth) ...[
+            const SizedBox(height: 6),
+            Text(
+              l10n.mcpSignInHint,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+            ),
+          ],
+          if (failed || status.log.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              l10n.mcpLog,
+              style: TextStyle(color: AppColors.textFaint, fontSize: 11.5),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 160),
+              decoration: BoxDecoration(
+                color: AppColors.code,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppColors.partBorder),
+              ),
+              child: SingleChildScrollView(
+                reverse: true,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                child: SelectableText(
+                  status.log.isEmpty ? l10n.mcpNoLog : status.log,
+                  style: AppFonts.uiCodeStyle(11.5).copyWith(
+                    color: status.log.isEmpty
+                        ? AppColors.textFaint
+                        : AppColors.text,
+                    height: 1.45,
+                  ),
+                ),
+              ),
+            ),
+          ],
+          if (status.status != McpProbeStatus.disabled) ...[
+            const SizedBox(height: 6),
+            Text(
+              l10n.mcpProbeNote,
+              style: TextStyle(color: AppColors.textFaint, fontSize: 11),
+            ),
+          ],
+        ],
       ),
     );
   }

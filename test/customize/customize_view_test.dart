@@ -10,6 +10,7 @@ import 'package:baocode/chat/side_panel/side_panel_view.dart';
 import 'package:baocode/customize/customization_store.dart';
 import 'package:baocode/customize/customizations.dart';
 import 'package:baocode/customize/customize_view.dart';
+import 'package:baocode/customize/mcp_probe.dart';
 import 'package:baocode/ide/ide_code_editor.dart';
 import 'package:baocode/keybindings/keybinding_service.dart';
 import 'package:baocode/main.dart';
@@ -38,11 +39,15 @@ class _MemoryStore implements CustomizationStore {
   @override
   Future<String> config() async => '/c';
 
+  /// The MCP servers listed.
+  List<Customization> servers = const [];
+
   @override
   Future<List<Customization>> list(
     CustomizationKind kind, {
     String? project,
   }) async => [
+    if (kind == CustomizationKind.mcps) ...servers,
     if (kind == CustomizationKind.skills)
       for (final MapEntry(key: path, value: text) in files.entries)
         Customization(
@@ -271,5 +276,83 @@ void main() {
       store.files['/c/settings.json'],
       CustomizationKind.hooks.configTemplate,
     );
+  }, variant: _mac);
+
+  testWidgets('MCP servers show whether they answer; one that failed says '
+      'why, its log open, and is tested again', (tester) async {
+    Customization server(String name, {bool? enabled}) => Customization(
+      kind: CustomizationKind.mcps,
+      scope: CustomizationScope.user,
+      name: name,
+      description: 'npx $name',
+      path: '/home/.claude.json',
+      editable: false,
+      detail: '{}',
+      enabled: enabled,
+      server: {
+        'command': 'npx',
+        'args': [name],
+      },
+    );
+    final store = _MemoryStore()
+      ..servers = [
+        server('ok'),
+        server('broken'),
+        server('off', enabled: false),
+      ];
+    final asked = <String>[];
+    CustomizeView.mcpProber = (config, {cwd}) async {
+      final name = (config['args'] as List).single as String;
+      asked.add(name);
+      await Future<void>.delayed(const Duration(seconds: 1));
+      return name == 'ok'
+          ? const McpProbeResult(
+              McpProbeStatus.connected,
+              server: 'ok-server 1.0',
+            )
+          : const McpProbeResult(
+              McpProbeStatus.failed,
+              exitCode: 1,
+              log: 'npm warn\nError: Cannot find module x',
+            );
+    };
+    await _pumpApp(tester, store);
+    await tester.tap(_inSidebar(find.text('Customize')));
+    await tester.pumpAndSettle();
+    await tester.tap(_inView(find.text('MCPs')));
+    await tester.pump();
+    await tester.pump();
+
+    // Asked at once, those turned off not at all.
+    expect(asked, ['ok', 'broken']);
+    expect(_inView(find.text('Connecting…')), findsNWidgets(2));
+    expect(_inView(find.text('Disabled')), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    expect(_inView(find.text('Connected')), findsOneWidget);
+    expect(_inView(find.text('Failed')), findsOneWidget);
+    expect(
+      _inView(find.text('Exited with code 1 · Error: Cannot find module x')),
+      findsOneWidget,
+    );
+    // Not asked again as the list comes back.
+    await tester.tap(_inView(find.text('Skills')));
+    await tester.pumpAndSettle();
+    await tester.tap(_inView(find.text('MCPs')));
+    await tester.pumpAndSettle();
+    expect(asked, hasLength(2));
+
+    // Its log, in full, over its entry; tested again from there.
+    await tester.tap(_inView(find.text('broken')));
+    await tester.pumpAndSettle();
+    expect(
+      _inView(find.text('npm warn\nError: Cannot find module x')),
+      findsOneWidget,
+    );
+    await tester.tap(_inView(find.text('Test connection')));
+    await tester.pump();
+    expect(asked, ['ok', 'broken', 'broken']);
+    expect(_inView(find.text('Connecting…')), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    expect(_inView(find.text('Failed')), findsOneWidget);
   }, variant: _mac);
 }

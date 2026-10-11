@@ -2558,6 +2558,38 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mcpDisable => '禁用';
 
   @override
+  String get mcpTest => '测试连接';
+
+  @override
+  String get mcpTestAll => '全部重新检测';
+
+  @override
+  String get mcpViewLog => '查看日志';
+
+  @override
+  String mcpExitCode(int code) {
+    return '进程已退出，退出码 $code';
+  }
+
+  @override
+  String mcpTimedOut(int seconds) {
+    return '$seconds 秒内没有响应';
+  }
+
+  @override
+  String get mcpLog => '输出（stderr）';
+
+  @override
+  String get mcpNoLog => '没有任何输出。';
+
+  @override
+  String get mcpSignInHint => '在对话的 MCP 服务器面板或用 /mcp 登录。';
+
+  @override
+  String get mcpProbeNote =>
+      '启动后用 MCP 的 initialize 握手检测，与 `claude mcp list` 的检测方式相同。';
+
+  @override
   String todoCount(int done, int total) {
     return '待办 $done/$total';
   }

@@ -4784,6 +4784,60 @@ abstract class AppLocalizations {
   /// **'Disable'**
   String get mcpDisable;
 
+  /// No description provided for @mcpTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Test connection'**
+  String get mcpTest;
+
+  /// No description provided for @mcpTestAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Test all'**
+  String get mcpTestAll;
+
+  /// No description provided for @mcpViewLog.
+  ///
+  /// In en, this message translates to:
+  /// **'View log'**
+  String get mcpViewLog;
+
+  /// No description provided for @mcpExitCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Exited with code {code}'**
+  String mcpExitCode(int code);
+
+  /// No description provided for @mcpTimedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'No answer within {seconds} seconds'**
+  String mcpTimedOut(int seconds);
+
+  /// No description provided for @mcpLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Output (stderr)'**
+  String get mcpLog;
+
+  /// No description provided for @mcpNoLog.
+  ///
+  /// In en, this message translates to:
+  /// **'It wrote nothing.'**
+  String get mcpNoLog;
+
+  /// No description provided for @mcpSignInHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in from a chat\'s MCP servers panel, or with /mcp.'**
+  String get mcpSignInHint;
+
+  /// No description provided for @mcpProbeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Started and greeted with MCP\'s initialize, as `claude mcp list` checks it.'**
+  String get mcpProbeNote;
+
   /// No description provided for @todoCount.
   ///
   /// In en, this message translates to:
