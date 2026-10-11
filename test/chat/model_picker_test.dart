@@ -1,8 +1,11 @@
+import 'package:baocode/chat/chat_session.dart' show ModelSettingChoice;
 import 'package:baocode/chat/composer/composer_picker.dart';
 import 'package:baocode/chat/floating/floating_registry.dart';
+import 'package:baocode/kernel/agent_kernel.dart' show KernelChoiceKind;
 import 'package:baocode/kernel/kernel_types.dart';
 import 'package:baocode/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -30,6 +33,7 @@ void main() {
     WidgetTester tester,
     List<KernelOption> options, {
     bool footer = true,
+    List<ModelSettingChoice> Function(KernelOption option)? settingsOf,
   }) async {
     picked.clear();
     managed = 0;
@@ -51,6 +55,7 @@ void main() {
                 selected: options.first,
                 focusNode: focus,
                 searchPlaceholder: 'Search models',
+                settingsOf: settingsOf,
                 footer: footer
                     ? (
                         label: 'Manage Models…',
@@ -158,6 +163,55 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
     expect(picked, ['@gw/m1x']);
+  });
+
+  testWidgets('a hover redraws the rows it moves between, not the menu; '
+      'each option\'s settings are asked for once', (tester) async {
+    var drawn = 0;
+    final asked = <String>[];
+    const effort = [
+      KernelOption('low', 'Low', Icons.speed, ''),
+      KernelOption('high', 'High', Icons.speed, ''),
+    ];
+    await pump(
+      tester,
+      [
+        for (var i = 0; i < 6; i++)
+          KernelOption(
+            'm$i',
+            'Model $i',
+            Icons.hub_outlined,
+            '',
+            iconBuilder: (size, color) {
+              drawn++;
+              return SizedBox.square(dimension: size);
+            },
+          ),
+      ],
+      settingsOf: (option) {
+        asked.add(option.id);
+        return [
+          ModelSettingChoice(
+            kind: KernelChoiceKind.effort,
+            options: effort,
+            selected: effort.first,
+            onSelected: (_) {},
+          ),
+        ];
+      },
+    );
+    await open(tester, 'Model 0');
+    drawn = 0;
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    for (final i in [1, 2, 3, 2, 1, 4]) {
+      await mouse.moveTo(tester.getCenter(find.text('Model $i').last));
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+    expect(find.text('High'), findsOneWidget);
+    expect(drawn, 0);
+    expect(asked.toSet().length, asked.length);
   });
 
   testWidgets(

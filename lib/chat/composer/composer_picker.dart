@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -104,7 +105,15 @@ class ComposerPickerState extends State<ComposerPicker> {
   final Object _tapRegion = Object();
   late List<GlobalKey> _rowKeys = _keysFor(widget.options);
   bool _open = false;
-  int _highlighted = 0;
+
+  // What the pointer and the keys move (the option highlighted, the one
+  // whose settings show, the setting highlighted) is told to the rows that
+  // show it, not by rebuilding the menu: a hover redraws two rows.
+
+  /// The option highlighted.
+  final ValueNotifier<int> _highlight = ValueNotifier(0);
+  int get _highlighted => _highlight.value;
+  set _highlighted(int index) => _highlight.value = index;
 
   /// What was typed to filter the options: in the search line, or (it
   /// not focused) in the input the picker belongs to.
@@ -144,13 +153,12 @@ class ComposerPickerState extends State<ComposerPicker> {
         selection: TextSelection.collapsed(offset: query.length),
       );
     }
-    setState(() {
-      _settingsOf = null;
-      _setting = null;
-      if (visible != null && visible.isNotEmpty) {
-        if (!visible.contains(_highlighted)) _highlighted = visible.first;
-      }
-    });
+    _settingsOf = null;
+    _setting = null;
+    if (visible != null && visible.isNotEmpty) {
+      if (!visible.contains(_highlighted)) _highlighted = visible.first;
+    }
+    setState(() {});
   }
 
   /// Option [index] scrolled into view, after the keys moved to it.
@@ -175,14 +183,22 @@ class ComposerPickerState extends State<ComposerPicker> {
 
   /// The option whose settings are shown (it was pointed at, or → pressed
   /// on it).
-  int? _settingsOf;
+  final ValueNotifier<int?> _shown = ValueNotifier(null);
+  int? get _settingsOf => _shown.value;
+  set _settingsOf(int? index) => _shown.value = index;
 
   /// The last option they were shown for: where they stay while fading out.
   int _settingsAt = 0;
 
   /// The setting highlighted in them, counting across their sections;
   /// null while the keys are on the options.
-  int? _setting;
+  final ValueNotifier<int?> _settingHighlight = ValueNotifier(null);
+  int? get _setting => _settingHighlight.value;
+  set _setting(int? index) => _settingHighlight.value = index;
+
+  /// Each option's settings, by index, as asked for while the menu is
+  /// open: the same until the picker is rebuilt (a hover does not).
+  final Map<int, List<ModelSettingChoice>> _settings = {};
 
   final GlobalKey _menuKey = GlobalKey();
   final GlobalKey _settingsKey = GlobalKey();
@@ -216,6 +232,7 @@ class ComposerPickerState extends State<ComposerPicker> {
   @override
   void didUpdateWidget(ComposerPicker oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _settings.clear();
     if (widget.options.length != oldWidget.options.length) {
       _rowKeys = _keysFor(widget.options);
     }
@@ -227,6 +244,9 @@ class ComposerPickerState extends State<ComposerPicker> {
     if (_open) FloatingRegistry.closePopover(this);
     _searchText.dispose();
     _searchFocus.dispose();
+    _highlight.dispose();
+    _shown.dispose();
+    _settingHighlight.dispose();
     super.dispose();
   }
 
@@ -236,17 +256,16 @@ class ComposerPickerState extends State<ComposerPicker> {
     if (!open && _searchFocus.hasFocus) widget.focusNode?.requestFocus();
     _query = '';
     _searchText.clear();
-    setState(() {
-      _open = open;
-      if (open) {
-        _highlighted = widget.options
-            .indexOf(widget.selected)
-            .clamp(0, widget.options.length - 1);
-        _settingsOf = null;
-        _setting = null;
-        _pointer = null;
-      }
-    });
+    _settings.clear();
+    if (open) {
+      _highlighted = widget.options
+          .indexOf(widget.selected)
+          .clamp(0, widget.options.length - 1);
+      _settingsOf = null;
+      _setting = null;
+      _pointer = null;
+    }
+    setState(() => _open = open);
     _cancelSwitch();
     if (open) {
       widget.focusNode?.requestFocus();
@@ -269,7 +288,7 @@ class ComposerPickerState extends State<ComposerPicker> {
     null => const [],
   };
 
-  List<ModelSettingChoice> _settingsFor(int index) =>
+  List<ModelSettingChoice> _settingsFor(int index) => _settings[index] ??=
       widget.settingsOf?.call(widget.options[index]) ?? const [];
 
   /// Each setting's options in turn, as the keys go through them.
@@ -292,12 +311,8 @@ class ComposerPickerState extends State<ComposerPicker> {
   void _pointAt(int index, Offset position) {
     final from = _pointer;
     _pointer = position;
-    if (_highlighted != index || _setting != null) {
-      setState(() {
-        _highlighted = index;
-        _setting = null;
-      });
-    }
+    _highlighted = index;
+    _setting = null;
     if (index == _settingsOf) {
       _cancelSwitch();
       return;
@@ -317,13 +332,10 @@ class ComposerPickerState extends State<ComposerPicker> {
   void _show(int index) {
     _cancelSwitch();
     final has = _settingsFor(index).isNotEmpty;
-    if (_settingsOf == (has ? index : null) && _highlighted == index) return;
-    setState(() {
-      _highlighted = index;
-      _setting = null;
-      _settingsOf = has ? index : null;
-      if (has) _settingsAt = index;
-    });
+    if (has) _settingsAt = index;
+    _highlighted = index;
+    _setting = null;
+    _settingsOf = has ? index : null;
   }
 
   void _cancelSwitch() {
@@ -336,9 +348,7 @@ class ComposerPickerState extends State<ComposerPicker> {
     _cancelSwitch();
     // Back over the options, a move starts afresh.
     _pointer = null;
-    if (_settingsOf case final index? when index != _highlighted) {
-      setState(() => _highlighted = index);
-    }
+    if (_settingsOf case final index?) _highlighted = index;
   }
 
   /// The move from [from] to [to] heads for the settings shown: it points
@@ -378,10 +388,8 @@ class ComposerPickerState extends State<ComposerPicker> {
       final step = key == LogicalKeyboardKey.arrowDown ? 1 : -1;
       final at = visible.indexOf(_highlighted);
       _cancelSwitch();
-      setState(() {
-        _highlighted = visible[at < 0 ? 0 : (at + step + count) % count];
-        _settingsOf = null;
-      });
+      _highlighted = visible[at < 0 ? 0 : (at + step + count) % count];
+      _settingsOf = null;
       _reveal(_highlighted, down: step > 0);
     } else if (key == LogicalKeyboardKey.arrowRight) {
       final settings = _settingsFor(_highlighted);
@@ -390,10 +398,8 @@ class ComposerPickerState extends State<ComposerPicker> {
       final at = _flatten(settings)
           .indexWhere((row) => row.$1.selected == row.$2);
       _cancelSwitch();
-      setState(() {
-        _settingsOf = _settingsAt = _highlighted;
-        _setting = at < 0 ? 0 : at;
-      });
+      _settingsOf = _settingsAt = _highlighted;
+      _setting = at < 0 ? 0 : at;
     } else if (key == LogicalKeyboardKey.enter ||
         key == LogicalKeyboardKey.numpadEnter) {
       if (event is KeyDownEvent && count > 0) {
@@ -450,15 +456,15 @@ class ComposerPickerState extends State<ComposerPicker> {
     final rows = _flatten(_shownSettings);
     final count = rows.length;
     if (count == 0) {
-      setState(() => _setting = null);
+      _setting = null;
       return null;
     }
     if (key == LogicalKeyboardKey.arrowDown) {
-      setState(() => _setting = (setting + 1) % count);
+      _setting = (setting + 1) % count;
     } else if (key == LogicalKeyboardKey.arrowUp) {
-      setState(() => _setting = (setting - 1 + count) % count);
+      _setting = (setting - 1 + count) % count;
     } else if (key == LogicalKeyboardKey.arrowLeft) {
-      setState(() => _setting = null);
+      _setting = null;
     } else if (key == LogicalKeyboardKey.enter ||
         key == LogicalKeyboardKey.numpadEnter) {
       if (event is KeyDownEvent) {
@@ -683,12 +689,9 @@ class ComposerPickerState extends State<ComposerPicker> {
               _SettingRow(
                 option: option,
                 selected: option == setting.selected,
-                highlighted: _setting == starts[i] + j,
-                onHover: () {
-                  if (_setting != starts[i] + j) {
-                    setState(() => _setting = starts[i] + j);
-                  }
-                },
+                index: starts[i] + j,
+                highlight: _settingHighlight,
+                onHover: () => _setting = starts[i] + j,
                 onTap: () => _selectSetting(setting, option),
               ),
           ],
@@ -724,7 +727,8 @@ class ComposerPickerState extends State<ComposerPicker> {
           describes: widget.describes,
           hasSettings: _settingsFor(i).isNotEmpty,
           selected: option == widget.selected,
-          highlighted: i == _highlighted,
+          index: i,
+          highlight: _highlight,
           onHover: (position) => _pointAt(i, position),
           onTap: () => _select(i),
         ),
@@ -799,26 +803,30 @@ class ComposerPickerState extends State<ComposerPicker> {
       ),
     );
     if (widget.settingsOf == null) return menu;
-    final settings = _shownSettings;
     // To the right of the option, level with it; to the left when the
     // right has no room; slid up or down to stay in the window. The menu
-    // stays where it is.
-    return FloatingLayer(
-      visible: settings.isNotEmpty,
-      placement: (side: FloatingSide.right, align: FloatingAlign.start),
-      gap: _settingsGap,
-      anchorRect: _settingsAnchor,
-      // Part of the menu: a click in it is not one outside.
-      tapRegionGroupId: _tapRegion,
-      outerTapRegionGroupId: widget.tapRegionGroupId,
-      enterDuration: const Duration(milliseconds: 90),
-      exitDuration: const Duration(milliseconds: 80),
-      builder: (context) => MouseRegion(
-        key: _settingsKey,
-        onEnter: (_) => _enterSettings(),
-        child: _buildSettings(settings),
-      ),
+    // stays where it is: the same widget, not built again as they move.
+    return ValueListenableBuilder(
+      valueListenable: _shown,
       child: menu,
+      builder: (context, shown, menu) => FloatingLayer(
+        visible: shown != null,
+        placement: (side: FloatingSide.right, align: FloatingAlign.start),
+        gap: _settingsGap,
+        anchorRect: _settingsAnchor,
+        // Part of the menu: a click in it is not one outside.
+        tapRegionGroupId: _tapRegion,
+        outerTapRegionGroupId: widget.tapRegionGroupId,
+        enterDuration: const Duration(milliseconds: 90),
+        exitDuration: const Duration(milliseconds: 80),
+        builder: (context) => MouseRegion(
+          key: _settingsKey,
+          onEnter: (_) => _enterSettings(),
+          // Hidden, those last shown, as they fade out.
+          child: _buildSettings(_settingsFor(shown ?? _settingsAt)),
+        ),
+        child: menu!,
+      ),
     );
   }
 }
@@ -979,7 +987,8 @@ class _PickerRow extends StatelessWidget {
     required this.describes,
     required this.hasSettings,
     required this.selected,
-    required this.highlighted,
+    required this.index,
+    required this.highlight,
     required this.onHover,
     required this.onTap,
   });
@@ -991,7 +1000,11 @@ class _PickerRow extends StatelessWidget {
   /// Has settings of its own, at its side.
   final bool hasSettings;
   final bool selected;
-  final bool highlighted;
+
+  /// Highlighted while [highlight] is [index]: only it redrawn as that
+  /// moves.
+  final int index;
+  final ValueListenable<int> highlight;
 
   /// Where the pointer is on it, as it moves.
   final ValueChanged<Offset> onHover;
@@ -1006,14 +1019,10 @@ class _PickerRow extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Container(
+        child: _Highlighted(
+          index: index,
+          highlight: highlight,
           height: height,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: highlighted ? AppColors.hover : Colors.transparent,
-            borderRadius: BorderRadius.circular(5),
-          ),
-          foregroundDecoration: _highlightOutline(highlighted),
           child: Row(
             children: [
               option.iconBuilder?.call(
@@ -1083,6 +1092,41 @@ class _PickerRow extends StatelessWidget {
   }
 }
 
+/// A row of the menu, or of the settings: the hover's background behind
+/// [child] while [highlight] is [index], drawn again alone as it moves.
+class _Highlighted extends StatelessWidget {
+  const _Highlighted({
+    required this.index,
+    required this.highlight,
+    required this.height,
+    required this.child,
+  });
+
+  final int index;
+  final ValueListenable<int?> highlight;
+  final double height;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder(
+    valueListenable: highlight,
+    child: child,
+    builder: (context, highlighted, child) {
+      final on = highlighted == index;
+      return Container(
+        height: height,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: on ? AppColors.hover : Colors.transparent,
+          borderRadius: BorderRadius.circular(5),
+        ),
+        foregroundDecoration: _highlightOutline(on),
+        child: child,
+      );
+    },
+  );
+}
+
 /// A highlighted row's outline: in high contrast themes only
 /// (`contrastActiveBorder`), as upstream's action widget.
 BoxDecoration? _highlightOutline(bool highlighted) {
@@ -1100,14 +1144,19 @@ class _SettingRow extends StatelessWidget {
   const _SettingRow({
     required this.option,
     required this.selected,
-    required this.highlighted,
+    required this.index,
+    required this.highlight,
     required this.onHover,
     required this.onTap,
   });
 
   final KernelOption option;
   final bool selected;
-  final bool highlighted;
+
+  /// Highlighted while [highlight] is [index], counting across the
+  /// settings.
+  final int index;
+  final ValueListenable<int?> highlight;
   final VoidCallback onHover;
   final VoidCallback onTap;
 
@@ -1119,14 +1168,10 @@ class _SettingRow extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Container(
+        child: _Highlighted(
+          index: index,
+          highlight: highlight,
           height: ComposerPickerState._settingRowHeight,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: highlighted ? AppColors.hover : Colors.transparent,
-            borderRadius: BorderRadius.circular(5),
-          ),
-          foregroundDecoration: _highlightOutline(highlighted),
           child: Row(
             children: [
               Expanded(
