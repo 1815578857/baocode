@@ -192,6 +192,14 @@ class BaoWindow: NSWindow {
       let pasteboard = NSPasteboard.general
       pasteboard.clearContents()
       result(!urls.isEmpty && pasteboard.writeObjects(urls))
+    case "armFileDrag":
+      // Files dragged in the app: watched, to go on out of the window.
+      let paths = (call.arguments as? [String: Any])?["paths"] as? [String]
+      drops?.arm(paths, flutter: flutterViewController)
+      result(drops != nil)
+    case "disarmFileDrag":
+      drops?.disarm()
+      result(nil)
     case "startFileDrag":
       // Files dragged in the app, out of the window: on as Finder drags them.
       let paths = (call.arguments as? [String: Any])?["paths"] as? [String] ?? []
@@ -625,7 +633,12 @@ private class FileDropView: NSView {
   override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
   /// Takes no more drags (its window is gone).
-  func stop() { unregisterDraggedTypes() }
+  func stop() {
+    unregisterDraggedTypes()
+    armed = nil
+    if let monitor { NSEvent.removeMonitor(monitor) }
+    monitor = nil
+  }
 
   /// Where the drag is, as Flutter counts: from the top left, in points.
   private func position(_ sender: NSDraggingInfo) -> [String: Any] {
@@ -733,18 +746,59 @@ private class FileDropView: NSView {
   /// The Flutter view whose drag the system's goes on with.
   private weak var dragFlutter: FlutterViewController?
 
+  /// Flutter's drag of files, watched for the pointer to leave the window:
+  /// their paths (none while they are not this machine's yet).
+  private var armed: (paths: [String]?, flutter: FlutterViewController?)?
+
+  /// Sees the pointer's moves while the button is down, out of the window
+  /// too, before Flutter does.
+  private var monitor: Any?
+
+  /// Watches Flutter's drag of [paths]: the moment the pointer leaves the
+  /// window, the system drags them on, with that move (asked later, of an
+  /// event made up, it may not); Flutter is told (`dragOut`), to download
+  /// them first when there are none.
+  func arm(_ paths: [String]?, flutter: FlutterViewController?) {
+    armed = (paths, flutter)
+    guard monitor == nil else { return }
+    monitor = NSEvent.addLocalMonitorForEvents(
+      matching: [.leftMouseDragged, .leftMouseUp]
+    ) { [weak self] event in
+      self?.watch(event) ?? event
+    }
+  }
+
+  func disarm() { armed = nil }
+
+  private func watch(_ event: NSEvent) -> NSEvent? {
+    guard let armed, let window, event.window == nil || event.window === window
+    else { return event }
+    if event.type == .leftMouseUp {
+      self.armed = nil
+      return event
+    }
+    let at = convert(window.convertPoint(fromScreen: NSEvent.mouseLocation), from: nil)
+    if bounds.contains(at) { return event }
+    self.armed = nil
+    let began = armed.paths.map { drag($0, flutter: armed.flutter, event: event) } ?? false
+    channel.invokeMethod("dragOut", arguments: ["began": began])
+    return event
+  }
+
   /// Goes on with Flutter's drag of [paths] (the pointer, held down, left
   /// the window) as the system drags files: let go in Finder they are
   /// copied, in Mail attached; back over the window, Flutter takes them as
   /// it takes other apps' files. Whether it began.
-  func drag(_ paths: [String], flutter: FlutterViewController?) -> Bool {
+  func drag(_ paths: [String], flutter: FlutterViewController?, event moved: NSEvent? = nil)
+    -> Bool
+  {
     guard !paths.isEmpty, let window else { return false }
     let mouse = window.mouseLocationOutsideOfEventStream
     let current = NSApp.currentEvent.flatMap {
       $0.type == .leftMouseDragged || $0.type == .leftMouseDown ? $0 : nil
     }
     guard
-      let event = current
+      let event = moved ?? current
         ?? NSEvent.mouseEvent(
           with: .leftMouseDragged, location: mouse, modifierFlags: [],
           timestamp: ProcessInfo.processInfo.systemUptime,

@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:bao_remote/search.dart' show IdeTextQuery;
+import 'package:baocode/chat/composer/file_drop.dart';
 import 'package:baocode/ide/file_service.dart';
 import 'package:baocode/ide/ide_explorer.dart';
 import 'package:baocode/ide/ide_notifications.dart';
@@ -233,7 +234,9 @@ void main() {
   }, variant: windows);
 
   testWidgets('a remote project\'s file dragged out of the window is '
-      'downloaded, then dragged on as the system drags files', (tester) async {
+      'downloaded once out, then dragged on as the system drags files', (
+    tester,
+  ) async {
     final calls = <MethodCall>[];
     final messenger = tester.binding.defaultBinaryMessenger;
     const channel = MethodChannel('baocode/window');
@@ -255,8 +258,11 @@ void main() {
     );
     await gesture.moveBy(const Offset(0, 40));
     await tester.pump();
+    // Not this machine's yet: the window only watches.
+    expect(calls.single.method, 'armFileDrag');
+    expect(calls.single.arguments, {'paths': null});
     await tester.runAsync(() async {
-      await gesture.moveTo(const Offset(-30, 200));
+      await FileDrops.handle(const MethodCall('dragOut', {'began': false}));
       await Future<void>.delayed(const Duration(milliseconds: 200));
     });
     await tester.pump();

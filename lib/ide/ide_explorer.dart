@@ -1323,19 +1323,18 @@ class IdeExplorerState extends State<IdeExplorer> {
         ? WindowControls.writePasteboardFiles(paths)
               .then((_) {}, onError: (Object _) {})
         : _download([
-                for (final row in rows)
-                  ComposerFile(row.path, directory: row.isDirectory),
-              ])
-              .then(
-                (paths) async {
-                  if (paths != null) {
-                    await WindowControls.writePasteboardFiles(paths);
-                  }
-                },
-                onError: (Object error) {
-                  if (mounted) _report(error);
-                },
-              );
+            for (final row in rows)
+              ComposerFile(row.path, directory: row.isDirectory),
+          ]).then(
+            (paths) async {
+              if (paths != null) {
+                await WindowControls.writePasteboardFiles(paths);
+              }
+            },
+            onError: (Object error) {
+              if (mounted) _report(error);
+            },
+          );
     _controller.clipboard = IdeExplorerClipboard(
       [
         for (final row in rows)
@@ -2009,8 +2008,10 @@ class IdeExplorerState extends State<IdeExplorer> {
                   files: dragged(row),
                   // Out of the window, to other apps: a remote project's
                   // downloaded first.
-                  outward: () async =>
-                      _outward = await _download(dragged(row)),
+                  localPaths: widget.local
+                      ? () => [for (final file in dragged(row)) file.path]
+                      : null,
+                  outward: () async => _outward = await _download(dragged(row)),
                   onDragStarted: () =>
                       _dragging = [for (final file in dragged(row)) file.path],
                   onDragEnd: () {

@@ -189,45 +189,65 @@ void main() {
     expect(files.contents.keys, isNot(contains(inRoot('lib/shot.png'))));
   });
 
-  testWidgets(
-    'a file dragged out of the window goes on as the system '
-    'drags files',
-    (tester) async {
-      final calls = <MethodCall>[];
-      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-        const MethodChannel('baocode/window'),
-        (call) async {
-          calls.add(call);
-          return true;
-        },
-      );
-      addTearDown(
-        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-          const MethodChannel('baocode/window'),
-          null,
-        ),
-      );
-      await pumpTree(tester);
-      final start = tester.getCenter(find.text('README.md'));
-      final gesture = await tester.startGesture(start);
-      await gesture.moveBy(const Offset(0, 40));
-      await tester.pump();
-      // Still in the window: the app's own drag.
-      expect(calls, isEmpty);
-      await gesture.moveTo(const Offset(-30, 200));
-      await tester.pump();
-      expect(calls.single.method, 'startFileDrag');
-      expect(calls.single.arguments, {
-        'paths': [inRoot('README.md')],
-      });
-      await gesture.up();
-      await tester.pumpAndSettle();
-    },
-    variant: TargetPlatformVariant({
-      TargetPlatform.macOS,
-      TargetPlatform.windows,
-    }),
-  );
+  /// The window's channel, answering [answers] (by method; true for the
+  /// rest): the calls made on it.
+  List<MethodCall> windowCalls(
+    WidgetTester tester, [
+    Map<String, Object?> answers = const {},
+  ]) {
+    final calls = <MethodCall>[];
+    final messenger = tester.binding.defaultBinaryMessenger;
+    const channel = MethodChannel('baocode/window');
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return answers.containsKey(call.method) ? answers[call.method] : true;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    return calls;
+  }
+
+  testWidgets('a file dragged is watched by the window, which drags it on '
+      'itself once the pointer leaves it', (tester) async {
+    final calls = windowCalls(tester);
+    await pumpTree(tester);
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('README.md')),
+    );
+    await gesture.moveBy(const Offset(0, 40));
+    await tester.pump();
+    expect(calls.single.method, 'armFileDrag');
+    expect(calls.single.arguments, {
+      'paths': [inRoot('README.md')],
+    });
+    // Out: the window began the system's drag, and says so.
+    await FileDrops.handle(const MethodCall('dragOut', {'began': true}));
+    await gesture.moveTo(const Offset(-30, 200));
+    await tester.pump();
+    expect([for (final call in calls) call.method], ['armFileDrag']);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(calls.last.method, 'disarmFileDrag');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('a file dragged out of a window that does not watch goes on as '
+      'the system drags files', (tester) async {
+    final calls = windowCalls(tester, {'armFileDrag': null});
+    await pumpTree(tester);
+    final start = tester.getCenter(find.text('README.md'));
+    final gesture = await tester.startGesture(start);
+    await gesture.moveBy(const Offset(0, 40));
+    await tester.pump();
+    // Still in the window: the app's own drag.
+    expect(calls.where((call) => call.method == 'startFileDrag'), isEmpty);
+    await gesture.moveTo(const Offset(-30, 200));
+    await tester.pump();
+    final drag = calls.singleWhere((call) => call.method == 'startFileDrag');
+    expect(drag.arguments, {
+      'paths': [inRoot('README.md')],
+    });
+    await gesture.up();
+    await tester.pumpAndSettle();
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   testWidgets('a file from another app let go under the rows goes into the '
       "project's folder", (tester) async {
