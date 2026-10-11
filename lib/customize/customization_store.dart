@@ -127,7 +127,7 @@ class CustomizationStore {
     String name, {
     String? project,
   }) async {
-    if (!kind.creatable || !customizationName.hasMatch(name)) {
+    if (!kind.creatable || !isCustomizationName(name)) {
       throw ArgumentError.value(name, 'name');
     }
     final base = scope == CustomizationScope.user

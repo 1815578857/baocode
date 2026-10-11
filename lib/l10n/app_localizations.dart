@@ -9402,8 +9402,14 @@ abstract class AppLocalizations {
   /// No description provided for @customizeNameInvalid.
   ///
   /// In en, this message translates to:
-  /// **'Letters, digits, - and _ only (up to 64)'**
+  /// **'Starts with a letter or digit; no spaces or / \\ : * ? \" < > | (up to 64)'**
   String get customizeNameInvalid;
+
+  /// No description provided for @customizeNameUnofficial.
+  ///
+  /// In en, this message translates to:
+  /// **'Officially lowercase, digits and - only; claude.ai may reject it'**
+  String get customizeNameUnofficial;
 
   /// No description provided for @customizeNameTaken.
   ///

@@ -234,7 +234,19 @@ void main() {
     await tester.enterText(find.byType(TextField).last, 'bad name');
     await tester.pump();
     expect(
-      find.text('Letters, digits, - and _ only (up to 64)'),
+      find.text(
+        'Starts with a letter or digit; no spaces or / \\ : * ? " < > | '
+        '(up to 64)',
+      ),
+      findsOneWidget,
+    );
+    // Not the official naming: let through, with a note.
+    await tester.enterText(find.byType(TextField).last, '发布说明');
+    await tester.pump();
+    expect(
+      find.text(
+        'Officially lowercase, digits and - only; claude.ai may reject it',
+      ),
       findsOneWidget,
     );
     await tester.enterText(find.byType(TextField).last, 'pdf');

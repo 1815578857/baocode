@@ -5680,7 +5680,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get customizeNameHint => 'name';
 
   @override
-  String get customizeNameInvalid => 'Letters, digits, - and _ only (up to 64)';
+  String get customizeNameInvalid =>
+      'Starts with a letter or digit; no spaces or / \\ : * ? \" < > | (up to 64)';
+
+  @override
+  String get customizeNameUnofficial =>
+      'Officially lowercase, digits and - only; claude.ai may reject it';
 
   @override
   String get customizeNameTaken => 'One by that name already exists';

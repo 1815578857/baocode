@@ -270,6 +270,7 @@ class CustomizeViewState extends State<CustomizeView> {
       context: context,
       barrierColor: const Color(0x99000000),
       builder: (context) => _NameDialog(
+        kind: _kind,
         title: l10n.customizeNewTitle(_kind.label(l10n)),
         taken: {
           for (final item in _items ?? const <Customization>[])
@@ -1490,8 +1491,13 @@ class _Button extends StatelessWidget {
 
 /// Asks the name of a new skill, subagent, command or rule.
 class _NameDialog extends StatefulWidget {
-  const _NameDialog({required this.title, required this.taken});
+  const _NameDialog({
+    required this.kind,
+    required this.title,
+    required this.taken,
+  });
 
+  final CustomizationKind kind;
   final String title;
 
   /// Names already taken where it is to go.
@@ -1519,9 +1525,16 @@ class _NameDialogState extends State<_NameDialog> {
   String? _problem(AppLocalizations l10n) {
     final name = _name.text.trim();
     if (name.isEmpty) return null;
-    if (!customizationName.hasMatch(name)) return l10n.customizeNameInvalid;
+    if (!isCustomizationName(name)) return l10n.customizeNameInvalid;
     if (widget.taken.contains(name)) return l10n.customizeNameTaken;
     return null;
+  }
+
+  /// A note, not a [_problem]: the name works, but not everywhere.
+  String? _note(AppLocalizations l10n) {
+    final name = _name.text.trim();
+    if (name.isEmpty || followsOfficialNaming(widget.kind, name)) return null;
+    return l10n.customizeNameUnofficial;
   }
 
   void _submit() {
@@ -1535,6 +1548,7 @@ class _NameDialogState extends State<_NameDialog> {
     final l10n = context.l10n;
     final colors = themeColors;
     final problem = _problem(l10n);
+    final note = problem == null ? _note(l10n) : null;
     return Dialog(
       backgroundColor: AppColors.surface,
       shadowColor: colors['widget.shadow'],
@@ -1597,16 +1611,18 @@ class _NameDialogState extends State<_NameDialog> {
                   ),
                 ),
               ),
-              SizedBox(
-                height: 22,
-                child: problem == null
+              ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 22),
+                child: problem == null && note == null
                     ? null
                     : Padding(
                         padding: const EdgeInsets.only(top: 5),
                         child: Text(
-                          problem,
+                          problem ?? note!,
                           style: TextStyle(
-                            color: colors['errorForeground'],
+                            color: problem != null
+                                ? colors['errorForeground']
+                                : AppColors.textMuted,
                             fontSize: 11.5,
                           ),
                         ),

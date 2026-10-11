@@ -4055,7 +4055,8 @@
     }
   },
   "customizeNameHint": "name",
-  "customizeNameInvalid": "Letters, digits, - and _ only (up to 64)",
+  "customizeNameInvalid": "Starts with a letter or digit; no spaces or / \\ : * ? \" < > | (up to 64)",
+  "customizeNameUnofficial": "Officially lowercase, digits and - only; claude.ai may reject it",
   "customizeNameTaken": "One by that name already exists",
   "customizeCreate": "Create",
   "customizeLoadFailed": "Couldn't read: {error}",

@@ -5315,7 +5315,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get customizeNameHint => '名称';
 
   @override
-  String get customizeNameInvalid => '只能使用字母、数字、- 和 _（最多 64 个）';
+  String get customizeNameInvalid =>
+      '须以文字或数字开头，不能含空格和 / \\ : * ? \" < > |（最多 64 个）';
+
+  @override
+  String get customizeNameUnofficial => '官方规范只用小写字母、数字和 -，上传 claude.ai 可能被拒';
 
   @override
   String get customizeNameTaken => '已存在同名项';
