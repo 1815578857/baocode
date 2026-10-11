@@ -44,7 +44,7 @@
 | Windows 客户端打开远程项目 | **有已知问题**：见第 15 节 |
 | 真实主机端到端验证 | **未做**：见第 13 节 |
 
-不在范围内：Codex、Windows 远端、Windows 客户端的密码登录、在访达中显示、用外部编辑器打开、往远程项目里拖文件。
+不在范围内：Codex、Windows 远端、在访达中显示、用外部编辑器打开、往远程项目里拖文件。
 
 ---
 
@@ -170,8 +170,8 @@ ssh 参数固定为：
 -T -o BatchMode=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o ConnectTimeout=20 -e none [-p <端口>] <目的地>
 ```
 
-- `BatchMode=yes`：只在没有 `prompter` 时使用（Windows 上也是），ssh 从不提问，需要密码就直接失败（`authentication`）。
-- 应用里 `SshLauncher` 带有 `prompter`，此时改成 `BatchMode=no`，并设置 `SSH_ASKPASS`（一个 sh 脚本）和 `SSH_ASKPASS_REQUIRE=force`（OpenSSH 8.4 起支持）。ssh 要密码、密钥口令或验证码时，会运行这个脚本：脚本把提示写进这次 ssh 专用的临时目录（只有当前用户能读），然后等应用写回答案（见 `ssh_askpass.dart`）。应用弹窗问用户（`SshPasswords`、`showSshPasswordDialog`）：
+- `BatchMode=yes`：只在没有 `prompter` 时使用（Windows 上 ssh 低于 OpenSSH 8.4 时也是），ssh 从不提问，需要密码就直接失败（`authentication`）。
+- 应用里 `SshLauncher` 带有 `prompter`，此时改成 `BatchMode=no`，并设置 `SSH_ASKPASS`（一个 sh 脚本；Windows 上是 `askpass.cmd`，由它调用做同样事情的 `askpass.ps1`）和 `SSH_ASKPASS_REQUIRE=force`（OpenSSH 8.4 起支持）。Windows 上先跑一次 `ssh -V`：低于 8.4 的 ssh 不认 `force`，会去控制台读密码而卡住，所以这时不问密码，仍是 `BatchMode=yes`，认证失败时提示升级 OpenSSH（Windows 10 自带的是 8.1）。ssh 要密码、密钥口令或验证码时，会运行这个脚本：脚本把提示写进这次 ssh 专用的临时目录（只有当前用户能读），然后等应用写回答案（见 `ssh_askpass.dart`）。应用弹窗问用户（`SshPasswords`、`showSshPasswordDialog`）：
   - 同一提示在本次运行里只问一次：一次连接里的探测、上传、启动三个 ssh 共用同一个答案，断线重连也不再问；
   - 勾选“在本机记住”的，等**登录成功后**才存进系统钥匙串（`SecretStore`，macOS 用钥匙串），名字是 `ssh:<主机>:<提示的哈希>`；下次启动直接取用，不再弹窗；
   - 主机拒绝了（ssh 再问同一个提示，或最后报认证失败），就从内存和钥匙串里删掉，重新问；
@@ -425,7 +425,7 @@ flutter analyze
 | --- | --- | --- |
 | The BaoCode server for Linux x64（或 macOS arm64 等）could not be downloaded（详情里是 HTTP 404） | 这个构建的服务端没有上传到 dl.baocode.dev。常见于本机打包的应用：每次构建的 `VERSION` 都不同，CI 发布的那份对不上 | 把打包时 `build/installers/remote/<VERSION>/` 里的 `.gz` 上传到 `dl.baocode.dev/releases/remote/<VERSION>/`；只在本机用的话，也可以把它们放进数据目录的 `cache/remote-server/<VERSION>/`。或者改装 CI 发布的版本 |
 | No ssh here | 本机没有 `ssh` | 安装 OpenSSH 客户端；Windows 上在“可选功能”里安装 |
-| 认证失败（authentication） | 密码不对、取消了登录，或密钥没加载（Windows 上不问密码） | 重连时重新输入密码；用密钥的话，把密钥加到 ssh-agent，或在 `~/.ssh/config` 里写 `IdentityFile` |
+| 认证失败（authentication） | 密码不对、取消了登录，或密钥没加载（Windows 上 ssh 低于 8.4 时不问密码） | 重连时重新输入密码；用密钥的话，把密钥加到 ssh-agent，或在 `~/.ssh/config` 里写 `IdentityFile` |
 | 主机密钥问题（hostKey） | 主机还不在 `known_hosts` 里，或密钥变了 | 先在终端里 `ssh <主机>` 一次，接受密钥；密钥确实换过的话，用 `ssh-keygen -R <主机>` 删掉旧记录 |
 | 不支持的系统（unsupported） | 远端不是 Linux 或 macOS 的 x64/arm64 | 不支持 |
 | This build of the app has no server for macOS x64 | 应用是在 Linux / Windows 上、或没给 `--macos-x64-dart` 时打包的，没有这个平台的服务端 | 用 CI 发布的版本，或按 9.1 在 Mac 上补编 |
@@ -500,7 +500,7 @@ flutter analyze
 3. **旧版本服务端不会自动清理**：`~/.baocode-server/<旧VERSION>/` 会一直留着，每个约几十 MB。可以在连接成功后删掉其他版本的目录。
 4. **Haiku 不会触发 Claude 自动安装**：远端没有 claude 时，标题和提交信息会失败，等到第一次对话装好后才正常。
 5. **自动安装没有开关**：远端没有 claude 时总是自动装。如果有用户不希望自动下载，需要加一个设置项。
-6. **Windows 客户端不支持密码登录**：`SSH_ASKPASS` 用的是 sh 脚本，Windows 上仍是 `BatchMode=yes`，只能用密钥。
+6. **Windows 客户端的密码登录还没在 Windows 上实测**：`askpass.cmd` 经 PowerShell 回传密码，依赖 Win32-OpenSSH 8.4 及以上按 `SSH_ASKPASS_REQUIRE=force` 调用它；要确认的有：能否运行 `.cmd`、用户名带空格的临时目录、运行时是否闪出控制台窗口。低于 8.4（Windows 10 自带 8.1）仍只能用密钥。
 7. **启动时会连接所有远程项目的主机**（因为要读会话列表）。主机很多或很慢时，可以改成在展开项目时再连接。
 8. **macOS 打包这一步还没实际跑过**，签名和公证也还没做（见 `tool/build_macos.dart` 里的 TODO）。
 9. **断线时远端进程都会结束**：sshd 断开会话时会发 SIGHUP。以后如果想让对话在断线期间继续跑，需要把服务端改成常驻进程（类似 VS Code 的 server 那样），每次连接再重新接上。

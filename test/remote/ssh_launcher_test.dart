@@ -350,6 +350,17 @@ exec '$dartExecutable' '${p.absolute('packages', 'bao_remote', 'bin', 'baocode_s
     expect(SshTarget.isValid('me@dev'), isTrue);
   });
 
+  test('on Windows, passwords are asked of OpenSSH 8.4 and later', () {
+    bool takes(String version) => SshLauncher.takesForcedAskpass(version);
+    expect(takes('OpenSSH_for_Windows_8.1p1, LibreSSL 3.0.2'), isFalse);
+    expect(takes('OpenSSH_for_Windows_8.6p1, LibreSSL 3.4.3'), isTrue);
+    expect(takes('OpenSSH_for_Windows_9.5p1, LibreSSL 3.8.2'), isTrue);
+    expect(takes('OpenSSH_8.4p1 Debian'), isTrue);
+    expect(takes('OpenSSH_7.9p1'), isFalse);
+    expect(takes('OpenSSH_10.2p1, LibreSSL 3.3.6'), isTrue);
+    expect(takes('something else'), isFalse);
+  });
+
   test('ssh runs with no prompts and keepalives', () {
     final launcher = SshLauncher(
       ssh: 'ssh',
