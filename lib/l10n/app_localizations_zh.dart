@@ -5341,6 +5341,71 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get modelsFeaturedWhy => '为什么我看到这个？';
+
+  @override
+  String get modelsFeaturedWhyDetail =>
+      '这些上游接入了 BaoCode 的一键导入：在它们的令牌页点一下，就能把上游连同密钥加到这里。作为回报，BaoCode 免费展示它们，顺序随机。展示不收费，也不代表 BaoCode 为其担保。\n\n你是站长？接入一键导入后，在 BaoCode 的 GitHub 提交 issue，只要导入一直可用，就能一直免费展示。';
+
+  @override
+  String get modelsFeaturedJoin => '展示你的站点';
+
+  @override
+  String get modelsFeaturedJoinDescription => '接入一键导入，免费展示';
+
+  @override
+  String modelsImportTitle(String host) {
+    return '从 $host 导入上游？';
+  }
+
+  @override
+  String modelsImportKey(String key) {
+    return '密钥：$key';
+  }
+
+  @override
+  String get modelsImportNoKey => '无，导入后再填';
+
+  @override
+  String modelsImportListed(String name) {
+    return '已收录在 BaoCode：$name。';
+  }
+
+  @override
+  String modelsImportExisting(String name) {
+    return '你已经添加过这个上游：$name。';
+  }
+
+  @override
+  String get modelsImportWarning => '你的对话和代码会发往这个地址，只从你信任的站点导入。';
+
+  @override
+  String get modelsImportNamePlaceholder => '名称';
+
+  @override
+  String get modelsImportAdd => '导入';
+
+  @override
+  String modelsImportUpdateKey(String name) {
+    return '更新「$name」的密钥';
+  }
+
+  @override
+  String modelsImportOpenExisting(String name) {
+    return '打开「$name」';
+  }
+
+  @override
+  String get modelsImportAsNew => '另存为新上游';
+
+  @override
+  String get modelsImportInvalid => '这个导入链接无法使用';
+
+  @override
+  String get modelsImportInvalidDetail =>
+      '链接里需要有 Base URL（http 或 https）和 BaoCode 支持的协议。请让站点重新生成链接，或在 设置 → 模型 中手动添加上游。';
+
+  @override
   String get modelsAddProvider => '添加上游';
 
   @override

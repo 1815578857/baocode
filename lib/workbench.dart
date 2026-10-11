@@ -35,6 +35,7 @@ import 'ide/ide_chat_title.dart';
 import 'ide/ide_color_theme_picker.dart';
 import 'ide/ide_commands.dart';
 import 'ide/ide_dialog.dart';
+import 'models/upstream_import.dart';
 import 'ide/ide_modern_ui.dart';
 import 'ide/ide_notifications.dart';
 import 'ide/git/commit_message.dart';
@@ -67,6 +68,8 @@ import 'search/search_palette.dart';
 import 'settings/app_settings.dart';
 import 'settings/data_dir_startup.dart';
 import 'settings/jsonc_file.dart';
+import 'settings/pages/models_page.dart';
+import 'settings/pages/upstream_import_dialog.dart';
 import 'settings/settings_dialog.dart';
 import 'settings/shell_command_actions.dart';
 import 'sidebar/sidebar.dart';
@@ -1705,6 +1708,12 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   /// whichever the main window is; the chat is left as it was. With the
   /// app's windows, as they open them (see [AppWindows.openRequested]).
   Future<void> _openPaths(List<String> paths) async {
+    if (paths.firstOrNull == CodeArgs.importRequestMarker) {
+      for (final link in paths.skip(1)) {
+        await _importUpstream(link);
+      }
+      return;
+    }
     if (_windows case final windows?) return windows.openRequested(paths);
     final folders = <String>[];
     final files = <String>[];
@@ -1934,6 +1943,30 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         ),
       ],
     );
+  }
+
+  /// A site's one-click import of an upstream ([UpstreamImport]): asked
+  /// about in this window, brought in front; once added, its page in
+  /// Settings → Models.
+  Future<void> _importUpstream(String link) async {
+    _windows?.showChat();
+    final l10n = context.l10n;
+    final import = UpstreamImport.parse(link);
+    if (import == null) {
+      await showIdeDialog(
+        context,
+        message: l10n.modelsImportInvalid,
+        detail: l10n.modelsImportInvalidDetail,
+        buttons: [l10n.commonOk],
+        cancel: null,
+        type: IdeDialogType.error,
+      );
+      return;
+    }
+    final id = await showUpstreamImportDialog(context, import);
+    if (id == null || !mounted) return;
+    ModelsSettingsPage.reveal.value = id;
+    await openSettings(SettingsSection.models);
   }
 
   bool _settingsOpen = false;

@@ -100,5 +100,13 @@ void main() {
       LaunchRequest.ide,
     );
     expect(LaunchRequest.of(const [r'C:\w']), LaunchRequest.ide);
+    // A site's import asks in the main window, as at any launch.
+    expect(
+      LaunchRequest.of(const [
+        CodeArgs.windowsLinkFlag,
+        'baocode://provider/import?url=https%3A%2F%2Fapi.example.com',
+      ]),
+      LaunchRequest.none,
+    );
   });
 }

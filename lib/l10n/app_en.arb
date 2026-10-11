@@ -4057,6 +4057,65 @@
       }
     }
   },
+  "modelsFeaturedWhy": "Why am I seeing this?",
+  "modelsFeaturedWhyDetail": "These upstreams added BaoCode's one-click import: a click on their key page adds the upstream, key and all, right here. In return BaoCode lists them for free, in a random order. Nobody pays to be here, and being listed is not an endorsement.\n\nRun a site? Add the one-click import and open an issue on BaoCode's GitHub to be listed for as long as the import works.",
+  "modelsFeaturedJoin": "Your site here",
+  "modelsFeaturedJoinDescription": "Add one-click import, listed free",
+  "modelsImportTitle": "Import an upstream from {host}?",
+  "@modelsImportTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "modelsImportKey": "Key: {key}",
+  "@modelsImportKey": {
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "modelsImportNoKey": "none, add it afterwards",
+  "modelsImportListed": "Listed in BaoCode as {name}.",
+  "@modelsImportListed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "modelsImportExisting": "You have this upstream already: {name}.",
+  "@modelsImportExisting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "modelsImportWarning": "Your conversations and code go to this address. Import only from sites you trust.",
+  "modelsImportNamePlaceholder": "Name",
+  "modelsImportAdd": "Import",
+  "modelsImportUpdateKey": "Update {name}'s Key",
+  "@modelsImportUpdateKey": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "modelsImportOpenExisting": "Open {name}",
+  "@modelsImportOpenExisting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "modelsImportAsNew": "Add as New Upstream",
+  "modelsImportInvalid": "This import link can't be used",
+  "modelsImportInvalidDetail": "It needs a base URL (http or https) and a protocol BaoCode knows. Ask the site for a new link, or add the upstream by hand in Settings → Models.",
   "modelsAddProvider": "Add Upstream",
   "modelsNewProviderName": "New Upstream",
   "modelsProviderNoUrl": "No base URL",

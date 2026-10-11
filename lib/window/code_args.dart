@@ -53,8 +53,19 @@ class CodeArgs {
   /// hands it over as a request ([agentRequestMarker]).
   static const windowsAgentFlag = '--baocode-agent';
 
+  /// The marker of a site's one-click import of an upstream (a
+  /// `baocode://provider/import?…` link, see UpstreamImport), the link
+  /// next: asked about in the main window, which comes in front for it.
+  static const importRequestMarker = '\u0000import';
+
+  /// The flag Windows starts the app with for a `baocode://` link (the URL
+  /// scheme the installer registers), the link next; the runner hands it
+  /// over as a request ([importRequestMarker]).
+  static const windowsLinkFlag = '--baocode-link';
+
   /// Whether [argument] starts a request ([requestMarker],
-  /// [agentRequestMarker]) among what the system hands over.
+  /// [agentRequestMarker], [importRequestMarker]) among what the system
+  /// hands over.
   static bool isMarker(String argument) => argument.startsWith('\u0000');
 
   /// Whether [paths], as the system hands them over, are a request of the
@@ -179,6 +190,8 @@ enum LaunchRequest {
     final first = arguments.firstOrNull;
     if (first == CodeArgs.windowsAgentFlag) return agent;
     if (first == CodeArgs.windowsRequestFlag) return ide;
+    // A link asks in the main window, as the app shows at any launch.
+    if (first == CodeArgs.windowsLinkFlag) return none;
     final paths = arguments.where((a) => a.isNotEmpty && !a.startsWith('-'));
     return paths.isEmpty ? none : ide;
   }

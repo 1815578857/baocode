@@ -26,7 +26,8 @@
 		</dict>
 	</array>
 	<!-- baocode://, by which the Finder extension hands the app what its
-	     context menu is on (see AppDelegate.swift). -->
+	     context menu is on, and a site's one-click import an upstream (see
+	     AppDelegate.swift). -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
