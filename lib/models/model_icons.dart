@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../icons/brand_logos.dart';
 import '../icons/icon_library.dart';
@@ -6,6 +9,7 @@ import '../icons/project_icon.dart';
 import '../icons/project_icon_view.dart';
 import '../icons/site_icons.dart';
 import '../theme/codicons.dart';
+import 'featured_upstreams.dart';
 import 'model_brand.dart';
 import 'model_provider.dart';
 import 'model_providers.dart';
@@ -81,6 +85,7 @@ class ProviderIcon extends StatelessWidget {
 
 /// [icon] as an upstream shows it, in a square of [size]: a glyph or a
 /// logo as large as a glyph of it, a picture a little larger. Without one,
+/// the logo BaoCode lists [site] with ([FeaturedUpstream.known]); else
 /// [site]'s icon ([SiteIcons]); without that, a globe.
 class ProviderIconView extends StatelessWidget {
   const ProviderIconView({
@@ -99,13 +104,41 @@ class ProviderIconView extends StatelessWidget {
   @override
   Widget build(BuildContext context) => switch (icon) {
     null => ListenableBuilder(
-      listenable: SiteIcons.current,
-      builder: (context, _) => switch (switch (site) {
-        final site? => SiteIcons.current.of(site),
-        null => null,
-      }) {
-        final image? => _spilling(IconImageView(image, size: size + 2)),
-        null => Icon(Codicons.globe, size: size, color: color),
+      listenable: Listenable.merge([SiteIcons.current, FeaturedUpstream.known]),
+      builder: (context, _) {
+        final fetched = switch (switch (site) {
+          final site? => SiteIcons.current.of(site),
+          null => null,
+        }) {
+          final image? => _spilling(IconImageView(image, size: size + 2)),
+          null => Icon(Codicons.globe, size: size, color: color),
+        };
+        // A site BaoCode lists: the logo it is listed with.
+        final logo = switch (site) {
+          final site? => FeaturedUpstream.knownAt(site.host)?.logo,
+          null => null,
+        };
+        if (logo == null) return fetched;
+        final file = File(logo);
+        final side = size + 2;
+        return _spilling(
+          ClipRRect(
+            borderRadius: BorderRadius.circular(side / 5),
+            child: logo.toLowerCase().endsWith('.svg')
+                ? SvgPicture.file(
+                    file,
+                    width: side,
+                    height: side,
+                    errorBuilder: (_, _, _) => fetched,
+                  )
+                : Image.file(
+                    file,
+                    width: side,
+                    height: side,
+                    errorBuilder: (_, _, _) => fetched,
+                  ),
+          ),
+        );
       },
     ),
     BrandIcon(:final name) => BrandLogo(name, size: size, color: color),

@@ -211,5 +211,49 @@ void main() {
       expect(FeaturedUpstream.parseList('[]'), isEmpty);
       expect(FeaturedUpstream.parseList('{"upstreams": 3}'), isEmpty);
     });
+
+    FeaturedUpstream site(String id) =>
+        FeaturedUpstream(id: id, name: id, url: Uri.https('$id.example.com'));
+    List<String> ids(List<FeaturedUpstream> list) => [
+      for (final upstream in list) upstream.id,
+    ];
+
+    test('the list kept last time shows at once, the new one the next '
+        'time', () async {
+      var asked = 0;
+      FeaturedUpstream.keptLoader = () async => [site('kept')];
+      FeaturedUpstream.loader = () async {
+        asked++;
+        return [site('fresh')];
+      };
+      expect(ids(await FeaturedUpstream.load()), ['kept']);
+      await pumpEventQueue();
+      expect(ids(FeaturedUpstream.known.value), ['fresh']);
+      expect(ids(await FeaturedUpstream.load()), ['fresh']);
+      expect(asked, 1);
+    });
+
+    test('at the start, those known are those kept, with no asking', () async {
+      var asked = 0;
+      FeaturedUpstream.keptLoader = () async => [site('kept')];
+      FeaturedUpstream.loader = () async {
+        asked++;
+        return const [];
+      };
+      await FeaturedUpstream.readKept();
+      expect(ids(FeaturedUpstream.known.value), ['kept']);
+      expect(FeaturedUpstream.knownAt('kept.example.com'), isNull);
+      expect(asked, 0);
+    });
+
+    test('with none kept, the new list; none where it cannot be got, asked '
+        'again the next time', () async {
+      var answer = <FeaturedUpstream>[];
+      FeaturedUpstream.loader = () async => answer;
+      expect(await FeaturedUpstream.load(), isEmpty);
+      await pumpEventQueue();
+      answer = [site('fresh')];
+      expect(ids(await FeaturedUpstream.load()), ['fresh']);
+    });
   });
 }

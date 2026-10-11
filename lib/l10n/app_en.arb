@@ -4123,11 +4123,10 @@
       }
     }
   },
-  "modelsFeaturedJoin": "Your site here",
-  "modelsFeaturedJoinDescription": "Add one-click import, listed free",
   "modelsFeaturedWhy": "Why am I seeing this?",
-  "modelsFeaturedNote": "These sites are listed officially, for free. ",
-  "modelsFeaturedNoteLink": "How to get listed?",
+  "modelsFeaturedNote": "These sites are officially listed by BaoCode",
+  "modelsFeaturedNoteHow": "Add the one-click import to be listed too, for free",
+  "modelsFeaturedNoteLink": "List My Site Too",
   "modelsImportTitle": "Import an upstream from {host}",
   "@modelsImportTitle": {
     "placeholders": {
@@ -4149,11 +4148,11 @@
       }
     }
   },
-  "modelsImportWarning": "Your conversations and code go to this address. Import only from sites you trust.",
   "modelsImportNamePlaceholder": "Name",
   "modelsImportAdd": "Import Models",
   "modelsImportFinish": "Import",
   "modelsImportWithoutModels": "Import Without Models",
+  "modelsImportPreparing": "Getting your models ready…",
   "modelsImportUpdateKey": "Update {name}'s Key",
   "@modelsImportUpdateKey": {
     "placeholders": {

@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../../ide/ide_button.dart';
 import '../../ide/ide_hover.dart';
 import '../../ide/ide_input.dart';
+import '../../ide/ide_spinning.dart';
 import '../../l10n/l10n.dart';
 import '../../models/model_provider.dart';
 import '../../models/upstream.dart';
@@ -191,7 +192,8 @@ TextStyle _muted(BuildContext context) =>
 /// ([mergeModelList]), or null when dismissed. [apply] is what its button
 /// says; Apply when null. With [skip], what a button says that, where the
 /// upstream lists none or cannot be asked, completes with its models as
-/// they are.
+/// they are. [loading] is what it says while it asks, under [loadingLead];
+/// for at least [minLoading], however soon the upstream answers.
 Future<List<ProviderModel>?> showFetchModelsDialog(
   BuildContext context, {
   required ModelProvider provider,
@@ -199,9 +201,14 @@ Future<List<ProviderModel>?> showFetchModelsDialog(
   required ModelLister list,
   String? apply,
   String? skip,
+  String? loading,
+  Widget? loadingLead,
+  Duration minLoading = Duration.zero,
 }) => showGeneralDialog<List<ProviderModel>>(
   context: context,
-  barrierDismissible: true,
+  // Closed by its buttons, Escape or the close button: a click beside it
+  // would lose the models checked.
+  barrierDismissible: false,
   barrierLabel: context.l10n.commonDismiss,
   barrierColor: const Color(0x80000000),
   transitionDuration: Duration.zero,
@@ -211,6 +218,9 @@ Future<List<ProviderModel>?> showFetchModelsDialog(
     list: list,
     apply: apply,
     skip: skip,
+    loading: loading,
+    loadingLead: loadingLead,
+    minLoading: minLoading,
   ),
 );
 
@@ -222,6 +232,9 @@ class FetchModelsDialog extends StatefulWidget {
     required this.list,
     this.apply,
     this.skip,
+    this.loading,
+    this.loadingLead,
+    this.minLoading = Duration.zero,
   });
 
   final ModelProvider provider;
@@ -234,6 +247,15 @@ class FetchModelsDialog extends StatefulWidget {
   /// What a button says that, where none are listed or they cannot be,
   /// takes the provider's models as they are; none when null.
   final String? skip;
+
+  /// What it says while it asks the upstream; that it does when null.
+  final String? loading;
+
+  /// Above [loading], while it asks.
+  final Widget? loadingLead;
+
+  /// How long it says so at least.
+  final Duration minLoading;
 
   @override
   State<FetchModelsDialog> createState() => _FetchModelsDialogState();
@@ -268,12 +290,15 @@ class _FetchModelsDialogState extends State<FetchModelsDialog> {
       _listed = null;
       _error = null;
     });
+    final shown = Future<void>.delayed(widget.minLoading);
     try {
       final listed = [
         ...await widget.list(widget.provider, await widget.keyOf()),
       ]..sort((a, b) => a.id.compareTo(b.id));
+      await shown;
       if (mounted) setState(() => _listed = listed);
     } on Object catch (error) {
+      await shown;
       if (mounted) setState(() => _error = error);
     }
   }
@@ -323,9 +348,34 @@ class _FetchModelsDialogState extends State<FetchModelsDialog> {
         ),
       );
     } else if (listed == null) {
+      final saying = Row(
+        children: [
+          IdeSpinning(
+            Icon(
+              Codicons.loading,
+              size: 14,
+              color: themeColors['descriptionForeground'],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              widget.loading ?? l10n.modelsFetchLoading,
+              style: _muted(context),
+            ),
+          ),
+        ],
+      );
       body = Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text(l10n.modelsFetchLoading, style: _muted(context)),
+        child: switch (widget.loadingLead) {
+          final lead? => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [lead, const SizedBox(height: 12), saying],
+          ),
+          null => saying,
+        },
       );
     } else if (listed.isEmpty) {
       body = Padding(

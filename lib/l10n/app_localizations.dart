@@ -9555,18 +9555,6 @@ abstract class AppLocalizations {
   /// **'Offer {name} in the model picker'**
   String modelsEnableProvider(String name);
 
-  /// No description provided for @modelsFeaturedJoin.
-  ///
-  /// In en, this message translates to:
-  /// **'Your site here'**
-  String get modelsFeaturedJoin;
-
-  /// No description provided for @modelsFeaturedJoinDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Add one-click import, listed free'**
-  String get modelsFeaturedJoinDescription;
-
   /// No description provided for @modelsFeaturedWhy.
   ///
   /// In en, this message translates to:
@@ -9576,13 +9564,19 @@ abstract class AppLocalizations {
   /// No description provided for @modelsFeaturedNote.
   ///
   /// In en, this message translates to:
-  /// **'These sites are listed officially, for free. '**
+  /// **'These sites are officially listed by BaoCode'**
   String get modelsFeaturedNote;
+
+  /// No description provided for @modelsFeaturedNoteHow.
+  ///
+  /// In en, this message translates to:
+  /// **'Add the one-click import to be listed too, for free'**
+  String get modelsFeaturedNoteHow;
 
   /// No description provided for @modelsFeaturedNoteLink.
   ///
   /// In en, this message translates to:
-  /// **'How to get listed?'**
+  /// **'List My Site Too'**
   String get modelsFeaturedNoteLink;
 
   /// No description provided for @modelsImportTitle.
@@ -9627,12 +9621,6 @@ abstract class AppLocalizations {
   /// **'You have this upstream already: {name}.'**
   String modelsImportExisting(String name);
 
-  /// No description provided for @modelsImportWarning.
-  ///
-  /// In en, this message translates to:
-  /// **'Your conversations and code go to this address. Import only from sites you trust.'**
-  String get modelsImportWarning;
-
   /// No description provided for @modelsImportNamePlaceholder.
   ///
   /// In en, this message translates to:
@@ -9656,6 +9644,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Import Without Models'**
   String get modelsImportWithoutModels;
+
+  /// No description provided for @modelsImportPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting your models ready…'**
+  String get modelsImportPreparing;
 
   /// No description provided for @modelsImportUpdateKey.
   ///

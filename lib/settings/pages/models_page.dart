@@ -112,11 +112,25 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
 
   ModelProviders get _providers => widget.providers;
 
+  /// The sites listed (see [ModelsSettingsPage.featured]).
+  late final Future<List<FeaturedUpstream>> _featured =
+      widget.featured ?? FeaturedUpstream.load();
+
+  /// The hosts of [_featured], once got: their upstreams lead the list.
+  Set<String> _listedHosts = const {};
+
   @override
   void initState() {
     super.initState();
     _reveal();
     ModelsSettingsPage.reveal.addListener(_reveal);
+    unawaited(
+      _featured.then((listed) {
+        if (mounted) {
+          setState(() => _listedHosts = {for (final u in listed) ...u.hosts});
+        }
+      }),
+    );
   }
 
   @override
@@ -223,12 +237,15 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
 
   Widget _list(BuildContext context) {
     final l10n = context.l10n;
+    final pinned = _providers.providers.lastWhereOrNull(
+      (provider) => _listedHosts.contains(provider.host.toLowerCase()),
+    );
     final current = _providers.defaultModel;
     final shown = _defaultName(context, current);
     return SettingsPage(
       title: l10n.modelsTitle,
       lead: FeaturedUpstreamsStrip(
-        upstreams: widget.featured,
+        upstreams: _featured,
         hosts: [for (final provider in _providers.providers) provider.host],
       ),
       children: [
@@ -295,7 +312,9 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
               onEnabled: (value) =>
                   unawaited(_providers.setBuiltinHidden(!value)),
             ),
-            for (final provider in _providers.providers)
+            // The newest at a site BaoCode lists first (one imported later
+            // takes the place of one before); the rest in their order.
+            for (final provider in [?pinned, ..._providers.providers.where((p) => p != pinned)])
               _ProviderRow(
                 icon: ProviderIconView(
                   icon: providerIconOf(provider),

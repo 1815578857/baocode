@@ -55,7 +55,9 @@ Future<String?> showUpstreamImportDialog(
   ];
   final result = await showGeneralDialog<(int, String)>(
     context: context,
-    barrierDismissible: true,
+    // Closed by its buttons, Escape or the close button: a click beside
+    // it would lose what was typed.
+    barrierDismissible: false,
     barrierLabel: l10n.commonDismiss,
     barrierColor: const Color(0x80000000),
     transitionDuration: Duration.zero,
@@ -87,6 +89,27 @@ Future<String?> showUpstreamImportDialog(
     list: list,
     apply: context.l10n.modelsImportFinish,
     skip: context.l10n.modelsImportWithoutModels,
+    loading: context.l10n.modelsImportPreparing,
+    // The site, and the upstream's name, while its models are got.
+    loadingLead: Row(
+      children: [
+        _SiteLogo(import: import, listed: listed, size: 28),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: themeColors['editorWidget.foreground'],
+            ),
+          ),
+        ),
+      ],
+    ),
+    minLoading: const Duration(seconds: 2),
   );
   if (models == null) return null;
   await store.save(provider.copyWith(models: models));
@@ -311,7 +334,6 @@ class _ImportDialogState extends State<_ImportDialog> {
                         const SizedBox(height: 10),
                         if (widget.existing case final name?)
                           note(Codicons.info, l10n.modelsImportExisting(name)),
-                        note(Codicons.shield, l10n.modelsImportWarning),
                       ],
                     ),
                   ),
@@ -344,31 +366,30 @@ class _ImportDialogState extends State<_ImportDialog> {
   }
 }
 
-/// The site's mark, 40 square: the logo BaoCode lists it with, else its
+/// The site's mark, [size] square: the logo BaoCode lists it with, else its
 /// site's icon, else a globe.
 class _SiteLogo extends StatelessWidget {
-  const _SiteLogo({required this.import, required this.listed});
+  const _SiteLogo({required this.import, required this.listed, this.size = 40});
 
   final UpstreamImport import;
   final FeaturedUpstream? listed;
-
-  static const _size = 40.0;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     final colors = themeColors;
     final icon = Container(
-      width: _size,
-      height: _size,
+      width: size,
+      height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: colors['list.hoverBackground'],
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(size / 4),
       ),
       child: ProviderIconView(
         icon: null,
         site: UpstreamUrls.parse(import.baseUrl),
-        size: 22,
+        size: size * .55,
         color: colors['descriptionForeground'],
       ),
     );
@@ -376,18 +397,18 @@ class _SiteLogo extends StatelessWidget {
     if (logo == null) return icon;
     final file = File(logo);
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(size / 4),
       child: logo.toLowerCase().endsWith('.svg')
           ? SvgPicture.file(
               file,
-              width: _size,
-              height: _size,
+              width: size,
+              height: size,
               errorBuilder: (_, _, _) => icon,
             )
           : Image.file(
               file,
-              width: _size,
-              height: _size,
+              width: size,
+              height: size,
               errorBuilder: (_, _, _) => icon,
             ),
     );

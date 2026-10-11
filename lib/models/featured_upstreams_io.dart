@@ -46,6 +46,16 @@ Future<List<FeaturedUpstream>> fetchFeaturedUpstreams({
   }
 }
 
+/// See [FeaturedUpstream.keptLoader]: the list [fetchFeaturedUpstreams]
+/// kept last time, its logos with it; none before the first.
+Future<List<FeaturedUpstream>> readFeaturedUpstreams({String? cacheDir}) {
+  final dir = cacheDir ?? p.join(DataDirectory.current.cacheDir, 'featured');
+  return _read(
+    File(p.join(dir, 'upstreams.json')),
+    (text) => FeaturedUpstream.parseList(text, logoDirectory: dir),
+  );
+}
+
 const _maxList = 512 * 1024;
 const _maxLogo = 512 * 1024;
 const _timeout = Duration(seconds: 8);

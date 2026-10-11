@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:baocode/theme/codicons.dart';
 import 'package:baocode/l10n/app_localizations.dart';
 import 'package:baocode/models/featured_upstreams.dart';
+import 'package:baocode/models/model_icons.dart';
 import 'package:baocode/models/model_provider.dart';
 import 'package:baocode/models/model_providers.dart';
 import 'package:baocode/models/secret_store.dart';
@@ -43,8 +44,7 @@ void main() {
   });
 
   group('the featured row', () {
-    testWidgets('a card of each, then one for a site to be listed; a click '
-        'opens its link', (tester) async {
+    testWidgets('a card of each, a click opens its link', (tester) async {
       final opened = <Uri>[];
       await tester.pumpWidget(
         _app(
@@ -58,18 +58,16 @@ void main() {
       await tester.pump();
       expect(find.text('Alpha API'), findsOneWidget);
       expect(find.text('Beta Relay, cheaply'), findsOneWidget);
-      expect(find.text('Your site here'), findsOneWidget);
+      expect(find.text('Why am I seeing this?'), findsOneWidget);
       await tester.tap(find.text('Alpha API'));
       expect(
         opened.single.toString(),
         'https://alpha.example.com/register?aff=bao',
       );
-      await tester.tap(find.text('Your site here'));
-      expect(opened.last, Uri.parse('https://baocode.dev/upstreams'));
     });
 
-    testWidgets("a card's hover has the site in full; that of why they "
-        'show, how a site gets listed: a link to the page for it', (
+    testWidgets("a card's hover has the site in full; a click on why they "
+        'show, how a site gets listed: a button to the page for it', (
       tester,
     ) async {
       final opened = <Uri>[];
@@ -86,6 +84,15 @@ void main() {
       final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
       addTearDown(gesture.removePointer);
       await gesture.addPointer(location: Offset.zero);
+      // As a mouse clicks: frames drawn between its press and release.
+      Future<void> click(Finder finder) async {
+        await gesture.moveTo(tester.getCenter(finder));
+        await gesture.down(tester.getCenter(finder));
+        await tester.pump(const Duration(milliseconds: 80));
+        await gesture.up();
+        await tester.pump();
+      }
+
       await gesture.moveTo(tester.getCenter(find.text('Alpha API')));
       await tester.pump(const Duration(seconds: 1));
       expect(find.text('Alpha API'), findsNWidgets(2));
@@ -94,26 +101,33 @@ void main() {
       // Its host, a link to it.
       await gesture.moveTo(tester.getCenter(find.text('alpha.example.com')));
       await tester.pump(const Duration(seconds: 1));
-      await tester.tap(find.text('alpha.example.com'));
+      await click(find.text('alpha.example.com'));
       expect(
         opened.single,
         Uri.parse('https://alpha.example.com/register?aff=bao'),
       );
       await tester.pump(const Duration(seconds: 1));
 
+      await gesture.moveTo(const Offset(790, 590));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('alpha.example.com'), findsNothing);
+
+      // Why they show, at a click, not a hover.
+      const why = 'These sites are officially listed by BaoCode';
       await gesture.moveTo(
         tester.getCenter(find.text('Why am I seeing this?')),
       );
       await tester.pump(const Duration(seconds: 1));
-      expect(find.text('alpha.example.com'), findsNothing);
-      expect(
-        find.text('These sites are listed officially, for free. '),
-        findsOneWidget,
-      );
-      await gesture.moveTo(tester.getCenter(find.text('How to get listed?')));
-      await tester.pump(const Duration(seconds: 1));
-      await tester.tap(find.text('How to get listed?'));
+      expect(find.text(why), findsNothing);
+      await click(find.text('Why am I seeing this?'));
+      expect(find.text(why), findsOneWidget);
+      // Closed by a click elsewhere; the button opens the page for it.
+      await click(find.text('Beta Relay'));
+      expect(find.text(why), findsNothing);
+      await click(find.text('Why am I seeing this?'));
+      await click(find.text('List My Site Too'));
       expect(opened.last, Uri.parse('https://baocode.dev/upstreams'));
+      expect(find.text(why), findsNothing);
     });
 
     testWidgets('a user of a listed site sees it first, whatever the draw, '
@@ -135,7 +149,6 @@ void main() {
           lessThan(tester.getTopLeft(find.text('Alpha API')).dx),
           reason: 'seed $seed',
         );
-        expect(find.text('Your site here'), findsOneWidget);
       }
       final scrolled = find.byType(ListView);
       expect(
@@ -146,6 +159,15 @@ void main() {
         find.descendant(of: scrolled, matching: find.text('Alpha API')),
         findsOneWidget,
       );
+    });
+
+    testWidgets('nothing, until there are some', (tester) async {
+      await tester.pumpWidget(
+        _app(FeaturedUpstreamsStrip(upstreams: Future.value(const []))),
+      );
+      await tester.pump();
+      expect(find.byType(ListView), findsNothing);
+      expect(find.text('Why am I seeing this?'), findsNothing);
     });
 
     testWidgets('the order is drawn by chance', (tester) async {
@@ -222,6 +244,73 @@ void main() {
       tester.getTopLeft(find.text('Beta Relay')).dx,
       lessThan(tester.getTopLeft(find.text('Alpha API')).dx),
     );
+  });
+
+  testWidgets('Settings → Models lists the upstreams at a listed site first, '
+      'each in its order', (tester) async {
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    for (final (id, url) in [
+      ('gamma', 'https://api.gamma.example.com'),
+      ('beta', 'https://api.beta.example.com'),
+      ('delta', 'https://api.delta.example.com'),
+    ]) {
+      await providers.save(ModelProvider(id: id, name: 'Up $id', baseUrl: url));
+    }
+    await tester.pumpWidget(
+      _app(
+        ModelsSettingsPage(
+          providers: providers,
+          featured: Future.value(_featured),
+        ),
+      ),
+    );
+    await tester.pump();
+    double top(String name) => tester.getTopLeft(find.text(name)).dy;
+    expect(top('Up beta'), lessThan(top('Up gamma')));
+    expect(top('Up gamma'), lessThan(top('Up delta')));
+  });
+
+  testWidgets("an upstream at a listed site shows the logo it is listed with", (
+    tester,
+  ) async {
+    FeaturedUpstream.known.value = [
+      FeaturedUpstream(
+        id: 'ymeng',
+        name: 'YMeng CC',
+        url: Uri.https('ymeng.cc'),
+        logo: 'site/featured/ymeng.png',
+        hosts: const ['api.ymeng.cc'],
+      ),
+    ];
+    await tester.pumpWidget(
+      _app(
+        Column(
+          children: [
+            ProviderIconView(
+              icon: null,
+              site: Uri.https('api.ymeng.cc'),
+              size: 16,
+            ),
+            ProviderIconView(
+              icon: null,
+              site: Uri.https('api.other.example.com'),
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+    final logos = tester.widgetList<Image>(find.byType(Image));
+    expect(
+      [
+        for (final logo in logos)
+          if (logo.image case FileImage(:final file)) file.path,
+      ],
+      ['site/featured/ymeng.png'],
+    );
+    expect(find.byIcon(Codicons.globe), findsOneWidget);
   });
 
   group('the import', () {
@@ -328,6 +417,29 @@ void main() {
       expect(find.textContaining('sk-alpha-1234567890'), findsNothing);
     });
 
+    testWidgets('a click beside it leaves it open', (tester) async {
+      await tester.pumpWidget(
+        _app(
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showUpstreamImportDialog(
+                context,
+                UpstreamImport.parse(link)!,
+                providers: providers,
+                featured: Future.value(_featured),
+              ),
+              child: const Text('go'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('go'));
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pumpAndSettle();
+      expect(find.text('Import Models'), findsOneWidget);
+    });
+
     testWidgets('from a site not listed, by its host', (tester) async {
       await tester.pumpWidget(
         _app(
@@ -381,6 +493,38 @@ void main() {
       expect(provider.disableNonessentialTraffic, isTrue);
       expect(await secrets.read(provider.keyRef), 'sk-alpha-1234567890');
       expect(provider.toJson().toString(), isNot(contains('sk-alpha')));
+    });
+
+    testWidgets('its models are got ready for 2s at least, however soon '
+        'the upstream answers', (tester) async {
+      await tester.pumpWidget(
+        _app(
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showUpstreamImportDialog(
+                context,
+                UpstreamImport.parse(link)!,
+                providers: providers,
+                featured: Future.value(_featured),
+                list: (_, _) async => const [RemoteModel('claude-opus-4-1')],
+              ),
+              child: const Text('go'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('go'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Import Models'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1900));
+      expect(find.text('Getting your models ready…'), findsOneWidget);
+      // Under the upstream's name.
+      expect(find.text('Alpha'), findsOneWidget);
+      expect(find.text('claude-opus-4-1'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('Getting your models ready…'), findsNothing);
+      expect(find.text('claude-opus-4-1'), findsOneWidget);
     });
 
     testWidgets('one that cannot list its models is added without', (

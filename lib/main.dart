@@ -33,6 +33,7 @@ import 'keybindings/keybindings_sync.dart';
 import 'keybindings/keymap.dart';
 import 'keybindings/vscode_import.dart';
 import 'l10n/l10n.dart';
+import 'models/featured_upstreams.dart';
 import 'models/model_icons.dart';
 import 'models/model_providers.dart';
 import 'models/model_runtime.dart';
@@ -131,6 +132,9 @@ Future<void> main(List<String> arguments) async {
       ),
     );
     prefetchProviderIcons(ModelProviders.current, SiteIcons.current);
+    // The logos of the sites listed, for their upstreams' icons, as kept
+    // last time (Settings → Models gets the list again).
+    unawaited(FeaturedUpstream.readKept());
     // Settings → Appearance: how wide the conversation grows.
     ChatWidth.follow(
       files.settings,

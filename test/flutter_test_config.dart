@@ -47,6 +47,7 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
     ContextMenu.debugInstaller = _NoContextMenu();
     CustomizeView.mcpProber = null;
     FeaturedUpstream.loader = () async => const [];
+    FeaturedUpstream.keptLoader = () async => const [];
     FeaturedUpstream.forget();
     WorkbenchThemeService.instance = WorkbenchThemeService(
       initial: ColorThemeData.fromStorageData(defaultTheme)!..isLoaded = true,

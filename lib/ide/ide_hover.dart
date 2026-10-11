@@ -144,6 +144,7 @@ class IdeHover extends StatefulWidget {
     this.compact = true,
     this.followMouse = false,
     this.excludeFromSemantics = false,
+    this.interactive = false,
     required this.child,
   }) : assert(message != null || content != null);
 
@@ -166,6 +167,11 @@ class IdeHover extends StatefulWidget {
 
   /// For a [child] that has [message] as its own semantics label already.
   final bool excludeFromSemantics;
+
+  /// For a [content] with links: a press in it, or anywhere, leaves it
+  /// open (else it would close on the press, and the link with it, before
+  /// the release clicks it); it closes as the pointer leaves.
+  final bool interactive;
   final Widget child;
 
   static const _gap = 4.0;
@@ -187,6 +193,7 @@ class _IdeHoverState extends State<IdeHover> {
       semanticsTooltip: widget.excludeFromSemantics ? null : widget.message,
       hoverDelay: ideHoverDelay,
       triggerMode: TooltipTriggerMode.manual,
+      enableTapToDismiss: !widget.interactive,
       animationStyle: const AnimationStyle(
         duration: Duration(milliseconds: 100),
         reverseDuration: Duration.zero,

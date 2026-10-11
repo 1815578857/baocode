@@ -5778,21 +5778,18 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get modelsFeaturedJoin => 'Your site here';
-
-  @override
-  String get modelsFeaturedJoinDescription =>
-      'Add one-click import, listed free';
-
-  @override
   String get modelsFeaturedWhy => 'Why am I seeing this?';
 
   @override
   String get modelsFeaturedNote =>
-      'These sites are listed officially, for free. ';
+      'These sites are officially listed by BaoCode';
 
   @override
-  String get modelsFeaturedNoteLink => 'How to get listed?';
+  String get modelsFeaturedNoteHow =>
+      'Add the one-click import to be listed too, for free';
+
+  @override
+  String get modelsFeaturedNoteLink => 'List My Site Too';
 
   @override
   String modelsImportTitle(String host) {
@@ -5820,10 +5817,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get modelsImportWarning =>
-      'Your conversations and code go to this address. Import only from sites you trust.';
-
-  @override
   String get modelsImportNamePlaceholder => 'Name';
 
   @override
@@ -5834,6 +5827,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelsImportWithoutModels => 'Import Without Models';
+
+  @override
+  String get modelsImportPreparing => 'Getting your models ready…';
 
   @override
   String modelsImportUpdateKey(String name) {

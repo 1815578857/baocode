@@ -8,6 +8,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../chat/widgets/hover_builder.dart';
 import '../../chat/widgets/scroll_edge_fade.dart';
+import '../../ide/ide_button.dart';
 import '../../ide/ide_hover.dart';
 import '../../l10n/l10n.dart';
 import '../../models/featured_upstreams.dart';
@@ -18,14 +19,17 @@ import 'settings_widgets.dart';
 
 /// Settings → Models' row of upstreams that added the one-click import
 /// ([FeaturedUpstream]): a card of each, in an order of chance each time it
-/// shows, scrolled sideways and faded out at an edge with more past it;
-/// last, a card for a site to be among them. A card's hover has the site
-/// in full; the hover of "Why am I seeing this?" under them, how a site gets
-/// listed, and a link to the page for it.
+/// shows, scrolled sideways and faded out at an edge with more past it.
+/// A card's hover has the site in full; "Why am I seeing this?" under
+/// them, a click on it, how a site gets listed too ([_Why]).
 ///
 /// A user with an upstream at a listed site's [hosts] (one imported from
-/// it, say) sees that site's card first, or those sites', held there while
-/// the rest scroll by: their site always leads.
+/// it, say) sees that site's card first, held there while the rest scroll
+/// by. One site only: that of the newest such upstream, one imported later
+/// taking the place of one before.
+///
+/// Nothing at all, not the space above it either, until the list is got,
+/// nor where none could be (see [FeaturedUpstream.load] for its cache).
 class FeaturedUpstreamsStrip extends StatefulWidget {
   const FeaturedUpstreamsStrip({
     super.key,
@@ -38,7 +42,7 @@ class FeaturedUpstreamsStrip extends StatefulWidget {
   /// Those listed; the app's ([FeaturedUpstream.load]) when null.
   final Future<List<FeaturedUpstream>>? upstreams;
 
-  /// The hosts of the user's upstreams.
+  /// The hosts of the user's upstreams, the oldest first.
   final Iterable<String> hosts;
 
   /// What their order is drawn with.
@@ -87,15 +91,15 @@ class _FeaturedUpstreamsStripState extends State<FeaturedUpstreamsStrip> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
+    // Nothing until the list is got, nor where none could be.
+    if (_upstreams.isEmpty) return const SizedBox.shrink();
     final language = Localizations.localeOf(context).languageCode;
-    final used = {for (final host in widget.hosts) host.toLowerCase()};
+    // One leads, of the newest of their upstreams at a listed site.
     final theirs = [
-      for (final upstream in _upstreams)
-        if (upstream.hosts.any(used.contains)) upstream,
-    ];
+      for (final host in widget.hosts.toList().reversed)
+        ?FeaturedUpstream.at(host, _upstreams),
+    ].take(1).toList();
     final join = FeaturedUpstreamsStrip.joinUrl(language);
-    final dim = themeColors['descriptionForeground'];
     _Card card(FeaturedUpstream upstream) {
       final about = upstream.describe(language);
       return _Card(
@@ -169,14 +173,6 @@ class _FeaturedUpstreamsStripState extends State<FeaturedUpstreamsStrip> {
     final cards = [
       for (final upstream in _upstreams)
         if (!theirs.contains(upstream)) card(upstream),
-      _Card(
-        key: const ValueKey('\u0000join'),
-        logo: Icon(Codicons.add, size: 16, color: SettingsColors.iconTertiary),
-        title: l10n.modelsFeaturedJoin,
-        subtitle: l10n.modelsFeaturedJoinDescription,
-        outlined: true,
-        onTap: () => widget.open(join),
-      ),
     ];
     final scrolled = SizedBox(
       height: FeaturedUpstreamsStrip.cardHeight,
@@ -211,73 +207,126 @@ class _FeaturedUpstreamsStripState extends State<FeaturedUpstreamsStrip> {
         ],
       ),
     );
-    final quiet = TextStyle(fontSize: 11, color: SettingsColors.textQuaternary);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const SizedBox(height: 10),
         scrolled,
         const SizedBox(height: 4),
         Align(
-          alignment: Alignment.centerRight,
-          child: IdeHover(
-            message: '${l10n.modelsFeaturedNote}${l10n.modelsFeaturedNoteLink}',
-            position: IdeHoverPosition.above,
-            // How a site gets here, and a link to the page for it.
-            content: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(l10n.modelsFeaturedNote, style: TextStyle(color: dim)),
-                Semantics(
-                  link: true,
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () => widget.open(join),
-                      child: Text(
-                        l10n.modelsFeaturedNoteLink,
+          alignment: Alignment.centerLeft,
+          child: _Why(onJoin: () => widget.open(join)),
+        ),
+      ],
+    );
+  }
+}
+
+/// "Why am I seeing this?", and a click on it, why: that these sites are
+/// listed, how a site gets listed too, and a button to the page for it. A
+/// click on it again, or anywhere else, closes that.
+class _Why extends StatefulWidget {
+  const _Why({required this.onJoin});
+
+  final VoidCallback onJoin;
+
+  @override
+  State<_Why> createState() => _WhyState();
+}
+
+class _WhyState extends State<_Why> {
+  final _popup = OverlayPortalController();
+  final _link = LayerLink();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return TapRegion(
+      groupId: _popup,
+      onTapOutside: (_) => _popup.hide(),
+      child: CompositedTransformTarget(
+        link: _link,
+        child: OverlayPortal(
+          controller: _popup,
+          overlayChildBuilder: (context) => CompositedTransformFollower(
+            link: _link,
+            targetAnchor: Alignment.bottomLeft,
+            offset: const Offset(0, 4),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: TapRegion(
+                groupId: _popup,
+                child: IdeHoverBox(
+                  compact: false,
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.modelsFeaturedNote),
+                      const SizedBox(height: 2),
+                      Text(
+                        l10n.modelsFeaturedNoteHow,
                         style: TextStyle(
-                          color: themeColors['textLink.foreground'],
+                          color: themeColors['descriptionForeground'],
                         ),
                       ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            // Lit as a whole while the pointer is on it.
-            child: HoverBuilder(
-              builder: (context, hovered) {
-                final color = hovered
-                    ? SettingsColors.textTertiary
-                    : SettingsColors.textQuaternary;
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: hovered ? SettingsColors.hover : null,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Codicons.question, size: 11, color: color),
-                      const SizedBox(width: 3),
-                      Text(
-                        l10n.modelsFeaturedWhy,
-                        style: SettingsText.description
-                            .merge(quiet)
-                            .copyWith(color: color),
+                      const SizedBox(height: 10),
+                      IdeButton(
+                        label: l10n.modelsFeaturedNoteLink,
+                        onPressed: () {
+                          _popup.hide();
+                          widget.onJoin();
+                        },
                       ),
                     ],
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
+          // Lit as a whole while the pointer is on it.
+          child: HoverBuilder(
+            cursor: SystemMouseCursors.click,
+            builder: (context, hovered) {
+              final color = hovered
+                  ? SettingsColors.textTertiary
+                  : SettingsColors.textQuaternary;
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _popup.toggle,
+                child: Semantics(
+                  button: true,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: hovered ? SettingsColors.hover : null,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Codicons.question, size: 11, color: color),
+                        const SizedBox(width: 3),
+                        Text(
+                          l10n.modelsFeaturedWhy,
+                          style: SettingsText.description.copyWith(
+                            fontSize: 11,
+                            color: color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -293,7 +342,6 @@ class _Card extends StatelessWidget {
     required this.onTap,
     this.hover,
     this.hoverContent,
-    this.outlined = false,
   });
 
   final Widget logo;
@@ -306,9 +354,6 @@ class _Card extends StatelessWidget {
 
   /// Shown in the hover in place of [hover], which screen readers read.
   final Widget? hoverContent;
-
-  /// The card for a site to be listed: an outline, not a card's fill.
-  final bool outlined;
 
   @override
   Widget build(BuildContext context) {
@@ -326,15 +371,10 @@ class _Card extends StatelessWidget {
             width: FeaturedUpstreamsStrip.cardWidth,
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
-              color: outlined
-                  ? (hovered ? SettingsColors.hover : null)
-                  : hovered
+              color: hovered
                   ? Color.alphaBlend(SettingsColors.hover, SettingsColors.card)
                   : SettingsColors.card,
               borderRadius: BorderRadius.circular(10),
-              border: outlined
-                  ? Border.all(color: SettingsColors.stroke)
-                  : null,
             ),
             child: Row(
               children: [
@@ -377,7 +417,12 @@ class _Card extends StatelessWidget {
     final hover = this.hover;
     return hover == null
         ? card
-        : IdeHover(message: hover, content: hoverContent, child: card);
+        : IdeHover(
+            message: hover,
+            content: hoverContent,
+            interactive: hoverContent != null,
+            child: card,
+          );
   }
 }
 

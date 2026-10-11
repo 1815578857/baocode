@@ -100,6 +100,7 @@ class SettingsPage extends StatelessWidget {
   final String? description;
 
   /// Under the title, as far out as the cards: in place of [description].
+  /// Its own space above it, so that it takes none while it shows nothing.
   final Widget? lead;
   final List<Widget> children;
 
@@ -122,7 +123,7 @@ class SettingsPage extends StatelessWidget {
             ],
           ),
         ),
-        if (lead != null) ...[const SizedBox(height: 10), lead],
+        ?lead,
         for (final child in children) ...[const SizedBox(height: 20), child],
       ],
     );

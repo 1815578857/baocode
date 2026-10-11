@@ -5407,19 +5407,16 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get modelsFeaturedJoin => '展示你的站点';
-
-  @override
-  String get modelsFeaturedJoinDescription => '接入一键导入，免费展示';
-
-  @override
   String get modelsFeaturedWhy => '为什么我看到这个？';
 
   @override
-  String get modelsFeaturedNote => '这些站点目前已经官方免费收录，';
+  String get modelsFeaturedNote => '这些站点目前已经被官方收录';
 
   @override
-  String get modelsFeaturedNoteLink => '怎么参与收录？';
+  String get modelsFeaturedNoteHow => '接入一键导入，即可免费参与收录';
+
+  @override
+  String get modelsFeaturedNoteLink => '我也要接入';
 
   @override
   String modelsImportTitle(String host) {
@@ -5447,9 +5444,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get modelsImportWarning => '你的对话和代码会发往这个地址，只从你信任的站点导入。';
-
-  @override
   String get modelsImportNamePlaceholder => '名称';
 
   @override
@@ -5460,6 +5454,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modelsImportWithoutModels => '不选模型，直接导入';
+
+  @override
+  String get modelsImportPreparing => '正在为您准备模型中…';
 
   @override
   String modelsImportUpdateKey(String name) {

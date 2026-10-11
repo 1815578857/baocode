@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -112,6 +113,12 @@ class FeaturedUpstream {
   static Future<List<FeaturedUpstream>> Function() loader =
       fetchFeaturedUpstreams;
 
+  /// How [load] gets the list kept last time, to show while [loader]
+  /// gets it again. Tests set their own.
+  @visibleForTesting
+  static Future<List<FeaturedUpstream>> Function() keptLoader =
+      readFeaturedUpstreams;
+
   /// How long [load] keeps what it got: a site listed shows the next time
   /// Settings → Models opens after that.
   static const refreshEvery = Duration(hours: 1);
@@ -119,18 +126,61 @@ class FeaturedUpstream {
   static Future<List<FeaturedUpstream>>? _loaded;
   static DateTime? _loadedAt;
 
-  /// Those the app lists, got again once [refreshEvery] has passed.
+  /// Those listed as [load] got them last, or [readKept]: for what shows
+  /// them as they are, an upstream's icon at one's host, say.
+  static final ValueNotifier<List<FeaturedUpstream>> known = ValueNotifier(
+    const [],
+  );
+
+  /// [known], from the list kept last time, while there are none: at the
+  /// app's start, with no asking baocode.dev.
+  static Future<void> readKept() async {
+    if (known.value.isNotEmpty) return;
+    try {
+      final kept = await keptLoader();
+      if (known.value.isEmpty) known.value = kept;
+    } on Object {
+      // None.
+    }
+  }
+
+  /// The one of [known] [host] is at; null for none.
+  static FeaturedUpstream? knownAt(String host) => at(host, known.value);
+
+  /// Those the app lists, got again once [refreshEvery] has passed: at
+  /// once those it got last time (in this run, else kept from the last),
+  /// the new list for the next time; where there are none yet, the new
+  /// list. None where none could be got, asked again the next time.
   static Future<List<FeaturedUpstream>> load() {
     final now = DateTime.now();
-    if (_loaded == null || now.difference(_loadedAt!) >= refreshEvery) {
-      _loadedAt = now;
-      _loaded = loader().catchError((Object _) => const <FeaturedUpstream>[]);
+    final (last, at) = (_loaded, _loadedAt);
+    if (last != null && at != null && now.difference(at) < refreshEvery) {
+      return last;
     }
-    return _loaded!;
+    _loadedAt = now;
+    final fresh = loader().catchError((Object _) => const <FeaturedUpstream>[]);
+    unawaited(
+      fresh.then((list) {
+        _loaded = Future.value(list);
+        known.value = list;
+        if (list.isEmpty) _loadedAt = null;
+      }),
+    );
+    final kept = (last ?? keptLoader()).catchError(
+      (Object _) => const <FeaturedUpstream>[],
+    );
+    return _loaded = kept.then((list) {
+      if (list.isEmpty) return fresh;
+      if (known.value.isEmpty) known.value = list;
+      return list;
+    });
   }
 
   @visibleForTesting
-  static void forget() => _loaded = _loadedAt = null;
+  static void forget() {
+    _loaded = _loadedAt = null;
+    known.value = const [];
+  }
 
   /// The one of [upstreams] [host] is at; null for none.
   static FeaturedUpstream? at(String host, List<FeaturedUpstream> upstreams) {
