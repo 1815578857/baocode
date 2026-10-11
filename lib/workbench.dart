@@ -687,6 +687,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   /// A settings file that stops parsing is told of once per error (what
   /// was last read from it stays in effect); fixed, its notification goes.
   void _settingsFilesChanged() {
+    _syncAutoSave();
     final files = widget.settings?.files;
     if (files == null) return;
     for (final file in files.userFiles) {
@@ -1608,6 +1609,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
             'workbench.action.clearRecentlyOpened',
             () => unawaited(_clearRecent()),
           ),
+          command(toggleAutoSaveCommandId, _toggleAutoSave),
           for (final MapEntry(key: id, value: run) in _windowCommands().entries)
             command(id, run),
           if (folder != _noFolder) ...[
@@ -1851,6 +1853,41 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
 
   static const _recentMenuItems = 10;
 
+  /// Whether `files.autoSave` is on, in any of its modes: the File menu's
+  /// Auto Save ticked.
+  bool get _autoSaveOn =>
+      switch (widget.settings?.files?.settings['files.autoSave']) {
+        final String mode => mode != 'off',
+        _ => false,
+      };
+
+  /// [_autoSaveOn] as the File menus last showed it.
+  bool? _autoSaveShown;
+  void _syncAutoSave() {
+    final on = _autoSaveOn;
+    if (on == _autoSaveShown) return;
+    final first = _autoSaveShown == null;
+    _autoSaveShown = on;
+    if (_main) unawaited(WindowControls.setFileMenuChecked({'autoSave': on}));
+    if (!first && mounted) setState(() {});
+  }
+
+  /// Toggle Auto Save, as VS Code's: `afterDelay` when off, else off (the
+  /// setting removed, off being its default).
+  void _toggleAutoSave() {
+    final settings = widget.settings?.files?.settings;
+    if (settings == null) return;
+    unawaited(
+      settings
+          .update('files.autoSave', _autoSaveOn ? null : 'afterDelay')
+          .catchError((Object error) {
+            // A settings file that does not parse is left as it is; its
+            // error is shown.
+            debugPrint('files.autoSave not kept: $error');
+          }),
+    );
+  }
+
   /// The macOS File menu's titles, in the language they were last set in.
   String? _fileMenuLocale;
   void _syncFileMenu(AppLocalizations l10n) {
@@ -1865,6 +1902,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         'openRecent': l10n.cmdOpenRecent,
         'save': l10n.cmdSave,
         'saveAs': l10n.cmdSaveAs,
+        'autoSave': l10n.menuAutoSave,
         'closeFolder': l10n.cmdCloseFolder,
         'clearRecent': l10n.cmdClearRecentlyOpened,
         'more': l10n.menuMore,
@@ -2550,6 +2588,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
           ? (command) => _chatCommands()[command]?.call()
           : null,
       onFileCommand: _runMenuCommand,
+      autoSave: _autoSaveOn,
       compact: _narrow,
       title: _titleInHeader
           ? (agent ?? _workspace.current)?.localizedTitle(context.l10n)

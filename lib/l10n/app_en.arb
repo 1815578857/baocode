@@ -431,6 +431,7 @@
   "cmdReplace": "Replace",
   "cmdSave": "Save",
   "cmdSaveAll": "Save All",
+  "cmdToggleAutoSave": "Toggle Auto Save",
   "cmdCloseEditor": "Close Editor",
   "cmdCloseOtherEditors": "Close Other Editors",
   "cmdCloseEditorsToTheRight": "Close Editors to the Right",
@@ -609,6 +610,10 @@
   },
   "menuOpenFolder": "Open Folder…",
   "menuCloseWindow": "Close Window",
+  "menuAutoSave": "Auto Save",
+  "@menuAutoSave": {
+    "description": "File menu item, ticked while files.autoSave is on."
+  },
   "menuBackToChat": "Back to Chat",
   "menuShowSidebar": "Show Sidebar",
   "menuHideSidebar": "Hide Sidebar",

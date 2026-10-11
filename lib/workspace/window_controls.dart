@@ -565,6 +565,17 @@ abstract final class WindowControls {
     }
   }
 
+  /// Which of the macOS File menu's items are ticked, by the key of their
+  /// title (see [setFileMenuTitles]): `autoSave`.
+  static Future<void> setFileMenuChecked(Map<String, bool> checked) async {
+    if (!hasEditMenu) return;
+    try {
+      await _main.invokeMethod<void>('setFileMenuChecked', checked);
+    } on MissingPluginException {
+      // A host without the channel (e.g. tests).
+    }
+  }
+
   /// What the macOS File menu's Open Recent lists: [paths], the latest
   /// first, then Clear Recently Opened (`workbench.action.clearRecentlyOpened`
   /// through [onMenuCommand]). A path picked there comes back as one the

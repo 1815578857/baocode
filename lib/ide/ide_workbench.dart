@@ -559,6 +559,64 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   set _gitBlame(bool value) =>
       _setSetting('git.blame.editorDecoration.enabled', value);
 
+  /// `files.autoSave`, as VS Code's: `off` (the default), `afterDelay`,
+  /// `onFocusChange` or `onWindowChange`.
+  String get _autoSave => switch (widget.settings?['files.autoSave']) {
+    final String mode => mode,
+    _ => 'off',
+  };
+
+  /// `files.autoSaveDelay`: how long after the last edit `afterDelay` saves.
+  Duration get _autoSaveDelay =>
+      switch (widget.settings?['files.autoSaveDelay']) {
+        final int ms when ms >= 0 => Duration(milliseconds: ms),
+        _ => const Duration(seconds: 1),
+      };
+
+  Timer? _autoSaveTimer;
+
+  /// The documents whose auto save failed (changed on disk, say): left to
+  /// be saved by hand, lest the error come back with every edit.
+  final Set<IdeDocument> _autoSaveFailed = Set.identity();
+
+  bool _autoSaves(IdeDocument doc) =>
+      doc.dirty && doc.isFile && !doc.deleted && !_autoSaveFailed.contains(doc);
+
+  /// After an edit: `afterDelay` saves once edits stop for its delay.
+  void _scheduleAutoSave() {
+    if (_autoSave != 'afterDelay' ||
+        !widget.workspace.documents.any(_autoSaves)) {
+      _autoSaveTimer?.cancel();
+      _autoSaveTimer = null;
+      return;
+    }
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(_autoSaveDelay, () => unawaited(_autoSaveNow()));
+  }
+
+  /// Saves the documents auto save keeps when it is on in one of [modes];
+  /// none of them formatted, as VS Code's `afterDelay` does not.
+  Future<void> _autoSaveNow([
+    Set<String> modes = const {'afterDelay', 'onFocusChange', 'onWindowChange'},
+  ]) async {
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = null;
+    if (!mounted || !modes.contains(_autoSave)) return;
+    final workspace = widget.workspace;
+    final dirty = workspace.documents.where(_autoSaves).toList();
+    if (dirty.isEmpty) return;
+    await _flushEditor();
+    for (final doc in dirty) {
+      if (!mounted || !identical(workspace, widget.workspace)) return;
+      try {
+        await workspace.save(doc);
+      } catch (error) {
+        _autoSaveFailed.add(doc);
+        _report(error);
+      }
+    }
+  }
+
   /// The settings toggled here not written to settings.json yet (or with
   /// none to write to, under test).
   final Map<String, bool> _settingsSet = {};
@@ -668,6 +726,8 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   /// settings.json read again: what it says now, written here or not.
   void _settingsChanged() {
     _settingsSet.clear();
+    // Auto save turned on (or its delay changed) saves what is unsaved.
+    _scheduleAutoSave();
     setState(() {});
   }
 
@@ -980,6 +1040,9 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     _attach();
     _lifecycle = AppLifecycleListener(
       onResume: () => unawaited(_git?.refresh()),
+      // The window left: `onFocusChange` and `onWindowChange` save.
+      onInactive: () =>
+          unawaited(_autoSaveNow(const {'onFocusChange', 'onWindowChange'})),
     );
     IdeLanguageNames.ensureLoaded(() {
       if (mounted) setState(() {});
@@ -1150,6 +1213,9 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     workspace.notifications.removeListener(_notificationsChanged);
     _detachDebug(workspace);
     workspace.removeListener(_workspaceChanged);
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = null;
+    _autoSaveFailed.clear();
     for (final watch in _editWatches.values) {
       unawaited(watch.cancel());
     }
@@ -1293,6 +1359,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     _keepView();
     _chordChecker?.cancel();
     _statusMessageTimer?.cancel();
+    _autoSaveTimer?.cancel();
     _lifecycle?.dispose();
     // A quick pick or input box going with the workbench hides (the color
     // themes one applies the theme it started with again).
@@ -1337,6 +1404,11 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     _symbols?.update(widget.workspace.active);
     _forgetClosedNavigation();
     _watchEdits();
+    final documents = widget.workspace.documents;
+    _autoSaveFailed.removeWhere(
+      (doc) => !doc.dirty || !documents.contains(doc),
+    );
+    _scheduleAutoSave();
     final active = widget.workspace.active;
     if (widget.workspace.takeReveal() case final range? when active != null) {
       final location = IdeLocation(active.path, range);
@@ -1355,6 +1427,8 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       });
     }
     if (active?.key == _activeKey) return;
+    // Another editor in front: `onFocusChange` saves the one left.
+    if (_activeKey != null) unawaited(_autoSaveNow(const {'onFocusChange'}));
     _activeKey = active?.key;
     // Upstream resets the recently used stack when an editor comes to the
     // front otherwise than from it.

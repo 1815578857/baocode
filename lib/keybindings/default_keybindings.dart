@@ -30,6 +30,10 @@ const openKeybindingsCommandId = 'workbench.action.openGlobalKeybindings';
 const installShellCommandId = 'workbench.action.installCommandLine';
 const uninstallShellCommandId = 'workbench.action.uninstallCommandLine';
 
+/// Toggle Auto Save: `files.autoSave` between `off` and `afterDelay`, as
+/// VS Code's File menu Auto Save does.
+const toggleAutoSaveCommandId = 'workbench.action.toggleAutoSave';
+
 /// Check for Updates...: looks for a new version of the app now.
 const checkForUpdatesCommandId = 'update.checkForUpdate';
 
@@ -86,6 +90,11 @@ final Map<String, CommandInfo> commandCatalog = {
     const CommandInfo(
       'workbench.action.files.saveAs',
       'Save As...',
+      category: 'File',
+    ),
+    const CommandInfo(
+      toggleAutoSaveCommandId,
+      'Toggle Auto Save',
       category: 'File',
     ),
     const CommandInfo(

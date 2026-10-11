@@ -1020,6 +1020,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cmdSaveAll => 'Save All';
 
   @override
+  String get cmdToggleAutoSave => 'Toggle Auto Save';
+
+  @override
   String get cmdCloseEditor => 'Close Editor';
 
   @override
@@ -1374,6 +1377,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get menuCloseWindow => 'Close Window';
+
+  @override
+  String get menuAutoSave => 'Auto Save';
 
   @override
   String get menuBackToChat => 'Back to Chat';

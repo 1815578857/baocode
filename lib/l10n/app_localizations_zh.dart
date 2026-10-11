@@ -989,6 +989,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cmdSaveAll => '全部保存';
 
   @override
+  String get cmdToggleAutoSave => '切换自动保存';
+
+  @override
   String get cmdCloseEditor => '关闭编辑器';
 
   @override
@@ -1337,6 +1340,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get menuCloseWindow => '关闭窗口';
+
+  @override
+  String get menuAutoSave => '自动保存';
 
   @override
   String get menuBackToChat => '返回聊天';

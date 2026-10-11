@@ -518,6 +518,9 @@ class MainFlutterWindow: BaoWindow {
     case "setRecentItems":
       fileMenu?.setRecent(call.arguments as? [String] ?? [])
       result(nil)
+    case "setFileMenuChecked":
+      fileMenu?.setChecked(call.arguments as? [String: Bool] ?? [:])
+      result(nil)
     default:
       super.handle(call, result: result)
     }
@@ -875,6 +878,7 @@ private class FileMenu: NSObject {
     "openRecent": "Open Recent",
     "save": "Save",
     "saveAs": "Save As…",
+    "autoSave": "Auto Save",
     "closeFolder": "Close Folder",
     "newWindow": "New Window",
     "closeWindow": "Close Window",
@@ -883,6 +887,9 @@ private class FileMenu: NSObject {
     "checkForUpdates": "Check for Updates…",
   ]
   private var recent: [String] = []
+
+  /// The keys of the items ticked (`setFileMenuChecked`): Auto Save's.
+  private var checked: Set<String> = []
 
   /// The menu's items: the key of each one's title and the command it
   /// runs (Open Recent's is its submenu); an empty key is a separator.
@@ -896,6 +903,8 @@ private class FileMenu: NSObject {
     ("", ""),
     ("save", "workbench.action.files.save"),
     ("saveAs", "workbench.action.files.saveAs"),
+    ("", ""),
+    ("autoSave", "workbench.action.toggleAutoSave"),
     ("", ""),
     ("closeFolder", "workbench.action.closeFolder"),
     ("closeWindow", "workbench.action.closeWindow"),
@@ -929,6 +938,13 @@ private class FileMenu: NSObject {
     build()
   }
 
+  func setChecked(_ items: [String: Bool]) {
+    for (key, on) in items {
+      if on { checked.insert(key) } else { checked.remove(key) }
+    }
+    build()
+  }
+
   func setRecent(_ paths: [String]) {
     recent = paths
     buildRecent()
@@ -954,6 +970,7 @@ private class FileMenu: NSObject {
         item.action = #selector(runCommand(_:))
         item.target = self
         item.representedObject = command
+        item.state = checked.contains(key) ? .on : .off
       }
       menu.addItem(item)
     }

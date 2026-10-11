@@ -27,6 +27,7 @@ String localizedCommandLabel(AppLocalizations l10n, String id, String english) {
     'workbench.action.files.save' => l10n.cmdSave,
     'workbench.action.files.saveAll' => l10n.cmdSaveAll,
     'workbench.action.files.saveAs' => l10n.cmdSaveAs,
+    toggleAutoSaveCommandId => l10n.cmdToggleAutoSave,
     'markdown.showPreview' => l10n.cmdMarkdownShowPreview,
     'markdown.showSource' => l10n.cmdMarkdownShowSource,
     'workbench.action.files.newUntitledFile' => l10n.cmdNewUntitledFile,

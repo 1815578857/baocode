@@ -2018,6 +2018,12 @@ abstract class AppLocalizations {
   /// **'Save All'**
   String get cmdSaveAll;
 
+  /// No description provided for @cmdToggleAutoSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle Auto Save'**
+  String get cmdToggleAutoSave;
+
   /// No description provided for @cmdCloseEditor.
   ///
   /// In en, this message translates to:
@@ -2701,6 +2707,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close Window'**
   String get menuCloseWindow;
+
+  /// File menu item, ticked while files.autoSave is on.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto Save'**
+  String get menuAutoSave;
 
   /// No description provided for @menuBackToChat.
   ///
