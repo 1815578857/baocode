@@ -56,7 +56,7 @@
 
   <h2>交给 AI 来做，瞬间完成曝光</h2>
   <p>在您站点的代码仓库里，把下面这段发给 AI 编程助手（Claude Code、Codex、Cursor……）。它会判断站点用的是什么并完成接入，new-api 系的站点连代码都不用改。</p>
-  <div class="copyable"><pre><code>请帮我在我的 API 站点上接入「导入到 BaoCode」一键导入。BaoCode 是一个桌面 AI 编程客户端，接入说明见 https://baocode.dev/zh/upstreams 。
+  <div class="copyable" data-prompt><pre><code>请帮我在我的 API 站点上接入「导入到 BaoCode」一键导入。BaoCode 是一个桌面 AI 编程客户端，接入说明见 https://baocode.dev/zh/upstreams 。
 
 1. 先看清这个站点是什么：
    - new-api / one-api 系（有「系统设置 → 聊天设置」）：不用改代码。告诉我在聊天设置里加这一项：
@@ -86,21 +86,57 @@
    - 站点设了 CSP 的，把 https://baocode.dev 加进 img-src。
    除了这些图片，不要引用 baocode.dev 的脚本或样式，后端也不要请求 baocode.dev。
 
-4. 做完后告诉我改了哪些文件，以及怎么验证：点按钮应打开 baocode.dev/import，页面上显示站点名、协议、地址和打码后的 key；装了 BaoCode 的话，会弹出导入确认。</code></pre><button class="copy" type="button" data-copy data-done="已复制">复制</button></div>
-  <p>也可以挑一个按钮样式：点「使用这个样式」，复制的提示词会带上这个按钮的样子。</p>
+4. 做完后告诉我改了哪些文件，以及怎么验证：点按钮应打开 baocode.dev/import，页面上显示站点名、协议、地址和打码后的 key；装了 BaoCode 的话，会弹出导入确认。
+
+5. 验证通过后，帮我申请收录到 BaoCode 的 设置 → 模型（免费）。
+   在 BaoCode 的 GitHub 仓库提交收录 issue：https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml
+   - 装了 gh 并已登录的，用 gh issue create --repo baocode-dev/baocode --title "[Upstream] &lt;站点名&gt;" --body-file &lt;文件&gt; 直接提交；没有的话，把整理好的内容给我，我打开上面的链接自己贴。
+   - 正文按下面的小标题顺序写（和 issue 表单一致），每项一段：
+     ### Site name / 站点名称：卡片上显示的名称，不超过 24 个字符。
+     ### Card link / 卡片链接：点击卡片打开的地址，可以带推广参数（aff、ref 等）。
+     ### API hosts / API 域名：Base URL 所在的域名，逗号分隔，例如 api.example.com, example.com。
+     ### One line about it / 一句话介绍：中文和英文各一行，每行不超过约 30 字，格式 "zh: …" 和 "en: …"。
+     ### What your site runs / 站点系统：new-api、sub2api、one-api 或 Other / 其他。
+     ### Where the import is / 一键导入的位置：用户在哪个页面、哪个按钮或菜单里找到「导入到 BaoCode」。
+     ### Logo：站点 Logo，正方形，PNG 至少 256×256（透明背景最好）或 SVG。
+     ### Contact / 联系方式：维护者联系我确认素材的方式（邮箱、Telegram、微信等）。
+     ### Rules / 规则：
+     - [x] 登录用户都能在我的站点使用一键导入。
+     - [x] 我了解收录不代表担保，卡片顺序随机；导入失效或误导用户的站点会被下架。
+   - 命令行传不了图片：提交后提醒我把 Logo 和按钮位置的截图拖进 issue 的评论里。
+   - 站点名、推广参数、联系方式这些拿不准的，先问我，不要编。</code></pre><button class="copy" type="button" data-copy data-done="已复制">复制</button></div>
+  <p>也可以挑一个按钮样式：点一下想要的按钮，复制的提示词就会带上它的样子。</p>
   <div class="styles" data-page="https://baocode.dev/zh/upstreams" data-href="第 2 条的导入链接" data-template="按钮样式（这条优先于第 3 条里“和页面上现有的按钮保持一致”）：照 {url} 上「{name}」这个按钮做，它的 HTML 是：
 {html}
-照它的颜色、边框、圆角、内边距、字号和图标尺寸做，写成站点自己的写法（组件、CSS 类都行，不必用内联样式）；href 换成第 2 条的导入链接，图片仍然引用 baocode.dev 上的地址。站点有深色主题的，深色下换成相配的颜色，图标随底色换 black / white。{note}">
-    <div class="style" id="style-outline" data-style="描边" data-note=""><div class="stage"><a class="sample" aria-hidden="true" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;height:32px;padding:0 12px;font-size:14px;border-radius:6px;border:1px solid #D9D9D9;background:#FFFFFF;color:#1B1A17;"><img src="/brand/baocode-mark-black-12.webp" srcset="/brand/baocode-mark-black-24.webp 2x, /brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt="">导入到 BaoCode</a></div><div class="pick"><span>描边</span><button type="button" data-use-style data-done="已复制提示词">使用这个样式</button></div></div>
-    <div class="style" id="style-dark" data-style="深色" data-note=""><div class="stage"><a class="sample" aria-hidden="true" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;height:32px;padding:0 12px;font-size:14px;border-radius:6px;border:1px solid #1B1A17;background:#1B1A17;color:#FFFFFF;"><img src="/brand/baocode-mark-white-12.webp" srcset="/brand/baocode-mark-white-24.webp 2x, /brand/baocode-mark-white-36.webp 3x" width="16" height="12" alt="">导入到 BaoCode</a></div><div class="pick"><span>深色</span><button type="button" data-use-style data-done="已复制提示词">使用这个样式</button></div></div>
-    <div class="style" id="style-gold" data-style="BaoCode 金" data-note=""><div class="stage"><a class="sample" aria-hidden="true" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;height:32px;padding:0 12px;font-size:14px;border-radius:6px;border:1px solid #F0C55E;background:#FFDA7A;color:#1B1A17;"><img src="/brand/baocode-mark-black-12.webp" srcset="/brand/baocode-mark-black-24.webp 2x, /brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt="">导入到 BaoCode</a></div><div class="pick"><span>BaoCode 金</span><button type="button" data-use-style data-done="已复制提示词">使用这个样式</button></div></div>
-    <div class="style" id="style-primary" data-style="站点主色" data-note="#0064FA 换成站点的主色；主色很浅的，文字和图标换成深色、black。"><div class="stage"><a class="sample" aria-hidden="true" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;height:32px;padding:0 12px;font-size:14px;border-radius:6px;border:1px solid #0064FA;background:#0064FA;color:#FFFFFF;"><img src="/brand/baocode-mark-white-12.webp" srcset="/brand/baocode-mark-white-24.webp 2x, /brand/baocode-mark-white-36.webp 3x" width="16" height="12" alt="">导入到 BaoCode</a></div><div class="pick"><span>站点主色</span><button type="button" data-use-style data-done="已复制提示词">使用这个样式</button></div></div>
-    <div class="style" id="style-pill" data-style="大号胶囊" data-note=""><div class="stage"><a class="sample" aria-hidden="true" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;height:40px;padding:0 18px;font-size:16px;border-radius:999px;border:1px solid #1B1A17;background:#1B1A17;color:#FFFFFF;"><img src="/brand/baocode-mark-white-18.webp" srcset="/brand/baocode-mark-white-36.webp 2x, /brand/baocode-mark-white-54.webp 3x" width="24" height="18" alt="">导入到 BaoCode</a></div><div class="pick"><span>大号胶囊</span><button type="button" data-use-style data-done="已复制提示词">使用这个样式</button></div></div>
-    <div class="style" id="style-link" data-style="表格里的链接" data-note="文字颜色用站点链接或正文的颜色，深色主题下图标换 white。"><div class="stage"><a class="sample" aria-hidden="true" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;gap:4px;padding:0;font-size:13px;border:0;background:none;color:#1B1A17;"><img src="/brand/baocode-mark-black-12.webp" srcset="/brand/baocode-mark-black-24.webp 2x, /brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt="">导入到 BaoCode</a></div><div class="pick"><span>表格里的链接</span><button type="button" data-use-style data-done="已复制提示词">使用这个样式</button></div></div>
+照它的颜色、边框、圆角、内边距、字号和图标尺寸做，写成站点自己的写法（组件、CSS 类都行，不必用内联样式）；href 换成第 2 条的导入链接，图片仍然引用 baocode.dev 上的地址。站点有深色主题的，深色下换成相配的颜色，图标随底色换 black / white。悬停时稍微加深或变亮，和站点其他按钮的悬停效果一致。{note}">
+    <button type="button" class="pick" id="style-outline" data-style="描边" data-note="" data-hint="描边 · 使用这个样式" data-done="已复制提示词" aria-label="描边：使用这个样式"><span class="sample" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;height:32px;padding:0 12px;font-size:14px;border-radius:6px;border:1px solid #D9D9D9;background:#FFFFFF;color:#1B1A17;"><img src="/brand/baocode-mark-black-12.webp" srcset="/brand/baocode-mark-black-24.webp 2x, /brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt="">导入到 BaoCode</span></button>
+    <button type="button" class="pick" id="style-dark" data-style="深色" data-note="" data-hint="深色 · 使用这个样式" data-done="已复制提示词" aria-label="深色：使用这个样式"><span class="sample" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;height:32px;padding:0 12px;font-size:14px;border-radius:6px;border:1px solid #1B1A17;background:#1B1A17;color:#FFFFFF;"><img src="/brand/baocode-mark-white-12.webp" srcset="/brand/baocode-mark-white-24.webp 2x, /brand/baocode-mark-white-36.webp 3x" width="16" height="12" alt="">导入到 BaoCode</span></button>
+    <button type="button" class="pick" id="style-gold" data-style="BaoCode 金" data-note="" data-hint="BaoCode 金 · 使用这个样式" data-done="已复制提示词" aria-label="BaoCode 金：使用这个样式"><span class="sample" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;height:32px;padding:0 12px;font-size:14px;border-radius:6px;border:1px solid #D9AC6C;background:#E5BA7D;color:#23221E;"><img src="/brand/baocode-mark-black-12.webp" srcset="/brand/baocode-mark-black-24.webp 2x, /brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt="">导入到 BaoCode</span></button>
+    <button type="button" class="pick" id="style-primary" data-style="站点主色" data-note="#0064FA 换成站点的主色；主色很浅的，文字和图标换成深色、black。" data-hint="站点主色 · 使用这个样式" data-done="已复制提示词" aria-label="站点主色：使用这个样式"><span class="sample" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;height:32px;padding:0 12px;font-size:14px;border-radius:6px;border:1px solid #0064FA;background:#0064FA;color:#FFFFFF;"><img src="/brand/baocode-mark-white-12.webp" srcset="/brand/baocode-mark-white-24.webp 2x, /brand/baocode-mark-white-36.webp 3x" width="16" height="12" alt="">导入到 BaoCode</span></button>
+    <button type="button" class="pick" id="style-pill" data-style="大号胶囊" data-note="" data-hint="大号胶囊 · 使用这个样式" data-done="已复制提示词" aria-label="大号胶囊：使用这个样式"><span class="sample" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;height:40px;padding:0 18px;font-size:16px;border-radius:999px;border:1px solid #1B1A17;background:#1B1A17;color:#FFFFFF;"><img src="/brand/baocode-mark-white-18.webp" srcset="/brand/baocode-mark-white-36.webp 2x, /brand/baocode-mark-white-54.webp 3x" width="24" height="18" alt="">导入到 BaoCode</span></button>
+    <button type="button" class="pick" id="style-link" data-style="表格里的链接" data-note="文字颜色用站点链接或正文的颜色，深色主题下图标换 white。" data-hint="表格里的链接 · 使用这个样式" data-done="已复制提示词" aria-label="表格里的链接：使用这个样式"><span class="sample" style="display:inline-flex;align-items:center;gap:6px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;gap:4px;padding:0;font-size:13px;border:0;background:none;color:#1B1A17;"><img src="/brand/baocode-mark-black-12.webp" srcset="/brand/baocode-mark-black-24.webp 2x, /brand/baocode-mark-black-36.webp 3x" width="16" height="12" alt="">导入到 BaoCode</span></button>
   </div>
 
   <h2>提交收录，下个版本就上线</h2>
-  <p>导入可用后，<a href="https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml">提交 issue</a>，写明站点名称、卡片链接、API 域名和一句话介绍。维护者会实际试一次导入、联系您要 Logo，并在下个版本中加上您的卡片。</p>
+  <p>收录同样交给 AI：把下面这段发给它，它会按 issue 表单整理好材料并提交，拿不准的会先问您。上一节的提示词已经包含这一步；自己手动接入的，用这一段就行。</p>
+  <div class="copyable"><pre><code>我的 API 站点已经接入了 BaoCode 一键导入，请帮我申请收录到 BaoCode 的 设置 → 模型（免费）。说明见 https://baocode.dev/zh/upstreams 。
+
+在 BaoCode 的 GitHub 仓库提交收录 issue：https://github.com/baocode-dev/baocode/issues/new?template=upstream-listing.yml
+- 装了 gh 并已登录的，用 gh issue create --repo baocode-dev/baocode --title "[Upstream] &lt;站点名&gt;" --body-file &lt;文件&gt; 直接提交；没有的话，把整理好的内容给我，我打开上面的链接自己贴。
+- 正文按下面的小标题顺序写（和 issue 表单一致），每项一段：
+  ### Site name / 站点名称：卡片上显示的名称，不超过 24 个字符。
+  ### Card link / 卡片链接：点击卡片打开的地址，可以带推广参数（aff、ref 等）。
+  ### API hosts / API 域名：Base URL 所在的域名，逗号分隔，例如 api.example.com, example.com。
+  ### One line about it / 一句话介绍：中文和英文各一行，每行不超过约 30 字，格式 "zh: …" 和 "en: …"。
+  ### What your site runs / 站点系统：new-api、sub2api、one-api 或 Other / 其他。
+  ### Where the import is / 一键导入的位置：用户在哪个页面、哪个按钮或菜单里找到「导入到 BaoCode」。
+  ### Logo：站点 Logo，正方形，PNG 至少 256×256（透明背景最好）或 SVG。
+  ### Contact / 联系方式：维护者联系我确认素材的方式（邮箱、Telegram、微信等）。
+  ### Rules / 规则：
+  - [x] 登录用户都能在我的站点使用一键导入。
+  - [x] 我了解收录不代表担保，卡片顺序随机；导入失效或误导用户的站点会被下架。
+- 命令行传不了图片：提交后提醒我把 Logo 和按钮位置的截图拖进 issue 的评论里。
+- 站点名、推广参数、联系方式这些拿不准的，先问我，不要编。</code></pre><button class="copy" type="button" data-copy data-done="已复制">复制</button></div>
 
   <h2>展示规则</h2>
   <ul>

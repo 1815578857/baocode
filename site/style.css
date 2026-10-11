@@ -185,60 +185,67 @@ pre code { padding: 0; background: none; font-size: 13.5px; line-height: 1.6; wh
 .asset .swatch.dark { background: var(--ink); border-color: var(--ink); }
 .asset p { margin: 8px 0 0; font: 13.5px/1.5 var(--sans); color: var(--muted); }
 @media (max-width: 560px) { .assets { grid-template-columns: 1fr; } }
-/* Buttons' styles to pick for the prompt (/upstreams): each shown as it is
-   (its own inline style, copied with it), its name and a button to use it. */
-.styles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 1.1em; }
-.styles .style { display: flex; flex-direction: column; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); overflow: hidden; scroll-margin-top: 24px; }
-.styles .style:target { border-color: var(--ink); }
-.styles .stage { display: flex; flex: 1; align-items: center; justify-content: center; min-height: 88px; }
-.styles .sample { pointer-events: none; }
-.styles .pick { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px 8px 12px; border-top: 1px solid var(--rule); background: var(--tint); font: 13px/1.4 var(--sans); color: var(--muted); }
-.styles .pick button { flex: none; height: 26px; padding: 0 9px; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); color: var(--ink); font: 500 12.5px var(--sans); cursor: pointer; }
-.styles .pick button:hover { border-color: var(--faint); }
-@media (max-width: 640px) { .styles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 460px) { .styles { grid-template-columns: minmax(0, 1fr); } }
+/* Buttons' styles to pick for the prompt (/upstreams): shown on one stage as
+   they are (their own inline style, copied with them). Each is the button
+   that picks it, its name and what a click does above it on hover. */
+.styles { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 22px 18px; margin: 0 0 1.1em; padding: 44px 24px 30px; border: 1px solid var(--rule); border-radius: 12px; background: var(--paper); }
+.pick { position: relative; padding: 0; border: 0; border-radius: 8px; background: none; cursor: pointer; scroll-margin-top: 80px; transition: transform .14s ease; }
+.pick .sample { transition: box-shadow .14s ease, filter .14s ease; }
+.pick:hover { transform: translateY(-2px); }
+.pick:hover .sample { filter: brightness(1.05); box-shadow: 0 8px 18px -8px rgba(27, 26, 23, .45); }
+.pick:active { transform: translateY(0); }
+.pick:active .sample { box-shadow: none; filter: brightness(.97); }
+.pick:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+.pick:target .sample { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px #E5BA7D; }
+.pick::after { content: attr(data-hint); position: absolute; bottom: calc(100% + 9px); left: 50%; z-index: 1; padding: 4px 9px; border-radius: 6px; background: var(--ink); color: var(--paper); font: 500 12px/1.4 var(--sans); white-space: nowrap; opacity: 0; pointer-events: none; transform: translate(-50%, 4px); transition: opacity .14s ease, transform .14s ease; }
+.pick:hover::after, .pick:focus-visible::after, .pick.copied::after { opacity: 1; transform: translate(-50%, 0); }
+.pick.copied::after { background: #3F6B3A; }
 
-/* /upstreams: BaoCode's Settings → Models, drawn (its colors the app's), a
-   site's card among those at the top and the site just imported below. */
-.mock { margin: 34px -32px 8px; font: 13px/1.4 var(--sans); color: #D4D5D6; user-select: none; }
-.mock .win { display: flex; overflow: hidden; border: 1px solid #2A2B2C; border-radius: 12px; background: #121314; box-shadow: 0 30px 70px -30px rgba(0, 0, 0, .55), 0 2px 6px rgba(0, 0, 0, .12); }
-.mock .side { flex: none; width: 176px; padding: 12px 10px; border-right: 1px solid #2A2B2C; background: #191A1B; }
+/* /upstreams: BaoCode's Settings → Models, drawn in Bao Dark (the theme's
+   colors: its ground, side bar, text and sand gold; the settings' cards the
+   text at 4% over the ground), a site's card among those at the top and the
+   site just imported below. */
+.mock { --bg: #292925; --side: #22211E; --card: #30302C; --sel: #3A3830; --line: #393832; --text: #E5E2D6; --dim: #B4B2A8; --faint: #8A887E; --sand: #E5BA7D; --sand-text: #EDC994; --on-sand: #23221E; --green: #9DC08B;
+  margin: 34px -32px 8px; font: 13px/1.4 var(--sans); color: var(--text); user-select: none; }
+.mock .win { display: flex; overflow: hidden; border: 1px solid #45433B; border-radius: 12px; background: var(--bg); box-shadow: 0 34px 70px -32px rgba(35, 30, 20, .55), 0 2px 6px rgba(35, 30, 20, .12); }
+.mock .side { flex: none; width: 176px; padding: 12px 10px; border-right: 1px solid var(--line); background: var(--side); }
 .mock .lights { display: flex; gap: 7px; margin: 0 0 18px 4px; }
 .mock .lights i { width: 11px; height: 11px; border-radius: 50%; background: #FF5F57; }
 .mock .lights i + i { background: #FEBC2E; }
 .mock .lights i + i + i { background: #28C840; }
-.mock .back { padding: 4px 8px 10px; color: #A9AAAB; }
-.mock .search { margin: 0 0 10px; padding: 5px 8px; border: 1px solid #2A2B2C; border-radius: 6px; background: #232425; color: #6E7071; }
-.mock .nav { padding: 6px 8px; border-radius: 6px; color: #A9AAAB; }
-.mock .nav.on { background: #232425; color: #ECEDEE; }
+.mock .back { padding: 4px 8px 10px; color: var(--dim); }
+.mock .search { margin: 0 0 10px; padding: 5px 8px; border: 1px solid #494740; border-radius: 6px; background: var(--side); color: #838070; }
+.mock .nav { padding: 6px 8px; border-radius: 6px; color: var(--dim); }
+.mock .nav.on { background: var(--sel); color: var(--text); }
 .mock .main { flex: 1; min-width: 0; padding: 26px 28px 28px; }
-.mock .title { display: flex; align-items: center; gap: 7px; margin: 0 0 12px; color: #ECEDEE; font-size: 18px; font-weight: 600; }
-.mock .info { display: inline-grid; place-items: center; width: 14px; height: 14px; border: 1px solid #8A8C8D; border-radius: 50%; color: #8A8C8D; font: 600 9px/1 var(--sans); }
+.mock .title { display: flex; align-items: center; gap: 7px; margin: 0 0 12px; color: #F3F1E7; font-size: 18px; font-weight: 600; }
+.mock .info { display: inline-grid; place-items: center; width: 14px; height: 14px; border: 1px solid var(--faint); border-radius: 50%; color: var(--faint); font: 600 9px/1 var(--sans); }
 .mock .strip { display: flex; gap: 8px; padding: 16px 0 16px 16px; margin: -10px 0 -10px -16px; overflow: hidden;
   --fade: linear-gradient(to right, #000 calc(100% - 64px), transparent); -webkit-mask-image: var(--fade); mask-image: var(--fade); }
-.mock .card { flex: none; display: flex; align-items: center; gap: 9px; width: 196px; height: 52px; padding: 0 10px; border-radius: 10px; background: #191A1B; }
+.mock .card { flex: none; display: flex; align-items: center; gap: 9px; width: 196px; height: 52px; padding: 0 10px; border-radius: 10px; background: var(--card); }
 .mock .card .txt { display: flex; flex-direction: column; min-width: 0; }
-.mock .card b, .mock .row b { overflow: hidden; color: #ECEDEE; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
-.mock .card small, .mock .row small { overflow: hidden; color: #8A8C8D; font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
-.mock .logo { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; background: #2F3A4A; color: #fff; font-weight: 600; }
-.mock .logo.c2 { background: #3D3350; }
-.mock .logo.c3 { background: #2E463C; }
-.mock .card.you { box-shadow: 0 0 0 1.5px #FFDA7A, 0 0 22px -2px rgba(255, 218, 122, .45); }
-.mock .card.you .logo { background: #FFDA7A; color: #1B1A17; font-size: 9px; letter-spacing: .02em; }
-.mock .card.join { justify-content: center; border: 1px dashed #3A3B3C; background: none; color: #8A8C8D; }
+.mock .card b, .mock .row b { overflow: hidden; color: var(--text); font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
+.mock .card small, .mock .row small { overflow: hidden; color: var(--faint); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.mock .logo { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; color: var(--text); font-weight: 600; }
+.mock .logo.c1 { background: #4E4535; }
+.mock .logo.c2 { background: #45473A; }
+.mock .logo.c3 { background: #4A3F3A; }
+.mock .card.you { background: #3A352A; box-shadow: 0 0 0 1.5px var(--sand), 0 0 20px -4px rgba(229, 186, 125, .4); }
+.mock .card.you .logo { background: var(--sand); color: var(--on-sand); font-size: 9px; letter-spacing: .02em; }
+.mock .card.join { justify-content: center; border: 1px dashed #4A483F; background: none; color: var(--faint); }
 .mock .under { display: flex; justify-content: space-between; gap: 12px; margin: 6px 0 22px; font-size: 12px; }
-.mock .here { color: #FFDA7A; font-weight: 500; }
-.mock .why { color: #6E7071; white-space: nowrap; }
-.mock .label { margin: 0 0 8px 2px; color: #A9AAAB; }
-.mock .list { border-radius: 10px; background: #191A1B; }
+.mock .here { color: var(--sand-text); font-weight: 500; }
+.mock .why { color: var(--faint); white-space: nowrap; }
+.mock .label { margin: 0 0 8px 2px; color: var(--dim); }
+.mock .list { overflow: hidden; border-radius: 10px; background: var(--card); }
 .mock .row { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 14px; }
-.mock .row + .row { border-top: 1px solid #2A2B2C; }
+.mock .row + .row { border-top: 1px solid var(--line); }
 .mock .row .txt { display: flex; flex: 1; flex-direction: column; min-width: 0; }
-.mock .row.new { background: rgba(255, 218, 122, .06); box-shadow: inset 2px 0 #FFDA7A; }
-.mock .row em { margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: rgba(255, 218, 122, .16); color: #FFDA7A; font: 500 11px var(--sans); }
-.mock .dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: #5BBF72; }
-.mock .toggle { flex: none; position: relative; width: 28px; height: 16px; border-radius: 8px; background: #297AA0; }
-.mock .toggle::after { content: ''; position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
-.mock .add { flex: none; padding: 6px 10px; border-radius: 6px; background: #297AA0; color: #fff; font-weight: 500; }
+.mock .row.new { background: rgba(229, 186, 125, .08); box-shadow: inset 2px 0 var(--sand); }
+.mock .row em { margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: rgba(229, 186, 125, .17); color: var(--sand-text); font: 500 11px var(--sans); }
+.mock .dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.mock .toggle { flex: none; position: relative; width: 28px; height: 16px; border-radius: 8px; background: var(--sand); }
+.mock .toggle::after { content: ''; position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--on-sand); }
+.mock .add { flex: none; padding: 6px 10px; border-radius: 6px; background: var(--sand); color: var(--on-sand); font-weight: 500; }
 @media (max-width: 760px) { .mock { margin-left: 0; margin-right: 0; } }
 @media (max-width: 600px) { .mock .side { display: none; } .mock .main { padding: 18px 16px 20px; } .mock .why { display: none; } }

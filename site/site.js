@@ -18,32 +18,33 @@ for (const button of document.querySelectorAll('[data-copy]')) {
 }
 
 // A button's style to pick (/upstreams): copies the prompt above with that
-// button in it, its HTML as a site would write it: the images from
+// button in it, its HTML as a site would write it: a link, its images from
 // baocode.dev, the import link for its href.
-for (const button of document.querySelectorAll('[data-use-style]')) {
-  const label = button.textContent;
-  button.addEventListener('click', async () => {
-    const tile = button.closest('[data-style]'), styles = tile.closest('.styles');
-    const a = tile.querySelector('.sample').cloneNode(true);
-    a.removeAttribute('class');
-    a.removeAttribute('aria-hidden');
+for (const pick of document.querySelectorAll('.pick')) {
+  const hint = pick.dataset.hint;
+  pick.addEventListener('click', async () => {
+    const styles = pick.closest('.styles'), sample = pick.querySelector('.sample');
+    const a = document.createElement('a');
     a.setAttribute('href', `{${styles.dataset.href}}`);
     a.setAttribute('target', '_blank');
     a.setAttribute('rel', 'noopener noreferrer');
+    a.setAttribute('style', sample.getAttribute('style'));
+    a.innerHTML = sample.innerHTML;
     for (const img of a.querySelectorAll('img')) {
       img.setAttribute('src', 'https://baocode.dev' + img.getAttribute('src'));
       img.setAttribute('srcset', img.getAttribute('srcset').replaceAll('/brand/', 'https://baocode.dev/brand/'));
     }
     const style = styles.dataset.template
-      .replace('{url}', `${styles.dataset.page}#${tile.id}`)
-      .replace('{name}', tile.dataset.style)
+      .replace('{url}', `${styles.dataset.page}#${pick.id}`)
+      .replace('{name}', pick.dataset.style)
       .replace('{html}', a.outerHTML)
-      .replace('{note}', tile.dataset.note).trimEnd();
-    const prompt = document.querySelector('.copyable pre').innerText.trimEnd();
+      .replace('{note}', pick.dataset.note).trimEnd();
+    const prompt = document.querySelector('[data-prompt] pre').innerText.trimEnd();
     try { await navigator.clipboard.writeText(prompt.replace('\n\n4. ', `\n\n${style}\n\n4. `)); } catch { return; }
-    button.textContent = button.dataset.done;
-    clearTimeout(button.reset);
-    button.reset = setTimeout(() => { button.textContent = label; }, 1600);
+    pick.dataset.hint = pick.dataset.done;
+    pick.classList.add('copied');
+    clearTimeout(pick.reset);
+    pick.reset = setTimeout(() => { pick.dataset.hint = hint; pick.classList.remove('copied'); }, 1600);
   });
 }
 

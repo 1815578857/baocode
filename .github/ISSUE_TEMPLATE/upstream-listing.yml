@@ -62,6 +62,11 @@ body:
       description: Where a user finds the "Import to BaoCode" button or link, and a screenshot of it. 用户在哪里能找到“导入到 BaoCode”的按钮或链接，并附截图。
     validations:
       required: true
+  - type: textarea
+    id: logo
+    attributes:
+      label: Logo
+      description: Square, PNG at least 256×256 (best on a transparent background) or SVG; drag it in here. 正方形，PNG 至少 256×256（透明背景最好）或 SVG，拖进这里上传。
   - type: input
     id: contact
     attributes:
