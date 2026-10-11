@@ -2018,7 +2018,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     SettingsSection section = SettingsSection.general,
   ]) async {
     if (_settingsOpen || !mounted) return;
-    _settingsOpen = true;
+    // Built with: Windows' header gives the dialog its left.
+    setState(() => _settingsOpen = true);
     _closeDrawer();
     try {
       await showSettingsDialog(
@@ -2029,7 +2030,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
             const SizedBox.shrink(),
       );
     } finally {
-      _settingsOpen = false;
+      if (mounted) {
+        setState(() => _settingsOpen = false);
+      } else {
+        _settingsOpen = false;
+      }
     }
   }
 
@@ -2590,6 +2595,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       onFileCommand: _runMenuCommand,
       autoSave: _autoSaveOn,
       compact: _narrow,
+      settingsShown: _settingsOpen,
       title: _titleInHeader
           ? (agent ?? _workspace.current)?.localizedTitle(context.l10n)
           : null,
