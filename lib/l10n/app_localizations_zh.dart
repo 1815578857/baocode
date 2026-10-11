@@ -5373,10 +5373,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get modelsTitle => '模型';
 
   @override
-  String get modelsDescription =>
-      'Claude Code 的模型从哪里来：本机已配置好的 Claude Code，以及你添加的上游。Anthropic 兼容的上游由 Claude Code 直连；OpenAI 接口经 BaoCode 内置的本地代理转换。';
-
-  @override
   String get modelsDefault => '新会话默认模型';
 
   @override
@@ -5411,39 +5407,39 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get modelsFeaturedWhy => '为什么我看到这个？';
-
-  @override
-  String get modelsFeaturedWhyDetail =>
-      '这些上游接入了 BaoCode 的一键导入：在它们的令牌页点一下，就能把上游连同密钥加到这里。作为回报，BaoCode 免费展示它们，顺序随机。展示不收费，也不代表 BaoCode 为其担保。\n\n你是站长？接入一键导入后，在 GitHub 上开一个 issue 通知 BaoCode 收录，只要导入一直可用，就能一直免费展示。';
-
-  @override
-  String get modelsFeaturedWhyTheirsDetail =>
-      '这些上游接入了 BaoCode 的一键导入：在它们的令牌页点一下，就能把上游连同密钥加到这里。作为回报，BaoCode 免费展示它们：你在用的站点排在最前，其余的顺序随机。展示不收费，也不代表 BaoCode 为其担保。\n\n你是站长？接入一键导入后，在 GitHub 上开一个 issue 通知 BaoCode 收录，只要导入一直可用，就能一直免费展示。';
-
-  @override
   String get modelsFeaturedJoin => '展示你的站点';
 
   @override
   String get modelsFeaturedJoinDescription => '接入一键导入，免费展示';
 
   @override
+  String get modelsFeaturedWhy => '为什么我看到这个？';
+
+  @override
+  String get modelsFeaturedNote => '这些站点目前已经官方免费收录，';
+
+  @override
+  String get modelsFeaturedNoteLink => '怎么参与收录？';
+
+  @override
   String modelsImportTitle(String host) {
-    return '从 $host 导入上游？';
+    return '从 $host 导入上游';
   }
 
   @override
-  String modelsImportKey(String key) {
-    return '密钥：$key';
-  }
+  String get modelsImportProtocol => '协议';
+
+  @override
+  String get modelsImportUrl => '地址';
+
+  @override
+  String get modelsImportKeyLabel => '密钥';
+
+  @override
+  String get modelsImportListedBadge => '官方收录';
 
   @override
   String get modelsImportNoKey => '无，导入后再填';
-
-  @override
-  String modelsImportListed(String name) {
-    return '已收录在 BaoCode：$name。';
-  }
 
   @override
   String modelsImportExisting(String name) {
@@ -5457,7 +5453,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get modelsImportNamePlaceholder => '名称';
 
   @override
-  String get modelsImportAdd => '导入';
+  String get modelsImportAdd => '导入模型';
+
+  @override
+  String get modelsImportFinish => '导入';
+
+  @override
+  String get modelsImportWithoutModels => '不选模型，直接导入';
 
   @override
   String modelsImportUpdateKey(String name) {

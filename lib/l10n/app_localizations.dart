@@ -9495,12 +9495,6 @@ abstract class AppLocalizations {
   /// **'Models'**
   String get modelsTitle;
 
-  /// No description provided for @modelsDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Where Claude Code\'s models come from: Claude Code as set up on this machine, and upstreams you add. Anthropic-compatible upstreams are spoken to by Claude Code itself; OpenAI\'s APIs through a local proxy of BaoCode\'s that translates.'**
-  String get modelsDescription;
-
   /// No description provided for @modelsDefault.
   ///
   /// In en, this message translates to:
@@ -9561,24 +9555,6 @@ abstract class AppLocalizations {
   /// **'Offer {name} in the model picker'**
   String modelsEnableProvider(String name);
 
-  /// No description provided for @modelsFeaturedWhy.
-  ///
-  /// In en, this message translates to:
-  /// **'Why am I seeing this?'**
-  String get modelsFeaturedWhy;
-
-  /// No description provided for @modelsFeaturedWhyDetail.
-  ///
-  /// In en, this message translates to:
-  /// **'These upstreams added BaoCode\'s one-click import: a click on their key page adds the upstream, key and all, right here. In return BaoCode lists them for free, in a random order. Nobody pays to be here, and being listed is not an endorsement.\n\nRun a site? Add the one-click import and let BaoCode know with an issue on its GitHub, to be listed for as long as the import works.'**
-  String get modelsFeaturedWhyDetail;
-
-  /// No description provided for @modelsFeaturedWhyTheirsDetail.
-  ///
-  /// In en, this message translates to:
-  /// **'These upstreams added BaoCode\'s one-click import: a click on their key page adds the upstream, key and all, right here. In return BaoCode lists them for free; the one you use comes first, the rest in a random order. Nobody pays to be here, and being listed is not an endorsement.\n\nRun a site? Add the one-click import and let BaoCode know with an issue on its GitHub, to be listed for as long as the import works.'**
-  String get modelsFeaturedWhyTheirsDetail;
-
   /// No description provided for @modelsFeaturedJoin.
   ///
   /// In en, this message translates to:
@@ -9591,29 +9567,59 @@ abstract class AppLocalizations {
   /// **'Add one-click import, listed free'**
   String get modelsFeaturedJoinDescription;
 
+  /// No description provided for @modelsFeaturedWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Why am I seeing this?'**
+  String get modelsFeaturedWhy;
+
+  /// No description provided for @modelsFeaturedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'These sites are listed officially, for free. '**
+  String get modelsFeaturedNote;
+
+  /// No description provided for @modelsFeaturedNoteLink.
+  ///
+  /// In en, this message translates to:
+  /// **'How to get listed?'**
+  String get modelsFeaturedNoteLink;
+
   /// No description provided for @modelsImportTitle.
   ///
   /// In en, this message translates to:
-  /// **'Import an upstream from {host}?'**
+  /// **'Import an upstream from {host}'**
   String modelsImportTitle(String host);
 
-  /// No description provided for @modelsImportKey.
+  /// No description provided for @modelsImportProtocol.
   ///
   /// In en, this message translates to:
-  /// **'Key: {key}'**
-  String modelsImportKey(String key);
+  /// **'Protocol'**
+  String get modelsImportProtocol;
+
+  /// No description provided for @modelsImportUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Base URL'**
+  String get modelsImportUrl;
+
+  /// No description provided for @modelsImportKeyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Key'**
+  String get modelsImportKeyLabel;
+
+  /// No description provided for @modelsImportListedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Officially listed'**
+  String get modelsImportListedBadge;
 
   /// No description provided for @modelsImportNoKey.
   ///
   /// In en, this message translates to:
   /// **'none, add it afterwards'**
   String get modelsImportNoKey;
-
-  /// No description provided for @modelsImportListed.
-  ///
-  /// In en, this message translates to:
-  /// **'Listed in BaoCode as {name}.'**
-  String modelsImportListed(String name);
 
   /// No description provided for @modelsImportExisting.
   ///
@@ -9636,8 +9642,20 @@ abstract class AppLocalizations {
   /// No description provided for @modelsImportAdd.
   ///
   /// In en, this message translates to:
-  /// **'Import'**
+  /// **'Import Models'**
   String get modelsImportAdd;
+
+  /// No description provided for @modelsImportFinish.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get modelsImportFinish;
+
+  /// No description provided for @modelsImportWithoutModels.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Without Models'**
+  String get modelsImportWithoutModels;
 
   /// No description provided for @modelsImportUpdateKey.
   ///

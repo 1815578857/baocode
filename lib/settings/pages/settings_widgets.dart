@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../chat/chat_width.dart';
 import '../../chat/widgets/scroll_edge_fade.dart';
-import '../../ide/ide_hover.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/codicons.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
 
 /// The settings pages' colors, as Cursor's settings have them: the editor's
@@ -92,7 +90,6 @@ class SettingsPage extends StatelessWidget {
     super.key,
     required this.title,
     this.description,
-    this.info,
     this.lead,
     required this.children,
   });
@@ -102,17 +99,12 @@ class SettingsPage extends StatelessWidget {
   final String title;
   final String? description;
 
-  /// What the page is about, in a hover of an icon by the title rather
-  /// than under it.
-  final String? info;
-
   /// Under the title, as far out as the cards: in place of [description].
   final Widget? lead;
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    final info = this.info;
     final lead = this.lead;
     return SettingsColumn(
       children: [
@@ -122,22 +114,7 @@ class SettingsPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Flexible(child: Text(title, style: SettingsText.title)),
-                  if (info != null) ...[
-                    const SizedBox(width: 6),
-                    IdeHover(
-                      message: info,
-                      child: Icon(
-                        Codicons.info,
-                        size: 14,
-                        color: SettingsColors.iconTertiary,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+              Text(title, style: SettingsText.title),
               if (description case final description?) ...[
                 const SizedBox(height: 4),
                 Text(description, style: SettingsText.lead),

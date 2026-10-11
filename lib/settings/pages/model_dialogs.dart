@@ -188,20 +188,30 @@ TextStyle _muted(BuildContext context) =>
 
 /// Asks [provider]'s upstream for its models and lets the user check those
 /// to offer; completes with its models merged with the list
-/// ([mergeModelList]), or null when dismissed.
+/// ([mergeModelList]), or null when dismissed. [apply] is what its button
+/// says; Apply when null. With [skip], what a button says that, where the
+/// upstream lists none or cannot be asked, completes with its models as
+/// they are.
 Future<List<ProviderModel>?> showFetchModelsDialog(
   BuildContext context, {
   required ModelProvider provider,
   required Future<String?> Function() key,
   required ModelLister list,
+  String? apply,
+  String? skip,
 }) => showGeneralDialog<List<ProviderModel>>(
   context: context,
   barrierDismissible: true,
   barrierLabel: context.l10n.commonDismiss,
   barrierColor: const Color(0x80000000),
   transitionDuration: Duration.zero,
-  pageBuilder: (context, _, _) =>
-      FetchModelsDialog(provider: provider, keyOf: key, list: list),
+  pageBuilder: (context, _, _) => FetchModelsDialog(
+    provider: provider,
+    keyOf: key,
+    list: list,
+    apply: apply,
+    skip: skip,
+  ),
 );
 
 class FetchModelsDialog extends StatefulWidget {
@@ -210,11 +220,20 @@ class FetchModelsDialog extends StatefulWidget {
     required this.provider,
     required this.keyOf,
     required this.list,
+    this.apply,
+    this.skip,
   });
 
   final ModelProvider provider;
   final Future<String?> Function() keyOf;
   final ModelLister list;
+
+  /// What the button that takes the checked ones says; Apply when null.
+  final String? apply;
+
+  /// What a button says that, where none are listed or they cannot be,
+  /// takes the provider's models as they are; none when null.
+  final String? skip;
 
   @override
   State<FetchModelsDialog> createState() => _FetchModelsDialogState();
@@ -435,8 +454,15 @@ class _FetchModelsDialogState extends State<FetchModelsDialog> {
           IdeButton(label: l10n.modelsRetry, onPressed: _fetch)
         else
           IdeButton(
-            label: l10n.modelsFetchApply,
+            label: widget.apply ?? l10n.modelsFetchApply,
             onPressed: listed == null || listed.isEmpty ? null : _apply,
+          ),
+        if (widget.skip case final skip?
+            when error != null || (listed != null && listed.isEmpty))
+          IdeButton(
+            label: skip,
+            secondary: true,
+            onPressed: () => Navigator.pop(context, widget.provider.models),
           ),
         IdeButton(
           label: l10n.commonCancel,

@@ -4096,7 +4096,6 @@
   "customizeConnectorReadOnly": "Read only: a claude.ai connector, managed in claude.ai's settings, under Connectors.",
   "settingsSectionModels": "Models",
   "modelsTitle": "Models",
-  "modelsDescription": "Where Claude Code's models come from: Claude Code as set up on this machine, and upstreams you add. Anthropic-compatible upstreams are spoken to by Claude Code itself; OpenAI's APIs through a local proxy of BaoCode's that translates.",
   "modelsDefault": "Default Model for New Sessions",
   "modelsDefaultDescription": "Unset, a new session starts with the model last picked.",
   "modelsDefaultLast": "Last picked",
@@ -4124,12 +4123,12 @@
       }
     }
   },
-  "modelsFeaturedWhy": "Why am I seeing this?",
-  "modelsFeaturedWhyDetail": "These upstreams added BaoCode's one-click import: a click on their key page adds the upstream, key and all, right here. In return BaoCode lists them for free, in a random order. Nobody pays to be here, and being listed is not an endorsement.\n\nRun a site? Add the one-click import and let BaoCode know with an issue on its GitHub, to be listed for as long as the import works.",
-  "modelsFeaturedWhyTheirsDetail": "These upstreams added BaoCode's one-click import: a click on their key page adds the upstream, key and all, right here. In return BaoCode lists them for free; the one you use comes first, the rest in a random order. Nobody pays to be here, and being listed is not an endorsement.\n\nRun a site? Add the one-click import and let BaoCode know with an issue on its GitHub, to be listed for as long as the import works.",
   "modelsFeaturedJoin": "Your site here",
   "modelsFeaturedJoinDescription": "Add one-click import, listed free",
-  "modelsImportTitle": "Import an upstream from {host}?",
+  "modelsFeaturedWhy": "Why am I seeing this?",
+  "modelsFeaturedNote": "These sites are listed officially, for free. ",
+  "modelsFeaturedNoteLink": "How to get listed?",
+  "modelsImportTitle": "Import an upstream from {host}",
   "@modelsImportTitle": {
     "placeholders": {
       "host": {
@@ -4137,23 +4136,11 @@
       }
     }
   },
-  "modelsImportKey": "Key: {key}",
-  "@modelsImportKey": {
-    "placeholders": {
-      "key": {
-        "type": "String"
-      }
-    }
-  },
+  "modelsImportProtocol": "Protocol",
+  "modelsImportUrl": "Base URL",
+  "modelsImportKeyLabel": "Key",
+  "modelsImportListedBadge": "Officially listed",
   "modelsImportNoKey": "none, add it afterwards",
-  "modelsImportListed": "Listed in BaoCode as {name}.",
-  "@modelsImportListed": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
   "modelsImportExisting": "You have this upstream already: {name}.",
   "@modelsImportExisting": {
     "placeholders": {
@@ -4164,7 +4151,9 @@
   },
   "modelsImportWarning": "Your conversations and code go to this address. Import only from sites you trust.",
   "modelsImportNamePlaceholder": "Name",
-  "modelsImportAdd": "Import",
+  "modelsImportAdd": "Import Models",
+  "modelsImportFinish": "Import",
+  "modelsImportWithoutModels": "Import Without Models",
   "modelsImportUpdateKey": "Update {name}'s Key",
   "@modelsImportUpdateKey": {
     "placeholders": {
