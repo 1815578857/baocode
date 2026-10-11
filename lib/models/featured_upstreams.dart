@@ -1,11 +1,15 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+
+import 'featured_upstreams_stub.dart'
+    if (dart.library.io) 'featured_upstreams_io.dart';
 
 /// An upstream Settings → Models shows a card of, free of charge, for
 /// adding the one-click import (see docs/upstream-import.md): listed in
-/// assets/upstreams/upstreams.json, by a pull request after its issue.
+/// site/featured/upstreams.json, by a pull request after its issue, and
+/// read from baocode.dev ([feed]): shown as soon as the site is deployed,
+/// with no release of the app.
 @immutable
 class FeaturedUpstream {
   const FeaturedUpstream({
@@ -17,8 +21,9 @@ class FeaturedUpstream {
     this.hosts = const [],
   });
 
-  /// Null for an entry without an id, a name or an http(s) [url].
-  static FeaturedUpstream? fromJson(Object? json) {
+  /// Null for an entry without an id, a name or an http(s) [url]. Its
+  /// logo, a file's name beside the list, is in [logoDirectory].
+  static FeaturedUpstream? fromJson(Object? json, {String logoDirectory = ''}) {
     if (json is! Map) return null;
     final id = json['id'];
     final name = json['name'];
@@ -34,7 +39,7 @@ class FeaturedUpstream {
       name: name,
       url: url,
       logo: switch (json['logo']) {
-        final String logo when logo.isNotEmpty => '$assetDirectory/$logo',
+        final String logo when isLogoName(logo) => '$logoDirectory/$logo',
         _ => null,
       },
       description: {
@@ -57,7 +62,8 @@ class FeaturedUpstream {
   /// has them.
   final Uri url;
 
-  /// Its logo's asset (SVG or PNG); its name's first letter when null.
+  /// Its logo's file (SVG or PNG), downloaded beside the list; its name's
+  /// first letter when null.
   final String? logo;
 
   /// A line about it, by language code (`en`, `zh`).
@@ -73,11 +79,20 @@ class FeaturedUpstream {
       description['en'] ??
       description.values.firstOrNull;
 
-  static const assetDirectory = 'assets/upstreams';
-  static const asset = '$assetDirectory/upstreams.json';
+  /// The list, its logos beside it.
+  static final feed = Uri.parse('https://baocode.dev/featured/upstreams.json');
 
-  /// Those listed in [json] (the asset's text), in its order.
-  static List<FeaturedUpstream> parseList(String json) {
+  /// A logo's name: a file beside the list, never a path.
+  static bool isLogoName(String name) =>
+      RegExp(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$').hasMatch(name) &&
+      !name.contains('..');
+
+  /// Those listed in [json] (the list's text), in its order, their logos
+  /// in [logoDirectory].
+  static List<FeaturedUpstream> parseList(
+    String json, {
+    String logoDirectory = '',
+  }) {
     final Object? data;
     try {
       data = jsonDecode(json);
@@ -86,15 +101,36 @@ class FeaturedUpstream {
     }
     final list = data is Map ? data['upstreams'] : null;
     if (list is! List) return const [];
-    return [for (final entry in list) ?fromJson(entry)];
+    return [
+      for (final entry in list) ?fromJson(entry, logoDirectory: logoDirectory),
+    ];
   }
 
-  static Future<List<FeaturedUpstream>>? _loaded;
+  /// How [load] gets the list: [feed], or what it got last time where it
+  /// does not answer. Tests set their own.
+  @visibleForTesting
+  static Future<List<FeaturedUpstream>> Function() loader =
+      fetchFeaturedUpstreams;
 
-  /// Those the app lists, read once.
-  static Future<List<FeaturedUpstream>> load() => _loaded ??= rootBundle
-      .loadString(asset)
-      .then(parseList, onError: (Object _) => const <FeaturedUpstream>[]);
+  /// How long [load] keeps what it got: a site listed shows the next time
+  /// Settings → Models opens after that.
+  static const refreshEvery = Duration(hours: 1);
+
+  static Future<List<FeaturedUpstream>>? _loaded;
+  static DateTime? _loadedAt;
+
+  /// Those the app lists, got again once [refreshEvery] has passed.
+  static Future<List<FeaturedUpstream>> load() {
+    final now = DateTime.now();
+    if (_loaded == null || now.difference(_loadedAt!) >= refreshEvery) {
+      _loadedAt = now;
+      _loaded = loader().catchError((Object _) => const <FeaturedUpstream>[]);
+    }
+    return _loaded!;
+  }
+
+  @visibleForTesting
+  static void forget() => _loaded = _loadedAt = null;
 
   /// The one of [upstreams] [host] is at; null for none.
   static FeaturedUpstream? at(String host, List<FeaturedUpstream> upstreams) {

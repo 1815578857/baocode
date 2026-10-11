@@ -33,8 +33,11 @@
 
 ## 推荐上游（卡片）
 
-收录表：`assets/upstreams/upstreams.json`，Logo 放在同目录。随应用发布，所以新收录
-跟着下一个版本出现。
+收录表：`site/featured/upstreams.json`，Logo 放在同目录，`logo` 只写文件名（不能带路径）。
+它随官网部署在 `https://baocode.dev/featured/upstreams.json`（缓存 5 分钟），不随应用发布：
+合并到 main、官网部署完，新收录就出现在用户的 设置 → 模型 里。应用打开该页时拉取
+（`lib/models/featured_upstreams_io.dart`，走应用代理，一小时内不重复拉），连同 Logo 存在
+数据目录的 `cache/featured/`；拉不到时用上次存下的，第一次就拉不到则不显示卡片。
 
 ```json
 {
@@ -66,8 +69,9 @@
 3. 维护者：
    - 注册一个账号，在令牌页实际点一次导入，确认能成功添加并列出模型；
    - 核对 `hosts` 确实是该站的 API 域名；
-   - 通过 issue 里的联系方式要 Logo，处理成正方形放进 `assets/upstreams/`；
-   - 往 `upstreams.json` 加一条，PR 引用 issue。
+   - 通过 issue 里的联系方式要 Logo，处理成正方形放进 `site/featured/`；
+   - 往 `site/featured/upstreams.json` 加一条，PR 引用 issue；合并后官网部署完即上线，
+     不用等应用发版。
 4. 下架：导入失效、域名易主、误导用户（例如冒充官方），删掉条目即可，在 issue 里说明。
 
 ## 给站长的接入提示词

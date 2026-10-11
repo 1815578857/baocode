@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 import 'dart:ui' show PointerDeviceKind;
 
@@ -247,7 +248,8 @@ class _Card extends StatelessWidget {
   }
 }
 
-/// [upstream]'s logo, as it drew it; its name's first letter without one.
+/// [upstream]'s logo, as it drew it; its name's first letter without one,
+/// or while it cannot be read (not downloaded yet).
 class _Logo extends StatelessWidget {
   const _Logo(this.upstream);
 
@@ -255,45 +257,40 @@ class _Logo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final logo = upstream.logo;
-    if (logo == null) {
-      return Container(
-        width: 22,
-        height: 22,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: SettingsColors.hover,
-          borderRadius: BorderRadius.circular(6),
+    final letter = Container(
+      width: 22,
+      height: 22,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: SettingsColors.hover,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        upstream.name.characters.first.toUpperCase(),
+        style: SettingsText.label.copyWith(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: SettingsColors.textSecondary,
         ),
-        child: Text(
-          upstream.name.characters.first.toUpperCase(),
-          style: SettingsText.label.copyWith(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: SettingsColors.textSecondary,
-          ),
-        ),
-      );
-    }
-    final fallback = Icon(
-      Icons.hub_outlined,
-      size: 18,
-      color: SettingsColors.iconTertiary,
+      ),
     );
+    final logo = upstream.logo;
+    if (logo == null) return letter;
+    final file = File(logo);
     return ClipRRect(
       borderRadius: BorderRadius.circular(5),
       child: logo.toLowerCase().endsWith('.svg')
-          ? SvgPicture.asset(
-              logo,
+          ? SvgPicture.file(
+              file,
               width: 22,
               height: 22,
-              errorBuilder: (_, _, _) => fallback,
+              errorBuilder: (_, _, _) => letter,
             )
-          : Image.asset(
-              logo,
+          : Image.file(
+              file,
               width: 22,
               height: 22,
-              errorBuilder: (_, _, _) => fallback,
+              errorBuilder: (_, _, _) => letter,
             ),
     );
   }

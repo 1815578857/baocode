@@ -209,7 +209,10 @@ pre code { padding: 0; background: none; font-size: 13.5px; line-height: 1.6; wh
   margin: 34px -32px 8px; font: 13px/1.4 var(--sans); color: var(--text); user-select: none; }
 .mock .win { display: flex; overflow: hidden; border: 1px solid #45433B; border-radius: 12px; background: var(--bg); box-shadow: 0 34px 70px -32px rgba(35, 30, 20, .55), 0 2px 6px rgba(35, 30, 20, .12); }
 .mock .side { flex: none; width: 176px; padding: 12px 10px; border-right: 1px solid var(--line); background: var(--side); }
-.mock .lights { display: flex; gap: 7px; margin: 0 0 18px 4px; }
+.mock .bar { display: flex; align-items: center; gap: 14px; margin: 0 0 18px 4px; }
+.mock .lights { display: flex; gap: 7px; }
+.mock .app { display: flex; align-items: center; gap: 6px; color: var(--text); font-weight: 600; font-size: 12.5px; letter-spacing: .01em; }
+.mock .app img { border-radius: 4px; }
 .mock .lights i { width: 11px; height: 11px; border-radius: 50%; background: #FF5F57; }
 .mock .lights i + i { background: #FEBC2E; }
 .mock .lights i + i + i { background: #28C840; }
@@ -230,7 +233,10 @@ pre code { padding: 0; background: none; font-size: 13.5px; line-height: 1.6; wh
 .mock .logo.c1 { background: #4E4535; }
 .mock .logo.c2 { background: #45473A; }
 .mock .logo.c3 { background: #4A3F3A; }
-.mock .card.you { background: #3A352A; box-shadow: 0 0 0 1.5px var(--sand), 0 0 20px -4px rgba(229, 186, 125, .4); }
+.mock .card.you { background: #35322A; box-shadow: inset 0 0 0 1px rgba(229, 186, 125, .75); }
+/* The rest quieter, so the site's own card and row lead without a glow. */
+.mock .card:not(.you), .mock .why, .mock .label, .mock .nav, .mock .back, .mock .search, .mock .title, .mock .row:not(.new) { opacity: .55; }
+.mock .nav.on { opacity: .8; }
 .mock .card.you .logo { background: var(--sand); color: var(--on-sand); font-size: 9px; letter-spacing: .02em; }
 .mock .card.join { justify-content: center; border: 1px dashed #4A483F; background: none; color: var(--faint); }
 .mock .under { display: flex; justify-content: space-between; gap: 12px; margin: 6px 0 22px; font-size: 12px; }
@@ -241,10 +247,11 @@ pre code { padding: 0; background: none; font-size: 13.5px; line-height: 1.6; wh
 .mock .row { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 14px; }
 .mock .row + .row { border-top: 1px solid var(--line); }
 .mock .row .txt { display: flex; flex: 1; flex-direction: column; min-width: 0; }
-.mock .row.new { background: rgba(229, 186, 125, .08); box-shadow: inset 2px 0 var(--sand); }
+.mock .row.new { background: rgba(229, 186, 125, .06); box-shadow: inset 2px 0 rgba(229, 186, 125, .8); }
 .mock .row em { margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: rgba(229, 186, 125, .17); color: var(--sand-text); font: 500 11px var(--sans); }
 .mock .dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
-.mock .toggle { flex: none; position: relative; width: 28px; height: 16px; border-radius: 8px; background: var(--sand); }
+.mock .toggle { flex: none; position: relative; width: 28px; height: 16px; border-radius: 8px; background: #6B6250; }
+.mock .row.new .toggle { background: var(--sand); }
 .mock .toggle::after { content: ''; position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--on-sand); }
 .mock .add { flex: none; padding: 6px 10px; border-radius: 6px; background: var(--sand); color: var(--on-sand); font-weight: 500; }
 @media (max-width: 760px) { .mock { margin-left: 0; margin-right: 0; } }

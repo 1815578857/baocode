@@ -157,22 +157,45 @@ void main() {
 }''';
 
     test('lists the entries it can show', () {
-      final list = FeaturedUpstream.parseList(json);
+      final list = FeaturedUpstream.parseList(json, logoDirectory: '/cache');
       expect(list.map((u) => u.id), ['example']);
       final example = list.single;
       expect(example.url.queryParameters['aff'], 'abc');
-      expect(example.logo, 'assets/upstreams/example.svg');
+      expect(example.logo, '/cache/example.svg');
       expect(example.describe('zh'), '便宜');
       expect(example.describe('fr'), 'Cheap');
       expect(FeaturedUpstream.at('api.EXAMPLE.com', list)?.id, 'example');
       expect(FeaturedUpstream.at('example.com', list), isNull);
     });
 
-    test('the list the app ships is whole: each entry shown, its logo there, '
-        'its id its own', () {
-      final text = File(FeaturedUpstream.asset).readAsStringSync();
+    test('a logo is a file beside the list, never a path', () {
+      for (final name in [
+        '../x.png',
+        '/etc/x.png',
+        'a/b.png',
+        '.x.png',
+        '..png',
+        '',
+      ]) {
+        expect(FeaturedUpstream.isLogoName(name), isFalse, reason: name);
+      }
+      expect(FeaturedUpstream.isLogoName('site-1.logo.svg'), isTrue);
+      final list = FeaturedUpstream.parseList(
+        '{"upstreams": [{"id": "a", "name": "A", "url": "https://a.dev", '
+        '"logo": "../../secret.png"}]}',
+        logoDirectory: '/cache',
+      );
+      expect(list.single.logo, isNull);
+    });
+
+    test('the list baocode.dev serves is whole: each entry shown, its logo '
+        'there, its id its own', () {
+      final text = File('site/featured/upstreams.json').readAsStringSync();
       final raw = (jsonDecode(text) as Map)['upstreams'] as List;
-      final list = FeaturedUpstream.parseList(text);
+      final list = FeaturedUpstream.parseList(
+        text,
+        logoDirectory: 'site/featured',
+      );
       expect(list, hasLength(raw.length));
       expect(list.map((u) => u.id).toSet(), hasLength(list.length));
       for (final upstream in list) {
