@@ -25,6 +25,7 @@ import 'ide/terminal/terminal_instance.dart';
 import 'icons/emoji_sheet.dart';
 import 'icons/icon_library.dart';
 import 'icons/icon_storage.dart';
+import 'icons/site_icons.dart';
 import 'kernel/claude_code/claude_onboarding.dart';
 import 'kernel/claude_code/process_transport.dart';
 import 'kernel/commit_attribution.dart';
@@ -32,6 +33,7 @@ import 'keybindings/keybindings_sync.dart';
 import 'keybindings/keymap.dart';
 import 'keybindings/vscode_import.dart';
 import 'l10n/l10n.dart';
+import 'models/model_icons.dart';
 import 'models/model_providers.dart';
 import 'models/model_runtime.dart';
 import 'network/network_proxy.dart';
@@ -118,6 +120,16 @@ Future<void> main(List<String> arguments) async {
         CommitAttribution.parse(files.settings[CommitAttribution.settingKey]);
     // Settings → Models: the upstreams, kept in settings.json.
     ModelProviders.current = ModelProviders.settings(files.settings);
+    // The upstreams' sites' icons, for those that show no other: in the
+    // cache, fetched as soon as one is added.
+    SiteIcons.current = SiteIcons(
+      library: IconLibrary(
+        storage: IconStorage.directory(
+          p.join(DataDirectory.current.cacheDir, 'site-icons'),
+        ),
+      ),
+    );
+    prefetchProviderIcons(ModelProviders.current, SiteIcons.current);
     // Settings → Appearance: how wide the conversation grows.
     ChatWidth.follow(
       files.settings,

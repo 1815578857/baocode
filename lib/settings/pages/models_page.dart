@@ -265,6 +265,7 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
               _ProviderRow(
                 icon: ProviderIconView(
                   icon: providerIconOf(provider),
+                  site: providerSite(provider),
                   size: 16,
                 ),
                 name: provider.name,
@@ -577,10 +578,7 @@ class _ProviderSettingsPageState extends State<ProviderSettingsPage> {
 
   /// Shows the icon picker under [anchor] (global), or closes it.
   void _toggleIconPicker(Workspace workspace, Rect anchor) {
-    final provider = _providerNow;
-    final site = provider.protocol == ProviderProtocol.codex
-        ? Uri.https('chatgpt.com')
-        : UpstreamUrls.parse(provider.baseUrl);
+    final site = providerSite(_providerNow);
     ProjectIconPicker.toggleFor(
       context,
       workspace: workspace,
@@ -933,6 +931,7 @@ class _ProviderSettingsPageState extends State<ProviderSettingsPage> {
           description: l10n.modelsIconDescription,
           trailing: _IconButton(
             icon: providerIconOf(provider),
+            site: providerSite(provider),
             label: l10n.modelsIconChange,
             onTap: workspace == null
                 ? null
@@ -1752,11 +1751,15 @@ class _QuotaLine extends StatelessWidget {
 class _IconButton extends StatelessWidget {
   const _IconButton({
     required this.icon,
+    required this.site,
     required this.label,
     required this.onTap,
   });
 
   final ProjectIcon? icon;
+
+  /// Whose icon shows without [icon].
+  final Uri? site;
   final String label;
   final ValueChanged<Rect>? onTap;
 
@@ -1799,6 +1802,7 @@ class _IconButton extends StatelessWidget {
                 ),
                 child: ProviderIconView(
                   icon: icon,
+                  site: site,
                   size: 16,
                   color: SettingsColors.textPrimary,
                 ),

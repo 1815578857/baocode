@@ -4,8 +4,7 @@ import 'model_provider.dart';
 abstract final class ModelBrand {
   /// The maker of model [id], as its name says (`claude-sonnet-4-5`,
   /// `deepseek-ai/DeepSeek-V3`, `openai/gpt-5`); null when it does not.
-  /// The family before the vendor: a relay's `anthropic/claude-…` is
-  /// Claude's.
+  /// The family before the vendor: a relay's `meta-llama/…` is Meta's.
   static String? ofModel(String id) {
     final name = id.toLowerCase();
     for (final (pattern, brand) in _models) {
@@ -43,7 +42,8 @@ abstract final class ModelBrand {
       RegExp('(^|[/_.: -])(?:$pattern)', caseSensitive: false);
 
   static final _models = [
-    (_word('claude|anthropic'), 'claude'),
+    // Anthropic's own logo, as Claude Code's own models have it.
+    (_word('claude|anthropic'), 'anthropic'),
     (_word(r'gemini'), 'gemini'),
     (_word(r'gemma'), 'google'),
     (_word(r'deepseek'), 'deepseek'),

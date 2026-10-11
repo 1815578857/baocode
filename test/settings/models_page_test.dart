@@ -275,7 +275,7 @@ void main() {
       (widget) => widget is BrandLogo && widget.name == name,
     );
     expect(logo('deepseek'), findsOneWidget);
-    expect(logo('claudecode'), findsOneWidget);
+    expect(logo('anthropic'), findsOneWidget);
 
     await tester.tap(find.text('DS'));
     await tester.pump();

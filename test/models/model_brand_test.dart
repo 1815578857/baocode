@@ -8,9 +8,9 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('a model is its maker\'s, as its name says', () {
     const cases = {
-      'claude-sonnet-4-5': 'claude',
-      'anthropic/claude-opus-4.1': 'claude',
-      'claude-fable-5-1-reversed': 'claude',
+      'claude-sonnet-4-5': 'anthropic',
+      'anthropic/claude-opus-4.1': 'anthropic',
+      'claude-fable-5-1-reversed': 'anthropic',
       'gpt-5': 'openai',
       'gpt-6-luna': 'openai',
       'openai/gpt-oss-120b': 'openai',
