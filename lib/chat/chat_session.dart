@@ -13,6 +13,7 @@ import 'chat_feed.dart';
 import 'chat_models.dart';
 import 'composer/composer_draft.dart';
 import 'mock_conversation.dart';
+import 'open_editor.dart';
 import 'review/change_review.dart';
 import 'review/change_reviews.dart';
 import 'review/review_store.dart';
@@ -807,10 +808,33 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
 
   // --- Commands ---------------------------------------------------------------
 
+  /// The file the agent was last told is open, once told (see
+  /// [_editorNotes]).
+  OpenEditor? _toldEditor;
+  bool _toldOfEditor = false;
+
+  /// What the agent is told of [editor], the file open beside the chat now:
+  /// nothing where it was told so already, nor of no file before any.
+  List<String> _editorNotes(OpenEditor? editor) {
+    if (_toldOfEditor ? editor == _toldEditor : editor == null) {
+      return const [];
+    }
+    _toldOfEditor = true;
+    _toldEditor = editor;
+    return [editor?.note ?? OpenEditor.closedNote];
+  }
+
   /// Sends [message]; [now], taken up at once, the turn running stopped
   /// for it (rather than queued behind it). With a plan shown beside the
   /// chat waiting on the user, it says what should change in it instead.
-  void send(ComposerMessage message, {bool now = false}) {
+  ///
+  /// [editor] gives the file open in the editor beside the chat, where
+  /// there is one; the agent is told of it as it changes.
+  void send(
+    ComposerMessage message, {
+    bool now = false,
+    OpenEditor? Function()? editor,
+  }) {
     if (pendingInteraction case PlanReviewRequest(planPath: _?)
         when message.text.trim().isNotEmpty) {
       answer(
@@ -825,6 +849,7 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
       mentions: message.mentions,
       images: acceptsImages ? message.images : const [],
       now: now,
+      notes: editor == null ? const [] : _editorNotes(editor()),
     );
     // A turn about to start, not one queued behind another: the project
     // is snapshotted, so that what the agent does is told apart. Not

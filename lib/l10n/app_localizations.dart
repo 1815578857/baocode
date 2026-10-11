@@ -8442,7 +8442,7 @@ abstract class AppLocalizations {
   /// No description provided for @ideChatNoFolder.
   ///
   /// In en, this message translates to:
-  /// **'Open a folder to chat with an agent in it.'**
+  /// **'Open a file or a folder to chat with an agent about it.'**
   String get ideChatNoFolder;
 
   /// No description provided for @ideCannotOpen.

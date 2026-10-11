@@ -5120,7 +5120,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ideClearRecent => 'Clear';
 
   @override
-  String get ideChatNoFolder => 'Open a folder to chat with an agent in it.';
+  String get ideChatNoFolder =>
+      'Open a file or a folder to chat with an agent about it.';
 
   @override
   String ideCannotOpen(String path, String error) {

@@ -6,6 +6,7 @@ import 'package:bao_remote/client.dart' show SshPrompt;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, listEquals;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
@@ -18,6 +19,7 @@ import 'chat/composer/composer_files.dart' show ComposerFile;
 import 'chat/composer/composer_mock_data.dart' show Suggestion;
 import 'chat/composer/file_drop.dart';
 import 'chat/composer/file_mentions.dart';
+import 'chat/open_editor.dart';
 import 'chat/panels/interaction_panel.dart';
 import 'chat/side_panel/file_open.dart';
 import 'chat/side_panel/side_panel_controller.dart';
@@ -618,6 +620,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     }
     _drag.dispose();
     _width.dispose();
+    _looseChatFolder.dispose();
     _lifecycle?.dispose();
     _attention?.dispose();
     _starPrompt?.dispose();
@@ -1877,16 +1880,29 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     _focusChat(thread);
   }
 
-  /// The IDE's chat in [folder]: its tabs over the one shown. Without a
-  /// folder, a way to open one.
+  /// The IDE's chat in [folder]: its tabs over the one shown, the agent
+  /// told of the file open in its editor. Without a folder, in that of the
+  /// file in front (see [_looseChatFolder]); a way to open one until there
+  /// is one.
   Widget _buildIdeChat(String folder) {
+    OpenEditor? openEditor() => _ideKeys[folder]?.currentState?.openEditor;
     if (folder == _noFolder) {
-      return _IdeNoFolderChat(
-        onOpenFolder: WindowControls.canPickDirectory
-            ? () => unawaited(_pickIdeFolder())
-            : null,
+      return ValueListenableBuilder(
+        valueListenable: _looseChatFolder,
+        builder: (context, loose, _) => loose == null
+            ? _IdeNoFolderChat(
+                onOpenFolder: WindowControls.canPickDirectory
+                    ? () => unawaited(_pickIdeFolder())
+                    : null,
+              )
+            : _ideChatIn(loose, openEditor),
       );
     }
+    return _ideChatIn(folder, openEditor);
+  }
+
+  /// The IDE's chat tabs in [folder] over the one shown.
+  Widget _ideChatIn(String folder, OpenEditor? Function() openEditor) {
     final current = _workspace.ideChat(folder);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1908,7 +1924,12 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         Expanded(
           child: current == null
               ? const SizedBox.shrink()
-              : _buildChat(showToggle: false, embedded: true, pane: current),
+              : _buildChat(
+                  showToggle: false,
+                  embedded: true,
+                  pane: current,
+                  openEditor: openEditor,
+                ),
         ),
       ],
     );
@@ -2355,8 +2376,30 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         ..restore(kept);
     }
     if (_ideWindow) _trackEdited(space);
+    if (folder == _noFolder) space.addListener(() => _followLooseFile(space));
     return space..askSavePath = (doc) => _askSavePath(space, doc);
   });
+
+  /// Where the IDE's chat is without a folder open: in that of the file in
+  /// front in the editor, once there is one; kept as its files close.
+  final ValueNotifier<String?> _looseChatFolder = ValueNotifier(null);
+
+  void _followLooseFile(IdeWorkspace space) {
+    if (!mounted) return;
+    // Told while building: once built.
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      return WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _followLooseFile(space),
+      );
+    }
+    final doc = space.active;
+    if (doc == null || doc.isUntitled || doc.openError != null) return;
+    final folder = p.dirname(doc.path);
+    if (folder == _looseChatFolder.value) return;
+    _workspace.ensureIdeChat(folder);
+    _looseChatFolder.value = folder;
+  }
 
   /// Finds the repositories of an IDE's folders' subfolders on [host], as
   /// settings.json's `git.autoRepositoryDetection` says when it opens.
@@ -2902,11 +2945,15 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
 
   /// The chat of [pane] (by default the current agent), at [place] among
   /// the others.
+  ///
+  /// [openEditor] gives the file open beside it, for the agent to be told
+  /// of: by default the side panel's.
   Widget _buildChat({
     required bool showToggle,
     bool embedded = false,
     AgentThread? pane,
     ChatPanePlace place = _whole,
+    OpenEditor? Function()? openEditor,
   }) {
     final thread = pane ?? _workspace.current;
     // Windows keeps the toggle, the pin and the editor button in its header
@@ -3032,10 +3079,36 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         },
         sessions: () => _mentionable(thread),
         fileMentions: _fileMentionsOf(thread.project),
+        openEditor: openEditor ?? () => _sidePanelEditor(thread),
       ),
     );
     // The side panel's rail is over the top right pane alone.
     return place.topRight ? chat : ChatColumnInset(right: 0, child: chat);
+  }
+
+  /// The file in front on the side panel, while it shows [thread]'s: on
+  /// the files page, where it is edited (its cursor and selection with
+  /// it); on the changes page, whose changes show.
+  OpenEditor? _sidePanelEditor(AgentThread thread) {
+    if (!_sidePanel.shown || _sidePanelHidden || _customizing) return null;
+    if (!identical(_agentThread ?? _workspace.current, thread)) return null;
+    final tabs = _sidePanel.tabsOf(thread.session);
+    return switch (tabs.shown) {
+      SidePanelSection.files => switch (tabs.active) {
+        SidePanelTab(:final path, edit: final edit?) => OpenEditor.at(
+          path,
+          edit.controller.document.snapshot,
+          edit.controller.value.selection,
+        ),
+        final tab? => OpenEditor(tab.path),
+        null => null,
+      },
+      SidePanelSection.changes => switch (tabs.activeDiff) {
+        final tab? => OpenEditor(tab.path),
+        null => null,
+      },
+      SidePanelSection.terminal || SidePanelSection.plan => null,
+    };
   }
 
   /// The conversations [thread]'s messages may refer to, under their

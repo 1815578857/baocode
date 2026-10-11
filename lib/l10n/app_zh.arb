@@ -1389,7 +1389,7 @@
   "ideClearRecentConfirm": "是否要清除所有最近打开的文件和文件夹?",
   "ideClearRecentDetail": "此操作不可逆!",
   "ideClearRecent": "清除",
-  "ideChatNoFolder": "打开文件夹后，即可在其中与智能体对话。",
+  "ideChatNoFolder": "打开文件或文件夹后，即可与智能体对话。",
   "ideCannotOpen": "无法打开 {path}：{error}",
   "cmdNewUntitledFile": "新建文本文件",
   "cmdOpenFile": "打开文件...",

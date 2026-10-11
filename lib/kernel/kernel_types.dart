@@ -563,12 +563,17 @@ class KernelTurn {
     this.mentions = const [],
     this.images = const [],
     this.now = false,
+    this.notes = const [],
   });
 
   /// Made by the client: sending the same turn twice runs it once.
   final String id;
   final String text;
   final List<String> mentions;
+
+  /// Told the model after [text], not shown: what the client adds of its
+  /// own (e.g. the file open in the editor), as system reminders.
+  final List<String> notes;
 
   /// Taken up at once rather than after the turn running, which is stopped
   /// for it (where a kernel queues messages).

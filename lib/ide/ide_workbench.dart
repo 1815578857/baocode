@@ -23,6 +23,7 @@ import '../extensions/ui/vsix_drop.dart';
 import '../platform/data_dir.dart';
 import '../chat/composer/composer_files.dart' show ComposerFile;
 import '../chat/composer/file_drop.dart';
+import '../chat/open_editor.dart';
 import '../keybindings/default_keybindings.dart'
     show commandCatalog, openSettingsCommandId;
 import '../keybindings/key_chord.dart';
@@ -671,6 +672,17 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   static const _sashWidth = IdeModernUI.gap;
 
   IdeEditorState? get _editor => _editorKey.currentState;
+
+  /// The file in front in the editor, its cursor and the lines selected:
+  /// what the chat beside it tells the agent. None for a tab of no file of
+  /// its own (untitled, a revision, one that could not open).
+  OpenEditor? get openEditor {
+    final doc = widget.workspace.active;
+    if (doc == null || doc.isUntitled || doc.openError != null) return null;
+    if (doc.isMedia) return OpenEditor(doc.path);
+    if (!doc.isFile) return null;
+    return OpenEditor.at(doc.path, doc.model.snapshot, _editor?.selection);
+  }
 
   /// The active markdown document's preview, when it shows.
   IdeMarkdownPreviewState? get _preview => switch (widget.workspace.active) {

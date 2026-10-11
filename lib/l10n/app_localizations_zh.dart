@@ -4775,7 +4775,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ideClearRecent => '清除';
 
   @override
-  String get ideChatNoFolder => '打开文件夹后，即可在其中与智能体对话。';
+  String get ideChatNoFolder => '打开文件或文件夹后，即可与智能体对话。';
 
   @override
   String ideCannotOpen(String path, String error) {

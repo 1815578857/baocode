@@ -15,6 +15,7 @@ import 'chat_history_view.dart';
 import 'chat_keys.dart';
 import 'chat_models.dart';
 import 'chat_session.dart';
+import 'open_editor.dart';
 import 'chat_width.dart';
 import 'composer/composer.dart';
 import 'composer/composer_embeds.dart';
@@ -60,6 +61,7 @@ class ChatScreen extends StatefulWidget {
     this.startHint,
     this.sessions,
     this.fileMentions,
+    this.openEditor,
   });
 
   final String title;
@@ -136,6 +138,10 @@ class ChatScreen extends StatefulWidget {
 
   /// Where `@` looks files up, besides the kernel (see [FileMentions]).
   final FileMentions? fileMentions;
+
+  /// The file open in the editor beside it, where there is one: the agent
+  /// is told of it with the messages sent (see [ChatSession.send]).
+  final OpenEditor? Function()? openEditor;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -800,6 +806,7 @@ class _ChatScreenState extends State<ChatScreen>
           key: _composerKey,
           session: _session,
           draft: _session.draft,
+          openEditor: widget.openEditor,
           contextPanelOpen: _contextPanelOpen,
           onToggleContextPanel: _toggleContextPanel,
         ),

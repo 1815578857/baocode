@@ -65,7 +65,8 @@ class AppDelegate: FlutterAppDelegate {
       if atLaunch {
         // Launched for them, the app opens to what they open alone (see
         // OpenRequests.launchRequest): the main window stays out of sight
-        // unless Flutter shows it (it does without the IDE's windows).
+        // (held back until now, see MainFlutterWindow) unless Flutter shows
+        // it (it does without the IDE's windows).
         AppWindows.shared?.main.orderOut(nil)
         NSApp.activate(ignoringOtherApps: true)
       } else if AppWindows.shared?.started ?? false {
@@ -113,6 +114,9 @@ final class OpenRequests {
   /// Whether what comes now is what the app was launched for: Flutter has
   /// not asked yet (see `launchRequest`).
   var atLaunch: Bool { !launchAsked }
+
+  /// Whether the app was launched to open something (see `launchRequest`).
+  var launchedForRequest: Bool { launchRequest != nil }
 
   /// Answers Flutter over [messenger]'s `baocode/open` (see
   /// MainFlutterWindow.swift).

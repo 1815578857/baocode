@@ -57,7 +57,7 @@ class _Harness {
     windows.addListener(() {
       for (final window in windows.ideWindows) {
         if (window.delegate == null) {
-          final delegate = FakeDelegate(context: context);
+          final delegate = FakeDelegate(context: context, log: host.log);
           delegates[window.viewId] = delegate;
           window.attach(delegate);
         }
@@ -1005,6 +1005,27 @@ void main() {
       expect(harness.folders, ['/w/c']);
       expect(harness.windows.chat.shown, isFalse);
       expect(harness.host.mainShownAtLaunch, isTrue);
+    });
+
+    testWidgets('started for a file (dropped on the Dock\'s icon): its new '
+        'window shows once the file is open in it, not its welcome page '
+        'first', (tester) async {
+      final harness = _Harness(
+        tester,
+        kept: kept(),
+        mainWindow: MainWindow.chat,
+      )..host.screenAreas = const [_screen];
+      await harness.start();
+      await harness.windows.prepareLaunch(request: LaunchRequest.ide);
+      await harness.windows.restore();
+      harness.host.log.clear();
+      await harness.windows.openRequested(['/w/x.txt']);
+      expect(harness.folders, [null]);
+      final viewId = harness.window(null).viewId;
+      final log = harness.host.log;
+      expect(log, containsAllInOrder(['open /w/x.txt', 'focus $viewId']));
+      expect(log.where((entry) => entry == 'focus $viewId'), hasLength(1));
+      expect(harness.windows.chat.shown, isFalse);
     });
 
     testWidgets('none: an empty window, the chat still not shown', (

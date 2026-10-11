@@ -463,14 +463,19 @@ class MainFlutterWindow: BaoWindow {
     // The IDE's windows, views of this one's engine (see AppWindows.swift).
     // Shown or not at launch as the app last said: the IDE's windows
     // alone, it stays hidden (Flutter shows it if it is to after all).
+    // Held back until the app has finished launching either way: what the
+    // system launched it to open comes before then (application(_:open:)),
+    // and the app opens to that alone; shown by the nib, the window would
+    // come and go at once.
     AppWindows.shared = AppWindows(engine: flutterViewController.engine, main: self)
-    holdingBack = !AppWindows.mainShownAtLaunch
-    if holdingBack {
-      DispatchQueue.main.async { [weak self] in self?.holdingBack = false }
-      // The view controller starts the engine only as its view appears:
-      // started here, for Flutter to open the windows that show instead.
-      flutterViewController.engine.run(withEntrypoint: nil)
-    }
+    shownAtLaunch = AppWindows.mainShownAtLaunch
+    holdingBack = true
+    NotificationCenter.default.addObserver(
+      self, selector: #selector(finishedLaunching),
+      name: NSApplication.didFinishLaunchingNotification, object: nil)
+    // The view controller starts the engine only as its view appears:
+    // started here, for Flutter to open the windows that show instead.
+    flutterViewController.engine.run(withEntrypoint: nil)
 
     // The menu bar's File menu, once the nib has made the menu bar (it
     // has none of its own; see FileMenu).
@@ -510,9 +515,24 @@ class MainFlutterWindow: BaoWindow {
 
   private var attention: Attention?
 
-  /// Kept out of sight while the nib shows it at launch, when the app
-  /// last said so (setMainShownAtLaunch).
+  /// Kept out of sight while the nib shows it at launch, until the app
+  /// has finished launching (see awakeFromNib).
   private var holdingBack = false
+
+  /// Whether the window shows at launch, as the app last said
+  /// (setMainShownAtLaunch).
+  private var shownAtLaunch = true
+
+  /// Let go once the app has launched: shown if it shows at launch, unless
+  /// the app was launched to open something.
+  @objc private func finishedLaunching() {
+    NotificationCenter.default.removeObserver(
+      self, name: NSApplication.didFinishLaunchingNotification, object: nil)
+    holdingBack = false
+    if shownAtLaunch && !OpenRequests.shared.launchedForRequest {
+      makeKeyAndOrderFront(nil)
+    }
+  }
 
   override func makeKeyAndOrderFront(_ sender: Any?) {
     if holdingBack { return }

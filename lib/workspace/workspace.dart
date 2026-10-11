@@ -956,6 +956,15 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
     if (thread.id == null) _ideChatsUnkept.add(thread);
   }
 
+  /// A chat for [folder]'s panel, where it has none: the IDE's without a
+  /// folder, in that of its file in front.
+  void ensureIdeChat(String folder) {
+    if (ideChats(folder).isNotEmpty) return;
+    _ensureIdeChat(folder);
+    _save();
+    notifyListeners();
+  }
+
   /// A chat for [folder]'s panel, where it has none.
   void _ensureIdeChat(String folder) {
     if (ideChats(folder).isNotEmpty) return;

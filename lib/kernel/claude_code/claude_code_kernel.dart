@@ -566,6 +566,7 @@ class ClaudeCodeKernel
               },
             ],
             if (turn.text.isNotEmpty) {'type': 'text', 'text': turn.text},
+            for (final note in turn.notes) {'type': 'text', 'text': note},
             if (ask)
               {'type': 'text', 'text': _askNote}
             else if (askEnded)

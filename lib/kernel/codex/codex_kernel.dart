@@ -179,6 +179,7 @@ class CodexKernel
       'threadId': _threadId,
       'input': [
         {'type': 'text', 'text': turn.text},
+        for (final note in turn.notes) {'type': 'text', 'text': note},
       ],
       'model': model.selected,
       'approvalPolicy': readOnly ? 'never' : 'on-request',

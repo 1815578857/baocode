@@ -22,6 +22,7 @@ import '../../theme/workbench_theme.dart' show WorkbenchColors, themeColors;
 import '../chat_keys.dart';
 import '../chat_models.dart';
 import '../chat_session.dart';
+import '../open_editor.dart';
 import '../floating/floating_layer.dart';
 import '../floating/floating_placement.dart';
 import '../floating/floating_registry.dart';
@@ -84,6 +85,7 @@ class ChatComposer extends StatefulWidget {
     this.onCancel,
     this.tapRegionGroupId,
     this.draft,
+    this.openEditor,
   });
 
   final ChatSession session;
@@ -106,6 +108,9 @@ class ChatComposer extends StatefulWidget {
   /// Where what is typed is kept while the composer is gone; once saved,
   /// it starts from there rather than [initialText] and [initialImages].
   final ComposerDraft? draft;
+
+  /// The file open in the editor beside the chat (see [ChatSession.send]).
+  final OpenEditor? Function()? openEditor;
 
   @override
   State<ChatComposer> createState() => ChatComposerState();
@@ -1169,7 +1174,7 @@ class ChatComposerState extends State<ChatComposer>
       onSubmit(message);
       return;
     }
-    widget.session.send(message);
+    widget.session.send(message, editor: widget.openEditor);
     _pool = {};
     _controller.clear();
     _leaveHistory();

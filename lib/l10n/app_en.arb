@@ -3668,7 +3668,7 @@
   "ideClearRecentConfirm": "Do you want to clear all recently opened files and folders?",
   "ideClearRecentDetail": "This action is irreversible!",
   "ideClearRecent": "Clear",
-  "ideChatNoFolder": "Open a folder to chat with an agent in it.",
+  "ideChatNoFolder": "Open a file or a folder to chat with an agent about it.",
   "ideCannotOpen": "Cannot open {path}: {error}",
   "@ideCannotOpen": {
     "placeholders": {
