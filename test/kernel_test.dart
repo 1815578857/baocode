@@ -1392,6 +1392,67 @@ void main() {
       kernel.dispose();
     });
 
+    test('a stopped turn\'s calls left unanswered show as failed, but a '
+        'subagent in the background and its calls go on', () async {
+      final cli = FakeCli();
+      final (:kernel, :transcript, events: _) = claude(cli);
+      Map<String, Object?> call(
+        String id,
+        String name,
+        Map<String, Object?> input, {
+        String? parent,
+      }) => {
+        'type': 'assistant',
+        'uuid': 'm-$id',
+        'parent_tool_use_id': parent,
+        'message': {
+          'id': 'msg-$id',
+          'role': 'assistant',
+          'content': [
+            {'type': 'tool_use', 'id': id, 'name': name, 'input': input},
+          ],
+        },
+      };
+
+      kernel.send(const KernelTurn(id: 'u1', text: 'look at my code'));
+      await pumpEventQueue();
+      cli
+        ..push(call('a1', 'Agent', {'description': 'Look', 'prompt': 'look'}))
+        ..push(call('r1', 'Read', {'file_path': '/a.dart'}, parent: 'a1'))
+        ..push(
+          call('a2', 'Agent', {
+            'description': 'Watch',
+            'prompt': 'watch',
+            'run_in_background': true,
+          }),
+        )
+        ..push(call('r2', 'Read', {'file_path': '/b.dart'}, parent: 'a2'))
+        ..push(call('b1', 'Bash', {'command': 'sleep 9'}));
+      await pumpEventQueue();
+      final before = [...transcript.liveItems.map((e) => e.$2)];
+      expect(
+        before.whereType<AgentItem>().map((a) => a.status),
+        everyElement(CommandStatus.running),
+      );
+
+      kernel.cancel();
+      final items = {for (final (id, item) in transcript.liveItems) id: item};
+      final look = items['a1']! as AgentItem;
+      expect(look.status, CommandStatus.failed);
+      expect(
+        (look.children.single as ToolCallItem).status,
+        ToolStatus.failed,
+      );
+      expect((items['b1']! as TerminalItem).status, CommandStatus.failed);
+      final watch = items['a2']! as AgentItem;
+      expect(watch.status, CommandStatus.running);
+      expect(
+        (watch.children.single as ToolCallItem).status,
+        ToolStatus.running,
+      );
+      kernel.dispose();
+    });
+
     test('a turn the CLI takes up of its own (a background command done) '
         'shows as under way, and stops', () async {
       final cli = FakeCli();
@@ -4182,6 +4243,30 @@ exec /bin/sh -c "\$command"
       expect(events.last, isA<TurnEnded>());
       final edited = events.whereType<FileEdited>().single.change;
       expect((edited.path, edited.added, edited.removed), ('lib/a.dart', 1, 1));
+    });
+
+    test('a command running when the turn stops shows as failed', () async {
+      kernel.send(const KernelTurn(id: 't1', text: 'hi'));
+      await pumpEventQueue();
+      notify('item/started', {
+        'item': {
+          'type': 'commandExecution',
+          'id': 'c1',
+          'command': 'sleep 9',
+          'status': 'inProgress',
+        },
+      });
+      final running = events.whereType<ItemUpserted>().last.item;
+      expect((running as TerminalItem).status, CommandStatus.running);
+
+      kernel.cancel();
+      final stopped = events
+          .whereType<ItemUpserted>()
+          .lastWhere((e) => e.id == 'c1')
+          .item;
+      expect((stopped as TerminalItem).status, CommandStatus.failed);
+      expect(stopped.command, 'sleep 9');
+      expect(events.last, isA<TurnEnded>());
     });
 
     test('declares no background tasks and no undo', () {

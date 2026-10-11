@@ -134,6 +134,9 @@ class CodexKernel
   final Map<String, int> _reasoningPart = {};
   final Map<String, DateTime> _startedAt = {};
 
+  /// Commands started and not completed yet, as they started.
+  final Map<String, Map<String, Object?>> _commands = {};
+
   /// Pending approvals: our request id → the server's JSON-RPC id.
   final Map<String, Object?> _approvals = {};
 
@@ -371,6 +374,7 @@ class CodexKernel
         );
       case 'commandExecution':
         _startedAt[id] = DateTime.now();
+        _commands[id] = item;
         emit(ItemUpserted(nextSeq, id, _commandItem(item)));
     }
   }
@@ -411,6 +415,7 @@ class CodexKernel
       case 'commandExecution':
         emit(ItemUpserted(nextSeq, id, _commandItem(item)));
         _startedAt.remove(id);
+        _commands.remove(id);
       case 'fileChange':
         final changes = item['changes'] as List<Object?>;
         for (final (index, raw) in changes.indexed) {
@@ -521,6 +526,10 @@ class CodexKernel
     for (final id in [..._textLength.keys]) {
       _textLength.remove(id);
       emit(ItemCompleted(nextSeq, id));
+    }
+    // A command stopped with its turn: it will not report its end.
+    for (final item in [..._commands.values]) {
+      _itemCompleted({...item, 'status': 'failed'});
     }
     for (final id in _approvals.keys) {
       emit(InteractionResolved(nextSeq, id));
