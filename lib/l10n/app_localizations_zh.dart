@@ -6567,6 +6567,12 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get newChatPickRemoteFolder => '选择目录…';
+
+  @override
+  String get newChatPickRemoteFolderDetail => '打开这台主机上的文件夹';
+
+  @override
   String get newChatCreateWorkspace => '创建工作区…';
 
   @override

@@ -187,8 +187,9 @@ void main() {
     },
   );
 
-  testWidgets('SSH hosts are under Remote, their projects at their side, '
-      'with Open Remote Project…, which asks for a host', (tester) async {
+  testWidgets('SSH hosts are under Remote, their projects at their side '
+      'under Choose Folder…, with Open Remote Project…, which asks for a '
+      'host', (tester) async {
     final workspace = await _pumpNew(tester);
     await workspace.openFolder('ssh://dev/home/me/app');
     await workspace.openFolder('ssh://dev/home/me/api');
@@ -208,11 +209,15 @@ void main() {
     expect(find.text('1 project'), findsOneWidget);
     expect(find.text('/home/me/app'), findsNothing);
 
-    // Picked, a host shows its projects at its side; one picked there is
-    // moved to.
+    // Picked, a host shows its projects at its side, under a folder there
+    // to pick; one picked there is moved to.
     await tester.tap(find.text('2 projects'));
     await tester.pumpAndSettle();
     expect(find.text('/home/me/app'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Choose Folder…')).dy,
+      lessThan(tester.getTopLeft(find.text('app').last).dy),
+    );
     expect(
       tester.getTopLeft(find.text('/home/me/api')).dx,
       greaterThan(tester.getTopRight(find.text('2 projects')).dx),

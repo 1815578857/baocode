@@ -1,8 +1,8 @@
 // Over a new chat's input: where it is to work. A menu of the projects
 // (none, the Desktop, first; multi-folder workspaces under their own
-// heading, with Create Workspace…; SSH hosts under theirs, each with its
-// projects at its side, and Open Remote Project…) and a button to pick a
-// folder in the system's file manager.
+// heading, with Create Workspace…; SSH hosts under theirs, each with a
+// folder there to pick and its projects at its side, and Open Remote
+// Project…) and a button to pick a folder in the system's file manager.
 
 import 'package:flutter/material.dart';
 
@@ -35,9 +35,10 @@ class NewChatFolderBar extends StatelessWidget {
   /// The new agent, nothing sent to it yet.
   final AgentThread thread;
 
-  /// Open Remote Project…: walks the user to a folder on an SSH host, then
-  /// gives its location to the function given. None, none offered.
-  final void Function(ValueChanged<String> onOpen)? openRemote;
+  /// Open Remote Project…: walks the user to a folder on an SSH host (on
+  /// [host], given one), then gives its location to the function given.
+  /// None, none offered.
+  final void Function(ValueChanged<String> onOpen, {String? host})? openRemote;
 
   /// The menu's row for Open Remote Project….
   static const _openRemoteId = 'baocode.remote.openFolder';
@@ -48,6 +49,9 @@ class NewChatFolderBar extends StatelessWidget {
   /// Before an SSH host, the menu's row for it, which lists its projects
   /// at its side.
   static const _hostId = 'baocode.remote.host:';
+
+  /// Before an SSH host, the row first at its side: a folder there to pick.
+  static const _pickOnId = 'baocode.remote.pickOn:';
 
   /// The projects the menu lists of this machine, and of SSH hosts, the
   /// most recent first: the rest are reached by picking their folder.
@@ -181,10 +185,18 @@ class NewChatFolderBar extends StatelessWidget {
           local.add(current);
       }
     }
-    // The menu's row for each host, by id: its projects at its side.
+    // The menu's row for each host, by id: at its side a folder there to
+    // pick, then its projects.
     final onHosts = {
       for (final MapEntry(key: host, value: projects) in remote.entries)
         '${NewChatFolderBar._hostId}$host': [
+          if (openRemote != null)
+            KernelOption(
+              '${NewChatFolderBar._pickOnId}$host',
+              l10n.newChatPickRemoteFolder,
+              Codicons.folderOpened,
+              l10n.newChatPickRemoteFolderDetail,
+            ),
           for (final project in projects) option(project),
         ],
     };
@@ -234,6 +246,11 @@ class NewChatFolderBar extends StatelessWidget {
             submenuOf: (option) => onHosts[option.id] ?? const [],
             onSelected: (option) => switch (option.id) {
               NewChatFolderBar._openRemoteId => openRemote?.call(_moveTo),
+              final id when id.startsWith(NewChatFolderBar._pickOnId) =>
+                openRemote?.call(
+                  _moveTo,
+                  host: id.substring(NewChatFolderBar._pickOnId.length),
+                ),
               NewChatFolderBar._createWorkspaceId => _createWorkspace(
                 context,
                 desktop,

@@ -63,8 +63,9 @@ class ComposerPicker extends StatefulWidget {
   /// menu at its side, shown when it is pointed at.
   final List<ModelSettingChoice> Function(KernelOption option)? settingsOf;
 
-  /// The options an option groups (an SSH host's projects): in a menu at
-  /// its side, as [settingsOf]'s, picked there. It is not picked itself,
+  /// The options an option groups (an SSH host's projects), a line between
+  /// those of one group and those of the next: in a menu at its side, as
+  /// [settingsOf]'s, picked there. It is not picked itself,
   /// but opens them; checked when [selected] is among them. None for an
   /// empty list. Not with [settingsOf].
   final List<KernelOption> Function(KernelOption option)? submenuOf;
@@ -433,20 +434,27 @@ class ComposerPickerState extends State<ComposerPicker> {
   List<ModelSettingChoice> _settingsFor(int index) =>
       _settings[index] ??= _settingsOfOption(widget.options[index]);
 
-  /// [option]'s settings; its submenu, as one setting of the menu's own
-  /// kind, with no heading.
+  /// [option]'s settings; its submenu, as settings of the menu's own kind,
+  /// with no heading: one for each run of options in one group, a line
+  /// between them.
   List<ModelSettingChoice> _settingsOfOption(KernelOption option) {
     final submenuOf = widget.submenuOf;
     if (submenuOf == null) return widget.settingsOf?.call(option) ?? const [];
-    final submenu = submenuOf(option);
-    if (submenu.isEmpty) return const [];
+    final runs = <List<KernelOption>>[];
+    for (final option in submenuOf(option)) {
+      if (runs.isEmpty || runs.last.last.group?.id != option.group?.id) {
+        runs.add([]);
+      }
+      runs.last.add(option);
+    }
     return [
-      ModelSettingChoice(
-        kind: KernelChoiceKind.model,
-        options: submenu,
-        selected: submenu.contains(widget.selected) ? widget.selected : null,
-        onSelected: widget.onSelected,
-      ),
+      for (final run in runs)
+        ModelSettingChoice(
+          kind: KernelChoiceKind.model,
+          options: run,
+          selected: run.contains(widget.selected) ? widget.selected : null,
+          onSelected: widget.onSelected,
+        ),
     ];
   }
 

@@ -5064,6 +5064,11 @@
       }
     }
   },
+  "newChatPickRemoteFolder": "Choose Folder…",
+  "@newChatPickRemoteFolder": {
+    "description": "First at an SSH host's side in the menu of where a new chat works: picks a folder on that host."
+  },
+  "newChatPickRemoteFolderDetail": "Open a folder on this host",
   "newChatCreateWorkspace": "Create Workspace…",
   "@newChatCreateWorkspace": {
     "description": "The menu's choice that makes a workspace of several folders for a new chat to work in."

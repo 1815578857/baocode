@@ -11487,6 +11487,18 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 project} other{{count} projects}}'**
   String newChatHostProjects(int count);
 
+  /// First at an SSH host's side in the menu of where a new chat works: picks a folder on that host.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Folder…'**
+  String get newChatPickRemoteFolder;
+
+  /// No description provided for @newChatPickRemoteFolderDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a folder on this host'**
+  String get newChatPickRemoteFolderDetail;
+
   /// The menu's choice that makes a workspace of several folders for a new chat to work in.
   ///
   /// In en, this message translates to:

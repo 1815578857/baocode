@@ -3192,7 +3192,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
             : NewChatFolderBar(
                 workspace: _workspace,
                 thread: thread,
-                openRemote: (onOpen) => _openRemoteProject(onOpen: onOpen),
+                openRemote: (onOpen, {host}) =>
+                    _openRemoteProject(onOpen: onOpen, host: host),
               ),
         // The setup checklist, over the new agent's composer.
         startHint: switch (_tips) {

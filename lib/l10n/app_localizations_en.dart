@@ -7003,6 +7003,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get newChatPickRemoteFolder => 'Choose Folder…';
+
+  @override
+  String get newChatPickRemoteFolderDetail => 'Open a folder on this host';
+
+  @override
   String get newChatCreateWorkspace => 'Create Workspace…';
 
   @override

@@ -1897,6 +1897,8 @@
   "newChatWorkspaceGroup": "工作区",
   "newChatWorkspaceDetail": "{count} 个文件夹 · {names}",
   "newChatHostProjects": "{count} 个项目",
+  "newChatPickRemoteFolder": "选择目录…",
+  "newChatPickRemoteFolderDetail": "打开这台主机上的文件夹",
   "newChatCreateWorkspace": "创建工作区…",
   "newChatCreateWorkspaceDetail": "在多个文件夹中工作",
   "workspaceCreateTitle": "创建工作区",
