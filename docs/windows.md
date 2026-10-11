@@ -115,6 +115,13 @@ One difference that stays: Flutter draws with grayscale antialiasing, where
 GDI apps use ClearType, so our text is a shade lighter than a native app's at
 the same size.
 
+Two things bring it closer. On Windows every text size is rounded to a whole
+device pixel (`PixelSnappedTextScaler`, applied in `main.dart` to both the UI
+and the code scale), so 13px at 125% is drawn at 16px instead of 16.25 and
+its stems stay on the pixel grid. And `tool/engine/windows_text.patch` makes
+the engine treat light text the way Chrome does: its own glyphs, Chrome's
+contrast, the ClearType tuner's values; see `tool/engine/README.md`.
+
 ## Build / run
 
 Flutter SDK on this machine: `C:\flutter` (stable 3.47.5).

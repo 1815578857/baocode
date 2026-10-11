@@ -55,6 +55,7 @@ import 'telemetry/telemetry_service.dart';
 import 'telemetry/telemetry_store.dart';
 import 'theme/app_theme.dart';
 import 'theme/code_font.dart';
+import 'theme/pixel_snapped_text_scaler.dart';
 import 'theme/workbench_theme.dart';
 import 'update/update_controller.dart';
 import 'update/update_platform.dart';
@@ -550,12 +551,16 @@ class _BaoCodeAppState extends State<BaoCodeApp> {
       valueListenable: CodeFont.uiScale,
       builder: (context, percent, scaled) {
         final media = MediaQuery.of(context);
+        // Windows blurs glyphs drawn at a fractional pixel size.
+        TextScaler snapped(TextScaler scaler) => AppPlatform.isWindows
+            ? PixelSnappedTextScaler(scaler, media.devicePixelRatio)
+            : scaler;
         return SystemTextScale(
-          scaler: media.textScaler,
+          scaler: snapped(media.textScaler),
           child: MediaQuery(
             data: media.copyWith(
-              textScaler: TextScaler.linear(
-                media.textScaler.scale(1) * percent / 100,
+              textScaler: snapped(
+                TextScaler.linear(media.textScaler.scale(1) * percent / 100),
               ),
             ),
             child: scaled!,
