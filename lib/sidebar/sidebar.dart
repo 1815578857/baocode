@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -2068,10 +2067,7 @@ class _BelowMouse extends SingleChildLayoutDelegate {
     final y = target.bottom + childSize.height > size.height
         ? target.top - childSize.height
         : target.bottom - 2;
-    return Offset(
-      x.clamp(0, math.max(0, size.width - childSize.width)),
-      y.clamp(0, math.max(0, size.height - childSize.height)),
-    );
+    return clampHoverOffset(Offset(x, y), childSize, size);
   }
 
   @override

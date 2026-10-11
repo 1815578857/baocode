@@ -48,7 +48,31 @@ enum IdeHoverPosition { below, above, right, left }
 /// 1500 ms on macOS, which reads as no hover at all).
 const ideHoverDelay = Duration(milliseconds: 500);
 
-/// A hover's box: VS Code's `.monaco-hover.workbench-hover`.
+/// A hover is kept this far from the window's edges, as popovers are
+/// (`FloatingLayer.viewportPadding`).
+const ideHoverEdgeMargin = 8.0;
+
+/// At most this share of the window's width, whatever its own maximum.
+const ideHoverMaxWidthFactor = 0.9;
+
+/// Where a hover of [size] at [offset] is kept in [overlay], at least
+/// [ideHoverEdgeMargin] from its edges; centered on an axis it is too
+/// big for.
+Offset clampHoverOffset(Offset offset, Size size, Size overlay) {
+  double clamp(double value, double extent, double room) {
+    final max = room - extent - ideHoverEdgeMargin;
+    if (max < ideHoverEdgeMargin) return math.max(0, (room - extent) / 2);
+    return value.clamp(ideHoverEdgeMargin, max);
+  }
+
+  return Offset(
+    clamp(offset.dx, size.width, overlay.width),
+    clamp(offset.dy, size.height, overlay.height),
+  );
+}
+
+/// A hover's box: VS Code's `.monaco-hover.workbench-hover`. Never wider
+/// than [ideHoverMaxWidthFactor] of the window.
 class IdeHoverBox extends StatelessWidget {
   const IdeHoverBox({
     super.key,
@@ -73,7 +97,15 @@ class IdeHoverBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ConstrainedBox(
-    constraints: BoxConstraints(maxWidth: maxWidth),
+    constraints: BoxConstraints(
+      maxWidth: switch (MediaQuery.maybeSizeOf(context)) {
+        final window? => math.min(
+          maxWidth,
+          window.width * ideHoverMaxWidthFactor,
+        ),
+        null => maxWidth,
+      },
+    ),
     child: DecoratedBox(
       decoration: BoxDecoration(
         color: IdeHoverColors.background,
@@ -191,10 +223,7 @@ class _IdeHoverState extends State<IdeHover> {
     final y = bottom + size.height > overlay.height
         ? target.dy - half.height - size.height
         : bottom - 2;
-    return Offset(
-      x.clamp(0, math.max(0, overlay.width - size.width)),
-      y.clamp(0, math.max(0, overlay.height - size.height)),
-    );
+    return clampHoverOffset(Offset(x, y), size, overlay);
   }
 
   Widget _box() {
@@ -258,10 +287,7 @@ class _IdeHoverState extends State<IdeHover> {
         target.dy - size.height / 2,
       ),
     };
-    return Offset(
-      offset.dx.clamp(0, math.max(0, overlay.width - size.width)),
-      offset.dy.clamp(0, math.max(0, overlay.height - size.height)),
-    );
+    return clampHoverOffset(offset, size, overlay);
   }
 }
 
