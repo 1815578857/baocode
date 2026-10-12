@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:baocode/chat/chat_screen.dart';
 import 'package:baocode/chat/chat_session.dart';
 import 'package:baocode/chat/chat_width.dart';
+import 'package:baocode/chat/widgets/chat_minimap.dart';
 import 'package:baocode/chat/composer/composer.dart';
 import 'package:baocode/ide/ide_color_theme_picker.dart';
 import 'package:baocode/settings/pages/appearance_page.dart';
@@ -55,8 +56,8 @@ void main() {
     expect(width(), 1200);
     ChatWidth.current.value = double.infinity;
     await tester.pump();
-    // The window's width but its margins.
-    expect(width(), 1800 - 2 * 24);
+    // The window's width but its margins, the minimap's room in them.
+    expect(width(), 1800 - 2 * ChatMinimap.room);
   });
 
   testWidgets('the slider picks a step, applied at once and kept in '
