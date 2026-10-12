@@ -12782,6 +12782,294 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name} has changed since it was made. Undo deletes it anyway?'**
   String explorerUndoCreateChanged(String name);
+
+  /// No description provided for @settingsSectionMobile.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile'**
+  String get settingsSectionMobile;
+
+  /// No description provided for @settingsMobileKeywords.
+  ///
+  /// In en, this message translates to:
+  /// **'phone iphone android ios pair qr code remote lan'**
+  String get settingsMobileKeywords;
+
+  /// No description provided for @mobileSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow and drive this computer\'s agents from BaoCode on your phone, over the local network or the internet. What goes between them is end-to-end encrypted.'**
+  String get mobileSettingsDescription;
+
+  /// No description provided for @mobileAllow.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Phones to Connect'**
+  String get mobileAllow;
+
+  /// No description provided for @mobileAllowDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Phones paired with this computer connect to it directly.'**
+  String get mobileAllowDescription;
+
+  /// No description provided for @mobileStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get mobileStatus;
+
+  /// No description provided for @mobileStatusOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get mobileStatusOff;
+
+  /// No description provided for @mobileStatusStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting…'**
+  String get mobileStatusStarting;
+
+  /// No description provided for @mobileStatusListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening on port {port}'**
+  String mobileStatusListening(int port);
+
+  /// No description provided for @mobileStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not listen: {error}'**
+  String mobileStatusFailed(String error);
+
+  /// No description provided for @mobileAddresses.
+  ///
+  /// In en, this message translates to:
+  /// **'Addresses'**
+  String get mobileAddresses;
+
+  /// No description provided for @mobileAddressesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Where phones reach this computer, in the order they try them: the local network first, then the internet.'**
+  String get mobileAddressesDescription;
+
+  /// No description provided for @mobileAddressesNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No network found.'**
+  String get mobileAddressesNone;
+
+  /// No description provided for @mobileAddressesRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get mobileAddressesRefresh;
+
+  /// No description provided for @mobilePort.
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get mobilePort;
+
+  /// No description provided for @mobilePortDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The port phones connect to. Forward it on the router to reach this computer from the internet.'**
+  String get mobilePortDescription;
+
+  /// No description provided for @mobilePortInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a port: {text}. Enter a number from 1 to 65535.'**
+  String mobilePortInvalid(String text);
+
+  /// No description provided for @mobilePublicAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Public Address'**
+  String get mobilePublicAddress;
+
+  /// No description provided for @mobilePublicAddressDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'A domain or IP this computer can be reached at from the internet (with the port forwarded), put in the QR code; several separated by commas. Public IPv6 addresses are found by themselves.'**
+  String get mobilePublicAddressDescription;
+
+  /// No description provided for @mobileRelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Relay'**
+  String get mobileRelay;
+
+  /// No description provided for @mobileRelayDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Reach this computer through BaoCode\'s relay when none of its addresses can be reached. Coming later.'**
+  String get mobileRelayDescription;
+
+  /// No description provided for @mobileRelayUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Available Yet'**
+  String get mobileRelayUnavailable;
+
+  /// No description provided for @mobilePair.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair a Phone'**
+  String get mobilePair;
+
+  /// No description provided for @mobilePairDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan the code with BaoCode on the phone (Me → Paired computers → Pair a computer), or pick this computer under Nearby Computers there.'**
+  String get mobilePairDescription;
+
+  /// No description provided for @mobilePairShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show QR Code'**
+  String get mobilePairShow;
+
+  /// No description provided for @mobilePairCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get mobilePairCancel;
+
+  /// No description provided for @mobilePairNewCode.
+  ///
+  /// In en, this message translates to:
+  /// **'New Code'**
+  String get mobilePairNewCode;
+
+  /// No description provided for @mobilePairCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Link'**
+  String get mobilePairCopyLink;
+
+  /// No description provided for @mobilePairCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get mobilePairCopied;
+
+  /// No description provided for @mobilePairExpires.
+  ///
+  /// In en, this message translates to:
+  /// **'Good for {minutes} min, once. A phone that cannot scan it can paste the link instead.'**
+  String mobilePairExpires(int minutes);
+
+  /// No description provided for @mobilePairExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'This code has expired.'**
+  String get mobilePairExpired;
+
+  /// No description provided for @mobilePairVerifyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare with {name}'**
+  String mobilePairVerifyTitle(String name);
+
+  /// No description provided for @mobilePairVerifyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Check that the phone shows the same code, then confirm on the phone.'**
+  String get mobilePairVerifyBody;
+
+  /// No description provided for @mobilePairMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Codes Don\'t Match'**
+  String get mobilePairMismatch;
+
+  /// No description provided for @mobilePaired.
+  ///
+  /// In en, this message translates to:
+  /// **'Paired with {name}.'**
+  String mobilePaired(String name);
+
+  /// No description provided for @mobilePhones.
+  ///
+  /// In en, this message translates to:
+  /// **'Paired Phones'**
+  String get mobilePhones;
+
+  /// No description provided for @mobilePhonesNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No phone is paired yet.'**
+  String get mobilePhonesNone;
+
+  /// No description provided for @mobilePhoneConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get mobilePhoneConnected;
+
+  /// No description provided for @mobilePhoneLastSeen.
+  ///
+  /// In en, this message translates to:
+  /// **'Last connected {time}'**
+  String mobilePhoneLastSeen(String time);
+
+  /// No description provided for @mobilePhoneRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get mobilePhoneRemove;
+
+  /// No description provided for @mobileThisComputerKey.
+  ///
+  /// In en, this message translates to:
+  /// **'This Computer\'s Key'**
+  String get mobileThisComputerKey;
+
+  /// No description provided for @mobileThisComputerKeyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The phone shows it too: the same key on both means no one is in between.'**
+  String get mobileThisComputerKeyDescription;
+
+  /// No description provided for @mobileDiscoverable.
+  ///
+  /// In en, this message translates to:
+  /// **'Find on the Local Network'**
+  String get mobileDiscoverable;
+
+  /// No description provided for @mobileDiscoverableDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Phones paired with this computer find it on the local network, even after its address changes; while you pair one, new phones list it under Nearby Computers.'**
+  String get mobileDiscoverableDescription;
+
+  /// No description provided for @mobilePairNearbyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Phones on this network can also pick this computer under Nearby Computers.'**
+  String get mobilePairNearbyHint;
+
+  /// No description provided for @mobilePairRequestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} Wants to Pair'**
+  String mobilePairRequestTitle(String name);
+
+  /// No description provided for @mobilePairRequestBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It found this computer nearby. Allow it only if the phone shows the same code.'**
+  String get mobilePairRequestBody;
+
+  /// No description provided for @mobilePairAllow.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow'**
+  String get mobilePairAllow;
 }
 
 class _AppLocalizationsDelegate

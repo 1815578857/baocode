@@ -5660,5 +5660,109 @@
         "type": "String"
       }
     }
-  }
+  },
+  "settingsSectionMobile": "Mobile",
+  "settingsMobileKeywords": "phone iphone android ios pair qr code remote lan",
+  "mobileSettingsDescription": "Follow and drive this computer's agents from BaoCode on your phone, over the local network or the internet. What goes between them is end-to-end encrypted.",
+  "mobileAllow": "Allow Phones to Connect",
+  "mobileAllowDescription": "Phones paired with this computer connect to it directly.",
+  "mobileStatus": "Status",
+  "mobileStatusOff": "Off",
+  "mobileStatusStarting": "Starting…",
+  "mobileStatusListening": "Listening on port {port}",
+  "@mobileStatusListening": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "mobileStatusFailed": "Could not listen: {error}",
+  "@mobileStatusFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "mobileAddresses": "Addresses",
+  "mobileAddressesDescription": "Where phones reach this computer, in the order they try them: the local network first, then the internet.",
+  "mobileAddressesNone": "No network found.",
+  "mobileAddressesRefresh": "Refresh",
+  "mobilePort": "Port",
+  "mobilePortDescription": "The port phones connect to. Forward it on the router to reach this computer from the internet.",
+  "mobilePortInvalid": "Not a port: {text}. Enter a number from 1 to 65535.",
+  "@mobilePortInvalid": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "mobilePublicAddress": "Public Address",
+  "mobilePublicAddressDescription": "A domain or IP this computer can be reached at from the internet (with the port forwarded), put in the QR code; several separated by commas. Public IPv6 addresses are found by themselves.",
+  "mobileRelay": "Relay",
+  "mobileRelayDescription": "Reach this computer through BaoCode's relay when none of its addresses can be reached. Coming later.",
+  "mobileRelayUnavailable": "Not Available Yet",
+  "mobilePair": "Pair a Phone",
+  "mobilePairDescription": "Scan the code with BaoCode on the phone (Me → Paired computers → Pair a computer), or pick this computer under Nearby Computers there.",
+  "mobilePairShow": "Show QR Code",
+  "mobilePairCancel": "Cancel",
+  "mobilePairNewCode": "New Code",
+  "mobilePairCopyLink": "Copy Link",
+  "mobilePairCopied": "Copied",
+  "mobilePairExpires": "Good for {minutes} min, once. A phone that cannot scan it can paste the link instead.",
+  "@mobilePairExpires": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "mobilePairExpired": "This code has expired.",
+  "mobilePairVerifyTitle": "Compare with {name}",
+  "@mobilePairVerifyTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mobilePairVerifyBody": "Check that the phone shows the same code, then confirm on the phone.",
+  "mobilePairMismatch": "Codes Don't Match",
+  "mobilePaired": "Paired with {name}.",
+  "@mobilePaired": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mobilePhones": "Paired Phones",
+  "mobilePhonesNone": "No phone is paired yet.",
+  "mobilePhoneConnected": "Connected",
+  "mobilePhoneLastSeen": "Last connected {time}",
+  "@mobilePhoneLastSeen": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "mobilePhoneRemove": "Remove",
+  "mobileThisComputerKey": "This Computer's Key",
+  "mobileThisComputerKeyDescription": "The phone shows it too: the same key on both means no one is in between.",
+  "mobileDiscoverable": "Find on the Local Network",
+  "mobileDiscoverableDescription": "Phones paired with this computer find it on the local network, even after its address changes; while you pair one, new phones list it under Nearby Computers.",
+  "mobilePairNearbyHint": "Phones on this network can also pick this computer under Nearby Computers.",
+  "mobilePairRequestTitle": "{name} Wants to Pair",
+  "@mobilePairRequestTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mobilePairRequestBody": "It found this computer nearby. Allow it only if the phone shows the same code.",
+  "mobilePairAllow": "Allow"
 }

@@ -33,6 +33,7 @@ import 'kernel/claude_code/claude_path_setting.dart';
 import 'kernel/claude_code/process_transport.dart';
 import 'kernel/commit_attribution.dart';
 import 'keybindings/keybindings_sync.dart';
+import 'link/link_host.dart';
 import 'keybindings/keymap.dart';
 import 'keybindings/vscode_import.dart';
 import 'l10n/l10n.dart';
@@ -177,6 +178,12 @@ Future<void> main(List<String> arguments) async {
     l10n: () =>
         lookupAppLocalizations(locale.locale ?? AppLocale.systemLocale()),
   )..load();
+  // The phones paired with this computer (Settings → Mobile): listening
+  // for them, if they are allowed to connect.
+  final link = kIsWeb
+      ? null
+      : LinkHost(workspace: workspace, customizations: CustomizationStore());
+  unawaited(link?.load());
   // The first frame is in the kept theme, restored from storage as VS Code
   // does before the workbench shows; its file is read after. The setting
   // is settings.json's `workbench.colorTheme`, the theme's colors the
@@ -259,6 +266,7 @@ Future<void> main(List<String> arguments) async {
       diagnostics: DiagnosticsUploader.platform(),
       workspace: workspace,
       claudeStatus: localClaudeStatus,
+      link: link,
     );
     _startTelemetry(files);
   }

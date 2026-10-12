@@ -7781,4 +7781,177 @@ class AppLocalizationsEn extends AppLocalizations {
   String explorerUndoCreateChanged(String name) {
     return '$name has changed since it was made. Undo deletes it anyway?';
   }
+
+  @override
+  String get settingsSectionMobile => 'Mobile';
+
+  @override
+  String get settingsMobileKeywords =>
+      'phone iphone android ios pair qr code remote lan';
+
+  @override
+  String get mobileSettingsDescription =>
+      'Follow and drive this computer\'s agents from BaoCode on your phone, over the local network or the internet. What goes between them is end-to-end encrypted.';
+
+  @override
+  String get mobileAllow => 'Allow Phones to Connect';
+
+  @override
+  String get mobileAllowDescription =>
+      'Phones paired with this computer connect to it directly.';
+
+  @override
+  String get mobileStatus => 'Status';
+
+  @override
+  String get mobileStatusOff => 'Off';
+
+  @override
+  String get mobileStatusStarting => 'Starting…';
+
+  @override
+  String mobileStatusListening(int port) {
+    return 'Listening on port $port';
+  }
+
+  @override
+  String mobileStatusFailed(String error) {
+    return 'Could not listen: $error';
+  }
+
+  @override
+  String get mobileAddresses => 'Addresses';
+
+  @override
+  String get mobileAddressesDescription =>
+      'Where phones reach this computer, in the order they try them: the local network first, then the internet.';
+
+  @override
+  String get mobileAddressesNone => 'No network found.';
+
+  @override
+  String get mobileAddressesRefresh => 'Refresh';
+
+  @override
+  String get mobilePort => 'Port';
+
+  @override
+  String get mobilePortDescription =>
+      'The port phones connect to. Forward it on the router to reach this computer from the internet.';
+
+  @override
+  String mobilePortInvalid(String text) {
+    return 'Not a port: $text. Enter a number from 1 to 65535.';
+  }
+
+  @override
+  String get mobilePublicAddress => 'Public Address';
+
+  @override
+  String get mobilePublicAddressDescription =>
+      'A domain or IP this computer can be reached at from the internet (with the port forwarded), put in the QR code; several separated by commas. Public IPv6 addresses are found by themselves.';
+
+  @override
+  String get mobileRelay => 'Relay';
+
+  @override
+  String get mobileRelayDescription =>
+      'Reach this computer through BaoCode\'s relay when none of its addresses can be reached. Coming later.';
+
+  @override
+  String get mobileRelayUnavailable => 'Not Available Yet';
+
+  @override
+  String get mobilePair => 'Pair a Phone';
+
+  @override
+  String get mobilePairDescription =>
+      'Scan the code with BaoCode on the phone (Me → Paired computers → Pair a computer), or pick this computer under Nearby Computers there.';
+
+  @override
+  String get mobilePairShow => 'Show QR Code';
+
+  @override
+  String get mobilePairCancel => 'Cancel';
+
+  @override
+  String get mobilePairNewCode => 'New Code';
+
+  @override
+  String get mobilePairCopyLink => 'Copy Link';
+
+  @override
+  String get mobilePairCopied => 'Copied';
+
+  @override
+  String mobilePairExpires(int minutes) {
+    return 'Good for $minutes min, once. A phone that cannot scan it can paste the link instead.';
+  }
+
+  @override
+  String get mobilePairExpired => 'This code has expired.';
+
+  @override
+  String mobilePairVerifyTitle(String name) {
+    return 'Compare with $name';
+  }
+
+  @override
+  String get mobilePairVerifyBody =>
+      'Check that the phone shows the same code, then confirm on the phone.';
+
+  @override
+  String get mobilePairMismatch => 'Codes Don\'t Match';
+
+  @override
+  String mobilePaired(String name) {
+    return 'Paired with $name.';
+  }
+
+  @override
+  String get mobilePhones => 'Paired Phones';
+
+  @override
+  String get mobilePhonesNone => 'No phone is paired yet.';
+
+  @override
+  String get mobilePhoneConnected => 'Connected';
+
+  @override
+  String mobilePhoneLastSeen(String time) {
+    return 'Last connected $time';
+  }
+
+  @override
+  String get mobilePhoneRemove => 'Remove';
+
+  @override
+  String get mobileThisComputerKey => 'This Computer\'s Key';
+
+  @override
+  String get mobileThisComputerKeyDescription =>
+      'The phone shows it too: the same key on both means no one is in between.';
+
+  @override
+  String get mobileDiscoverable => 'Find on the Local Network';
+
+  @override
+  String get mobileDiscoverableDescription =>
+      'Phones paired with this computer find it on the local network, even after its address changes; while you pair one, new phones list it under Nearby Computers.';
+
+  @override
+  String get mobilePairNearbyHint =>
+      'Phones on this network can also pick this computer under Nearby Computers.';
+
+  @override
+  String mobilePairRequestTitle(String name) {
+    return '$name Wants to Pair';
+  }
+
+  @override
+  String get mobilePairRequestBody =>
+      'It found this computer nearby. Allow it only if the phone shows the same code.';
+
+  @override
+  String get mobilePairAllow => 'Allow';
 }

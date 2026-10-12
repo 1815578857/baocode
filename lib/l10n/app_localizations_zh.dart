@@ -7317,4 +7317,168 @@ class AppLocalizationsZh extends AppLocalizations {
   String explorerUndoCreateChanged(String name) {
     return '$name 创建后已被修改，仍要撤销（删除它）吗？';
   }
+
+  @override
+  String get settingsSectionMobile => '手机';
+
+  @override
+  String get settingsMobileKeywords => '手机 移动端 配对 扫码 二维码 远程 局域网 iphone android';
+
+  @override
+  String get mobileSettingsDescription =>
+      '在手机上的 BaoCode 里查看并操作这台电脑的智能体，经由局域网或公网直连。两端之间的内容端到端加密。';
+
+  @override
+  String get mobileAllow => '允许手机连接';
+
+  @override
+  String get mobileAllowDescription => '与这台电脑配对过的手机可以直接连接它。';
+
+  @override
+  String get mobileStatus => '状态';
+
+  @override
+  String get mobileStatusOff => '已关闭';
+
+  @override
+  String get mobileStatusStarting => '正在启动…';
+
+  @override
+  String mobileStatusListening(int port) {
+    return '正在监听端口 $port';
+  }
+
+  @override
+  String mobileStatusFailed(String error) {
+    return '无法监听：$error';
+  }
+
+  @override
+  String get mobileAddresses => '地址';
+
+  @override
+  String get mobileAddressesDescription => '手机按此顺序尝试连接这台电脑：先局域网，再公网。';
+
+  @override
+  String get mobileAddressesNone => '未找到可用的网络。';
+
+  @override
+  String get mobileAddressesRefresh => '刷新';
+
+  @override
+  String get mobilePort => '端口';
+
+  @override
+  String get mobilePortDescription => '手机连接的端口。在路由器上转发此端口，即可从公网访问这台电脑。';
+
+  @override
+  String mobilePortInvalid(String text) {
+    return '不是有效端口：$text。请填写 1 到 65535 之间的数字。';
+  }
+
+  @override
+  String get mobilePublicAddress => '公网地址';
+
+  @override
+  String get mobilePublicAddressDescription =>
+      '可从公网访问这台电脑的域名或 IP（需转发端口），会写入二维码；多个用逗号分隔。公网 IPv6 地址会自动加入。';
+
+  @override
+  String get mobileRelay => '中转';
+
+  @override
+  String get mobileRelayDescription => '当这台电脑的地址都无法直连时，经由 BaoCode 中转服务连接。即将推出。';
+
+  @override
+  String get mobileRelayUnavailable => '暂不可用';
+
+  @override
+  String get mobilePair => '配对手机';
+
+  @override
+  String get mobilePairDescription =>
+      '在手机 BaoCode 上扫码（我的 → 已配对的电脑 → 配对新电脑），或在那里的「附近的电脑」中选择这台电脑。';
+
+  @override
+  String get mobilePairShow => '显示二维码';
+
+  @override
+  String get mobilePairCancel => '取消';
+
+  @override
+  String get mobilePairNewCode => '换一个';
+
+  @override
+  String get mobilePairCopyLink => '复制链接';
+
+  @override
+  String get mobilePairCopied => '已复制';
+
+  @override
+  String mobilePairExpires(int minutes) {
+    return '$minutes 分钟内有效，仅可使用一次。无法扫码的手机也可以粘贴链接。';
+  }
+
+  @override
+  String get mobilePairExpired => '二维码已过期。';
+
+  @override
+  String mobilePairVerifyTitle(String name) {
+    return '与 $name 核对';
+  }
+
+  @override
+  String get mobilePairVerifyBody => '确认手机上显示的安全码与此相同，然后在手机上确认。';
+
+  @override
+  String get mobilePairMismatch => '安全码不一致';
+
+  @override
+  String mobilePaired(String name) {
+    return '已与 $name 配对。';
+  }
+
+  @override
+  String get mobilePhones => '已配对的手机';
+
+  @override
+  String get mobilePhonesNone => '还没有配对的手机。';
+
+  @override
+  String get mobilePhoneConnected => '已连接';
+
+  @override
+  String mobilePhoneLastSeen(String time) {
+    return '上次连接于 $time';
+  }
+
+  @override
+  String get mobilePhoneRemove => '移除';
+
+  @override
+  String get mobileThisComputerKey => '这台电脑的密钥';
+
+  @override
+  String get mobileThisComputerKeyDescription => '手机上也会显示它：两边一致，就说明中间没有人截取。';
+
+  @override
+  String get mobileDiscoverable => '局域网发现';
+
+  @override
+  String get mobileDiscoverableDescription =>
+      '已配对的手机在局域网里自动找到这台电脑，地址变了也能连上；配对时，新手机还能在「附近的电脑」里看到它。';
+
+  @override
+  String get mobilePairNearbyHint => '同一网络里的手机也可以在「附近的电脑」中选择这台电脑。';
+
+  @override
+  String mobilePairRequestTitle(String name) {
+    return '$name 请求配对';
+  }
+
+  @override
+  String get mobilePairRequestBody => '它是在「附近的电脑」里找到这台电脑的。手机上显示的安全码一致才允许。';
+
+  @override
+  String get mobilePairAllow => '允许';
 }
