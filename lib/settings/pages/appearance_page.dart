@@ -167,6 +167,11 @@ class AppearanceSettingsPage extends StatelessWidget {
     _keep(ChatMinimap.settingKey, ChatMinimap.setting(on));
   }
 
+  void _selectMinimapGlass(double opacity) {
+    ChatMinimap.glass.value = opacity;
+    _keep(ChatMinimap.glassKey, ChatMinimap.glassSetting(opacity));
+  }
+
   static String loaderStyleName(BuildContext context, PixelLoaderStyle style) {
     final l10n = context.l10n;
     return switch (style) {
@@ -319,6 +324,7 @@ class AppearanceSettingsPage extends StatelessWidget {
         ChatWidth.current,
         UserMessageStyle.current,
         ChatMinimap.enabled,
+        ChatMinimap.glass,
         for (final role in PixelLoaderRole.values) ...[role.style, role.speed],
         CodeFont.families,
         CodeFont.size,
@@ -330,6 +336,8 @@ class AppearanceSettingsPage extends StatelessWidget {
         final widthStep = ChatWidth.stepOf(ChatWidth.current.value);
         final widthShown = widthName(context, ChatWidth.steps[widthStep]);
         final styleShown = _styleName(context, UserMessageStyle.current.value);
+        final glass = ChatMinimap.glass.value;
+        final glassShown = '${(glass * 100).round()}%';
         final families = CodeFont.families.value;
         final sizeStep = _nearest(CodeFont.sizeSteps, CodeFont.size.value);
         final sizeShown = '${CodeFont.size.value.round()}';
@@ -420,6 +428,21 @@ class AppearanceSettingsPage extends StatelessWidget {
                   value: ChatMinimap.enabled.value,
                   onChanged: _selectMinimap,
                 ),
+                if (ChatMinimap.enabled.value)
+                  SettingsRow(
+                    label: l10n.appearanceSettingsMinimapGlass,
+                    description: l10n.appearanceSettingsMinimapGlassDescription,
+                    trailing: SettingsSlider(
+                      step: ChatMinimap.glassSteps.indexOf(glass),
+                      count: ChatMinimap.glassSteps.length,
+                      label: glassShown,
+                      semanticLabel: l10n.appearanceSettingsMinimapGlassLabel(
+                        glassShown,
+                      ),
+                      onChanged: (step) =>
+                          _selectMinimapGlass(ChatMinimap.glassSteps[step]),
+                    ),
+                  ),
               ],
             ),
             SettingsCard(

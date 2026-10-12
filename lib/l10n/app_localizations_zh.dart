@@ -6448,6 +6448,18 @@ class AppLocalizationsZh extends AppLocalizations {
       '在对话左侧显示整段对话的缩略图，滚动时显示当前所在位置，点击或拖动即可跳转。开启时代替右侧滚动条；窗口太窄时不显示。关闭后恢复右侧滚动条。';
 
   @override
+  String get appearanceSettingsMinimapGlass => '液态玻璃不透明度';
+
+  @override
+  String get appearanceSettingsMinimapGlassDescription =>
+      '缩略图上标出当前位置的液态玻璃有多明显，包括它的底色、阴影和高光。调到 0% 时只保留当前位置的内容提亮。';
+
+  @override
+  String appearanceSettingsMinimapGlassLabel(String opacity) {
+    return '缩略图玻璃不透明度：$opacity';
+  }
+
+  @override
   String get appearanceSettingsCodeFont => '代码字体';
 
   @override

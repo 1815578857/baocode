@@ -151,9 +151,43 @@ class ChatMinimap extends StatefulWidget {
   /// [on] as settings.json keeps it; null (not written) for on.
   static Object? setting(bool on) => on ? null : false;
 
-  /// Sets [enabled] from [read] now and whenever [changes] notifies.
-  static void follow(Listenable changes, Object? Function() read) {
-    void update() => enabled.value = parse(read());
+  /// settings.json's `chat.minimapGlass`: how opaque the glass is (its
+  /// body, shadow and light; not the strokes under it, nor how they swell),
+  /// as Settings → Appearance sets it, one of [glassSteps]. Unset:
+  /// [defaultGlass].
+  static const glassKey = 'chat.minimapGlass';
+
+  /// From clear glass to half as much again as it is drawn; by default, a
+  /// little clearer than that.
+  static const glassSteps = [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5];
+  static const defaultGlass = 0.75;
+
+  static final ValueNotifier<double> glass = ValueNotifier(defaultGlass);
+
+  /// [value] as settings.json has it: the step nearest it; [defaultGlass]
+  /// when it is not a number.
+  static double parseGlass(Object? value) {
+    if (value is! num) return defaultGlass;
+    var nearest = glassSteps.first;
+    for (final step in glassSteps) {
+      if ((step - value).abs() < (nearest - value).abs()) nearest = step;
+    }
+    return nearest;
+  }
+
+  /// [opacity] as settings.json keeps it; null (not written) for
+  /// [defaultGlass].
+  static Object? glassSetting(double opacity) =>
+      opacity == defaultGlass ? null : opacity;
+
+  /// Sets [enabled] and [glass] from [read] now and whenever [changes]
+  /// notifies.
+  static void follow(Listenable changes, Object? Function(String key) read) {
+    void update() {
+      enabled.value = parse(read(settingKey));
+      glass.value = parseGlass(read(glassKey));
+    }
+
     update();
     changes.addListener(update);
   }
@@ -560,6 +594,7 @@ class _ChatMinimapState extends State<ChatMinimap>
                               _repaint,
                               _hover,
                               _reveal,
+                              ChatMinimap.glass,
                             ]),
                           ),
                         ),
@@ -719,8 +754,12 @@ class _ChatMinimapState extends State<ChatMinimap>
       glass.top + glass.height,
     );
     final radius = Radius.circular(math.min(7, glass.height / 2));
-    final lift = (1 + 0.3 * hover + (_grab != null ? 0.35 : 0)) * shown;
-    if (shown > 0) {
+    final lift =
+        (1 + 0.3 * hover + (_grab != null ? 0.35 : 0)) *
+        shown *
+        ChatMinimap.glass.value;
+    // Clear glass: none of it drawn.
+    if (lift > 0) {
       canvas
         ..save()
         ..translate(pane.left, pane.top);
@@ -764,7 +803,7 @@ class _ChatMinimapState extends State<ChatMinimap>
       ..drawRect(layer, _masking)
       ..restore();
 
-    if (shown > 0) {
+    if (lift > 0) {
       canvas
         ..save()
         ..translate(pane.left, pane.top);

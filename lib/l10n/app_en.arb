@@ -4898,6 +4898,16 @@
   },
   "appearanceSettingsMinimap": "Conversation Minimap",
   "appearanceSettingsMinimapDescription": "A minimap of the whole conversation at the left of its column, where you are in it shown as you scroll; click or drag it to get somewhere. It stands in for the scrollbar, and is not shown in a window too narrow for it. Off: the scrollbar.",
+  "appearanceSettingsMinimapGlass": "Glass Opacity",
+  "appearanceSettingsMinimapGlassDescription": "How much the liquid glass over where you are in the minimap shows: its tint, shadow and light. At 0% only the part in view stands out.",
+  "appearanceSettingsMinimapGlassLabel": "Minimap glass opacity: {opacity}",
+  "@appearanceSettingsMinimapGlassLabel": {
+    "placeholders": {
+      "opacity": {
+        "type": "String"
+      }
+    }
+  },
   "appearanceSettingsCodeFont": "Code Font",
   "appearanceSettingsCodeFontDescription": "The font code is drawn in: in the editor, the terminal, the chat and the previews. Family names in order, separated by commas, or a preset.",
   "appearanceSettingsCodeFontDefault": "Default",

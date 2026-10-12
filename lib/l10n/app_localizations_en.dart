@@ -6883,6 +6883,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'A minimap of the whole conversation at the left of its column, where you are in it shown as you scroll; click or drag it to get somewhere. It stands in for the scrollbar, and is not shown in a window too narrow for it. Off: the scrollbar.';
 
   @override
+  String get appearanceSettingsMinimapGlass => 'Glass Opacity';
+
+  @override
+  String get appearanceSettingsMinimapGlassDescription =>
+      'How much the liquid glass over where you are in the minimap shows: its tint, shadow and light. At 0% only the part in view stands out.';
+
+  @override
+  String appearanceSettingsMinimapGlassLabel(String opacity) {
+    return 'Minimap glass opacity: $opacity';
+  }
+
+  @override
   String get appearanceSettingsCodeFont => 'Code Font';
 
   @override

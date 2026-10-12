@@ -1,5 +1,6 @@
 import 'package:bao_editor/monaco/flutter/editor_surface.dart';
 import 'package:baocode/chat/user_message_style.dart';
+import 'package:baocode/chat/widgets/chat_minimap.dart';
 import 'package:baocode/chat/widgets/pixel_loader.dart';
 import 'package:baocode/ide/ide_color_theme_picker.dart';
 import 'package:baocode/settings/pages/appearance_page.dart';
@@ -18,6 +19,8 @@ void main() {
     CodeFont.uiScale.value = CodeFont.defaultUiScale;
     CodeFont.terminalSize.value = null;
     UserMessageStyle.current.value = UserMessageStyle.sticky;
+    ChatMinimap.enabled.value = true;
+    ChatMinimap.glass.value = ChatMinimap.defaultGlass;
     for (final role in PixelLoaderRole.values) {
       role.style.value = PixelLoaderStyle.fill;
       role.speed.value = role.defaultSpeed;
@@ -98,6 +101,37 @@ void main() {
     expect(UserMessageStyle.current.value, UserMessageStyle.bubble);
     expect(settings.written.containsKey(UserMessageStyle.settingKey), isTrue);
     expect(settings.written[UserMessageStyle.settingKey], isNull);
+    await leave(tester);
+  });
+
+  testWidgets('the minimap\'s glass opacity is kept in settings.json, the '
+      'default removed from it; no slider with the minimap off', (
+    tester,
+  ) async {
+    final settings = await pumpPage(tester);
+    Finder slider() => find.byWidgetPredicate(
+      (widget) =>
+          widget is SettingsSlider &&
+          widget.semanticLabel.startsWith('Minimap glass opacity'),
+    );
+    expect(tester.widget<SettingsSlider>(slider()).label, '75%');
+    tester
+        .widget<SettingsSlider>(slider())
+        .onChanged(ChatMinimap.glassSteps.indexOf(0.5));
+    await tester.pump();
+    expect(ChatMinimap.glass.value, 0.5);
+    expect(settings.written[ChatMinimap.glassKey], 0.5);
+    expect(tester.widget<SettingsSlider>(slider()).label, '50%');
+    tester
+        .widget<SettingsSlider>(slider())
+        .onChanged(ChatMinimap.glassSteps.indexOf(0.75));
+    await tester.pump();
+    expect(settings.written.containsKey(ChatMinimap.glassKey), isTrue);
+    expect(settings.written[ChatMinimap.glassKey], isNull);
+
+    ChatMinimap.enabled.value = false;
+    await tester.pump();
+    expect(slider(), findsNothing);
     await leave(tester);
   });
 

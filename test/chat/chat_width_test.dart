@@ -74,6 +74,18 @@ void main() {
     expect(ChatMinimap.setting(false), isFalse);
   });
 
+  test('settings.json\'s chat.minimapGlass: a step, unset or not a number '
+      'is 75%, only another is written', () {
+    expect(ChatMinimap.parseGlass(null), 0.75);
+    expect(ChatMinimap.parseGlass('x'), 0.75);
+    expect(ChatMinimap.parseGlass(0), 0);
+    expect(ChatMinimap.parseGlass(0.6), 0.5);
+    expect(ChatMinimap.parseGlass(9), 1.5);
+    expect(ChatMinimap.glassSetting(0.75), isNull);
+    expect(ChatMinimap.glassSetting(1), 1);
+    expect(ChatMinimap.glassSetting(0.25), 0.25);
+  });
+
   testWidgets('the slider picks a step, applied at once and kept in '
       'settings.json; the default is not written', (tester) async {
     // Tall enough for the whole page: one scrolled to its lower part trips

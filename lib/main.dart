@@ -154,11 +154,9 @@ Future<void> main(List<String> arguments) async {
       files.settings,
       () => files.settings[UserMessageStyle.settingKey],
     );
-    // Settings → Appearance: whether the conversation has a minimap.
-    ChatMinimap.follow(
-      files.settings,
-      () => files.settings[ChatMinimap.settingKey],
-    );
+    // Settings → Appearance: whether the conversation has a minimap, and how
+    // opaque its glass is.
+    ChatMinimap.follow(files.settings, (key) => files.settings[key]);
     // Settings → Appearance: what an agent and a subagent show running.
     PixelLoaderRole.follow(files.settings, (key) => files.settings[key]);
     // Settings → Appearance: the code's font, size and ligatures, and the
