@@ -2169,6 +2169,36 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get turnCopy => '复制回复';
+
+  @override
+  String get turnCopied => '已复制';
+
+  @override
+  String turnSpeed(String speed) {
+    return '$speed tok/s';
+  }
+
+  @override
+  String turnTokens(String tokens) {
+    return '$tokens tokens';
+  }
+
+  @override
+  String turnTokensHint(String input, String output) {
+    return '本轮：输入 $input（含缓存），输出 $output';
+  }
+
+  @override
+  String get turnSpeedHint => '输出速度';
+
+  @override
+  String get turnDurationHint => '本轮耗时';
+
+  @override
+  String get turnCostHint => '本轮花费';
+
+  @override
   String turnWorked(String duration) {
     return '已处理 $duration';
   }
@@ -6409,6 +6439,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String appearanceSettingsUserMessageStyleLabel(String style) {
     return '用户消息样式：$style';
   }
+
+  @override
+  String get appearanceSettingsMinimap => '对话缩略图';
+
+  @override
+  String get appearanceSettingsMinimapDescription =>
+      '在对话左侧显示整段对话的缩略图，滚动时显示当前所在位置，点击或拖动即可跳转。开启时代替右侧滚动条；窗口太窄时不显示。关闭后恢复右侧滚动条。';
 
   @override
   String get appearanceSettingsCodeFont => '代码字体';

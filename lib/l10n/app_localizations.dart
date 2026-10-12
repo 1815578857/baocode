@@ -4130,6 +4130,54 @@ abstract class AppLocalizations {
   /// **'thought {duration}'**
   String stepsThought(String duration);
 
+  /// Hint of the button at the end of a finished turn that copies its answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy reply'**
+  String get turnCopy;
+
+  /// No description provided for @turnCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get turnCopied;
+
+  /// How fast the model wrote in a turn, in tokens a second, e.g. "100 tok/s".
+  ///
+  /// In en, this message translates to:
+  /// **'{speed} tok/s'**
+  String turnSpeed(String speed);
+
+  /// The tokens a turn read and wrote, all its requests together, e.g. "12.3k tokens".
+  ///
+  /// In en, this message translates to:
+  /// **'{tokens} tokens'**
+  String turnTokens(String tokens);
+
+  /// No description provided for @turnTokensHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This turn: read {input} (cache included), wrote {output}'**
+  String turnTokensHint(String input, String output);
+
+  /// No description provided for @turnSpeedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Output speed'**
+  String get turnSpeedHint;
+
+  /// No description provided for @turnDurationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Time this turn took'**
+  String get turnDurationHint;
+
+  /// No description provided for @turnCostHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost of this turn'**
+  String get turnCostHint;
+
   /// A finished turn's work, folded before its answer, e.g. "Worked for 4m 32s".
   ///
   /// In en, this message translates to:
@@ -11282,6 +11330,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your messages: {style}'**
   String appearanceSettingsUserMessageStyleLabel(String style);
+
+  /// No description provided for @appearanceSettingsMinimap.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation Minimap'**
+  String get appearanceSettingsMinimap;
+
+  /// No description provided for @appearanceSettingsMinimapDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'A minimap of the whole conversation at the left of its column, where you are in it shown as you scroll; click or drag it to get somewhere. It stands in for the scrollbar, and is not shown in a window too narrow for it. Off: the scrollbar.'**
+  String get appearanceSettingsMinimapDescription;
 
   /// No description provided for @appearanceSettingsCodeFont.
   ///

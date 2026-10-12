@@ -27,6 +27,7 @@ import 'widgets/chat_item_view.dart';
 import 'widgets/chat_minimap.dart';
 import 'widgets/edge_fade_mask.dart';
 import 'widgets/fold_line.dart';
+import 'widgets/turn_footer.dart';
 import 'widgets/user_message_bubble.dart';
 
 /// Virtualized, selectable conversation history followed by the live turn.
@@ -126,6 +127,30 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   Iterable<ChatItem> _itemsIn(StepFold fold) => [
     for (var index = fold.start; index < fold.end; index++) _feed.itemAt(index),
   ];
+
+  /// The footer under item [index], when it ends a finished turn: its
+  /// answer to copy, how fast, how long, and what it cost.
+  Widget? _turnFooter(int index) {
+    final prompt = _folds.turnEndingAt(index);
+    if (prompt == null) return null;
+    final message = _feed.itemAt(prompt);
+    if (message is! UserMessageItem) return null;
+    // The answer: the words after the turn's last step.
+    final words = <String>[];
+    for (var i = index; i > prompt; i--) {
+      final item = _feed.itemAt(i);
+      if (item is AssistantTextItem) {
+        words.insert(0, item.text);
+      } else if (item is! ThinkingItem) {
+        break;
+      }
+    }
+    return TurnFooter(
+      answer: words.isEmpty ? null : words.join('\n\n'),
+      worked: message.worked,
+      usage: message.usage,
+    );
+  }
 
   /// The work fold of the last turn, if it folds.
   StepFold? _lastTurnWork() {
@@ -1344,10 +1369,11 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
         ),
       };
     }
+    final footer = _turnFooter(index);
     return _ItemSelectionScope(
       index: index,
       delegate: _selectionDelegate,
-      child: folds.isEmpty
+      child: folds.isEmpty && footer == null
           ? shown!
           // Steps line up on the left, folds' lines too.
           : SizedBox(
@@ -1373,6 +1399,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                       onToggle: () => _toggleFold(fold),
                     ),
                   ?shown,
+                  ?footer,
                 ],
               ),
             ),

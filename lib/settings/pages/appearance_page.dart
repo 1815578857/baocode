@@ -9,6 +9,7 @@ import 'package:flutter/material.dart' hide ColorScheme;
 import '../../chat/chat_keys.dart';
 import '../../chat/chat_width.dart';
 import '../../chat/user_message_style.dart';
+import '../../chat/widgets/chat_minimap.dart';
 import '../../chat/widgets/pixel_loader.dart';
 import '../../ide/ide_code_editor.dart';
 import '../../ide/ide_color_theme_picker.dart';
@@ -159,6 +160,11 @@ class AppearanceSettingsPage extends StatelessWidget {
   void _selectStyle(UserMessageStyle style) {
     UserMessageStyle.current.value = style;
     _keep(UserMessageStyle.settingKey, style.setting);
+  }
+
+  void _selectMinimap(bool on) {
+    ChatMinimap.enabled.value = on;
+    _keep(ChatMinimap.settingKey, ChatMinimap.setting(on));
   }
 
   static String loaderStyleName(BuildContext context, PixelLoaderStyle style) {
@@ -312,6 +318,7 @@ class AppearanceSettingsPage extends StatelessWidget {
         changes,
         ChatWidth.current,
         UserMessageStyle.current,
+        ChatMinimap.enabled,
         for (final role in PixelLoaderRole.values) ...[role.style, role.speed],
         CodeFont.families,
         CodeFont.size,
@@ -406,6 +413,12 @@ class AppearanceSettingsPage extends StatelessWidget {
                       ],
                     ]),
                   ),
+                ),
+                SettingsSwitchRow(
+                  label: l10n.appearanceSettingsMinimap,
+                  description: l10n.appearanceSettingsMinimapDescription,
+                  value: ChatMinimap.enabled.value,
+                  onChanged: _selectMinimap,
                 ),
               ],
             ),

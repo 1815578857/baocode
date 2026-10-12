@@ -2243,6 +2243,36 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get turnCopy => 'Copy reply';
+
+  @override
+  String get turnCopied => 'Copied';
+
+  @override
+  String turnSpeed(String speed) {
+    return '$speed tok/s';
+  }
+
+  @override
+  String turnTokens(String tokens) {
+    return '$tokens tokens';
+  }
+
+  @override
+  String turnTokensHint(String input, String output) {
+    return 'This turn: read $input (cache included), wrote $output';
+  }
+
+  @override
+  String get turnSpeedHint => 'Output speed';
+
+  @override
+  String get turnDurationHint => 'Time this turn took';
+
+  @override
+  String get turnCostHint => 'Cost of this turn';
+
+  @override
   String turnWorked(String duration) {
     return 'Worked for $duration';
   }
@@ -6844,6 +6874,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String appearanceSettingsUserMessageStyleLabel(String style) {
     return 'Your messages: $style';
   }
+
+  @override
+  String get appearanceSettingsMinimap => 'Conversation Minimap';
+
+  @override
+  String get appearanceSettingsMinimapDescription =>
+      'A minimap of the whole conversation at the left of its column, where you are in it shown as you scroll; click or drag it to get somewhere. It stands in for the scrollbar, and is not shown in a window too narrow for it. Off: the scrollbar.';
 
   @override
   String get appearanceSettingsCodeFont => 'Code Font';

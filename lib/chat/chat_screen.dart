@@ -167,8 +167,8 @@ class _ChatScreenState extends State<ChatScreen>
   double get _maxContentWidth => ChatWidth.current.value;
 
   /// Whether the conversation has a minimap: in the agents' window, not a
-  /// pane of the IDE's (see [ChatMinimap]).
-  bool get _minimap => !widget.embedded;
+  /// pane of the IDE's, unless turned off (see [ChatMinimap.enabled]).
+  bool get _minimap => !widget.embedded && ChatMinimap.enabled.value;
 
   void _widthChanged() => setState(() {});
 
@@ -290,6 +290,7 @@ class _ChatScreenState extends State<ChatScreen>
     _session.addListener(_followPlan);
     _restoreAgents();
     ChatWidth.current.addListener(_widthChanged);
+    ChatMinimap.enabled.addListener(_widthChanged);
     if (widget.autofocus) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _composerKey.currentState?.focus();
@@ -308,6 +309,7 @@ class _ChatScreenState extends State<ChatScreen>
     _session.removeListener(_checkStarting);
     _session.removeListener(_followPlan);
     ChatWidth.current.removeListener(_widthChanged);
+    ChatMinimap.enabled.removeListener(_widthChanged);
     _existence?.dispose();
     _keyScope.dispose();
     for (final layer in _layers) {

@@ -95,6 +95,20 @@ Finder get _strip => find.descendant(
   matching: find.byType(CustomPaint),
 );
 
+/// The minimap's track: its paint but the room either side for the glass,
+/// which is a little wider.
+Rect _track(WidgetTester tester) {
+  final strip = tester.getRect(_strip);
+  final outset = (strip.width - 24) / 2;
+  expect(outset, greaterThan(0));
+  return Rect.fromLTRB(
+    strip.left + outset,
+    strip.top,
+    strip.right - outset,
+    strip.bottom,
+  );
+}
+
 double _opacity(WidgetTester tester) => tester
     .widget<AnimatedOpacity>(
       find.descendant(
@@ -111,12 +125,12 @@ void main() {
   testWidgets('shows in the margin left of the column', (tester) async {
     await _pump(tester, _Feed(_conversation(30)));
     expect(_opacity(tester), 1);
-    final strip = tester.getRect(_strip);
+    final strip = _track(tester);
     // The column is 720 wide in the middle of 1200 (less its gutters).
     expect(strip.right, lessThanOrEqualTo(240 - 16));
     expect(strip.left, greaterThanOrEqualTo(16));
-    // Roomy there: the wide one.
-    expect(strip.width, 52);
+    // However roomy the margin, as narrow.
+    expect(strip.width, 24);
     // It stands in for the scrollbar.
     expect(_scrollbar(tester).interactive, isFalse);
   });
@@ -132,15 +146,13 @@ void main() {
           maxWidth: 1200,
         );
         expect(_opacity(tester), 1);
-        final strip = tester.getRect(_strip);
+        final strip = _track(tester);
         final text = tester.getRect(find.byType(AssistantText).first);
         expect(strip.left, greaterThanOrEqualTo(12));
         // Room to breathe beside the text, as much on the other side.
         expect(strip.right, lessThanOrEqualTo(text.left - 20));
         expect(text.left, greaterThanOrEqualTo(ChatMinimap.room));
         expect(width - text.right, greaterThanOrEqualTo(ChatMinimap.room));
-        // Only the room the column leaves it: the narrow one.
-        expect(strip.width, 24);
       },
     );
   }

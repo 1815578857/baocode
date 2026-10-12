@@ -1322,6 +1322,43 @@
       }
     }
   },
+  "turnCopy": "Copy reply",
+  "@turnCopy": {
+    "description": "Hint of the button at the end of a finished turn that copies its answer."
+  },
+  "turnCopied": "Copied",
+  "turnSpeed": "{speed} tok/s",
+  "@turnSpeed": {
+    "description": "How fast the model wrote in a turn, in tokens a second, e.g. \"100 tok/s\".",
+    "placeholders": {
+      "speed": {
+        "type": "String"
+      }
+    }
+  },
+  "turnTokens": "{tokens} tokens",
+  "@turnTokens": {
+    "description": "The tokens a turn read and wrote, all its requests together, e.g. \"12.3k tokens\".",
+    "placeholders": {
+      "tokens": {
+        "type": "String"
+      }
+    }
+  },
+  "turnTokensHint": "This turn: read {input} (cache included), wrote {output}",
+  "@turnTokensHint": {
+    "placeholders": {
+      "input": {
+        "type": "String"
+      },
+      "output": {
+        "type": "String"
+      }
+    }
+  },
+  "turnSpeedHint": "Output speed",
+  "turnDurationHint": "Time this turn took",
+  "turnCostHint": "Cost of this turn",
   "turnWorked": "Worked for {duration}",
   "@turnWorked": {
     "description": "A finished turn's work, folded before its answer, e.g. \"Worked for 4m 32s\".",
@@ -4859,6 +4896,8 @@
       }
     }
   },
+  "appearanceSettingsMinimap": "Conversation Minimap",
+  "appearanceSettingsMinimapDescription": "A minimap of the whole conversation at the left of its column, where you are in it shown as you scroll; click or drag it to get somewhere. It stands in for the scrollbar, and is not shown in a window too narrow for it. Off: the scrollbar.",
   "appearanceSettingsCodeFont": "Code Font",
   "appearanceSettingsCodeFontDescription": "The font code is drawn in: in the editor, the terminal, the chat and the previews. Family names in order, separated by commas, or a preset.",
   "appearanceSettingsCodeFontDefault": "Default",

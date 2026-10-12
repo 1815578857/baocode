@@ -37,8 +37,8 @@ typedef ChatMinimapSpan = ({
 /// steps), the part in view under a drop of liquid glass that follows it
 /// (shown while the history is scrolled, or the pointer is over it), and a
 /// press or a drag on it scrolls there. In the margin left of the column
-/// when there is room for it (not in a narrow pane; wider where the margin
-/// is roomy), and while the history has more than it shows.
+/// when there is room for it (not in a narrow pane), and while the history
+/// has more than it shows.
 ///
 /// Light to keep: an item is sampled once, and again only when it changes
 /// (a changed item is a new one); only the strokes in sight are painted, and
@@ -95,9 +95,10 @@ class ChatMinimap extends StatefulWidget {
   final PointerPanZoomUpdateEventListener? onPointerPanZoomUpdate;
   final PointerPanZoomEndEventListener? onPointerPanZoomEnd;
 
-  /// Its width in a roomy margin, and in the [room] a column leaves it.
-  static const _wide = 52.0;
+  /// Its track's width, however roomy the margin; the glass reaches [_outset]
+  /// past it either side.
   static const _narrow = 24.0;
+  static const _outset = 3.0;
 
   /// The least kept between it and the history's left edge, and between it
   /// and the column (more, for the text to breathe beside it); the most
@@ -119,23 +120,42 @@ class ChatMinimap extends StatefulWidget {
   /// Kept above and below it.
   static const _inset = 14.0;
 
-  /// Where it is beside [column] (the history's): its left and width,
-  /// wide where the margin has room for that; null where it has none.
+  /// Where its track is beside [column] (the history's): its left and
+  /// width; null where the margin has no room for it.
   static ({double left, double width})? besides(
     ({double left, double width}) column,
   ) {
     if (column.width <= 0) return null;
-    for (final width in const [_wide, _narrow]) {
-      final spare = column.left - width;
-      if (spare < _edgeGap + _columnGap) continue;
-      // Half way, within bounds: never nearer the edge than [_edgeGap].
-      final gap = math.min(
-        (spare / 2).clamp(_columnGap, _maxColumnGap),
-        spare - _edgeGap,
-      );
-      return (left: column.left - gap - width, width: width);
-    }
-    return null;
+    final spare = column.left - _narrow;
+    if (spare < _edgeGap + _columnGap) return null;
+    // Half way, within bounds: never nearer the edge than [_edgeGap].
+    final gap = math.min(
+      (spare / 2).clamp(_columnGap, _maxColumnGap),
+      spare - _edgeGap,
+    );
+    return (left: column.left - gap - _narrow, width: _narrow);
+  }
+
+  /// settings.json's `chat.minimap`: whether a conversation in the agents'
+  /// window has one, as Settings → Appearance turns it on or off. Unset: on.
+  /// Off, the history has its scrollbar, and its column the width it had.
+  static const settingKey = 'chat.minimap';
+
+  /// Whether the chats have one now; main() keeps it to settings.json
+  /// ([follow]).
+  static final ValueNotifier<bool> enabled = ValueNotifier(true);
+
+  /// [value] as settings.json has it.
+  static bool parse(Object? value) => value != false;
+
+  /// [on] as settings.json keeps it; null (not written) for on.
+  static Object? setting(bool on) => on ? null : false;
+
+  /// Sets [enabled] from [read] now and whenever [changes] notifies.
+  static void follow(Listenable changes, Object? Function() read) {
+    void update() => enabled.value = parse(read());
+    update();
+    changes.addListener(update);
   }
 
   @override
@@ -507,11 +527,12 @@ class _ChatMinimapState extends State<ChatMinimap>
         final shown = fits && widget.scrolls && widget.rowCount > 0;
         return Stack(
           children: [
+            // Wide enough for the glass, which is wider than the track.
             Positioned(
-              left: math.max(0.0, place?.left ?? 0),
+              left: math.max(0.0, place?.left ?? 0) - ChatMinimap._outset,
               top: ChatMinimap._inset,
               bottom: ChatMinimap._inset,
-              width: _width,
+              width: _width + 2 * ChatMinimap._outset,
               child: IgnorePointer(
                 ignoring: !shown,
                 child: AnimatedOpacity(
@@ -570,12 +591,20 @@ class _ChatMinimapState extends State<ChatMinimap>
   /// The strokes out of view while the glass shows: dimmer than those under
   /// it, and how far the one shades into the other; all of them, while it
   /// does not.
-  static const _dim = 0.55;
+  static const _dim = 0.68;
   static const _rest = 0.8;
   static const _soft = 4.0;
 
-  /// How much the glass magnifies what is under it, shown.
-  static const _lens = 0.12;
+  /// How much the strokes swell at the glass's middle while it shows, how
+  /// far past its ends they still do (pressed a little together there, to
+  /// make the room), and the bands they are put back in.
+  static const _swell = 0.18;
+  static const _swellReach = 48.0;
+  static const _band = 3.0;
+
+  /// How much of the theme's accent is in the light on the glass (its rim
+  /// and gleam), the rest the text's color.
+  static const _tint = 0.3;
 
   /// How much stronger the strokes are under the pointer: the tiles are
   /// recorded so, and the mask takes them down at rest (no stroke is so
@@ -601,6 +630,12 @@ class _ChatMinimapState extends State<ChatMinimap>
   final Paint _layer = Paint();
   final Paint _tilePaint = Paint()..filterQuality = FilterQuality.low;
   final Paint _clear = Paint()..blendMode = BlendMode.clear;
+
+  /// Where each band of [_placeSwollen] is put, and what of a tile it is,
+  /// kept from frame to frame.
+  Float32List _swellAt = Float32List(0);
+  Float32List _swellTransforms = Float32List(0);
+  Float32List _swellRects = Float32List(0);
   final Paint _masking = Paint()..blendMode = BlendMode.dstIn;
   final _Kept<Shader> _trackShader = _Kept();
   final _Kept<Shader> _bodyShader = _Kept();
@@ -618,8 +653,18 @@ class _ChatMinimapState extends State<ChatMinimap>
     });
   }
 
-  void _paint(Canvas canvas, Size size) {
+  void _paint(Canvas canvas, Size box) {
+    // The track, inside the room left either side of it for the glass.
+    final size = Size(box.width - 2 * ChatMinimap._outset, box.height);
     if (_rows.isEmpty || size.isEmpty) return;
+    canvas
+      ..save()
+      ..translate(ChatMinimap._outset, 0);
+    _paintTrack(canvas, size);
+    canvas.restore();
+  }
+
+  void _paintTrack(Canvas canvas, Size size) {
     if (widget.span() case final span?) _aim(span);
     if (_top.isNaN) return;
     final hover = Curves.easeOut.transform(_hover.value);
@@ -633,8 +678,14 @@ class _ChatMinimapState extends State<ChatMinimap>
       _tonePaints = _paintsFor(ink, accent);
     }
     final bounds = Offset.zero & size;
+    // The strokes' layer: as wide as the glass, for those it swells.
+    final layer = Rect.fromLTRB(
+      -ChatMinimap._outset,
+      0,
+      size.width + ChatMinimap._outset,
+      size.height,
+    );
     final glass = _glass(size.height);
-    final narrow = _width < 40;
 
     // The track: a breath of the text's color, gone at either end.
     _fill
@@ -654,20 +705,21 @@ class _ChatMinimapState extends State<ChatMinimap>
         ).createShader(bounds);
       });
     canvas.drawRRect(
-      RRect.fromRectAndRadius(bounds, Radius.circular(narrow ? 5 : 8)),
+      RRect.fromRectAndRadius(bounds, const Radius.circular(5)),
       _fill,
     );
 
-    // The glass gathers in from either side as it comes.
-    final pinch = (1 - shown) * size.width * 0.18;
+    // The glass, a little wider than the track, gathers in from either side
+    // as it comes.
+    final pinch = (1 - shown) * size.width * 0.18 - ChatMinimap._outset;
     final pane = Rect.fromLTRB(
       pinch,
       glass.top,
       size.width - pinch,
       glass.top + glass.height,
     );
-    final radius = Radius.circular(math.min(narrow ? 6 : 8, glass.height / 2));
-    final lift = (1 + 0.4 * hover + (_grab != null ? 0.5 : 0)) * shown;
+    final radius = Radius.circular(math.min(7, glass.height / 2));
+    final lift = (1 + 0.3 * hover + (_grab != null ? 0.35 : 0)) * shown;
     if (shown > 0) {
       canvas
         ..save()
@@ -677,24 +729,21 @@ class _ChatMinimapState extends State<ChatMinimap>
     }
 
     // The strokes, faded at the ends and dimmed out of view in one mask;
-    // under the glass, magnified, as through a lens.
+    // swelling toward the glass's middle, as the Dock's icons toward the
+    // pointer.
     final offset = glass.offset;
-    canvas.saveLayer(bounds, _layer);
+    canvas.saveLayer(layer, _layer);
     _placeTiles(canvas, offset, 0, size.height);
-    final lens = _lens * shown;
-    if (lens > 0) {
-      // Taken out under the glass, and put back magnified.
-      final rounded = RRect.fromRectAndRadius(pane, radius);
-      final center = pane.center;
-      canvas
-        ..drawRRect(rounded, _clear)
-        ..save()
-        ..clipRRect(rounded)
-        ..translate(center.dx, center.dy)
-        ..scale(1 + lens)
-        ..translate(-center.dx, -center.dy);
-      _placeTiles(canvas, offset, pane.top, pane.bottom);
-      canvas.restore();
+    final swell = _swell * shown;
+    if (swell > 0) {
+      final reach = glass.height / 2 + _swellReach;
+      final middle = glass.top + glass.height / 2;
+      // Taken out about the glass, and put back swollen.
+      canvas.drawRect(
+        Rect.fromLTRB(layer.left, middle - reach, layer.right, middle + reach),
+        _clear,
+      );
+      _placeSwollen(canvas, offset, middle, reach, swell);
     }
     final above = (offset / _fade).clamp(0.0, 1.0);
     final below = ((_extent - offset - size.height) / _fade).clamp(0.0, 1.0);
@@ -712,14 +761,21 @@ class _ChatMinimapState extends State<ChatMinimap>
       () => _mask(size.height, glass, above, below, hover, shown),
     );
     canvas
-      ..drawRect(bounds, _masking)
+      ..drawRect(layer, _masking)
       ..restore();
 
     if (shown > 0) {
       canvas
         ..save()
         ..translate(pane.left, pane.top);
-      _paintGlassLight(canvas, pane.size, radius, ink, lift);
+      // Its light a little of the theme's color.
+      _paintGlassLight(
+        canvas,
+        pane.size,
+        radius,
+        Color.lerp(ink, accent, _tint)!,
+        lift,
+      );
       canvas.restore();
     }
     _evictTiles(offset + size.height / 2);
@@ -744,6 +800,82 @@ class _ChatMinimapState extends State<ChatMinimap>
     }
   }
 
+  /// The strokes [reach] either side of [middle] in the minimap (the strokes
+  /// [offset] up), swollen by [swell] at [middle] and less away from it:
+  /// thin bands of the tiles, each scaled as much as the bands around it
+  /// are, in one draw a tile.
+  ///
+  /// Band u (from -1 to 1 across) is put at f(u) = u + swell/2 · (sin πu/π +
+  /// sin 2πu/2π): f'(u) is 1 + swell at the middle and 1 at the ends, smooth
+  /// into the strokes either side, which are not moved.
+  void _placeSwollen(
+    Canvas canvas,
+    double offset,
+    double middle,
+    double reach,
+    double swell,
+  ) {
+    final bands = math.max(2, (2 * reach / _band).ceil());
+    if (_swellAt.length < bands + 1) {
+      _swellAt = Float32List(bands + 1);
+      // A band reaches two tiles at most.
+      _swellTransforms = Float32List(4 * (bands + 4));
+      _swellRects = Float32List(4 * (bands + 4));
+    }
+    for (var i = 0; i <= bands; i++) {
+      final u = -1 + 2 * i / bands;
+      _swellAt[i] =
+          middle +
+          reach *
+              (u +
+                  swell /
+                      2 *
+                      (math.sin(math.pi * u) / math.pi +
+                          math.sin(2 * math.pi * u) / (2 * math.pi)));
+    }
+    final snapped = (offset * _pixelRatio).roundToDouble() / _pixelRatio;
+    final step = 2 * reach / bands;
+    final from = math.max(0.0, middle - reach + snapped);
+    final to = math.min(_extent, middle + reach + snapped);
+    if (to <= from) return;
+    final center = _width / 2;
+    for (var index = (from / _tile).floor(); index * _tile < to; index++) {
+      final image = _tiles[index] ??= _draw(index);
+      final tileTop = index * _tile;
+      var count = 0;
+      for (var i = 0; i < bands; i++) {
+        // The band, in the strokes, and what of it is this tile's.
+        final top = middle - reach + i * step + snapped;
+        final low = math.max(top, math.max(tileTop, from));
+        final high = math.min(top + step, math.min(tileTop + _tile, to));
+        if (high <= low) continue;
+        final scale = (_swellAt[i + 1] - _swellAt[i]) / step;
+        final k = count * 4;
+        _swellTransforms
+          ..[k] = scale / _pixelRatio
+          ..[k + 1] = 0
+          ..[k + 2] = center - scale * center
+          ..[k + 3] = _swellAt[i] + (low - top) * scale;
+        _swellRects
+          ..[k] = 0
+          ..[k + 1] = (low - tileTop) * _pixelRatio
+          ..[k + 2] = image.width.toDouble()
+          ..[k + 3] = (high - tileTop) * _pixelRatio;
+        count++;
+      }
+      if (count == 0) continue;
+      canvas.drawRawAtlas(
+        image,
+        Float32List.sublistView(_swellTransforms, 0, count * 4),
+        Float32List.sublistView(_swellRects, 0, count * 4),
+        null,
+        null,
+        null,
+        _tilePaint,
+      );
+    }
+  }
+
   /// Keeps the tiles nearest [middle] in the strokes, [_maxTiles] at most.
   void _evictTiles(double middle) {
     if (_tiles.length <= _maxTiles) return;
@@ -762,7 +894,7 @@ class _ChatMinimapState extends State<ChatMinimap>
     final top = index * _tile;
     final bottom = top + _tile;
     canvas.clipRect(Rect.fromLTWH(0, 0, _width, _tile));
-    final left = _width < 40 ? 3.0 : 4.0;
+    const left = 3.0;
     final width = _width - 2 * left;
     final paints = _tonePaints;
     for (
@@ -822,6 +954,11 @@ class _ChatMinimapState extends State<ChatMinimap>
   /// The glass [size] at the origin, under the strokes: a shadow only
   /// outside it, and its body, clearer in the middle than at its ends, as a
   /// drop of water.
+  ///
+  /// Each shadow is a ring between the glass and one a hair wider, reaching
+  /// further down: below it, hardly beside it, its corners as round as the
+  /// glass's (one only moved down would cut into the glass, and show as two
+  /// slivers curling about the corners).
   void _paintGlassBody(
     Canvas canvas,
     Size size,
@@ -832,14 +969,10 @@ class _ChatMinimapState extends State<ChatMinimap>
     final glass = RRect.fromRectAndRadius(Offset.zero & size, radius);
     _fill
       ..shader = null
-      ..color = const Color(0xFF000000).withValues(alpha: 0.07 * lift);
-    canvas.drawDRRect(
-      glass.inflate(1.2).shift(const Offset(0, 1.6)),
-      glass,
-      _fill,
-    );
-    _fill.color = const Color(0xFF000000).withValues(alpha: 0.1 * lift);
-    canvas.drawDRRect(glass.shift(const Offset(0, 0.8)), glass, _fill);
+      ..color = const Color(0xFF000000).withValues(alpha: 0.035 * lift);
+    canvas.drawDRRect(_below(glass, 0.4, 2.2), glass, _fill);
+    _fill.color = const Color(0xFF000000).withValues(alpha: 0.05 * lift);
+    canvas.drawDRRect(_below(glass, 0.2, 1), glass, _fill);
     _fill
       ..color = const Color(0xFF000000)
       ..shader = _bodyShader.keep(
@@ -848,10 +981,10 @@ class _ChatMinimapState extends State<ChatMinimap>
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            ink.withValues(alpha: 0.13 * lift),
-            ink.withValues(alpha: 0.045 * lift),
-            ink.withValues(alpha: 0.035 * lift),
-            ink.withValues(alpha: 0.08 * lift),
+            ink.withValues(alpha: 0.085 * lift),
+            ink.withValues(alpha: 0.03 * lift),
+            ink.withValues(alpha: 0.024 * lift),
+            ink.withValues(alpha: 0.055 * lift),
           ],
           stops: const [0, 0.3, 0.7, 1],
         ).createShader(Offset.zero & size),
@@ -859,9 +992,20 @@ class _ChatMinimapState extends State<ChatMinimap>
     canvas.drawRRect(glass, _fill);
   }
 
+  /// [glass], [side] wider either side and above, [down] further below:
+  /// round where it is, so all round it.
+  static RRect _below(RRect glass, double side, double down) => RRect.fromLTRBR(
+    glass.left - side,
+    glass.top - side,
+    glass.right + side,
+    glass.bottom + down,
+    glass.tlRadius + Radius.circular(side),
+  );
+
   /// Light on the glass [size] at the origin, over the strokes: its rim
   /// catching it, brightest at the top and again (less) at the bottom, and a
-  /// gleam inside its top.
+  /// gleam inside its top, the glass's own shape a little in, for its
+  /// corners to be the glass's.
   void _paintGlassLight(
     Canvas canvas,
     Size size,
@@ -878,39 +1022,32 @@ class _ChatMinimapState extends State<ChatMinimap>
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            ink.withValues(alpha: 0.5 * lift),
-            ink.withValues(alpha: 0.08 * lift),
-            ink.withValues(alpha: 0.06 * lift),
-            ink.withValues(alpha: 0.24 * lift),
+            ink.withValues(alpha: 0.26 * lift),
+            ink.withValues(alpha: 0.1 * lift),
+            ink.withValues(alpha: 0.07 * lift),
+            ink.withValues(alpha: 0.14 * lift),
           ],
-          stops: const [0, 0.3, 0.75, 1],
+          stops: const [0, 0.15, 0.85, 1],
         ).createShader(Offset.zero & size),
       );
     canvas.drawRRect(glass.deflate(0.4), _rim);
-    final gleam = Rect.fromLTWH(
-      2,
-      1.5,
-      math.max(0.0, size.width - 4),
-      math.min(7.0, size.height * 0.3),
-    );
-    if (gleam.isEmpty) return;
+    final inner = glass.deflate(1.2);
+    if (inner.isEmpty) return;
+    final reach = math.min(9.0, size.height * 0.35);
     _fill
       ..color = const Color(0xFF000000)
       ..shader = _gleamShader.keep(
-        (gleam, ink, lift),
+        (reach, ink, lift),
         () => LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            ink.withValues(alpha: 0.2 * lift),
+            ink.withValues(alpha: 0.1 * lift),
             ink.withValues(alpha: 0),
           ],
-        ).createShader(gleam),
+        ).createShader(Rect.fromLTWH(0, 1.2, 1, reach)),
       );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(gleam, Radius.circular(gleam.height / 2)),
-      _fill,
-    );
+    canvas.drawRRect(inner, _fill);
   }
 
   /// The strokes' alpha down the minimap: faded toward an end with more past

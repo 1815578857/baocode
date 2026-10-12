@@ -58,6 +58,20 @@ void main() {
     await tester.pump();
     // The window's width but its margins, the minimap's room in them.
     expect(width(), 1800 - 2 * ChatMinimap.room);
+    // Without the minimap (Appearance), the room is the column's again: but
+    // its margins.
+    ChatMinimap.enabled.value = false;
+    addTearDown(() => ChatMinimap.enabled.value = true);
+    await tester.pump();
+    expect(width(), 1800 - 2 * 24);
+  });
+
+  test('settings.json\'s chat.minimap: unset is on, only off is written', () {
+    expect(ChatMinimap.parse(null), isTrue);
+    expect(ChatMinimap.parse('x'), isTrue);
+    expect(ChatMinimap.parse(false), isFalse);
+    expect(ChatMinimap.setting(true), isNull);
+    expect(ChatMinimap.setting(false), isFalse);
   });
 
   testWidgets('the slider picks a step, applied at once and kept in '
