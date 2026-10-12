@@ -11361,6 +11361,48 @@ abstract class AppLocalizations {
   /// **'Minimap glass opacity: {opacity}'**
   String appearanceSettingsMinimapGlassLabel(String opacity);
 
+  /// No description provided for @appearanceSettingsMinimapElasticity.
+  ///
+  /// In en, this message translates to:
+  /// **'Glass Elasticity'**
+  String get appearanceSettingsMinimapElasticity;
+
+  /// No description provided for @appearanceSettingsMinimapElasticityDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'How much the liquid glass stretches as it follows you scrolling, its edge ahead leading, and gathers itself where it stops.'**
+  String get appearanceSettingsMinimapElasticityDescription;
+
+  /// No description provided for @appearanceSettingsMinimapElasticityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimap glass elasticity: {level}'**
+  String appearanceSettingsMinimapElasticityLabel(String level);
+
+  /// No description provided for @minimapElasticityOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get minimapElasticityOff;
+
+  /// No description provided for @minimapElasticitySubtle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtle'**
+  String get minimapElasticitySubtle;
+
+  /// No description provided for @minimapElasticityMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get minimapElasticityMedium;
+
+  /// No description provided for @minimapElasticityBouncy.
+  ///
+  /// In en, this message translates to:
+  /// **'Bouncy'**
+  String get minimapElasticityBouncy;
+
   /// No description provided for @appearanceSettingsCodeFont.
   ///
   /// In en, this message translates to:

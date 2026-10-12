@@ -32,6 +32,27 @@ typedef ChatMinimapSpan = ({
   double lastAt,
 });
 
+/// How much a minimap's glass stretches as it moves: its edge ahead keeps
+/// up with the view quicker than the one behind ([leading] and [trailing],
+/// each a spring's stiffness); it gathers itself where it stops.
+enum ChatMinimapElasticity {
+  /// Not at all: its edges go together.
+  off(44, 44),
+  subtle(46, 36),
+  medium(44, 28),
+
+  /// As it did first.
+  bouncy(42, 22);
+
+  const ChatMinimapElasticity(this.leading, this.trailing);
+
+  final double leading;
+  final double trailing;
+
+  /// As settings.json has it: its name.
+  String get setting => name;
+}
+
 /// A conversation's minimap, as an editor's: every row of the history
 /// sampled down to strokes (its lines of text, the user's messages, code,
 /// steps), the part in view under a drop of liquid glass that follows it
@@ -180,12 +201,35 @@ class ChatMinimap extends StatefulWidget {
   static Object? glassSetting(double opacity) =>
       opacity == defaultGlass ? null : opacity;
 
-  /// Sets [enabled] and [glass] from [read] now and whenever [changes]
-  /// notifies.
+  /// settings.json's `chat.minimapElasticity`: how much the glass
+  /// stretches as it moves, as Settings → Appearance sets it. Unset:
+  /// [defaultElasticity].
+  static const elasticityKey = 'chat.minimapElasticity';
+  static const defaultElasticity = ChatMinimapElasticity.subtle;
+
+  static final ValueNotifier<ChatMinimapElasticity> elasticity = ValueNotifier(
+    defaultElasticity,
+  );
+
+  /// [value] as settings.json has it; [defaultElasticity] when it is none.
+  static ChatMinimapElasticity parseElasticity(Object? value) =>
+      ChatMinimapElasticity.values
+          .where((level) => level.setting == value)
+          .firstOrNull ??
+      defaultElasticity;
+
+  /// [level] as settings.json keeps it; null (not written) for
+  /// [defaultElasticity].
+  static Object? elasticitySetting(ChatMinimapElasticity level) =>
+      level == defaultElasticity ? null : level.setting;
+
+  /// Sets [enabled], [glass] and [elasticity] from [read] now and whenever
+  /// [changes] notifies.
   static void follow(Listenable changes, Object? Function(String key) read) {
     void update() {
       enabled.value = parse(read(settingKey));
       glass.value = parseGlass(read(glassKey));
+      elasticity.value = parseElasticity(read(elasticityKey));
     }
 
     update();
@@ -279,7 +323,8 @@ class _ChatMinimapState extends State<ChatMinimap>
   //
   // Its top and bottom, in the strokes' coordinates, each follow where the
   // view's are as a spring (critically damped: no overshoot), the edge ahead
-  // the quicker: it stretches as it goes, and gathers itself where it stops.
+  // the quicker, as much as [ChatMinimap.elasticity] says: it stretches as it
+  // goes, and gathers itself where it stops.
 
   double _top = double.nan;
   double _bottom = double.nan;
@@ -287,9 +332,6 @@ class _ChatMinimapState extends State<ChatMinimap>
   double _bottomSpeed = 0;
   double _aimTop = double.nan;
   double _aimBottom = double.nan;
-
-  static const _leading = 42.0;
-  static const _trailing = 22.0;
 
   /// The glass is never shorter: a long conversation's view is a sliver.
   static const _minGlass = 10.0;
@@ -404,18 +446,20 @@ class _ChatMinimapState extends State<ChatMinimap>
     final dt = ((elapsed - _lastTick).inMicroseconds / 1e6).clamp(0.0, 0.05);
     _lastTick = elapsed;
     final down = _aimTop + _aimBottom > _top + _bottom;
+    final ChatMinimapElasticity(:leading, :trailing) =
+        ChatMinimap.elasticity.value;
     final top = _spring(
       _top,
       _topSpeed,
       _aimTop,
-      down ? _trailing : _leading,
+      down ? trailing : leading,
       dt,
     );
     final bottom = _spring(
       _bottom,
       _bottomSpeed,
       _aimBottom,
-      down ? _leading : _trailing,
+      down ? leading : trailing,
       dt,
     );
     _top = top.$1;

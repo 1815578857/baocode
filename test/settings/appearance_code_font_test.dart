@@ -21,6 +21,7 @@ void main() {
     UserMessageStyle.current.value = UserMessageStyle.sticky;
     ChatMinimap.enabled.value = true;
     ChatMinimap.glass.value = ChatMinimap.defaultGlass;
+    ChatMinimap.elasticity.value = ChatMinimap.defaultElasticity;
     for (final role in PixelLoaderRole.values) {
       role.style.value = PixelLoaderStyle.fill;
       role.speed.value = role.defaultSpeed;
@@ -28,7 +29,7 @@ void main() {
   });
 
   Future<_RecordingSettings> pumpPage(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.physicalSize = const Size(900, 2000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final settings = _RecordingSettings();
@@ -132,6 +133,29 @@ void main() {
     ChatMinimap.enabled.value = false;
     await tester.pump();
     expect(slider(), findsNothing);
+    await leave(tester);
+  });
+
+  testWidgets('the minimap\'s glass elasticity is kept in settings.json, the '
+      'default removed from it', (tester) async {
+    final settings = await pumpPage(tester);
+    SettingsSlider slider() => tester.widget<SettingsSlider>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is SettingsSlider &&
+            widget.semanticLabel.startsWith('Minimap glass elasticity'),
+      ),
+    );
+    expect(slider().label, 'Subtle');
+    slider().onChanged(ChatMinimapElasticity.bouncy.index);
+    await tester.pump();
+    expect(ChatMinimap.elasticity.value, ChatMinimapElasticity.bouncy);
+    expect(settings.written[ChatMinimap.elasticityKey], 'bouncy');
+    expect(slider().label, 'Bouncy');
+    slider().onChanged(ChatMinimapElasticity.subtle.index);
+    await tester.pump();
+    expect(settings.written.containsKey(ChatMinimap.elasticityKey), isTrue);
+    expect(settings.written[ChatMinimap.elasticityKey], isNull);
     await leave(tester);
   });
 

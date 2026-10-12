@@ -6460,6 +6460,30 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get appearanceSettingsMinimapElasticity => '液态玻璃弹性';
+
+  @override
+  String get appearanceSettingsMinimapElasticityDescription =>
+      '滚动时液态玻璃跟随的弹性：越弹，玻璃移动时上下拉伸得越明显，停下时再收回。';
+
+  @override
+  String appearanceSettingsMinimapElasticityLabel(String level) {
+    return '缩略图玻璃弹性：$level';
+  }
+
+  @override
+  String get minimapElasticityOff => '关闭';
+
+  @override
+  String get minimapElasticitySubtle => '轻微';
+
+  @override
+  String get minimapElasticityMedium => '适中';
+
+  @override
+  String get minimapElasticityBouncy => 'Q 弹';
+
+  @override
   String get appearanceSettingsCodeFont => '代码字体';
 
   @override

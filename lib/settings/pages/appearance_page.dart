@@ -172,6 +172,21 @@ class AppearanceSettingsPage extends StatelessWidget {
     _keep(ChatMinimap.glassKey, ChatMinimap.glassSetting(opacity));
   }
 
+  void _selectMinimapElasticity(ChatMinimapElasticity level) {
+    ChatMinimap.elasticity.value = level;
+    _keep(ChatMinimap.elasticityKey, ChatMinimap.elasticitySetting(level));
+  }
+
+  static String elasticityName(
+    BuildContext context,
+    ChatMinimapElasticity level,
+  ) => switch (level) {
+    ChatMinimapElasticity.off => context.l10n.minimapElasticityOff,
+    ChatMinimapElasticity.subtle => context.l10n.minimapElasticitySubtle,
+    ChatMinimapElasticity.medium => context.l10n.minimapElasticityMedium,
+    ChatMinimapElasticity.bouncy => context.l10n.minimapElasticityBouncy,
+  };
+
   static String loaderStyleName(BuildContext context, PixelLoaderStyle style) {
     final l10n = context.l10n;
     return switch (style) {
@@ -325,6 +340,7 @@ class AppearanceSettingsPage extends StatelessWidget {
         UserMessageStyle.current,
         ChatMinimap.enabled,
         ChatMinimap.glass,
+        ChatMinimap.elasticity,
         for (final role in PixelLoaderRole.values) ...[role.style, role.speed],
         CodeFont.families,
         CodeFont.size,
@@ -338,6 +354,10 @@ class AppearanceSettingsPage extends StatelessWidget {
         final styleShown = _styleName(context, UserMessageStyle.current.value);
         final glass = ChatMinimap.glass.value;
         final glassShown = '${(glass * 100).round()}%';
+        final elasticityShown = elasticityName(
+          context,
+          ChatMinimap.elasticity.value,
+        );
         final families = CodeFont.families.value;
         final sizeStep = _nearest(CodeFont.sizeSteps, CodeFont.size.value);
         final sizeShown = '${CodeFont.size.value.round()}';
@@ -441,6 +461,24 @@ class AppearanceSettingsPage extends StatelessWidget {
                       ),
                       onChanged: (step) =>
                           _selectMinimapGlass(ChatMinimap.glassSteps[step]),
+                    ),
+                  ),
+                if (ChatMinimap.enabled.value)
+                  SettingsRow(
+                    label: l10n.appearanceSettingsMinimapElasticity,
+                    description:
+                        l10n.appearanceSettingsMinimapElasticityDescription,
+                    trailing: SettingsSlider(
+                      step: ChatMinimap.elasticity.value.index,
+                      count: ChatMinimapElasticity.values.length,
+                      label: elasticityShown,
+                      semanticLabel: l10n
+                          .appearanceSettingsMinimapElasticityLabel(
+                            elasticityShown,
+                          ),
+                      onChanged: (step) => _selectMinimapElasticity(
+                        ChatMinimapElasticity.values[step],
+                      ),
                     ),
                   ),
               ],

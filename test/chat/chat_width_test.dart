@@ -86,11 +86,34 @@ void main() {
     expect(ChatMinimap.glassSetting(0.25), 0.25);
   });
 
+  test('settings.json\'s chat.minimapElasticity: a level\'s name, unset or '
+      'another is subtle, only another level is written', () {
+    expect(ChatMinimap.parseElasticity(null), ChatMinimapElasticity.subtle);
+    expect(ChatMinimap.parseElasticity('x'), ChatMinimapElasticity.subtle);
+    expect(ChatMinimap.parseElasticity('off'), ChatMinimapElasticity.off);
+    expect(ChatMinimap.parseElasticity('bouncy'), ChatMinimapElasticity.bouncy);
+    expect(ChatMinimap.elasticitySetting(ChatMinimapElasticity.subtle), isNull);
+    expect(ChatMinimap.elasticitySetting(ChatMinimapElasticity.off), 'off');
+    // Off, the edges go together; more of it, the edge behind lags more.
+    expect(
+      ChatMinimapElasticity.off.leading,
+      ChatMinimapElasticity.off.trailing,
+    );
+    double lag(ChatMinimapElasticity level) =>
+        1 / level.trailing - 1 / level.leading;
+    for (var i = 1; i < ChatMinimapElasticity.values.length; i++) {
+      expect(
+        lag(ChatMinimapElasticity.values[i]),
+        greaterThan(lag(ChatMinimapElasticity.values[i - 1])),
+      );
+    }
+  });
+
   testWidgets('the slider picks a step, applied at once and kept in '
       'settings.json; the default is not written', (tester) async {
     // Tall enough for the whole page: one scrolled to its lower part trips
     // the semantics check as the code preview leaves the list's cache.
-    tester.view.physicalSize = const Size(900, 1400);
+    tester.view.physicalSize = const Size(900, 2000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final data = (await tester.runAsync(

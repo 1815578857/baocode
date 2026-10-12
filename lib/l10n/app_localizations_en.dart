@@ -6895,6 +6895,30 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get appearanceSettingsMinimapElasticity => 'Glass Elasticity';
+
+  @override
+  String get appearanceSettingsMinimapElasticityDescription =>
+      'How much the liquid glass stretches as it follows you scrolling, its edge ahead leading, and gathers itself where it stops.';
+
+  @override
+  String appearanceSettingsMinimapElasticityLabel(String level) {
+    return 'Minimap glass elasticity: $level';
+  }
+
+  @override
+  String get minimapElasticityOff => 'Off';
+
+  @override
+  String get minimapElasticitySubtle => 'Subtle';
+
+  @override
+  String get minimapElasticityMedium => 'Medium';
+
+  @override
+  String get minimapElasticityBouncy => 'Bouncy';
+
+  @override
   String get appearanceSettingsCodeFont => 'Code Font';
 
   @override

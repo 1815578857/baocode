@@ -4908,6 +4908,20 @@
       }
     }
   },
+  "appearanceSettingsMinimapElasticity": "Glass Elasticity",
+  "appearanceSettingsMinimapElasticityDescription": "How much the liquid glass stretches as it follows you scrolling, its edge ahead leading, and gathers itself where it stops.",
+  "appearanceSettingsMinimapElasticityLabel": "Minimap glass elasticity: {level}",
+  "@appearanceSettingsMinimapElasticityLabel": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "minimapElasticityOff": "Off",
+  "minimapElasticitySubtle": "Subtle",
+  "minimapElasticityMedium": "Medium",
+  "minimapElasticityBouncy": "Bouncy",
   "appearanceSettingsCodeFont": "Code Font",
   "appearanceSettingsCodeFontDescription": "The font code is drawn in: in the editor, the terminal, the chat and the previews. Family names in order, separated by commas, or a preset.",
   "appearanceSettingsCodeFontDefault": "Default",
