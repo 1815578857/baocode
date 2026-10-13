@@ -31,6 +31,7 @@ import 'package:bao_editor/monaco/vs/editor/common/model/search/piece_tree_searc
 import 'package:bao_editor/monaco/flutter/editor_document_model.dart';
 import 'package:bao_editor/monaco/flutter/editor_keybindings.dart';
 import 'package:bao_editor/monaco/flutter/language_configuration_assets.dart';
+import 'package:bao_editor/monaco/flutter/language_overrides.dart';
 import 'package:bao_editor/monaco/vs/editor/common/languages/language_configuration_registry.dart'
     show plainTextLanguageConfiguration;
 import 'package:bao_editor/monaco/vs/workbench/services/themes/common/color_theme_data.dart';
@@ -263,6 +264,7 @@ class IdeEditorState extends State<IdeEditor> {
     _findController.addListener(_refreshFindResults);
     widget.workspace.addListener(_workspaceChanged);
     _themes.addListener(_colorThemeChanged);
+    EditorLanguageOverrides.instance.addListener(_languageModesChanged);
     if (widget.nativeEditorEnabled) _activateNativeController();
     _selectionChanged();
     _updateBlame(navigated: false);
@@ -905,6 +907,28 @@ class IdeEditorState extends State<IdeEditor> {
     _scheduleSyntax();
   }
 
+  /// A language picked for a file (Change Language Mode): every document
+  /// highlighted again as its language is now, the active one at once,
+  /// the others as they are shown.
+  void _languageModesChanged() {
+    if (!mounted) return;
+    for (final (_, document) in _textMateDocuments.values) {
+      document.dispose();
+    }
+    _textMateDocuments.clear();
+    _tokenizedDocuments.clear();
+    _syntaxDocument = null;
+    final doc = widget.active;
+    if (_nativeControllers[doc] case final controller?) {
+      unawaited(_loadLanguageConfiguration(doc, controller));
+    }
+    if (EditorLanguageOverrides.instance.of(doc.path) case final picked?) {
+      _language?.languageId = picked;
+    }
+    _scheduleSyntax();
+    setState(() {});
+  }
+
   void _scheduleSyntax() {
     if (!widget.nativeEditorEnabled || _nativeController == null) return;
     final doc = widget.active;
@@ -1206,6 +1230,7 @@ class IdeEditorState extends State<IdeEditor> {
   void dispose() {
     widget.workspace.removeListener(_workspaceChanged);
     _themes.removeListener(_colorThemeChanged);
+    EditorLanguageOverrides.instance.removeListener(_languageModesChanged);
     _debugListeners?.dispose();
     _blame.dispose();
     _disposeNativeControllers();

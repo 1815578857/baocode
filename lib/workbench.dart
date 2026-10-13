@@ -31,7 +31,12 @@ import 'extensions/theme_extensions.dart';
 import 'ide/git/git_repository.dart';
 import 'ide/git/repository_scan.dart';
 import 'ide/file_service.dart'
-    show IdeFileService, IdeHostFiles, readBytesThrough, readFileBytes;
+    show
+        IdeFileService,
+        IdeHostFiles,
+        ideIsImagePath,
+        readBytesThrough,
+        readFileBytes;
 import 'ide/ide_chat_title.dart';
 import 'ide/ide_color_theme_picker.dart';
 import 'ide/ide_commands.dart';
@@ -123,6 +128,11 @@ import 'workspace/workspace_dialog.dart';
 /// The sidebar can be dragged wider or narrower and hidden (⌘B or its
 /// button). In a narrow window it is hidden by default and opens over the
 /// chat as a drawer instead of pushing it aside.
+
+/// This machine's files, for what is shown as a file in the IDE (see
+/// FileOpenScope.showLocal).
+final IdeFileService _localFiles = IdeFileService(p.current);
+
 class Workbench extends StatefulWidget {
   const Workbench({
     super.key,
@@ -2280,8 +2290,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
                 : const SizedBox.shrink(),
             onAddToChat: _workspace.ideChat(path) == null
                 ? null
-                : (files) =>
-                      _workspace.ideChat(path)?.session.draft.insertFiles(files),
+                : (files) => _workspace
+                      .ideChat(path)
+                      ?.session
+                      .draft
+                      .insertFiles(files),
           ),
         ),
       ),
@@ -3039,6 +3052,24 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   /// Opens [request] in the IDE of [thread]'s project: a file's changes,
   /// the lines asked for, or the file.
   void _openRequestInIde(AgentThread thread, FileOpenRequest request) {
+    // Shown as a file, on this machine: read-only, its text read here.
+    if (request.local) {
+      final remote = RemoteLocation.isRemote(thread.project.path);
+      if (ideIsImagePath(request.path)) {
+        // The IDE of a remote project reads its host's files only.
+        if (remote) return unawaited(openExternal(request.path));
+        return _inIdeOf(thread, (ide) => ide.open(request.path));
+      }
+      final label = context.l10n.shownReadOnly;
+      return _inIdeOf(
+        thread,
+        (ide) => ide.openRevision(
+          request.path,
+          label: label,
+          read: () => _localFiles.read(request.path),
+        ),
+      );
+    }
     if (request.change case final change? when request.diff) {
       return _openChange(thread, change, request.original);
     }

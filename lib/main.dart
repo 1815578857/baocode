@@ -21,6 +21,7 @@ import 'diagnostics/diagnostics_upload.dart';
 import 'extensions/theme_extensions.dart';
 import 'ide/git/git_repository.dart';
 import 'ide/git/repository_scan.dart';
+import 'ide/language_mode.dart';
 import 'ide/lsp/language_features.dart';
 import 'ide/lsp/lsp_process.dart';
 import 'ide/lsp/packs/language_packs.dart';
@@ -122,6 +123,7 @@ Future<void> main(List<String> arguments) async {
   // they change on disk.
   final files = kIsWeb ? null : SettingsFiles.instance;
   await files?.load();
+  if (files != null) keepLanguageModes(files.storage);
   files?.watch();
   if (files != null) {
     // Settings → Network: the proxy every request and Claude Code go

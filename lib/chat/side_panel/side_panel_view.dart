@@ -58,6 +58,11 @@ import 'terminal_preview.dart';
 /// it wider or narrower (a double click gives back its width), narrower
 /// where the conversations would have less than [minChat]; over it, where
 /// they would beside it at its least.
+
+/// This machine's files, for what is shown as a file (one service: the
+/// preview reads its file anew when it changes).
+final IdeFileService _localFiles = IdeFileService(p.current);
+
 class AgentSidePanelArea extends StatefulWidget {
   const AgentSidePanelArea({
     super.key,
@@ -1049,7 +1054,9 @@ class AgentSidePanelView extends StatelessWidget {
                 tooltip: tab.path,
                 status: tab.diff ? statuses[tab.path] : null,
                 dirty: tab.dirty,
+                preview: tab.preview,
                 onTap: () => panel.activate(session, tab),
+                onDoubleTap: tab.preview ? () => panel.pin(tab) : null,
                 onClose: () => unawaited(_close(context, [tab])),
                 menu: () => _fileTabMenu(context, list, tab),
               ),
@@ -1147,10 +1154,11 @@ class AgentSidePanelView extends StatelessWidget {
     edit: tab.edit,
     onEdit: (edit) => panel.keepEdit(tab, edit),
     highlights: panel.highlights,
-    files: files,
-    root: _rootOf(tab.path),
-    readBytes: readBytes,
-    paths: paths,
+    // Shown as a file, on this machine (see FileOpenScope.showLocal).
+    files: tab.request.local ? _localFiles : files,
+    root: tab.request.local ? null : _rootOf(tab.path),
+    readBytes: tab.request.local ? readFileBytes : readBytes,
+    paths: tab.request.local ? null : paths,
     colorize: colorize,
     onOpenFile: (request) {
       final root = _rootOf(request.path);
@@ -1774,11 +1782,18 @@ class _Tab extends StatelessWidget {
     this.tooltip,
     this.status,
     this.dirty = false,
+    this.preview = false,
     this.onClose,
     this.menu,
+    this.onDoubleTap,
   });
 
   final bool active;
+
+  /// The tab of what was looked at last: its label in italics, as VS
+  /// Code's preview editor's; a double click ([onDoubleTap]) keeps it.
+  final bool preview;
+  final VoidCallback? onDoubleTap;
   final Widget icon;
   final String label;
   final String? description;
@@ -1801,11 +1816,12 @@ class _Tab extends StatelessWidget {
       icon: icon,
       label: label,
       description: description,
-      labelStyle: status == null
+      labelStyle: status == null && !preview
           ? null
           : TextStyle(
-              color: status.color,
-              decoration: status.strikeThrough
+              color: status?.color,
+              fontStyle: preview ? FontStyle.italic : null,
+              decoration: status?.strikeThrough ?? false
                   ? TextDecoration.lineThrough
                   : null,
             ),
@@ -1823,6 +1839,7 @@ class _Tab extends StatelessWidget {
       tooltip: tooltip,
       minWidth: 64,
       onSelect: onTap,
+      onDoubleTap: onDoubleTap,
       mark: dirty
           ? (color) => Icon(Codicons.circleFilled, size: 10, color: color)
           : null,

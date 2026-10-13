@@ -98,6 +98,7 @@ import 'lsp_ui/language_status.dart';
 import 'lsp_ui/lsp_convert.dart';
 import 'lsp_ui/problems_panel.dart';
 import 'lsp_ui/workspace_edit.dart';
+import 'language_mode.dart';
 import 'project_tools.dart';
 import 'save_copy.dart';
 import 'search/ide_search_view.dart';
@@ -2372,6 +2373,19 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
 
   /// VS Code's Change End of Line Sequence (`ChangeEOLAction`): LF or CRLF
   /// for every line of the active document, the current one active.
+  /// Change Language Mode for the active editor's file (see
+  /// [languageModePick]).
+  Future<void> _changeLanguageMode() async {
+    final active = widget.workspace.active;
+    if (active == null || active.isMedia || active.openError != null) return;
+    final l10n = context.l10n;
+    await IdeLanguageNames.load();
+    if (!mounted || !identical(widget.workspace.active, active)) return;
+    _showQuickModel(
+      languageModePick(l10n, active.path, onPicked: _focusEditor),
+    );
+  }
+
   void _changeEndOfLine() {
     final active = widget.workspace.active;
     if (active == null || active.isMedia || active.openError != null) return;
@@ -2876,6 +2890,12 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         id: 'workbench.action.gotoLine',
         label: 'Go to Line/Column…',
         run: () => _showQuickInput(':'),
+      ),
+      IdeCommand(
+        id: 'workbench.action.editor.changeLanguageMode',
+        label: 'Change Language Mode',
+        enabled: active != null && !active.isMedia && active.openError == null,
+        run: () => unawaited(_changeLanguageMode()),
       ),
       IdeCommand(
         id: 'workbench.action.editor.changeEOL',
@@ -4541,7 +4561,11 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         ),
         IdeStatusBarItem(
           IdeLanguageNames.forPath(active.path),
-          tooltip: l10n.wbLanguageMode,
+          tooltip: keys.titleWithKeybinding(
+            l10n.languageModePlaceholder,
+            'workbench.action.editor.changeLanguageMode',
+          ),
+          onTap: () => unawaited(_changeLanguageMode()),
         ),
         bell,
       ],

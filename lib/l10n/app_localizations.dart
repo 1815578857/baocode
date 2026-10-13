@@ -7827,6 +7827,36 @@ abstract class AppLocalizations {
   /// **'Language Mode'**
   String get wbLanguageMode;
 
+  /// No description provided for @shownImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get shownImage;
+
+  /// No description provided for @shownReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Read-only'**
+  String get shownReadOnly;
+
+  /// No description provided for @languageModeAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto Detect'**
+  String get languageModeAuto;
+
+  /// No description provided for @languageModePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Language Mode'**
+  String get languageModePlaceholder;
+
+  /// No description provided for @languageModeChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Language Mode'**
+  String get languageModeChange;
+
   /// No description provided for @editorCommandPalette.
   ///
   /// In en, this message translates to:

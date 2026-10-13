@@ -4736,6 +4736,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get wbLanguageMode => 'Language Mode';
 
   @override
+  String get shownImage => 'Image';
+
+  @override
+  String get shownReadOnly => 'Read-only';
+
+  @override
+  String get languageModeAuto => 'Auto Detect';
+
+  @override
+  String get languageModePlaceholder => 'Select Language Mode';
+
+  @override
+  String get languageModeChange => 'Change Language Mode';
+
+  @override
   String get editorCommandPalette => 'Command Palette...';
 
   @override

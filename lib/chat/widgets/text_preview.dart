@@ -8,13 +8,30 @@ import '../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
+import '../side_panel/file_open.dart';
 import 'code_citation.dart' show CodeBlockIconButton;
 
-/// Shows [text] whole, over the window, under [title]: what a tag or a row
-/// shows shortened (a long paste, lines of a file, a stash). Selectable,
-/// with its lines numbered and a button to copy all of it; Esc, the close
-/// button or a click beside it closes it.
+/// Shows [text] whole: what a tag or a row shows shortened (a long paste,
+/// lines of a file, a stash). Where the chat's files open (the side panel,
+/// the IDE), as a file there named [name] (else [title]; see
+/// [FileOpenScope.showText]); else over the window, under [title].
 Future<void> showTextPreview(
+  BuildContext context, {
+  required String title,
+  required String text,
+  String? name,
+}) async {
+  if (FileOpenScope.find(context)?.showText(text, name: name ?? title) ??
+      false) {
+    return;
+  }
+  return showTextDialog(context, title: title, text: text);
+}
+
+/// [text] whole, over the window, under [title]. Selectable, with its
+/// lines numbered and a button to copy all of it; Esc, the close button or
+/// a click beside it closes it.
+Future<void> showTextDialog(
   BuildContext context, {
   required String title,
   required String text,

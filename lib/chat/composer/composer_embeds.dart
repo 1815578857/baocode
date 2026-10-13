@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
+import 'package:path/path.dart' as p;
 
 import '../../kernel/kernel_types.dart' show FileSuggestion;
 import '../../l10n/l10n.dart';
@@ -654,6 +655,10 @@ class ComposerCodeChip extends StatelessWidget {
             context,
             title: reference.label,
             text: reference.code,
+            // Its file's extension, for its language.
+            name:
+                '${p.basenameWithoutExtension(name)} ($lines)'
+                '${p.extension(name)}',
           ),
           child: tag,
         ),
@@ -979,8 +984,12 @@ class ComposerStashChip extends StatelessWidget {
       child: HoverTooltip(
         content: (context) => _TextPreview(label: label, text: stash.text),
         child: PreviewClick(
-          onOpen: () =>
-              showTextPreview(context, title: label, text: stash.text),
+          onOpen: () => showTextPreview(
+            context,
+            title: label,
+            text: stash.text,
+            name: '$name.md',
+          ),
           child: tag,
         ),
       ),
@@ -1353,12 +1362,9 @@ class _FileImageChipState extends State<FileImageChip> {
           ),
         );
         chip = PreviewClick(
-          onOpen: () => unawaited(
-            files.preview(
-              context,
-              path,
-              orElse: () => files.onOpen(FileOpenRequest(path)),
-            ),
+          // In the tab of what was looked at last.
+          onOpen: () => files.onOpen(
+            FileOpenRequest(path, readOnly: true, preview: true),
           ),
           child: FileLinkMenuRegion(
             menu: files.menuFor(

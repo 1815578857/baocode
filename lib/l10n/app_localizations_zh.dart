@@ -4417,6 +4417,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get wbLanguageMode => '语言模式';
 
   @override
+  String get shownImage => '图片';
+
+  @override
+  String get shownReadOnly => '只读';
+
+  @override
+  String get languageModeAuto => '自动检测';
+
+  @override
+  String get languageModePlaceholder => '选择语言模式';
+
+  @override
+  String get languageModeChange => '更改语言模式';
+
+  @override
   String get editorCommandPalette => '命令面板...';
 
   @override

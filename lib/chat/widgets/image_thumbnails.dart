@@ -11,6 +11,7 @@ import '../../theme/app_theme.dart';
 import '../../workspace/window_controls.dart';
 import '../chat_models.dart';
 import '../side_panel/file_link_menu.dart';
+import '../side_panel/file_open.dart';
 import 'hover_builder.dart';
 
 /// Pictures attached to a message, small; a click shows one whole. With
@@ -139,13 +140,22 @@ class _Thumbnail extends StatelessWidget {
   }
 }
 
-/// Shows [image] whole, over the window. A click closes it; a right click
-/// offers [menu] (a file's, say), or to copy it, as do ⌘C and Ctrl+C.
+/// Shows [image] whole: where the chat's files open (the side panel, the
+/// IDE), as a file there (see [FileOpenScope.showImage]); else over the
+/// window, where a click closes it and a right click offers [menu] (a
+/// file's, say), or to copy it, as do ⌘C and Ctrl+C.
 void showImagePreview(
   BuildContext context,
   ImageAttachment image, {
   ChatItemMenu? menu,
 }) {
+  if (FileOpenScope.find(context)?.showImage(
+        image,
+        name: image.name ?? context.l10n.shownImage,
+      ) ??
+      false) {
+    return;
+  }
   showDialog<void>(
     context: context,
     // Black, not the theme's: as upstream's modal backdrops.

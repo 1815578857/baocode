@@ -7,6 +7,7 @@ import 'package:bao_editor/monaco/flutter/editor_inline_suggest.dart';
 import 'package:bao_editor/monaco/flutter/editor_surface.dart';
 import 'package:bao_editor/monaco/flutter/editor_surface_controller.dart';
 import 'package:bao_editor/monaco/flutter/language_configuration_assets.dart';
+import 'package:bao_editor/monaco/flutter/language_overrides.dart';
 import 'package:bao_editor/monaco/vs/editor/common/languages/language_configuration_registry.dart'
     show plainTextLanguageConfiguration;
 import 'package:bao_editor/textmate/textmate_syntax.dart';
@@ -144,7 +145,18 @@ class IdeCodeEditorState extends State<IdeCodeEditor> {
     super.initState();
     _themes.addListener(_themeChanged);
     widget.controller.addListener(_textChanged);
+    EditorLanguageOverrides.instance.addListener(_languageModesChanged);
     _pickLanguage();
+  }
+
+  /// A language picked for a file (Change Language Mode): this one's
+  /// picked again, as it is now.
+  void _languageModesChanged() {
+    if (!mounted) return;
+    final highlights = widget.highlights;
+    _letGo(widget);
+    highlights?.release(widget.controller);
+    unawaited(_pickNewLanguage(++_language));
   }
 
   @override
@@ -168,6 +180,7 @@ class IdeCodeEditorState extends State<IdeCodeEditor> {
     _language++;
     _themes.removeListener(_themeChanged);
     widget.controller.removeListener(_textChanged);
+    EditorLanguageOverrides.instance.removeListener(_languageModesChanged);
     _letGo(widget);
     _ownTextMate?.dispose();
     super.dispose();

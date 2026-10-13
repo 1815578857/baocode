@@ -51,6 +51,7 @@ final _desktop = TargetPlatformVariant.only(TargetPlatform.macOS);
 
 void main() {
   final opened = <String>[];
+  final requests = <FileOpenRequest>[];
   final read = <String>[];
 
   Future<void> pump(
@@ -59,6 +60,7 @@ void main() {
     bool local = true,
   }) async {
     opened.clear();
+    requests.clear();
     read.clear();
     final existence = FileExistence((_) async => true);
     addTearDown(existence.dispose);
@@ -68,7 +70,10 @@ void main() {
         home: Scaffold(
           body: FileOpenScope(
             root: '/p',
-            onOpen: (request) => opened.add(request.path),
+            onOpen: (request) {
+              opened.add(request.path);
+              requests.add(request);
+            },
             existence: existence,
             local: local,
             readBytes: (path) async {
@@ -101,7 +106,9 @@ void main() {
   ];
 
   testWidgets('an image the conversation links to is an image\'s tag, '
-      'which a click shows enlarged', (tester) async {
+      'which a click shows in the tab of what was looked at last', (
+    tester,
+  ) async {
     await pump(tester, screenshots);
 
     expect(find.byType(FileImageChip), findsNWidgets(2));
@@ -111,9 +118,10 @@ void main() {
 
     await tester.tap(find.text('旧版截图'));
     await tester.pumpAndSettle();
-    expect(find.byType(InteractiveViewer), findsOneWidget);
-    expect(read.last, '/p/shots/old.png');
-    expect(opened, isEmpty);
+    expect(find.byType(InteractiveViewer), findsNothing);
+    expect(opened, ['/p/shots/old.png']);
+    expect(requests.single.preview, isTrue);
+    expect(requests.single.readOnly, isTrue);
   }, variant: _desktop);
 
   testWidgets('its right click has the file\'s menu, with the image\'s '
