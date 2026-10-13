@@ -137,8 +137,9 @@ class ChatMinimap extends StatefulWidget {
   static const room = _edgeGap + _narrow + _columnGap;
 
   /// The least a column keeps of its width to leave [room]; narrower than
-  /// that, it gives the room up, and the minimap is not shown.
-  static const roomFrom = 560.0;
+  /// that (a very narrow pane or window only), it gives the room up, and
+  /// the minimap is not shown.
+  static const roomFrom = 320.0;
 
   /// How tall [item] samples in a column [width] wide, for tests.
   @visibleForTesting

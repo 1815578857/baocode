@@ -158,8 +158,10 @@ void main() {
     );
   }
 
-  testWidgets('gives way in a narrow pane', (tester) async {
+  testWidgets('gives way in a very narrow pane only', (tester) async {
     await _pump(tester, _Feed(_conversation(30)), width: 600);
+    expect(_opacity(tester), 1);
+    await _pump(tester, _Feed(_conversation(30)), width: 400);
     expect(_opacity(tester), 0);
     // The scrollbar is back.
     expect(_scrollbar(tester).interactive, isTrue);

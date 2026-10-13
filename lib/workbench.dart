@@ -30,6 +30,7 @@ import 'customize/customize_view.dart';
 import 'extensions/theme_extensions.dart';
 import 'ide/git/git_repository.dart';
 import 'ide/git/repository_scan.dart';
+import 'ide/file_views.dart';
 import 'ide/file_service.dart'
     show
         IdeFileService,
@@ -486,6 +487,10 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     if (_main) {
       // A conversation's "Source: Stash #12" shows it here.
       StashController.current?.showPage = _showStash;
+      // A stash's file opens as the Stash page shows it.
+      if (StashController.current case final stash?) {
+        FileViews.register(stashFileView(stash, onOpenAgent: _openAgent));
+      }
       OpenRequests.listen((paths) => unawaited(_openPaths(paths)));
       _workspace.addListener(_syncRecentMenu);
       _syncRecentMenu();
@@ -631,6 +636,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     if (StashController.current case final stash?
         when stash.showPage == _showStash) {
       stash.showPage = null;
+      FileViews.unregister('stash');
     }
     _terminals
       ?..removeListener(_terminalsChanged)
@@ -3377,9 +3383,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         final tab? => OpenEditor(tab.path),
         null => null,
       },
-      SidePanelSection.terminal ||
-      SidePanelSection.backlog ||
-      SidePanelSection.plan => null,
+      SidePanelSection.terminal || SidePanelSection.plan => null,
     };
   }
 

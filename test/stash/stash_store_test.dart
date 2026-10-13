@@ -139,35 +139,44 @@ void main() {
       expect(store.search('主机').map((n) => n.id), [b.id]);
     });
 
-    test('sorts them, pinned first, or as dragged, kept for the next', () async {
-      final a = await store.create(body: 'a');
-      final b = await store.create(body: 'b');
-      final c = await store.create(body: 'c');
-      await store.update(a.id, (note) => note.pinned = true);
-      List<int> ids(StashSort sort) => [
-        for (final note in store.sorted(store.notes, sort)) note.id,
-      ];
-      expect(ids(StashSort.number), [a.id, c.id, b.id]);
-      expect(ids(StashSort.updated), [a.id, c.id, b.id]);
+    test(
+      'sorts them, pinned first, or as dragged, kept for the next',
+      () async {
+        final a = await store.create(body: 'a');
+        final b = await store.create(body: 'b');
+        final c = await store.create(body: 'c');
+        await store.update(a.id, (note) => note.pinned = true);
+        List<int> ids(StashSort sort) => [
+          for (final note in store.sorted(store.notes, sort)) note.id,
+        ];
+        expect(ids(StashSort.number), [a.id, c.id, b.id]);
+        expect(ids(StashSort.updated), [a.id, c.id, b.id]);
 
-      await store.reorder([b.id, a.id]);
-      // Never dragged: at the top.
-      expect(ids(StashSort.manual), [c.id, b.id, a.id]);
-      final again = StashStore(disk);
-      await again.load();
-      expect(again.order, [b.id, a.id]);
-    });
+        await store.reorder([b.id, a.id]);
+        // Never dragged: at the top.
+        expect(ids(StashSort.manual), [c.id, b.id, a.id]);
+        final again = StashStore(disk);
+        await again.load();
+        expect(again.order, [b.id, a.id]);
+      },
+    );
 
-    test('a stash is called by its text, else by its pictures\' text', () async {
-      final pictures = await store.create(body: '![](1/x.png)');
-      expect(store.headline(pictures), '');
-      var told = 0;
-      store.addListener(() => told++);
-      store.pictureRead(store.absolute('1/x.png'), '\n  发布清单  \n第二行');
-      expect(told, 1);
-      expect(store.headline(pictures), '发布清单');
-      await store.update(pictures.id, (note) => note.body = '记一下\n\n![](1/x.png)');
-      expect(store.headline(store.byId(pictures.id)!), '记一下');
-    });
+    test(
+      'a stash is called by its text, else by its pictures\' text',
+      () async {
+        final pictures = await store.create(body: '![](1/x.png)');
+        expect(store.headline(pictures), '');
+        var told = 0;
+        store.addListener(() => told++);
+        store.pictureRead(store.absolute('1/x.png'), '\n  发布清单  \n第二行');
+        expect(told, 1);
+        expect(store.headline(pictures), '发布清单');
+        await store.update(
+          pictures.id,
+          (note) => note.body = '记一下\n\n![](1/x.png)',
+        );
+        expect(store.headline(store.byId(pictures.id)!), '记一下');
+      },
+    );
   });
 }

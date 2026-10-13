@@ -21,7 +21,7 @@ import '../chat/floating/hover_tooltip.dart';
 import '../chat/widgets/code_citation.dart'
     show CodeBlockColorizer, MarkdownCodeBlock;
 import '../chat/widgets/hover_builder.dart';
-import '../chat/widgets/image_thumbnails.dart' show showImagePreview;
+import '../chat/widgets/image_thumbnails.dart' show showImageGallery;
 import '../chat/widgets/markdown_math.dart';
 import '../chat/widgets/markdown_view.dart';
 import '../chat/widgets/scroll_edge_fade.dart';
@@ -2564,7 +2564,16 @@ class _ImageEmbedBuilder extends _StashEmbedBuilder with _Tagged {
           ),
         ),
       ),
-      onTap: () => unawaited(_openPicture(context, path, remote: remote)),
+      onTap: () => unawaited(
+        _openPicture(
+          context,
+          path,
+          remote: remote,
+          gallery: scope == null
+              ? const []
+              : _gallery(embed.controller.document, scope.store.absolute),
+        ),
+      ),
     );
   }
 
@@ -2759,28 +2768,47 @@ Delta stashTextFromModel(
 }
 
 /// The picture whole, as the chat's are; a remote one in the browser.
+/// [gallery] is the stash's pictures on this machine (absolute), which
+/// the arrows go through from it.
 Future<void> _openPicture(
   BuildContext context,
   String path, {
   required bool remote,
+  List<String> gallery = const [],
 }) async {
   if (remote) {
     await openExternal(path);
     return;
   }
+  final pictures = gallery.contains(path) ? gallery : [path];
+  showImageGallery(
+    context,
+    count: pictures.length,
+    index: pictures.indexOf(path),
+    load: (index) => _readPicture(pictures[index]),
+  );
+}
+
+/// The picture at [path] (on this machine); null when it cannot be read.
+Future<ImageAttachment?> _readPicture(String path) async {
   final bytes = await io.readBytesFile(path);
-  if (bytes == null || !context.mounted) return;
+  if (bytes == null) return null;
   final type = switch (p.extension(path).toLowerCase()) {
     '.jpg' || '.jpeg' => 'image/jpeg',
     '.gif' => 'image/gif',
     '.webp' => 'image/webp',
     _ => 'image/png',
   };
-  showImagePreview(
-    context,
-    ImageAttachment(bytes: bytes, mediaType: type, name: p.basename(path)),
-  );
+  return ImageAttachment(bytes: bytes, mediaType: type, name: p.basename(path));
 }
+
+/// [document]'s pictures on this machine, in order, by their absolute
+/// paths ([absolute]).
+List<String> _gallery(Document document, String Function(String) absolute) => [
+  for (final attachment in StashAttachment.of(document))
+    if (attachment.picture && !isRemoteStashPicture(attachment.path))
+      absolute(attachment.path),
+];
 
 /// A picture or a file of a stash's text, as [StashAttachments] shows it.
 @immutable
@@ -2900,8 +2928,15 @@ class _StashAttachmentsState extends State<StashAttachments> {
           padding: widget.padding,
           itemCount: _found.length,
           separatorBuilder: (_, _) => const SizedBox(width: 8),
-          itemBuilder: (context, index) =>
-              _AttachmentTile(attachment: _found[index], store: widget.store),
+          itemBuilder: (context, index) => _AttachmentTile(
+            attachment: _found[index],
+            store: widget.store,
+            gallery: [
+              for (final found in _found)
+                if (found.picture && !isRemoteStashPicture(found.path))
+                  widget.store.absolute(found.path),
+            ],
+          ),
         ),
       ),
     );
@@ -2956,10 +2991,17 @@ class StashAttachmentIcon extends StatelessWidget {
 }
 
 class _AttachmentTile extends StatelessWidget {
-  const _AttachmentTile({required this.attachment, required this.store});
+  const _AttachmentTile({
+    required this.attachment,
+    required this.store,
+    this.gallery = const [],
+  });
 
   final StashAttachment attachment;
   final StashStore store;
+
+  /// The stash's pictures, which the arrows go through from this one.
+  final List<String> gallery;
 
   @override
   Widget build(BuildContext context) {
@@ -3005,7 +3047,7 @@ class _AttachmentTile extends StatelessWidget {
         builder: (context, hovered) => GestureDetector(
           onTap: () => unawaited(
             attachment.picture
-                ? _openPicture(context, path, remote: remote)
+                ? _openPicture(context, path, remote: remote, gallery: gallery)
                 : openExternal(path),
           ),
           onSecondaryTap: remote

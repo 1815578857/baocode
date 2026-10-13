@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 
 import '../chat/composer/composer_files.dart';
 import '../chat/widgets/hover_builder.dart';
+import '../ide/file_views.dart';
 import '../ide/ide_button.dart';
 import '../ide/ide_dialog.dart';
 import '../ide/ide_hover.dart';
@@ -79,10 +80,10 @@ enum _Time { all, today, week, month }
 
 enum _Status { all, open, collected, requirement, implementing, done }
 
-class StashViewState extends State<StashView> {
+class StashViewState extends State<StashView> with _StashActions {
   final TextEditingController _query = TextEditingController();
-  final GlobalKey<StashNoteEditorState> _editor = GlobalKey();
 
+  @override
   StashController get _controller => widget.controller;
 
   /// The one shown beside the cards.
@@ -274,47 +275,17 @@ class StashViewState extends State<StashView> {
     });
   }
 
-  Future<void> _setStatus(Iterable<int> ids, StashStatus status) async {
-    for (final id in [...ids]) {
-      await _controller.store.update(id, (note) => note.status = status);
-    }
-  }
+  @override
+  List<int> _idsFor(StashNote note) =>
+      _picked.contains(note.id) ? [..._picked] : [note.id];
 
-  Future<void> _togglePin(StashNote note) => _controller.store.update(
-    note.id,
-    (note) => note.pinned = !note.pinned,
-    touch: false,
-  );
+  @override
+  void _deleted(List<int> ids) => setState(() {
+    _picked.removeAll(ids);
+    if (ids.contains(_open)) _open = null;
+  });
 
-  Future<void> _setProject(Iterable<int> ids, String? project) async {
-    for (final id in [...ids]) {
-      await _controller.store.update(id, (note) {
-        note.project = project;
-        note.suggestedProject = '';
-      }, touch: false);
-    }
-  }
-
-  Future<void> _delete(List<int> ids) async {
-    final l10n = context.l10n;
-    final choice = await showIdeDialog(
-      context,
-      message: ids.length == 1
-          ? l10n.stashDeleteOne('#${ids.single}')
-          : l10n.stashDeleteMany(ids.length),
-      detail: l10n.stashDeleteDetail,
-      buttons: [l10n.stashDelete],
-    );
-    if (choice != 0) return;
-    for (final id in ids) {
-      await _controller.store.delete(id);
-    }
-    setState(() {
-      _picked.removeAll(ids);
-      if (ids.contains(_open)) _open = null;
-    });
-  }
-
+  @override
   Future<void> _merge(List<int> ids) async {
     final l10n = context.l10n;
     final sorted = [...ids]..sort();
@@ -334,25 +305,6 @@ class StashViewState extends State<StashView> {
     });
   }
 
-  /// Says [note] clearly, in the background (see
-  /// [StashController.clarify]): what it has written first.
-  Future<void> _clarify(StashNote note) async {
-    await _editor.currentState?.flush();
-    await _controller.clarify(note.id);
-  }
-
-  Future<void> _implement(StashNote note, Rect anchor) async {
-    await _editor.currentState?.flush();
-    if (!mounted) return;
-    final thread = await implementStash(
-      context,
-      _controller,
-      note.id,
-      anchor: anchor,
-    );
-    if (thread != null) widget.onOpenAgent(thread);
-  }
-
   void _openLink(String href) {
     if (StashRefs.stashOf(href) case final id?) {
       show(id);
@@ -360,95 +312,6 @@ class StashViewState extends State<StashView> {
       setState(() => _project = project);
     }
   }
-
-  List<IdeMenuEntry> _projectEntries(
-    void Function(String? project) pick, {
-    String? current,
-  }) {
-    final l10n = context.l10n;
-    return [
-      IdeMenuAction(
-        l10n.stashNoProject,
-        checked: current == null,
-        onSelected: () => pick(null),
-      ),
-      const IdeMenuSeparator(),
-      for (final project in _controller.workspace.projects)
-        IdeMenuAction(
-          project.name,
-          icon: stashProjectIcon(_controller.workspace, project),
-          checked: project.path == current,
-          onSelected: () => pick(project.path),
-        ),
-    ];
-  }
-
-  List<IdeMenuEntry> _statusEntries(Iterable<int> ids, {StashStatus? current}) {
-    final l10n = context.l10n;
-    return [
-      for (final status in StashStatus.values)
-        IdeMenuAction(
-          stashStatusLabel(l10n, status),
-          checked: status == current,
-          onSelected: () => unawaited(_setStatus(ids, status)),
-        ),
-    ];
-  }
-
-  Future<void> _cardMenu(StashNote note, Offset position) async {
-    final l10n = context.l10n;
-    final ids = _picked.contains(note.id) ? [..._picked] : [note.id];
-    final several = ids.length > 1;
-    await showIdeMenu(
-      context,
-      position: position,
-      entries: [
-        if (!several) ...[
-          IdeMenuAction(
-            note.pinned ? l10n.stashUnpin : l10n.stashPin,
-            onSelected: () => unawaited(_togglePin(note)),
-          ),
-          IdeMenuAction(
-            l10n.stashOpenInPanel,
-            onSelected: () => unawaited(_controller.open(note.id)),
-          ),
-        ],
-        IdeMenuAction(
-          l10n.stashStatus,
-          submenu: _statusEntries(ids, current: several ? null : note.status),
-        ),
-        IdeMenuAction(
-          l10n.stashLinkProject,
-          submenu: _projectEntries(
-            (project) => unawaited(_setProject(ids, project)),
-            current: several ? null : note.project,
-          ),
-        ),
-        if (several)
-          IdeMenuAction(
-            l10n.stashMerge,
-            onSelected: () => unawaited(_merge(ids)),
-          ),
-        const IdeMenuSeparator(),
-        if (!several && WindowControls.canRevealInFileManager)
-          IdeMenuAction(
-            l10n.stashReveal,
-            onSelected: () => unawaited(
-              WindowControls.revealInFileManager(
-                p.join(_controller.store.root, '${note.id}.md'),
-              ),
-            ),
-          ),
-        IdeMenuAction(
-          l10n.stashDelete,
-          onSelected: () => unawaited(_delete(ids)),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _filterMenu(Rect anchor, List<IdeMenuEntry> entries) =>
-      showIdeMenu(context, anchor: anchor, entries: entries);
 
   // --- Building -----------------------------------------------------------------
 
@@ -467,7 +330,13 @@ class StashViewState extends State<StashView> {
               final wide = room >= 760;
               final list = _buildList(l10n);
               if (open == null) return list;
-              final detail = _buildDetail(l10n, open);
+              final detail = StashDetail(
+                controller: _controller,
+                id: open.id,
+                onOpenAgent: widget.onOpenAgent,
+                onOpenLink: _openLink,
+                onClose: () => setState(() => _open = null),
+              );
               if (!wide) return detail;
               final width = _widthOfDetail(room);
               final dragging = _dragStart != null;
@@ -798,14 +667,6 @@ class StashViewState extends State<StashView> {
     ),
   ];
 
-  String? _projectName(String? path) {
-    if (path == null || path.isEmpty) return null;
-    for (final project in _controller.workspace.projects) {
-      if (project.path == path) return project.name;
-    }
-    return p.basename(path);
-  }
-
   Widget _buildFilters(AppLocalizations l10n) {
     final timeLabel = switch (_time) {
       _Time.all => l10n.stashFilterAnyTime,
@@ -963,6 +824,156 @@ class StashViewState extends State<StashView> {
       ),
     );
   }
+}
+
+/// What is done to stashes, on the page and where one shows whole
+/// ([StashDetail]).
+mixin _StashActions<T extends StatefulWidget> on State<T> {
+  StashController get _controller;
+
+  Future<void> _setStatus(Iterable<int> ids, StashStatus status) async {
+    for (final id in [...ids]) {
+      await _controller.store.update(id, (note) => note.status = status);
+    }
+  }
+
+  Future<void> _togglePin(StashNote note) => _controller.store.update(
+    note.id,
+    (note) => note.pinned = !note.pinned,
+    touch: false,
+  );
+
+  Future<void> _setProject(Iterable<int> ids, String? project) async {
+    for (final id in [...ids]) {
+      await _controller.store.update(id, (note) {
+        note.project = project;
+        note.suggestedProject = '';
+      }, touch: false);
+    }
+  }
+
+  Future<void> _delete(List<int> ids) async {
+    final l10n = context.l10n;
+    final choice = await showIdeDialog(
+      context,
+      message: ids.length == 1
+          ? l10n.stashDeleteOne('#${ids.single}')
+          : l10n.stashDeleteMany(ids.length),
+      detail: l10n.stashDeleteDetail,
+      buttons: [l10n.stashDelete],
+    );
+    if (choice != 0) return;
+    for (final id in ids) {
+      await _controller.store.delete(id);
+    }
+    if (mounted) _deleted(ids);
+  }
+
+  /// [ids]' stashes are deleted.
+  void _deleted(List<int> ids) {}
+
+  /// Puts [ids]' stashes into one (several picked on the page).
+  Future<void> _merge(List<int> ids) async {}
+
+  /// Those a menu for [note] acts on: it, or all those picked with it.
+  List<int> _idsFor(StashNote note) => [note.id];
+
+  List<IdeMenuEntry> _projectEntries(
+    void Function(String? project) pick, {
+    String? current,
+  }) {
+    final l10n = context.l10n;
+    return [
+      IdeMenuAction(
+        l10n.stashNoProject,
+        checked: current == null,
+        onSelected: () => pick(null),
+      ),
+      const IdeMenuSeparator(),
+      for (final project in _controller.workspace.projects)
+        IdeMenuAction(
+          project.name,
+          icon: stashProjectIcon(_controller.workspace, project),
+          checked: project.path == current,
+          onSelected: () => pick(project.path),
+        ),
+    ];
+  }
+
+  List<IdeMenuEntry> _statusEntries(Iterable<int> ids, {StashStatus? current}) {
+    final l10n = context.l10n;
+    return [
+      for (final status in StashStatus.values)
+        IdeMenuAction(
+          stashStatusLabel(l10n, status),
+          checked: status == current,
+          onSelected: () => unawaited(_setStatus(ids, status)),
+        ),
+    ];
+  }
+
+  Future<void> _cardMenu(StashNote note, Offset position) async {
+    final l10n = context.l10n;
+    final ids = _idsFor(note);
+    final several = ids.length > 1;
+    await showIdeMenu(
+      context,
+      position: position,
+      entries: [
+        if (!several) ...[
+          IdeMenuAction(
+            note.pinned ? l10n.stashUnpin : l10n.stashPin,
+            onSelected: () => unawaited(_togglePin(note)),
+          ),
+          IdeMenuAction(
+            l10n.stashOpenInPanel,
+            onSelected: () => unawaited(_controller.open(note.id)),
+          ),
+        ],
+        IdeMenuAction(
+          l10n.stashStatus,
+          submenu: _statusEntries(ids, current: several ? null : note.status),
+        ),
+        IdeMenuAction(
+          l10n.stashLinkProject,
+          submenu: _projectEntries(
+            (project) => unawaited(_setProject(ids, project)),
+            current: several ? null : note.project,
+          ),
+        ),
+        if (several)
+          IdeMenuAction(
+            l10n.stashMerge,
+            onSelected: () => unawaited(_merge(ids)),
+          ),
+        const IdeMenuSeparator(),
+        if (!several && WindowControls.canRevealInFileManager)
+          IdeMenuAction(
+            l10n.stashReveal,
+            onSelected: () => unawaited(
+              WindowControls.revealInFileManager(
+                p.join(_controller.store.root, '${note.id}.md'),
+              ),
+            ),
+          ),
+        IdeMenuAction(
+          l10n.stashDelete,
+          onSelected: () => unawaited(_delete(ids)),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _filterMenu(Rect anchor, List<IdeMenuEntry> entries) =>
+      showIdeMenu(context, anchor: anchor, entries: entries);
+
+  String? _projectName(String? path) {
+    if (path == null || path.isEmpty) return null;
+    for (final project in _controller.workspace.projects) {
+      if (project.path == path) return project.name;
+    }
+    return p.basename(path);
+  }
 
   /// Runs [action], an AI action, once a model is picked for it (see
   /// [withActionsModel]): the menu that picks one by [context]'s button.
@@ -976,7 +987,130 @@ class StashViewState extends State<StashView> {
     actionsModelName(l10n, ModelProviders.current) ?? l10n.aiModelNone,
   );
 
-  Widget _buildDetail(AppLocalizations l10n, StashNote note) {
+  String _sourceText(StashNote note) {
+    final source = note.source;
+    final when = _dateText(note.created);
+    return switch (source.branch) {
+      final branch? => '$when · ⎇ $branch',
+      null => when,
+    };
+  }
+}
+
+/// A stash's file (`<root>/12.md`) where it opens, in the side panel or
+/// the IDE: as the Stash page shows it ([StashDetail]), not its text.
+/// [onOpenAgent] shows a conversation it is carried out in.
+FileView stashFileView(
+  StashController controller, {
+  ValueChanged<AgentThread>? onOpenAgent,
+}) => FileView(
+  id: 'stash',
+  matches: (path) => controller.store.idOfFile(path) != null,
+  build: (context, path) => switch (controller.store.idOfFile(path)) {
+    final id? => StashDetail(
+      controller: controller,
+      id: id,
+      onOpenAgent: onOpenAgent,
+    ),
+    null => const SizedBox.shrink(),
+  },
+);
+
+/// A stash whole, to read, edit, say clearly and carry out: on the Stash
+/// page beside the cards, and wherever its file opens (the side panel's
+/// tabs, the IDE's editor: see [stashFileView]).
+class StashDetail extends StatefulWidget {
+  const StashDetail({
+    super.key,
+    required this.controller,
+    required this.id,
+    this.onOpenAgent,
+    this.onOpenLink,
+    this.onClose,
+  });
+
+  final StashController controller;
+  final int id;
+
+  /// Shows a conversation it is carried out in; none where there is none
+  /// to show it in.
+  final ValueChanged<AgentThread>? onOpenAgent;
+
+  /// What a link in it does (`[[#3]]`, `@project`); by default another
+  /// stash shows on the Stash page.
+  final ValueChanged<String>? onOpenLink;
+
+  /// Its close button's; none where it closes otherwise (a tab).
+  final VoidCallback? onClose;
+
+  @override
+  State<StashDetail> createState() => _StashDetailState();
+}
+
+class _StashDetailState extends State<StashDetail> with _StashActions {
+  final GlobalKey<StashNoteEditorState> _editor = GlobalKey();
+
+  @override
+  StashController get _controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_changed);
+    _controller.store.addListener(_changed);
+  }
+
+  @override
+  void didUpdateWidget(StashDetail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_changed);
+      oldWidget.controller.store.removeListener(_changed);
+      widget.controller.addListener(_changed);
+      widget.controller.store.addListener(_changed);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_changed);
+    _controller.store.removeListener(_changed);
+    super.dispose();
+  }
+
+  void _changed() {
+    if (mounted) setState(() {});
+  }
+
+  void _openLink(String href) {
+    if (widget.onOpenLink case final open?) return open(href);
+    if (StashRefs.stashOf(href) case final id?) _controller.showPage?.call(id);
+  }
+
+  /// Says [note] clearly, in the background (see
+  /// [StashController.clarify]): what it has written first.
+  Future<void> _clarify(StashNote note) async {
+    await _editor.currentState?.flush();
+    await _controller.clarify(note.id);
+  }
+
+  Future<void> _implement(StashNote note, Rect anchor) async {
+    await _editor.currentState?.flush();
+    if (!mounted) return;
+    final thread = await implementStash(
+      context,
+      _controller,
+      note.id,
+      anchor: anchor,
+    );
+    if (thread != null) widget.onOpenAgent?.call(thread);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final note = _controller.store.byId(widget.id);
+    if (note == null) return const SizedBox.shrink();
     final thread = _controller.threadOf(note);
     final suggested = note.suggestedProject;
     final clarifying = _controller.clarifying(note.id);
@@ -1032,11 +1166,12 @@ class StashViewState extends State<StashView> {
                   },
                 ),
               ),
-              SidebarIconButton(
-                icon: Codicons.close,
-                tooltip: l10n.stashCloseDetail,
-                onTap: () => setState(() => _open = null),
-              ),
+              if (widget.onClose case final close?)
+                SidebarIconButton(
+                  icon: Codicons.close,
+                  tooltip: l10n.stashCloseDetail,
+                  onTap: close,
+                ),
             ],
           ),
         ),
@@ -1117,7 +1252,8 @@ class StashViewState extends State<StashView> {
                     ),
               actions: [
                 if (thread != null)
-                  (l10n.stashOpenThread, () => widget.onOpenAgent(thread)),
+                  if (widget.onOpenAgent case final open?)
+                    (l10n.stashOpenThread, () => open(thread)),
               ],
             ),
           ),
@@ -1220,15 +1356,6 @@ class StashViewState extends State<StashView> {
         ),
       ],
     );
-  }
-
-  String _sourceText(StashNote note) {
-    final source = note.source;
-    final when = _dateText(note.created);
-    return switch (source.branch) {
-      final branch? => '$when · ⎇ $branch',
-      null => when,
-    };
   }
 }
 

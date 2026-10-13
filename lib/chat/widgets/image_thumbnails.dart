@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show SynchronousFuture;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +10,7 @@ import '../../ide/ide_hover.dart';
 import '../../ide/ide_menu.dart';
 import '../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/codicons.dart';
 import '../../workspace/editor_launcher.dart' show openExternal;
 import '../../workspace/window_controls.dart';
 import '../chat_models.dart';
@@ -149,12 +151,35 @@ void showImagePreview(
   BuildContext context,
   ImageAttachment image, {
   ChatItemMenu? menu,
+}) => showImageGallery(
+  context,
+  count: 1,
+  load: (_) => SynchronousFuture(image),
+  menu: menu == null ? null : (_) => menu,
+);
+
+/// Shows images whole, as [showImagePreview] does, [count] of them (read
+/// by [load] as they show), from the one at [index]: the arrows at its
+/// sides, ← and →, go from one to the next. [menu] is a right click's on
+/// each, if not [ImageMenu]'s.
+void showImageGallery(
+  BuildContext context, {
+  required int count,
+  required Future<ImageAttachment?> Function(int index) load,
+  int index = 0,
+  ChatItemMenu? Function(int index)? menu,
 }) {
+  if (count < 1) return;
   showDialog<void>(
     context: context,
     // Black, not the theme's: as upstream's modal backdrops.
     barrierColor: Colors.black87,
-    builder: (context) => _ImagePreview(image: image, menu: menu),
+    builder: (context) => _ImagePreview(
+      count: count,
+      load: load,
+      index: index.clamp(0, count - 1),
+      menu: menu,
+    ),
   );
 }
 
@@ -228,16 +253,83 @@ String? _imageFile(ImageAttachment image, AppLocalizations l10n) {
   );
 }
 
-class _ImagePreview extends StatelessWidget {
-  const _ImagePreview({required this.image, this.menu});
+class _ImagePreview extends StatefulWidget {
+  const _ImagePreview({
+    required this.count,
+    required this.load,
+    required this.index,
+    this.menu,
+  });
 
-  final ImageAttachment image;
-  final ChatItemMenu? menu;
+  final int count;
+  final Future<ImageAttachment?> Function(int index) load;
+  final int index;
+  final ChatItemMenu? Function(int index)? menu;
 
-  void _copy() => WindowControls.writePasteboardImage(image);
+  @override
+  State<_ImagePreview> createState() => _ImagePreviewState();
+}
+
+class _ImagePreviewState extends State<_ImagePreview> {
+  late int _index = widget.index;
+
+  /// Those read, by their index; null for one that could not be.
+  final Map<int, ImageAttachment?> _read = {};
+
+  ImageAttachment? get _image => _read[_index];
+
+  @override
+  void initState() {
+    super.initState();
+    _load(_index);
+  }
+
+  /// Shows the [index]th.
+  void _show(int index) {
+    setState(() => _index = index);
+    _load(index);
+  }
+
+  /// Reads the [index]th, once, and the ones beside it, for the arrows to
+  /// go at once.
+  void _load(int index) {
+    for (final at in {index, index + 1, index - 1}) {
+      if (at < 0 || at >= widget.count || _read.containsKey(at)) continue;
+      void read(ImageAttachment? image) {
+        if (!mounted) return;
+        // Given at once, as it starts (an image given, not read): no
+        // frame to ask for.
+        if (!_started) {
+          _read[at] = image;
+        } else {
+          setState(() => _read[at] = image);
+        }
+      }
+
+      unawaited(widget.load(at).then(read, onError: (Object _) => read(null)));
+    }
+    _started = true;
+  }
+
+  bool _started = false;
+
+  void _step(int by) {
+    final next = _index + by;
+    if (next >= 0 && next < widget.count) _show(next);
+  }
+
+  void _copy() {
+    if (_image case final image?) {
+      unawaited(WindowControls.writePasteboardImage(image));
+    }
+  }
 
   Future<void> _showMenu(BuildContext context, Offset position) async {
-    if (menu case final menu?) return menu.show(context, position);
+    final image = _image;
+    if (image == null) return;
+    if (widget.menu?.call(_index) case final menu?) {
+      return menu.show(context, position);
+    }
     final l10n = context.l10n;
     final open = WindowControls.canOpenInDefaultApp;
     final reveal = WindowControls.canRevealInFileManager;
@@ -263,32 +355,131 @@ class _ImagePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final image = _image;
+    final several = widget.count > 1;
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyC, meta: true): _copy,
         const SingleActivator(LogicalKeyboardKey.keyC, control: true): _copy,
+        if (several) ...{
+          const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _step(-1),
+          const SingleActivator(LogicalKeyboardKey.arrowRight): () => _step(1),
+        },
       },
       child: Focus(
         autofocus: true,
         child: GestureDetector(
           onTap: () => Navigator.of(context).pop(),
-          child: Padding(
-            padding: const EdgeInsets.all(40),
-            child: Center(
-              child: InteractiveViewer(
-                maxScale: 6,
-                child: GestureDetector(
-                  onSecondaryTapUp: (details) =>
-                      _showMenu(context, details.globalPosition),
-                  child: Image.memory(image.bytes, fit: BoxFit.contain),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: several ? 72 : 40,
+                    vertical: 40,
+                  ),
+                  child: Center(
+                    child: !_read.containsKey(_index)
+                        ? const SizedBox.shrink()
+                        : image == null
+                        ? Icon(
+                            Codicons.fileMedia,
+                            size: 32,
+                            color: Colors.white54,
+                          )
+                        : InteractiveViewer(
+                            // Each anew: not zoomed as the one before.
+                            key: ValueKey(_index),
+                            maxScale: 6,
+                            child: GestureDetector(
+                              onSecondaryTapUp: (details) =>
+                                  _showMenu(context, details.globalPosition),
+                              child: Image.memory(
+                                image.bytes,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                  ),
                 ),
               ),
-            ),
+              if (several) ...[
+                Positioned(
+                  left: 16,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: _PageArrow(
+                      key: const ValueKey('image-previous'),
+                      icon: Codicons.chevronLeft,
+                      onTap: _index > 0 ? () => _step(-1) : null,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 16,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: _PageArrow(
+                      key: const ValueKey('image-next'),
+                      icon: Codicons.chevronRight,
+                      onTap: _index < widget.count - 1 ? () => _step(1) : null,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 12,
+                  child: Center(
+                    child: Text(
+                      '${_index + 1} / ${widget.count}',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ),
     );
   }
+}
+
+/// An arrow at a side of [_ImagePreview], to the image before or after;
+/// faded where there is none.
+class _PageArrow extends StatelessWidget {
+  const _PageArrow({super.key, required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => HoverBuilder(
+    cursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+    builder: (context, hovered) => GestureDetector(
+      // Not the backdrop's tap, which closes it.
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap ?? () {},
+      child: Opacity(
+        opacity: onTap == null ? .3 : 1,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: hovered ? .22 : .12),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 20, color: Colors.white),
+        ),
+      ),
+    ),
+  );
 }
 
 /// [child], which a click shows [image] whole from (see [showImagePreview]).

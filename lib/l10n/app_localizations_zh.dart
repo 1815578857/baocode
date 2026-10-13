@@ -7614,9 +7614,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mobilePairAllow => '允许';
 
   @override
-  String get cmdSidePanelBacklog => '显示项目 Backlog';
-
-  @override
   String get settingsSectionStash => 'Stash';
 
   @override
@@ -7624,12 +7621,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get stashHeading => 'Stash';
-
-  @override
-  String get stashBacklog => 'Backlog';
-
-  @override
-  String get stashBacklogEmpty => '这个项目还没有 Stash。把便签关联到它，或者点 + 新写一条。';
 
   @override
   String get stashNew => '新便签';

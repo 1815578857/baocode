@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:bao_editor/monaco/flutter/editor_document_model.dart';
 
 import 'file_service.dart';
+import 'file_views.dart';
 import 'git/git_repository.dart';
 import 'git/repository_scan.dart';
 import 'ide_layout.dart';
@@ -46,6 +47,7 @@ class IdeDocument {
       readRevision = null,
       diff = null,
       isMedia = false,
+      view = null,
       isUntitled = false;
 
   /// A new file, not saved anywhere yet: [path] is its name alone
@@ -57,11 +59,13 @@ class IdeDocument {
       readRevision = null,
       diff = null,
       isMedia = false,
+      view = null,
       isUntitled = true;
 
   /// An image, shown in VS Code's image preview rather than the text
-  /// editor: it has no text.
-  IdeDocument.media(this.path)
+  /// editor, or a file of a [FileView] ([view], its id), shown as that:
+  /// it has no text.
+  IdeDocument.media(this.path, {this.view})
     : model = EditorDocumentModel(''),
       openError = null,
       label = null,
@@ -78,6 +82,7 @@ class IdeDocument {
       readRevision = null,
       diff = null,
       isMedia = false,
+      view = null,
       isUntitled = false;
 
   /// [path]'s text at a revision (Git's), read-only, titled with [label]
@@ -91,6 +96,7 @@ class IdeDocument {
        openError = null,
        diff = null,
        isMedia = false,
+       view = null,
        isUntitled = false;
 
   /// A diff tab: [diff]'s original against [model], [path]'s file (then
@@ -104,6 +110,7 @@ class IdeDocument {
     this.readRevision,
   }) : openError = null,
        isMedia = false,
+       view = null,
        isUntitled = false;
 
   /// [path]'s own tab of the [model] its diff tab has.
@@ -113,6 +120,7 @@ class IdeDocument {
       readRevision = null,
       diff = null,
       isMedia = false,
+      view = null,
       isUntitled = false;
 
   /// [document], new, saved to [path]: the same text and history.
@@ -123,6 +131,7 @@ class IdeDocument {
       readRevision = null,
       diff = null,
       isMedia = false,
+      view = null,
       isUntitled = false;
 
   /// [document] at [path], after its file moved: the same text, history
@@ -134,6 +143,7 @@ class IdeDocument {
       readRevision = document.readRevision,
       diff = document.diff,
       isMedia = document.isMedia,
+      view = document.view,
       isUntitled = document.isUntitled;
 
   final String path;
@@ -154,8 +164,12 @@ class IdeDocument {
   /// The original side, for a diff tab.
   final IdeDiffOriginal? diff;
 
-  /// Whether the tab is the image preview's ([IdeDocument.media]).
+  /// Whether the tab is the image preview's, or a [FileView]'s
+  /// ([IdeDocument.media]).
   final bool isMedia;
+
+  /// The [FileView] the tab shows its file in (its id), if any.
+  final String? view;
 
   /// Whether it is a new file not saved yet ([IdeDocument.untitled]).
   final bool isUntitled;
@@ -480,6 +494,8 @@ class IdeWorkspace extends ChangeNotifier {
     if (_fileModel(path) case final model?) {
       // Its diff tab's: the same text and history.
       doc = IdeDocument._shared(path, model);
+    } else if (FileViews.of(path) case final view?) {
+      doc = IdeDocument.media(path, view: view.id);
     } else if (ideIsImagePath(path)) {
       doc = IdeDocument.media(path);
     } else {
@@ -533,7 +549,9 @@ class IdeWorkspace extends ChangeNotifier {
       final normal = this.paths.normalize(this.paths.absolute(path));
       if (_documents.any((d) => d.key == normal)) continue;
       final IdeDocument doc;
-      if (ideIsImagePath(normal)) {
+      if (FileViews.of(normal) case final view?) {
+        doc = IdeDocument.media(normal, view: view.id);
+      } else if (ideIsImagePath(normal)) {
         doc = IdeDocument.media(normal);
       } else if (_fileModel(normal) case final model?) {
         doc = IdeDocument._shared(normal, model);

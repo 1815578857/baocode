@@ -99,6 +99,16 @@ class StashStore extends ChangeNotifier {
   /// [path] as a stash's text gives it, absolute.
   String absolute(String path) => stashAbsolute(disk.root, path);
 
+  /// The stash whose file [path] is (`<root>/12.md`), if one is.
+  int? idOfFile(String path) {
+    if (root.isEmpty || !p.equals(p.dirname(path), root)) return null;
+    final id = switch (RegExp(r'^(\d+)\.md$').firstMatch(p.basename(path))) {
+      final match? => int.parse(match[1]!),
+      null => null,
+    };
+    return id == null ? null : _notes[id]?.id;
+  }
+
   /// Reads the folder (once; again for [reload]), and follows other apps'
   /// changes to it.
   Future<void> load() => _loading ??= _read();

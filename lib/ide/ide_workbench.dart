@@ -55,6 +55,7 @@ import 'extensions/ide_extensions.dart';
 import 'extensions/ide_extensions_view.dart';
 import 'explorer_history.dart'
     show explorerRedoCommandId, explorerUndoCommandId;
+import 'file_views.dart';
 import 'file_service.dart'
     show IdeFileListing, IdeHostFiles, localizedFileError, readFileBytes;
 import 'git/commit_message.dart';
@@ -3843,6 +3844,14 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                                   (command) => command.id == id,
                                 ),
                             ],
+                          )
+                        : active.view != null &&
+                              FileViews.byId(active.view!) != null
+                        ? KeyedSubtree(
+                            key: ValueKey(active),
+                            child: FileViews.byId(
+                              active.view!,
+                            )!.build(context, active.path),
                           )
                         : active.isMedia
                         ? IdeImagePreview(

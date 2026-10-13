@@ -13275,12 +13275,6 @@ abstract class AppLocalizations {
   /// **'Allow'**
   String get mobilePairAllow;
 
-  /// No description provided for @cmdSidePanelBacklog.
-  ///
-  /// In en, this message translates to:
-  /// **'Show Project Backlog'**
-  String get cmdSidePanelBacklog;
-
   /// No description provided for @settingsSectionStash.
   ///
   /// In en, this message translates to:
@@ -13298,18 +13292,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stash'**
   String get stashHeading;
-
-  /// No description provided for @stashBacklog.
-  ///
-  /// In en, this message translates to:
-  /// **'Backlog'**
-  String get stashBacklog;
-
-  /// No description provided for @stashBacklogEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No stashes about this project yet. Link one to it, or press + to write one.'**
-  String get stashBacklogEmpty;
 
   /// No description provided for @stashNew.
   ///

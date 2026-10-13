@@ -8089,9 +8089,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mobilePairAllow => 'Allow';
 
   @override
-  String get cmdSidePanelBacklog => 'Show Project Backlog';
-
-  @override
   String get settingsSectionStash => 'Stash';
 
   @override
@@ -8099,13 +8096,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stashHeading => 'Stash';
-
-  @override
-  String get stashBacklog => 'Backlog';
-
-  @override
-  String get stashBacklogEmpty =>
-      'No stashes about this project yet. Link one to it, or press + to write one.';
 
   @override
   String get stashNew => 'New stash';

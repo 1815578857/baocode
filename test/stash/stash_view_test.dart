@@ -10,6 +10,7 @@ import 'package:baocode/stash/stash_note.dart';
 import 'package:baocode/stash/stash_note_editor.dart';
 import 'package:baocode/stash/stash_store.dart';
 import 'package:baocode/stash/stash_view.dart';
+import 'package:baocode/theme/codicons.dart';
 import 'package:baocode/workspace/workspace.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -192,6 +193,42 @@ void main() {
     await tester.pumpAndSettle();
     expect(controller.detailWidth, isNull);
     expect(tester.getTopLeft(sash).dx, closeTo(before, 1));
+    await unmount(tester);
+  });
+
+  testWidgets('a stash\'s file shows as the Stash page shows it', (
+    tester,
+  ) async {
+    final note = await tester.runAsync(
+      () => store.create(body: 'see the sidebar'),
+    );
+    final view = stashFileView(controller);
+    final path = '${store.root}/${note!.id}.md';
+    expect(view.matches(path), isTrue);
+    expect(view.matches('${store.root}/99.md'), isFalse);
+    expect(view.matches('${store.root}/${note.id}/a.png'), isFalse);
+    expect(view.matches('/elsewhere/${note.id}.md'), isFalse);
+
+    tester.view.physicalSize = const Size(700, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          FlutterQuillLocalizations.delegate,
+        ],
+        home: Material(
+          child: Builder(builder: (context) => view.build(context, path)),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(StashDetail), findsOneWidget);
+    expect(find.text('Clarify'), findsOneWidget);
+    // In a tab: closed with it, no button of its own.
+    expect(find.byIcon(Codicons.close), findsNothing);
+    expect(StashNoteEditorState.showing(note.id)?.markdown, 'see the sidebar');
     await unmount(tester);
   });
 }

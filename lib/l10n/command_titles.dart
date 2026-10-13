@@ -130,7 +130,6 @@ String localizedCommandLabel(AppLocalizations l10n, String id, String english) {
     ChatCommandIds.sidePanelChanges => l10n.cmdSidePanelChanges,
     ChatCommandIds.sidePanelFiles => l10n.cmdSidePanelFiles,
     ChatCommandIds.sidePanelTerminal => l10n.cmdSidePanelTerminal,
-    ChatCommandIds.sidePanelBacklog => l10n.cmdSidePanelBacklog,
     ChatCommandIds.sidePanelCloseTab => l10n.cmdSidePanelCloseTab,
     ChatCommandIds.closeTab => l10n.cmdChatCloseTab,
     ChatCommandIds.focusInput => l10n.cmdChatFocusInput,
