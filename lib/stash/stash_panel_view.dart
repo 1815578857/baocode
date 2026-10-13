@@ -220,10 +220,10 @@ class _StashPanelViewState extends State<StashPanelView> {
       placeholder: l10n.stashPlaceholder,
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
     );
-    // The theme's colors as they are, not over the system's material: under
-    // a panel that is the main window, blurred, which no part of the app
-    // looks like. The window's own corners and edge, as the main window's
-    // (the system's).
+    // As the main window is: the stash on the conversation's color, a tint
+    // over the system's material (see StashPanel.swift) where there is
+    // one, the list of all on the material itself, as the sidebar. The
+    // window's own corners and edge, as the main window's (the system's).
     // Its dialogs and menus come in lively, not as the IDE's.
     return IdeMotion(
       lively: true,
@@ -242,7 +242,7 @@ class _StashPanelViewState extends State<StashPanelView> {
               flush: _flush,
             );
             final main = ColoredBox(
-              color: AppColors.code,
+              color: AppColors.conversationSurface,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1148,7 +1148,7 @@ class _AllStashesState extends State<_AllStashes> {
     return Container(
       decoration: BoxDecoration(
         // The chat's sidebar's.
-        color: AppColors.background,
+        color: AppColors.sidebarSurface,
         border: Border(right: BorderSide(color: AppColors.partBorder)),
       ),
       child: Column(
