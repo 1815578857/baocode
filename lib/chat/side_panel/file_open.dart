@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import '../../ide/file_service.dart';
 import '../chat_models.dart';
 import 'file_link.dart';
+import 'file_link_menu.dart';
 
 /// A file to show: at [range], or as its changes ([diff]) against
 /// [original], its text before (the agent's edit, or Git's HEAD or index).
@@ -179,10 +180,15 @@ class FileOpenScope extends InheritedWidget {
     this.paths,
     this.roots = const [],
     this.seen = const [],
+    this.local = true,
     required super.child,
   });
 
   final String root;
+
+  /// Whether the files are this machine's (not a remote project's): their
+  /// menu then shows them in the file manager, and opens them in apps.
+  final bool local;
   final ValueChanged<FileOpenRequest> onOpen;
   final FileExistence existence;
   final p.Context? paths;
@@ -278,11 +284,15 @@ class FileOpenScope extends InheritedWidget {
   }
 
   /// What a click on a markdown link to [href] does: opens the file it goes
-  /// to, when that is in [root]; null for any other.
+  /// to, when that is in [root]; null for any other. A right click has its
+  /// menu (see [FileLinkMenu]).
   GestureRecognizer? linkRecognizer(String? href) {
     final link = FileLink.parseHref(href);
-    if (link == null || resolve(link.path) == null) return null;
-    return TapGestureRecognizer()..onTap = () => openLink(link);
+    if (link == null) return null;
+    final path = resolve(link.path);
+    if (path == null) return null;
+    return FileLinkRecognizer(menuFor(path, () => openLink(link)))
+      ..onTap = () => openLink(link);
   }
 
   /// What a click on inline [code] does: opens the file it names, once
@@ -292,8 +302,19 @@ class FileOpenScope extends InheritedWidget {
     if (link == null) return null;
     final path = resolve(link.path);
     if (path == null || existence.known(path) != true) return null;
-    return TapGestureRecognizer()..onTap = () => openLink(link);
+    return FileLinkRecognizer(menuFor(path, () => openLink(link)))
+      ..onTap = () => openLink(link);
   }
+
+  /// The right click's menu of the file at [path] (absolute), [open]
+  /// opening it.
+  FileLinkMenu menuFor(String path, VoidCallback open) => FileLinkMenu(
+    path: path,
+    root: root,
+    paths: paths,
+    local: local,
+    onOpen: open,
+  );
 
   @override
   bool updateShouldNotify(FileOpenScope oldWidget) =>
@@ -301,6 +322,7 @@ class FileOpenScope extends InheritedWidget {
       onOpen != oldWidget.onOpen ||
       existence != oldWidget.existence ||
       paths != oldWidget.paths ||
+      local != oldWidget.local ||
       !listEquals(roots, oldWidget.roots) ||
       !listEquals(seen, oldWidget.seen);
 }

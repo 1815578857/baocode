@@ -166,6 +166,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cmdChatFocusList => 'Focus Chat List';
 
   @override
+  String get cmdChatFind => 'Find in Chat';
+
+  @override
   String get cmdChatCancel => 'Cancel';
 
   @override
@@ -2433,6 +2436,28 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String stripAgentsRunning(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count subagents running',
+      one: '1 subagent running',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String stripTasksRunning(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count background tasks running',
+      one: '1 background task running',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get stripUndoAll => 'Undo all';
 
   @override
@@ -2765,6 +2790,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tabCloseAll => 'Close All';
+
+  @override
+  String get fileLinkOpen => 'Open';
 
   @override
   String get tabCopyPath => 'Copy Path';
@@ -7775,6 +7803,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get extsTabLanguageServers => 'Language Servers';
+
+  @override
+  String get sidebarAllHosts => 'All';
 
   @override
   String get sidebarThisMachine => 'This Computer';

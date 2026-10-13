@@ -49,11 +49,13 @@ import 'ide/lsp/lsp_protocol.dart';
 import 'ide/terminal/links/terminal_links.dart';
 import 'ide/terminal/terminal_instance.dart';
 import 'ide/terminal/terminal_panel.dart' show terminalCommandsToSkipShell;
+import 'ide/terminal/terminal_tasks.dart';
 import 'keybindings/chat_keybindings.dart';
 import 'keybindings/default_keybindings.dart';
 import 'keybindings/key_chord.dart';
 import 'keybindings/keybinding_service.dart';
 import 'keybindings/window_keybindings.dart';
+import 'kernel/kernel_types.dart' show KernelTask;
 import 'l10n/command_titles.dart';
 import 'l10n/l10n.dart';
 import 'notifications/attention_host.dart';
@@ -1091,6 +1093,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         settings: _paletteSettings(),
         filter: filter,
         onOpenAgent: _agentWindow ? _showInWindow : _openAgent,
+        // A hit in what was said: found in the conversation, once shown.
+        onFindInAgent: (thread, query) {
+          _agentWindow ? _showInWindow(thread) : _openAgent(thread);
+          _findInChat(thread, query);
+        },
         onOpenFile: (path) {
           if (_windows case final windows? when _multi || _agentWindow) {
             unawaited(
@@ -1187,6 +1194,17 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
             run: () => _showCustomize(kind),
           ),
     ];
+  }
+
+  /// Finds [query] in [thread]'s chat once it is built: a frame or a few
+  /// after it is opened, as its layout settles.
+  void _findInChat(AgentThread thread, String query, [int frames = 30]) {
+    WidgetsBinding.instance
+      ..addPostFrameCallback((_) {
+        if (!mounted || ChatScreen.find(_chatKey(thread), query)) return;
+        if (frames > 1) _findInChat(thread, query, frames - 1);
+      })
+      ..ensureVisualUpdate();
   }
 
   /// Focuses [thread]'s input once its chat is built.
@@ -2244,6 +2262,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
             terminalBackend: ProjectHost.of(path).terminals(
               widget.terminalBackend ?? const TerminalBackend(supported: false),
             ),
+            // Its chat's background commands, with its terminals.
+            terminalTasks: switch (_workspace.ideChat(path)) {
+              final thread? => _SessionTerminalTasks(thread.session),
+              null => null,
+            },
             remote: switch (ProjectHost.of(path)) {
               final SshHost host => SshStatusIndicator(host),
               _ => null,
@@ -3257,7 +3280,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         onOpenCode: (path, start, end) => _openCode(thread, path, start, end),
         fileLinks: _fileLinks(thread, embedded: embedded),
         onOpenTerminalTask: embedded
-            ? null
+            ? (task) => _ide?.showTerminalTask(task.id)
             : (task) => _sidePanel.openTerminal(thread.session, task.id),
         colorizeCode: _colorizeCode,
         colorizeCodeBlock: _colorizeCodeBlock,
@@ -3760,4 +3783,37 @@ class _EmptyWorkspace extends StatelessWidget {
       ],
     );
   }
+}
+
+/// A chat's background commands, for its IDE's TERMINAL tab.
+class _SessionTerminalTasks implements TerminalTasks {
+  const _SessionTerminalTasks(this.session);
+
+  final ChatSession session;
+
+  @override
+  List<KernelTask> get tasks => session.terminalTasks;
+
+  @override
+  String? commandOf(KernelTask task) => session.commandOf(task.toolUseId);
+
+  @override
+  void stop(KernelTask task) => session.stopTask(task);
+
+  @override
+  String get root => session.root ?? '';
+
+  @override
+  void addListener(VoidCallback listener) => session.addListener(listener);
+
+  @override
+  void removeListener(VoidCallback listener) =>
+      session.removeListener(listener);
+
+  @override
+  bool operator ==(Object other) =>
+      other is _SessionTerminalTasks && identical(other.session, session);
+
+  @override
+  int get hashCode => identityHashCode(session);
 }

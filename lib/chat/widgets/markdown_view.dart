@@ -4,13 +4,15 @@ import 'package:markdown/markdown.dart' as md;
 
 import '../../theme/app_theme.dart';
 import '../../theme/material_file_icons.dart';
-import '../../theme/workbench_theme.dart' show themeColors;
+import '../../theme/workbench_theme.dart' show WorkbenchThemeScope, themeColors;
 import '../../workspace/editor_launcher.dart';
 import '../side_panel/file_link.dart';
+import '../side_panel/file_link_menu.dart';
 import '../side_panel/file_open.dart';
 import 'code_citation.dart';
 import 'hover_scrollbar.dart';
 import 'inline_code.dart';
+import 'markdown_cjk.dart';
 import 'markdown_math.dart';
 import 'mermaid_code_block.dart';
 
@@ -18,7 +20,7 @@ import 'mermaid_code_block.dart';
 /// `SelectionArea` selects and copies it): headings, paragraphs, lists
 /// (and task lists), code blocks, quotes, tables, rules, and inline
 /// strong, emphasis, strikethrough, code, links and TeX math.
-class MarkdownView extends StatelessWidget {
+class MarkdownView extends StatefulWidget {
   const MarkdownView(this.data, {super.key, this.style});
 
   final String data;
@@ -38,7 +40,10 @@ class MarkdownView extends StatelessWidget {
     CodeCitationFenceSyntax(),
     MathBlockSyntax(),
   ];
-  static List<md.InlineSyntax> get inlineSyntaxes => [InlineMathSyntax()];
+  static List<md.InlineSyntax> get inlineSyntaxes => [
+    InlineMathSyntax(),
+    CjkEmphasisSyntax(),
+  ];
 
   /// A document parsing as it does; one keeps the link definitions it
   /// read (see the IDE's markdown preview).
@@ -52,8 +57,39 @@ class MarkdownView extends StatelessWidget {
   static final _document = document();
 
   @override
+  State<MarkdownView> createState() => _MarkdownViewState();
+}
+
+class _MarkdownViewState extends State<MarkdownView> {
+  /// What it built last, and from what. The history rebuilds the messages
+  /// it shows as a reply streams in, the pointer moves in…: parsed again,
+  /// its file icons new widgets, each paragraph would be laid out anew.
+  Widget? _built;
+  Object? _builtFrom;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _built = null;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final nodes = _document.parse(data);
+    final from = (
+      widget.data,
+      widget.style,
+      themeColors,
+      WorkbenchThemeScope.restyles,
+    );
+    if (_built case final built? when from == _builtFrom) return built;
+    _builtFrom = from;
+    return _built = _build(context);
+  }
+
+  Widget _build(BuildContext context) {
+    final MarkdownView(:data, :style) = widget;
+    final baseStyle = MarkdownView.baseStyle;
+    final nodes = MarkdownView._document.parse(data);
     // In a chat whose files open (see FileOpenScope): links to them, and
     // inline code naming one once it is known to be there.
     final files = FileOpenScope.maybeOf(context);
@@ -196,7 +232,7 @@ class MarkdownBlocks extends StatelessWidget {
 
 Widget? _block(md.Node node, TextStyle style, MarkdownOptions options) {
   if (node is md.Text) {
-    if (node.text.trim().isEmpty) return null;
+    if (node.text.trim().isEmpty || isHtmlComment(node.text)) return null;
     return Text.rich(TextSpan(style: style, text: node.text));
   }
   if (node is! md.Element) return null;
@@ -529,7 +565,14 @@ TextSpan _inlines(
 );
 
 InlineSpan _inline(md.Node node, MarkdownOptions options) {
-  if (node is md.Text) return TextSpan(text: _unescape(node.text));
+  if (node is md.Text) {
+    // A comment is the writer's note, not shown (as HTML has it); the
+    // parser joins it to the text after it.
+    final text = node.text.contains('<!--')
+        ? node.text.replaceAll(_htmlComment, '')
+        : node.text;
+    return TextSpan(text: _unescape(text));
+  }
   if (node is! md.Element) return const TextSpan();
   final children = node.children ?? const <md.Node>[];
   List<InlineSpan> inner() => [
@@ -626,6 +669,13 @@ GestureRecognizer? _linkRecognizer(String? href) {
   return TapGestureRecognizer()..onTap = () => openExternal(uri.toString());
 }
 
+/// Whether [text] is HTML comments alone (`<!-- note -->`), which do not
+/// show.
+bool isHtmlComment(String text) => _htmlComments.hasMatch(text);
+
+final _htmlComments = RegExp(r'^\s*(?:<!--[\s\S]*?-->\s*)+$');
+final _htmlComment = RegExp(r'<!--[\s\S]*?-->');
+
 const _fileIconSize = 14.0;
 
 /// Whether a link to [written] (as the agent wrote it), [known] to be a
@@ -647,6 +697,9 @@ WidgetSpan _linkIcon(
   EdgeInsets padding,
 ) {
   icon = Padding(padding: padding, child: icon);
+  if (recognizer is FileLinkRecognizer) {
+    icon = FileLinkMenuRegion(menu: recognizer.menu, child: icon);
+  }
   if (recognizer is TapGestureRecognizer) {
     icon = MouseRegion(
       cursor: SystemMouseCursors.click,

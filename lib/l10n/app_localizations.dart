@@ -380,6 +380,12 @@ abstract class AppLocalizations {
   /// **'Focus Chat List'**
   String get cmdChatFocusList;
 
+  /// No description provided for @cmdChatFind.
+  ///
+  /// In en, this message translates to:
+  /// **'Find in Chat'**
+  String get cmdChatFind;
+
   /// No description provided for @cmdChatCancel.
   ///
   /// In en, this message translates to:
@@ -4430,6 +4436,18 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 file changed} other{{count} files changed}}'**
   String stripFilesChanged(int count);
 
+  /// No description provided for @stripAgentsRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 subagent running} other{{count} subagents running}}'**
+  String stripAgentsRunning(int count);
+
+  /// No description provided for @stripTasksRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 background task running} other{{count} background tasks running}}'**
+  String stripTasksRunning(int count);
+
   /// No description provided for @stripUndoAll.
   ///
   /// In en, this message translates to:
@@ -4963,6 +4981,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close All'**
   String get tabCloseAll;
+
+  /// No description provided for @fileLinkOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get fileLinkOpen;
 
   /// No description provided for @tabCopyPath.
   ///
@@ -12782,6 +12806,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Language Servers'**
   String get extsTabLanguageServers;
+
+  /// No description provided for @sidebarAllHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get sidebarAllHosts;
 
   /// No description provided for @sidebarThisMachine.
   ///

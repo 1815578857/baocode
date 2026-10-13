@@ -348,9 +348,9 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
 
   /// A new agent nothing was sent to is listed only while it shows: one
   /// left for another is not worth a row.
-  bool _listed(AgentThread thread, String? host) =>
+  bool _listed(AgentThread thread) =>
       !_workspace.isHidden(thread.project) &&
-      thread.project.host == host &&
+      _workspace.listsHost(thread.project.host) &&
       (!thread.untouched ||
           identical(thread, _current) ||
           _workspace.grid.contains(thread));
@@ -383,10 +383,9 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
 
   void _create([Project? project]) {
     // Where the sidebar lists: the open agent's project if it is there.
-    final host = _workspace.sidebarHost;
     project ??= switch (_current?.project) {
-      final current? when current.host == host => current,
-      _ => _workspace.sidebarProjectsOn(host).firstOrNull,
+      final current? when _workspace.listsHost(current.host) => current,
+      _ => _workspace.sidebarProjectsHere.firstOrNull,
     };
     if (widget.onNewAgent case final open?) {
       open(project);
@@ -398,15 +397,14 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
 
   List<_Group> _groups() {
     final l10n = context.l10n;
-    final host = _workspace.sidebarHost;
     final threads = [
       for (final thread in _workspace.threads)
         // Archived ones are listed whatever their project: the footer
         // counts them all, so one of a project taken off the sidebar (see
         // [Workspace.hideProject]) would be counted with no way back.
         if ((thread.archived
-                ? thread.project.host == host
-                : _listed(thread, host)) &&
+                ? _workspace.listsHost(thread.project.host)
+                : _listed(thread)) &&
             _workspace.listsInSidebar(thread))
           thread,
     ]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
@@ -438,10 +436,15 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
         _Group(_pinnedGroup, l10n.sidebarPinned, pinned),
       ...switch (_grouping) {
         SidebarGrouping.project => [
-          for (final project in _workspace.sidebarProjectsOn(host))
+          for (final project in _workspace.sidebarProjectsHere)
             _Group(
               Workspace.projectGroup(project.path),
-              project.name,
+              // Every host's together: a remote one's says where it is.
+              switch (project.host) {
+                final host? when _workspace.sidebarAllHosts =>
+                  '${project.name} · ${_workspace.hostLabel(host)}',
+                _ => project.name,
+              },
               _workspace.inProjectOrder(
                 project,
                 where((thread) => thread.project == project),
@@ -519,7 +522,7 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
                 onTap: switch (_workspace.sidebarHost) {
                   final host? when _workspace.sidebarProjectsOn(host).isEmpty =>
                     () => widget.onOpenFolderOn?.call(host),
-                  null when _workspace.sidebarProjectsOn(null).isEmpty =>
+                  null when _workspace.sidebarProjectsHere.isEmpty =>
                     widget.onOpenFolder ?? () {},
                   _ => _create,
                 },
@@ -678,11 +681,15 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
       listenable: hosts,
       builder: (context, _) {
         final current = _workspace.sidebarHost;
-        final elsewhere = _needingYou(where: (host) => host != current);
+        final all = _workspace.sidebarAllHosts;
+        final elsewhere = _needingYou(
+          where: (host) => !_workspace.listsHost(host),
+        );
         final icon = _HostIcon(
           key: _hostIconKey,
           workspace: _workspace,
           host: current,
+          all: all,
           attention: _mostUrgent(elsewhere),
         );
         if (_renamingHost && current != null) {
@@ -703,7 +710,9 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
             ],
           );
         }
-        final label = current == null
+        final label = all
+            ? l10n.sidebarAllHosts
+            : current == null
             ? l10n.sidebarThisMachine
             : _workspace.hostLabel(current);
         return SidebarMenu(
@@ -800,12 +809,24 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
     final add = widget.onAddSshHost;
     final open = widget.onOpenFolderOn;
     final ssh = current == null ? null : hosts[current];
+    final all = _workspace.sidebarAllHosts;
     return [
+      SidebarMenuItem(
+        l10n.sidebarAllHosts,
+        leading: _HostIcon(
+          workspace: _workspace,
+          host: null,
+          all: true,
+          attention: null,
+        ),
+        checked: all,
+        onSelected: () => _workspace.sidebarAllHosts = true,
+      ),
       SidebarMenuItem(
         l10n.sidebarThisMachine,
         leading: _HostIcon(workspace: _workspace, host: null, attention: null),
         detail: waiting(null),
-        checked: current == null,
+        checked: !all && current == null,
         onSelected: () => _workspace.sidebarHost = null,
       ),
       for (final host in _workspace.sshHosts)
@@ -1396,13 +1417,13 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
 
   /// Several projects in the sidebar: their groups fold.
   bool get _projectsShown =>
-      _workspace.sidebarProjectsOn(_workspace.sidebarHost).length > 1;
+      _workspace.sidebarProjectsHere.length > 1;
 
   /// Whether [thread] is listed where the sidebar is (this machine, or the
   /// SSH host switched to).
   bool Function(AgentThread thread) get _here {
-    final host = _workspace.sidebarHost;
-    return (thread) => thread.project.host == host;
+    final workspace = _workspace;
+    return (thread) => workspace.listsHost(thread.project.host);
   }
 
   int get _archivedCount {
@@ -2932,11 +2953,15 @@ class _HostIcon extends StatelessWidget {
     required this.workspace,
     required this.host,
     required this.attention,
+    this.all = false,
   });
 
   final Workspace workspace;
   final String? host;
   final ThreadStatus? attention;
+
+  /// For every host together, not one.
+  final bool all;
 
   @override
   Widget build(BuildContext context) {
@@ -2944,7 +2969,9 @@ class _HostIcon extends StatelessWidget {
     final icon = SizedBox.square(
       dimension: 14,
       child: Center(
-        child: host == null
+        child: all
+            ? Icon(Codicons.layers, size: 13, color: AppColors.textMuted)
+            : host == null
             ? Icon(Codicons.deviceDesktop, size: 13, color: AppColors.textMuted)
             : ProjectIconView(
                 icon: workspace.iconOf(workspace.hostIconProject(host)),
