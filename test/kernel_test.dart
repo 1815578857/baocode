@@ -1505,10 +1505,7 @@ void main() {
       final items = {for (final (id, item) in transcript.liveItems) id: item};
       final look = items['a1']! as AgentItem;
       expect(look.status, CommandStatus.failed);
-      expect(
-        (look.children.single as ToolCallItem).status,
-        ToolStatus.failed,
-      );
+      expect((look.children.single as ToolCallItem).status, ToolStatus.failed);
       expect((items['b1']! as TerminalItem).status, CommandStatus.failed);
       final watch = items['a2']! as AgentItem;
       expect(watch.status, CommandStatus.running);
@@ -2379,6 +2376,26 @@ void main() {
         kernel.dispose();
       },
     );
+
+    test('not logged in on a host over SSH, it says the Mac\'s keychain '
+        'may be why, and what to do', () async {
+      late FakeCli cli;
+      final kernel = ClaudeCodeKernel(
+        MockKernels.claudeCode,
+        const KernelContext(cwd: 'ssh://home-imac/Users/me/p'),
+        start: (_) async => cli = FakeCli(),
+      );
+      kernel.send(const KernelTurn(id: 'u1', text: 'hi'));
+      await pumpEventQueue();
+      cli.push(
+        ClaudeExit.message(1, 'Error: Invalid API key · Please run /login'),
+      );
+      await pumpEventQueue();
+      expect(kernel.health.message, contains('home-imac'));
+      expect(kernel.health.message, contains('security unlock-keychain'));
+      expect(kernel.health.message, contains('CLAUDE_CODE_OAUTH_TOKEN'));
+      kernel.dispose();
+    });
 
     test('a model\'s context and effort are picked beside it, and read '
         'back from the CLI', () async {

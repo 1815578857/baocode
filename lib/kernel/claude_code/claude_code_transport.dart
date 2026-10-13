@@ -97,6 +97,10 @@ class ClaudeLaunch {
   /// but the session goes on with the one it started with.
   final int? autocompact;
 
+  /// The most `--autocompact` takes (a decimal million): a window larger
+  /// still (a model of 1,048,576 tokens, say) is passed as this.
+  static const maxAutocompact = 1000000;
+
   /// Whether Plan's commands are left to the auto mode classifier, as
   /// Claude Code's `useAutoModeDuringPlan` setting; null for the user's
   /// own.
@@ -214,7 +218,10 @@ class ClaudeLaunch {
     if (permissionMode case final mode?) ...['--permission-mode', mode],
     if (model case final model? when model != 'default') ...['--model', model],
     if (effort case final effort?) ...['--effort', effort],
-    if (autocompact case final tokens?) ...['--autocompact', '$tokens'],
+    if (autocompact case final tokens?) ...[
+      '--autocompact',
+      '${tokens > maxAutocompact ? maxAutocompact : tokens}',
+    ],
     if (resume case final id?) ...['--resume', id],
     for (final directory in directories) ...['--add-dir', directory],
     if (!withSettings)

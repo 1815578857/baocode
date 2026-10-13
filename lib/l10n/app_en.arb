@@ -143,6 +143,7 @@
   "cmdChatOpenIde": "Open in Fast Ide",
   "cmdChatFocusInput": "Focus Chat Input",
   "cmdChatFocusList": "Focus Chat List",
+  "cmdChatFind": "Find in Chat",
   "cmdChatCancel": "Cancel",
   "cmdChatAcceptTool": "Accept",
   "cmdChatSkipTool": "Skip",
@@ -1485,6 +1486,22 @@
       }
     }
   },
+  "stripAgentsRunning": "{count, plural, =1{1 subagent running} other{{count} subagents running}}",
+  "@stripAgentsRunning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stripTasksRunning": "{count, plural, =1{1 background task running} other{{count} background tasks running}}",
+  "@stripTasksRunning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "stripUndoAll": "Undo all",
   "stripKeepAll": "Keep all",
   "stripKeep": "Keep",
@@ -1765,6 +1782,7 @@
   "tabCloseToTheRight": "Close to the Right",
   "tabCloseSaved": "Close Saved",
   "tabCloseAll": "Close All",
+  "fileLinkOpen": "Open",
   "tabCopyPath": "Copy Path",
   "tabCopyRelativePath": "Copy Relative Path",
   "tabRevealInExplorerView": "Reveal in Explorer View",
@@ -5662,6 +5680,7 @@
   "extsPopularThemes": "Popular Themes",
   "extsTabThemes": "Themes",
   "extsTabLanguageServers": "Language Servers",
+  "sidebarAllHosts": "All",
   "sidebarThisMachine": "This Computer",
   "sidebarSwitchHost": "Switch between this computer and SSH hosts",
   "sidebarAddSshHost": "Add SSH Host...",

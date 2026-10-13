@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import '../kernel/kernel_types.dart';
 import '../keybindings/chat_keybindings.dart';
 import '../l10n/l10n.dart';
+import '../remote/remote_location.dart';
 import '../remote/remote_status.dart' show ClaudeInstallBanner, SshHostBanner;
 import '../stash/stash_actions.dart';
 import '../stash/stash_banner.dart';
@@ -162,6 +163,15 @@ class ChatScreen extends StatefulWidget {
   /// by its keybinding).
   static void focusInput(GlobalKey key) =>
       (key.currentState as _ChatScreenState?)?._focusInput();
+
+  /// Finds [query] in the conversation of the chat [key] is on (a search's
+  /// hit there), its first match brought into view.
+  /// Whether there was a chat at [key] to find [query] in.
+  static bool find(GlobalKey key, String query) {
+    final state = key.currentState as _ChatScreenState?;
+    state?._findIn(query: query);
+    return state != null;
+  }
 }
 
 class _ChatScreenState extends State<ChatScreen>
@@ -367,6 +377,12 @@ class _ChatScreenState extends State<ChatScreen>
   void _focusList() =>
       ChatHistoryView.focus(_agentShown?.historyKey ?? _historyKey);
 
+  /// The find bar over the conversation shown.
+  void _findIn({String? query}) => ChatHistoryView.find(
+    _agentShown?.historyKey ?? _historyKey,
+    query: query,
+  );
+
   bool get _renames => widget.onRename != null && !widget.embedded;
 
   @override
@@ -383,6 +399,7 @@ class _ChatScreenState extends State<ChatScreen>
   Map<String, VoidCallback> get chatCommands => {
     ChatCommandIds.focusInput: _focusInput,
     ChatCommandIds.focusList: _focusList,
+    ChatCommandIds.find: _findIn,
     if (_session.isStreaming) ChatCommandIds.cancel: _session.stop,
     if (_session.pendingInteraction is ApprovalRequest) ...{
       ChatCommandIds.acceptTool: () =>
@@ -619,6 +636,10 @@ class _ChatScreenState extends State<ChatScreen>
             existence: _files,
             roots: links.roots?.call() ?? const [],
             seen: _session.filesSeen,
+            local: switch (_session.kernelContext.cwd) {
+              final cwd? => !RemoteLocation.isRemote(cwd),
+              null => true,
+            },
             child: scoped,
           );
         }
@@ -668,6 +689,7 @@ class _ChatScreenState extends State<ChatScreen>
                         minimap: _minimap,
                         onOpenAgent: _openAgent,
                         onSetGoal: _setGoal,
+                        onFindClosed: () => _composerKey.currentState?.focus(),
                       ),
                       // The stash it carries out, if any (docs/stash.md).
                       ListenableBuilder(
@@ -801,6 +823,7 @@ class _ChatScreenState extends State<ChatScreen>
             minimap: _minimap,
             onOpenAgent: _openAgent,
             onSetGoal: _setGoal,
+            onFindClosed: layer.backFocus.requestFocus,
           ),
         ),
       ],

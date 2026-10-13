@@ -11,6 +11,7 @@ import '../../models/model_icons.dart';
 import '../../models/model_provider.dart';
 import '../../models/model_providers.dart';
 import '../../models/model_runtime.dart';
+import '../../remote/remote_location.dart';
 import '../../workspace/editor_launcher.dart' show openExternal;
 import '../agent_kernel.dart';
 import '../commit_attribution.dart';
@@ -1509,11 +1510,18 @@ class ClaudeCodeKernel
     if (message['is_error'] == true && message['result'] is String) {
       final error = message['result'] as String;
       if (error.isNotEmpty) {
+        final host = _remoteHost;
         emit(
           ItemUpserted(
             nextSeq,
             'error:${message['uuid'] ?? _turn}',
-            NoticeItem(NoticeKind.error, error),
+            NoticeItem(
+              NoticeKind.error,
+              // On a host over SSH: what may be why, and what to do.
+              host != null && _notLoggedIn(error)
+                  ? '$error\n\n${remoteLoginHint(host)}'
+                  : error,
+            ),
           ),
         );
       }
@@ -1976,7 +1984,7 @@ class ClaudeCodeKernel
     _setHealth(
       KernelHealth(
         KernelHealthStatus.failed,
-        message: _failureMessage(stderr),
+        message: _failureMessage(stderr, remote: _remoteHost),
         // Which one, when it is too old: another, newer, may be the
         // terminal's.
         detail: _tooOld(stderr) && executable != null
@@ -1990,15 +1998,36 @@ class ClaudeCodeKernel
   /// before the option was.
   static bool _tooOld(String stderr) => stderr.contains("unknown option '--");
 
-  static String _failureMessage(String stderr) {
+  /// The SSH host the agent runs on; null for this machine.
+  String? get _remoteHost => RemoteLocation.hostOf(_cwd);
+
+  /// Whether [text] says Claude Code is not logged in.
+  static bool _notLoggedIn(String text) {
+    final lower = text.toLowerCase();
+    return lower.contains('login') ||
+        lower.contains('api key') ||
+        lower.contains('authenticat');
+  }
+
+  /// Why Claude Code on [host] may say it is not logged in when it is: on a
+  /// Mac, its credentials are in the login keychain, which stays locked for
+  /// a session over SSH; and what to do.
+  static String remoteLoginHint(String host) =>
+      'Claude Code on $host is not logged in for this SSH session. If '
+      'it is logged in there, and $host is a Mac, its login keychain is '
+      'locked over SSH: unlock it in a terminal of the project '
+      '(`security unlock-keychain ~/Library/Keychains/login.keychain-db`), '
+      'or run `claude setup-token` there and set the token it gives as '
+      '`CLAUDE_CODE_OAUTH_TOKEN`. Otherwise, run `claude` there and log in.';
+
+  static String _failureMessage(String stderr, {String? remote}) {
     if (_tooOld(stderr)) {
       return 'Claude Code is older than BaoCode needs. Update it '
           '(`claude update`) and try again.';
     }
     final lower = stderr.toLowerCase();
-    if (lower.contains('login') ||
-        lower.contains('api key') ||
-        lower.contains('authenticat')) {
+    if (_notLoggedIn(stderr)) {
+      if (remote != null) return remoteLoginHint(remote);
       return 'Claude Code is not logged in. Run `claude` in a terminal and '
           'log in.';
     }

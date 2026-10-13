@@ -1346,6 +1346,28 @@ void main() {
     expect(find.byType(FilePreview), findsOneWidget);
   });
 
+  testWidgets('a room short for a frame only does not put the panel over '
+      'the conversations', (tester) async {
+    final (:panel, :session, files: _) = await _pumpChat(tester);
+    tester.view.physicalSize = const Size(1600, 800);
+    panel.show();
+    await tester.pumpAndSettle();
+    tester.view.physicalSize = const Size(600, 800);
+    await tester.pump();
+    expect(_scrim, findsNothing);
+    tester.view.physicalSize = const Size(1600, 800);
+    await tester.pump();
+    expect(_scrim, findsNothing);
+    await tester.pumpAndSettle();
+    expect(_scrim, findsNothing);
+
+    // Short two frames running: over them.
+    tester.view.physicalSize = const Size(600, 800);
+    await tester.pump();
+    await tester.pump();
+    expect(_scrim, findsOneWidget);
+  });
+
   testWidgets('where the panel is too wide beside the conversations, it is '
       'narrower beside them rather than over them', (tester) async {
     final (:panel, :session, files: _) = await _pumpChat(tester);

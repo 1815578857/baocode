@@ -106,6 +106,7 @@ import 'tab_strip_scroll.dart';
 import 'terminal/links/terminal_links.dart';
 import 'terminal/terminal_instance.dart';
 import 'terminal/terminal_panel.dart';
+import 'terminal/terminal_tasks.dart';
 import 'terminal/terminal_profile_service.dart';
 import 'terminal/terminal_profiles.dart';
 import 'terminal/terminal_service.dart';
@@ -139,6 +140,7 @@ class IdeWorkbench extends StatefulWidget {
     this.pinned = false,
     this.onPinnedChanged,
     this.terminalBackend = const TerminalBackend(),
+    this.terminalTasks,
     this.colorThemes,
     this.recentFolders = const [],
     this.onOpenRecent,
@@ -230,6 +232,10 @@ class IdeWorkbench extends StatefulWidget {
   /// terminal; fakes in widget tests. Without one (the web), there is no
   /// TERMINAL tab.
   final TerminalBackend terminalBackend;
+
+  /// The background commands of the agent in its chat, listed with the
+  /// terminals (see [IdeWorkbenchState.showTerminalTask]).
+  final TerminalTasks? terminalTasks;
 
   /// The color themes Preferences: Color Theme (⌘K ⌘T) picks from; the
   /// command is disabled without them.
@@ -2101,7 +2107,10 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   /// terminal focused, as VS Code's `showPanel(true)`.
   void _showTerminal() {
     if (_terminals == null) return;
-    setState(() => _panel = IdePanelTab.terminal);
+    setState(() {
+      _panel = IdePanelTab.terminal;
+      _terminalTask = null;
+    });
     _focusTerminalSoon();
   }
 
@@ -2307,6 +2316,17 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
 
   /// Shows the chat, if hidden (e.g. for an agent a notification opens).
   void showChat() => _layout.showChat();
+
+  /// The id of the background command (see [IdeWorkbench.terminalTasks])
+  /// whose output shows in the terminal's place; null for the terminal.
+  String? _terminalTask;
+
+  /// Shows the output of the background command [id] (one of its chat's)
+  /// on the panel's TERMINAL tab.
+  void showTerminalTask(String id) => setState(() {
+    _terminalTask = id;
+    _panel = IdePanelTab.terminal;
+  });
 
   /// Has the editor's last keys in its document, for what is unsaved to be
   /// all of it (before its window closes, or the app quits).
@@ -4258,6 +4278,10 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                     terminal: switch (_terminals) {
                       final terminals? => TerminalPanel(
                         terminals: terminals,
+                        tasks: widget.terminalTasks,
+                        files: widget.workspace.files,
+                        shownTask: _terminalTask,
+                        onShowTask: (id) => setState(() => _terminalTask = id),
                         onNew: _newTerminal,
                         onOpenLink: _openTerminalLink,
                         shouldSkipShell: _terminalSkipsShell,

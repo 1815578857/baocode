@@ -164,7 +164,10 @@ class SettingsColumn extends StatelessWidget {
             // Under the window's draggable strip already: the title near the
             // nav's back button.
             padding: EdgeInsets.fromLTRB(side, 16, side, 48),
-            children: children,
+            // A section expanded or collapsed fades as it now ends.
+            children: [
+              for (final child in children) ScrollEdgeFadeContent(child: child),
+            ],
           ),
         );
       },

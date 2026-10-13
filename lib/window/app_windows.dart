@@ -1179,12 +1179,37 @@ class AppWindows extends ChangeNotifier implements WindowHostEvents {
 
   @override
   void windowFocused(int viewId) {
+    if (defaultTargetPlatform == TargetPlatform.windows) _reattachTextInput();
     final window = windowOf(viewId);
     if (window == null) return;
     final wasShown = window.shown;
     _toFront(window);
     if (!wasShown) _syncWorkspace();
     _save();
+  }
+
+  /// Back in front on Windows (Alt+Tab), the text field that had the
+  /// keyboard has its input connection anew: the old one no longer gets
+  /// what is typed until the field is clicked.
+  void _reattachTextInput() {
+    final node = primaryFocus;
+    if (node?.context?.findAncestorWidgetOfExactType<EditableText>() == null) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Moved on meanwhile (a click elsewhere): left as it is.
+      if (!identical(primaryFocus, node) || node == null) return;
+      node.unfocus(disposition: UnfocusDisposition.previouslyFocusedChild);
+      // After the focus moved (it does in a microtask): asked back at once,
+      // it would not have moved at all.
+      unawaited(
+        Future<void>(() {
+          if (node.context != null && !node.hasPrimaryFocus) {
+            node.requestFocus();
+          }
+        }),
+      );
+    });
   }
 
   @override

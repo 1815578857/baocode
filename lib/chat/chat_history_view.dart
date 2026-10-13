@@ -10,17 +10,20 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:super_sliver_list/super_sliver_list.dart';
 
+import '../ide/ide_find_widget.dart';
 import '../ide/ide_hover.dart';
 import '../l10n/l10n.dart';
 import '../theme/app_theme.dart';
 import '../theme/workbench_theme.dart' show themeColors;
 import 'chat_column.dart';
 import 'chat_feed.dart';
+import 'chat_find.dart';
 import 'chat_keys.dart';
 import 'chat_models.dart';
 import 'chat_session.dart';
 import 'composer/composer.dart';
 import 'composer/composer_draft.dart';
+import 'side_panel/file_link_menu.dart';
 import 'step_folds.dart';
 import 'user_message_style.dart';
 import 'widgets/chat_item_view.dart';
@@ -40,6 +43,7 @@ class ChatHistoryView extends StatefulWidget {
     this.minimap = false,
     this.onOpenAgent,
     this.onSetGoal,
+    this.onFindClosed,
   });
 
   /// The conversation shown: a session's, or a subagent's.
@@ -56,6 +60,9 @@ class ChatHistoryView extends StatefulWidget {
   /// Sets a goal the agent proposed as the session's, from its card.
   final ValueChanged<String>? onSetGoal;
 
+  /// Where the focus goes once its find bar closes (see [find]).
+  final VoidCallback? onFindClosed;
+
   @override
   State<ChatHistoryView> createState() => _ChatHistoryViewState();
 
@@ -64,6 +71,11 @@ class ChatHistoryView extends StatefulWidget {
   static void focus(GlobalKey key) =>
       (key.currentState as _ChatHistoryViewState?)?._selectionFocusNode
           .requestFocus();
+
+  /// Shows the find bar of the history [key] is on, looking for [query]
+  /// when given (a search's), its first match brought into view.
+  static void find(GlobalKey key, {String? query}) =>
+      (key.currentState as _ChatHistoryViewState?)?._find.show(query: query);
 }
 
 class _ChatHistoryViewState extends State<ChatHistoryView>
@@ -388,9 +400,49 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   ChatFeed get _feed => widget.feed;
   bool get _atBottom => _scrollController.anchored;
 
+  // --- Find ------------------------------------------------------------------
+
+  final ChatFind _find = ChatFind();
+  bool _findShown = false;
+
+  /// The last of [ChatFind.reveals] seen.
+  int _findReveals = 0;
+
+  void _findChanged() {
+    if (_find.visible != _findShown) {
+      _findShown = _find.visible;
+      if (!_findShown) widget.onFindClosed?.call();
+    }
+    if (_find.reveals == _findReveals) return;
+    _findReveals = _find.reveals;
+    final match = _find.currentMatch;
+    if (match == null) return;
+    final index = match.item;
+    _setAnchored(false);
+    if (_isHidden(index)) {
+      final folds = [?_folds.workAt(index), ?_folds.stepsAt(index)];
+      setState(() {
+        for (final fold in folds) {
+          _foldOpen[fold.key] = true;
+        }
+      });
+    } else if (_listController.isAttached) {
+      // In view, its marks bring the match into view themselves.
+      final (first, last) = _listController.visibleRange ?? (-1, -1);
+      if (index >= first && index <= last) return;
+    }
+    // Brought near, its marks bring the match into view once built.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _seek(index, match.fraction);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    _find
+      ..feed = _feed
+      ..addListener(_findChanged);
     _scrollController.addListener(_handleScroll);
     _feed.addListener(_handleSessionChanged);
     UserMessageStyle.current.addListener(_handleStyleChanged);
@@ -422,6 +474,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     if (oldWidget.feed != widget.feed) {
       oldWidget.feed.removeListener(_handleSessionChanged);
       widget.feed.addListener(_handleSessionChanged);
+      _find.feed = widget.feed;
       _stickyKeys.clear();
       _stickyIndices = const {};
       _editingIndex = null;
@@ -492,6 +545,9 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   @override
   void dispose() {
     _feed.removeListener(_handleSessionChanged);
+    _find
+      ..removeListener(_findChanged)
+      ..dispose();
     UserMessageStyle.current.removeListener(_handleStyleChanged);
     _reselectTimer?.cancel();
     _autoScroller?.stopAutoScroll();
@@ -567,6 +623,11 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
 
   void _handlePointerDown(PointerDownEvent event) {
     _pointersDown++;
+    // What a right click is on, found as it presses: the selection's menu
+    // builds as it comes up, when nothing may be hit tested.
+    _linkMenu = event.buttons & kSecondaryMouseButton != 0
+        ? fileLinkMenuAt(context, event.position)
+        : null;
     // A press stops the list where it is (a trackpad swipe's fling carries
     // on for a while), as it does in the platform's lists: a mouse is not
     // one of the list's drag devices, so nothing else would, and a
@@ -1319,6 +1380,59 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     _feed.editMessage(index, message);
   }
 
+  /// Row [index] of the list: [child] in the column, [gap] below the row
+  /// before it.
+  Widget _row(int index, {required double gap, required Widget child}) =>
+      ChatColumn(
+        maxWidth: widget.maxContentWidth,
+        right: _columnRight,
+        room: _room,
+        roomFrom: ChatMinimap.roomFrom,
+        child: Padding(
+          // All but the user's messages a little narrower than those.
+          padding: EdgeInsets.only(
+            top: gap,
+            left: _insetOf(index),
+            right: _insetOf(index),
+          ),
+          child: ChatFindRow(
+            index: index,
+            child: _HeightMotion(motion: _motions[index] ?? 0, child: child),
+          ),
+        ),
+      );
+
+  /// The rows folded away, as last built, by what they were built from.
+  final Map<int, (Object, Widget)> _hiddenRows = {};
+
+  /// Row [index], folded away: the very widget it was last built as while
+  /// nothing it is made of changed, which Flutter then does not rebuild. A
+  /// long conversation has hundreds of these rows within the list's reach,
+  /// of no height; each rebuild of the history (a word streamed, the pointer
+  /// coming in) would otherwise build and lay them all out again. The same
+  /// rows as shown ones, all the same: a fold opening or closing animates
+  /// them in place.
+  Widget _hiddenRow(int index) {
+    final made = (
+      widget.maxContentWidth,
+      _columnRight,
+      _room,
+      ChatMinimap.roomFrom,
+      _insetOf(index),
+      _motions[index] ?? 0,
+    );
+    if (_hiddenRows[index] case (final from, final row) when from == made) {
+      return row;
+    }
+    final row = _row(
+      index,
+      gap: 0,
+      child: const SizedBox(width: double.infinity),
+    );
+    _hiddenRows[index] = (made, row);
+    return row;
+  }
+
   double _insetOf(int index) =>
       _feed.itemAt(index) is UserMessageItem ? 0 : UserMessageBubble.radius;
 
@@ -1508,6 +1622,26 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     return (first: first, firstAt: firstAt, last: last, lastAt: lastAt);
   }
 
+  /// The file link the last right click pressed on (see [_contextMenu]).
+  FileLinkMenu? _linkMenu;
+
+  /// The selection's right click: on a file the conversation names, that
+  /// file's menu (see [FileLinkMenu]) in place of the selection's.
+  Widget _contextMenu(BuildContext context, SelectableRegionState selection) {
+    final at = selection.contextMenuAnchors.primaryAnchor;
+    if (_linkMenu case final menu?) {
+      _linkMenu = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        selection.hideToolbar();
+        if (mounted) unawaited(menu.show(this.context, at));
+      });
+      return const SizedBox.shrink();
+    }
+    return AdaptiveTextSelectionToolbar.selectableRegion(
+      selectableRegionState: selection,
+    );
+  }
+
   /// Scrolls row [index] to the top of the view, [fraction] of the way
   /// down it, laid out yet or not.
   void _seek(int index, double fraction) {
@@ -1654,6 +1788,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                   interactive: !_minimapShown,
                   child: SelectionArea(
                     focusNode: _selectionFocusNode,
+                    contextMenuBuilder: _contextMenu,
                     // Focus on click rather than hover so the composer keeps
                     // focus while the pointer passes over the history.
                     child: SelectionContainer(
@@ -1688,42 +1823,31 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                                 child: ScrollConfiguration(
                                   behavior: ScrollConfiguration.of(context)
                                       .copyWith(scrollbars: false),
-                                  child: SuperListView.builder(
-                                    key: _listKey,
-                                    controller: _scrollController,
-                                    listController: _listController,
-                                    itemCount: _feed.itemCount,
-                                    extentEstimation: _estimateExtent,
-                                    cacheExtent: 900,
-                                    padding: EdgeInsets.fromLTRB(
-                                      _gutter,
-                                      20,
-                                      _gutter,
-                                      24,
+                                  child: ChatFindScope(
+                                    find: _find,
+                                    child: SuperListView.builder(
+                                      key: _listKey,
+                                      controller: _scrollController,
+                                      listController: _listController,
+                                      itemCount: _feed.itemCount,
+                                      extentEstimation: _estimateExtent,
+                                      cacheExtent: 900,
+                                      padding: EdgeInsets.fromLTRB(
+                                        _gutter,
+                                        20,
+                                        _gutter,
+                                        24,
+                                      ),
+                                      itemBuilder: (context, index) =>
+                                          _isHidden(index) &&
+                                              index != _editingIndex
+                                          ? _hiddenRow(index)
+                                          : _row(
+                                              index,
+                                              gap: _gapBefore(index),
+                                              child: _buildItem(index),
+                                            ),
                                     ),
-                                    itemBuilder: (context, index) {
-                                      return ChatColumn(
-                                        maxWidth: widget.maxContentWidth,
-                                        right: _columnRight,
-                                        room: _room,
-                                        roomFrom: ChatMinimap.roomFrom,
-                                        child: Padding(
-                                          // All but the user's messages a
-                                          // little narrower than those.
-                                          padding: EdgeInsets.only(
-                                            top: _isHidden(index)
-                                                ? 0
-                                                : _gapBefore(index),
-                                            left: _insetOf(index),
-                                            right: _insetOf(index),
-                                          ),
-                                          child: _HeightMotion(
-                                            motion: _motions[index] ?? 0,
-                                            child: _buildItem(index),
-                                          ),
-                                        ),
-                                      );
-                                    },
                                   ),
                                 ),
                               ),
@@ -1796,6 +1920,21 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                       onPointerPanZoomEnd: _endForwardedPan,
                     ),
                   ),
+                // Over the history's top right, as the editor's.
+                Positioned(
+                  top: 0,
+                  left: _gutter,
+                  right: _gutter,
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: IdeFindWidget.width,
+                      ),
+                      child: ChatFindBar(find: _find),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

@@ -108,6 +108,31 @@ class _AgentSidePanelAreaState extends State<AgentSidePanelArea> {
   bool _dragging = false;
   ({double x, double width})? _dragStart;
 
+  /// Whether it is over the conversations: once the room was short two
+  /// frames running. Short a frame only (the window's sidebar giving way a
+  /// frame late, a window opening), it stays beside them, not covering the
+  /// window for a frame.
+  bool _overlay = false;
+
+  /// The room was short this frame: over them next frame if it still is.
+  bool _short = false;
+
+  void _roomShort(bool short) {
+    if (!short) {
+      _overlay = _short = false;
+      return;
+    }
+    if (_overlay || _short) return;
+    _short = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_short) return;
+      setState(() {
+        _short = false;
+        _overlay = true;
+      });
+    });
+  }
+
   AgentSidePanel get _panel => widget.panel;
 
   @override
@@ -120,15 +145,20 @@ class _AgentSidePanelAreaState extends State<AgentSidePanelArea> {
         // Over the conversations only where it cannot be beside them at
         // its least; else beside them, narrower than it would be where
         // they need the room.
-        final overlay =
-            room - AgentSidePanel.minWidth < AgentSidePanelArea.minChat;
+        _roomShort(
+          shown && room - AgentSidePanel.minWidth < AgentSidePanelArea.minChat,
+        );
+        final overlay = _overlay;
         final width = overlay
             ? math.min(_panel.width, math.max(0.0, room - 48))
-            : math.min(
-                _panel.width,
-                room -
-                    AgentSidePanelArea.minChat -
-                    AgentSidePanelArea.sashWidth,
+            : math.max(
+                0.0,
+                math.min(
+                  _panel.width,
+                  room -
+                      AgentSidePanelArea.minChat -
+                      AgentSidePanelArea.sashWidth,
+                ),
               );
         // Each child keyed: the conversations and the panel are never
         // built anew as the rail, the scrim or the drag's cursor come and
@@ -848,19 +878,17 @@ class AgentSidePanelView extends StatelessWidget {
 
   /// The project's stashes not done (docs/stash.md), to drag into the
   /// message or carry out.
-  Widget _backlogPage(BuildContext context) => switch ((
-    StashController.current,
-    session.kernelContext.cwd,
-  )) {
-    (final controller?, final project?) => StashBacklog(
-      key: const ValueKey(('page', SidePanelSection.backlog)),
-      controller: controller,
-      project: project,
-    ),
-    _ => const SizedBox.shrink(
-      key: ValueKey(('page', SidePanelSection.backlog)),
-    ),
-  };
+  Widget _backlogPage(BuildContext context) =>
+      switch ((StashController.current, session.kernelContext.cwd)) {
+        (final controller?, final project?) => StashBacklog(
+          key: const ValueKey(('page', SidePanelSection.backlog)),
+          controller: controller,
+          project: project,
+        ),
+        _ => const SizedBox.shrink(
+          key: ValueKey(('page', SidePanelSection.backlog)),
+        ),
+      };
 
   /// The plan the agent wrote, on its own: no list, its tab over it.
   Widget _planPage(BuildContext context, SidePanelTab plan) => Column(

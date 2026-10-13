@@ -165,6 +165,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cmdChatFocusList => '聚焦聊天列表';
 
   @override
+  String get cmdChatFind => '在对话中查找';
+
+  @override
   String get cmdChatCancel => '取消';
 
   @override
@@ -2352,6 +2355,26 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String stripAgentsRunning(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个子代理运行中',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String stripTasksRunning(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个后台任务运行中',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get stripUndoAll => '全部撤销';
 
   @override
@@ -2663,6 +2686,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get tabCloseAll => '全部关闭';
+
+  @override
+  String get fileLinkOpen => '打开';
 
   @override
   String get tabCopyPath => '复制路径';
@@ -7313,6 +7339,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get extsTabLanguageServers => '语言服务器';
+
+  @override
+  String get sidebarAllHosts => '全部';
 
   @override
   String get sidebarThisMachine => '本机';
