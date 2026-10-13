@@ -4076,6 +4076,12 @@ abstract class AppLocalizations {
   /// **'Pasted text #{number}'**
   String pastedTextChip(int number);
 
+  /// Shown in place of a long paste kept in a file that has since gone.
+  ///
+  /// In en, this message translates to:
+  /// **'This paste is no longer at {path}.'**
+  String pastedTextGone(String path);
+
   /// After a long paste's tag: how many lines it has past its first.
   ///
   /// In en, this message translates to:

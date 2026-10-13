@@ -153,10 +153,16 @@ void main() {
     await tester.pumpAndSettle();
     final view = tester.element(find.byType(MarkdownView));
     final icon = tester.getCenter(find.byType(FileIcon));
-    expect(fileLinkMenuAt(view, icon)?.path, '/p/out/report.html');
+    expect(
+      (fileLinkMenuAt(view, icon) as FileLinkMenu?)?.path,
+      '/p/out/report.html',
+    );
     // The link's text, after the icon.
     final text = icon + const Offset(40, 0);
-    expect(fileLinkMenuAt(view, text)?.path, '/p/out/report.html');
+    expect(
+      (fileLinkMenuAt(view, text) as FileLinkMenu?)?.path,
+      '/p/out/report.html',
+    );
     expect(
       fileLinkMenuAt(
         tester.element(find.byType(MarkdownView)),
@@ -284,9 +290,7 @@ void main() {
     }
 
     test('closes after CJK punctuation before CJK text', () {
-      expect(strong('你指出得对：**新版应遵循有效配置。**这条规则已加入。'), [
-        '新版应遵循有效配置。',
-      ]);
+      expect(strong('你指出得对：**新版应遵循有效配置。**这条规则已加入。'), ['新版应遵循有效配置。']);
     });
 
     test('opens before punctuation after CJK text', () {

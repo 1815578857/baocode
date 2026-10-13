@@ -58,10 +58,15 @@ class ClaudeLaunch {
     this.env,
     this.settingsPath,
     this.directories = const [],
+    this.readable = const [],
     this.instructions,
     this.models = const [],
     this.sdkServers = const [],
   });
+
+  /// Folders it may read without asking, its tools' work outside them
+  /// aside: where the long pastes it is told of are kept (PasteStore).
+  final List<String> readable;
 
   final String cwd;
 
@@ -156,6 +161,7 @@ class ClaudeLaunch {
     env: env ?? this.env,
     settingsPath: settingsPath ?? this.settingsPath,
     directories: directories,
+    readable: readable,
     instructions: instructions,
     models: models,
   );
@@ -180,6 +186,10 @@ class ClaudeLaunch {
           for (final model in models) {'model': model},
         ],
       },
+    if (readable.isNotEmpty)
+      'permissions': {
+        'allow': [for (final folder in readable) readRule(folder)],
+      },
     if ({
           ...?env,
           if (directories.isNotEmpty) ...additionalDirectoriesEnvironment,
@@ -187,6 +197,18 @@ class ClaudeLaunch {
         case final env when env.isNotEmpty)
       'env': env,
   };
+
+  /// The permission rule that lets it read what is in [folder] (absolute):
+  /// `Read(//Users/me/x/**)`, a Windows path as Claude Code matches it
+  /// (`C:\\x` as `/c/x`).
+  static String readRule(String folder) {
+    var path = folder.replaceAll(r'\', '/');
+    if (RegExp(r'^[A-Za-z]:').hasMatch(path)) {
+      path = '/${path[0].toLowerCase()}${path.substring(2)}';
+    }
+    if (path.endsWith('/')) path = path.substring(0, path.length - 1);
+    return 'Read(/$path/**)';
+  }
 
   /// Has Claude Code read the `CLAUDE.md` of the folders given with
   /// `--add-dir`, as it does its working directory's.

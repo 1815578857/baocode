@@ -1248,6 +1248,11 @@
       }
     }
   },
+  "pastedTextGone": "This paste is no longer at {path}.",
+  "@pastedTextGone": {
+    "description": "Shown in place of a long paste kept in a file that has since gone.",
+    "placeholders": {"path": {"type": "String"}}
+  },
   "pastedTextLines": "{count, plural, =1{+1 line} other{+{count} lines}}",
   "@pastedTextLines": {
     "description": "After a long paste's tag: how many lines it has past its first.",

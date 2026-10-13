@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../chat/chat_models.dart';
+import '../../chat/composer/paste_store.dart';
 import '../../models/launch_environment.dart';
 import '../../models/model_icons.dart';
 import '../../models/model_provider.dart';
@@ -382,6 +383,8 @@ class ClaudeCodeKernel
           attribution: CommitAttribution.current(),
           env: env,
           directories: workspace?.folders ?? const [],
+          // Long pastes are kept on this machine: only its agent reads them.
+          readable: [if (!RemoteLocation.isRemote(_cwd)) ?PasteStore.directory],
           instructions: workspace?.instructions,
           models: switch (custom) {
             (final provider, _) => _requestedModels(provider),

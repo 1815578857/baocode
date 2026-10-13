@@ -21,6 +21,7 @@ import '../side_panel/file_open.dart';
 import '../widgets/image_thumbnails.dart';
 import '../widgets/text_preview.dart';
 import 'composer_files.dart';
+import 'paste_store.dart';
 import 'composer_mock_data.dart';
 
 /// Inline, atomic token for a file or folder, or a /command. It occupies a
@@ -817,15 +818,60 @@ class ComposerPastedTextChip extends StatelessWidget {
     return _SelectableToken(
       text: pasted.reference,
       child: HoverTooltip(
-        content: (context) => _TextPreview(label: name, text: pasted.text),
+        content: (context) => switch (pasted.file) {
+          final file? => _KeptTextPreview(label: name, file: file),
+          null => _TextPreview(label: name, text: pasted.text),
+        },
         child: PreviewClick(
-          onOpen: () =>
-              showTextPreview(context, title: name, text: pasted.text),
+          onOpen: () => unawaited(() async {
+            final text = await _textOf(pasted, context.l10n);
+            if (context.mounted) {
+              await showTextPreview(context, title: name, text: text);
+            }
+          }()),
           child: tag,
         ),
       ),
     );
   }
+
+  /// What [pasted] says: read from where it is kept, if it is.
+  static Future<String> _textOf(
+    PastedText pasted,
+    AppLocalizations l10n,
+  ) async => switch (pasted.file) {
+    final file? => await PasteStore.read(file) ?? l10n.pastedTextGone(file),
+    null => pasted.text,
+  };
+}
+
+/// A kept paste's hover (see [PastedText.file]): read as it shows.
+class _KeptTextPreview extends StatefulWidget {
+  const _KeptTextPreview({required this.label, required this.file});
+
+  final String label;
+  final String file;
+
+  @override
+  State<_KeptTextPreview> createState() => _KeptTextPreviewState();
+}
+
+class _KeptTextPreviewState extends State<_KeptTextPreview> {
+  late final Future<String?> _text = PasteStore.read(widget.file);
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder(
+    future: _text,
+    builder: (context, snapshot) => _TextPreview(
+      label: widget.label,
+      text: switch (snapshot) {
+        AsyncSnapshot(data: final text?) => text,
+        AsyncSnapshot(connectionState: ConnectionState.done) =>
+          context.l10n.pastedTextGone(widget.file),
+        _ => '…',
+      },
+    ),
+  );
 }
 
 class ComposerStashEmbedBuilder extends EmbedBuilder {

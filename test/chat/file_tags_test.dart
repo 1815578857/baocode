@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,6 +46,9 @@ final _png = base64Decode(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
 );
 
+/// A desktop's: a right click brings up the selection's menu.
+final _desktop = TargetPlatformVariant.only(TargetPlatform.macOS);
+
 void main() {
   final opened = <String>[];
   final read = <String>[];
@@ -56,9 +58,6 @@ void main() {
     List<ChatItem> items, {
     bool local = true,
   }) async {
-    // A desktop's: a right click brings up the selection's menu.
-    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
-    addTearDown(() => debugDefaultTargetPlatformOverride = null);
     opened.clear();
     read.clear();
     final existence = FileExistence((_) async => true);
@@ -115,7 +114,7 @@ void main() {
     expect(find.byType(InteractiveViewer), findsOneWidget);
     expect(read.last, '/p/shots/old.png');
     expect(opened, isEmpty);
-  });
+  }, variant: _desktop);
 
   testWidgets('its right click has the file\'s menu, with the image\'s '
       'own', (tester) async {
@@ -129,7 +128,7 @@ void main() {
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
     expect(opened, ['/p/shots/new.png']);
-  });
+  }, variant: _desktop);
 
   testWidgets('a web page here opens in the browser, from its menu too', (
     tester,
@@ -152,7 +151,7 @@ void main() {
     await pump(tester, report, local: false);
     final remote = tester.widget<FileOpenScope>(find.byType(FileOpenScope));
     expect(remote.opensInBrowser('/p/out/report.html'), isFalse);
-  });
+  }, variant: _desktop);
 
   testWidgets('an attached image\'s right click offers to show and copy '
       'it', (tester) async {
@@ -168,9 +167,12 @@ void main() {
         ],
       ),
     ]);
-    await rightClick(tester, tester.getCenter(find.byType(ComposerImageChip)));
+    await rightClick(
+      tester,
+      tester.getCenter(find.byType(ComposerImageChip).first),
+    );
 
     expect(find.text('Preview'), findsOneWidget);
     expect(find.text('Copy Image'), findsOneWidget);
-  });
+  }, variant: _desktop);
 }

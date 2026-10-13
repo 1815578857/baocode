@@ -2091,6 +2091,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String pastedTextGone(String path) {
+    return '这段粘贴的内容已不在 $path。';
+  }
+
+  @override
   String pastedTextLines(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
