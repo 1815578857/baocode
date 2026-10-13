@@ -4124,6 +4124,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get langNoFormatter => '此文件没有格式化程序。';
 
   @override
+  String langNoFormatterInstall(String id, String language) {
+    return '此文件没有格式化程序。安装“$id”语言服务器后即可格式化 $language 文件。';
+  }
+
+  @override
   String get langNoRefactorings => '没有可用的重构操作';
 
   @override

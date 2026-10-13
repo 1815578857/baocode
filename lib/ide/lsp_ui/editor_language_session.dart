@@ -152,6 +152,7 @@ class EditorLanguageSession extends ChangeNotifier
     required this.onShowReferences,
     required this.onApplyWorkspaceEdit,
     required this.onFocusEditor,
+    this.onFormatterMissing,
     this.paths,
     this._semanticTokenStyler,
     this._languageId = 'plaintext',
@@ -201,6 +202,10 @@ class EditorLanguageSession extends ChangeNotifier
   onShowReferences;
   final Future<bool> Function(LspWorkspaceEdit edit) onApplyWorkspaceEdit;
   final VoidCallback onFocusEditor;
+
+  /// No server formats the file at [path], but [serverId], not installed
+  /// yet, would: offered to install (else it just says so).
+  final void Function(String path, String serverId)? onFormatterMissing;
 
   /// How the files' host spells paths (a remote project's); this
   /// machine's when null.
@@ -930,9 +935,17 @@ class EditorLanguageSession extends ChangeNotifier
       );
     }
     if (!supports(request)) {
-      showMessage(
-        selection ? l10n.langNoSelectionFormatter : l10n.langNoFormatter,
-      );
+      final missing = languages
+          .statusFor(path)
+          .where((status) => status.installable)
+          .firstOrNull;
+      if (missing != null && onFormatterMissing != null) {
+        onFormatterMissing!(path, missing.serverId);
+      } else {
+        showMessage(
+          selection ? l10n.langNoSelectionFormatter : l10n.langNoFormatter,
+        );
+      }
       return false;
     }
     final id = ++_formatRequest;

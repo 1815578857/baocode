@@ -4421,6 +4421,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get langNoFormatter => 'No formatter for this file.';
 
   @override
+  String langNoFormatterInstall(String id, String language) {
+    return 'No formatter for this file. Install the \'$id\' language server to format $language files.';
+  }
+
+  @override
   String get langNoRefactorings => 'No refactorings available';
 
   @override

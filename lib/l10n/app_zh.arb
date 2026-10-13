@@ -1202,6 +1202,7 @@
   "langRenameNotApplied": "无法应用重命名。",
   "langNoSelectionFormatter": "此文件没有可用于所选内容的格式化程序。",
   "langNoFormatter": "此文件没有格式化程序。",
+  "langNoFormatterInstall": "此文件没有格式化程序。安装“{id}”语言服务器后即可格式化 {language} 文件。",
   "langNoRefactorings": "没有可用的重构操作",
   "langNoSourceActions": "没有可用的源代码操作",
   "langNoCodeActions": "没有可用的代码操作",

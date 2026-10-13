@@ -3,6 +3,9 @@ import 'package:bao_editor/monaco/flutter/editor_surface.dart';
 import 'package:bao_editor/monaco/flutter/editor_surface_controller.dart';
 import 'package:baocode/ide/builtin_formatting.dart';
 import 'package:baocode/ide/ide_code_editor.dart';
+import 'package:baocode/ide/ide_notifications.dart';
+import 'package:baocode/ide/ide_workspace.dart';
+import 'package:baocode/ide/lsp/lsp_protocol.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -47,6 +50,9 @@ void main() {
     WidgetTester tester,
     String text, {
     bool readOnly = false,
+    String path = '/w/a.json',
+    IdeTextFormatter? formatter,
+    IdeNotifications? notifications,
   }) async {
     final controller = controllerOf(text);
     final focus = FocusNode();
@@ -54,11 +60,15 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: IdeCodeEditor(
-            controller: controller,
-            path: '/w/a.json',
-            focusNode: focus,
-            readOnly: readOnly,
+          body: IdeNotificationsScope(
+            notifications: notifications ?? IdeNotifications(),
+            child: IdeCodeEditor(
+              controller: controller,
+              path: path,
+              focusNode: focus,
+              readOnly: readOnly,
+              formatter: formatter,
+            ),
           ),
         ),
       ),
@@ -109,5 +119,69 @@ void main() {
     await rightClick(tester);
     expect(find.text('Format Document'), findsNothing);
     expect(find.text('Copy'), findsOneWidget);
+  });
+
+  testWidgets("beside the chat, with the project's language servers", (
+    tester,
+  ) async {
+    String? asked;
+    final controller = await show(
+      tester,
+      'let a=1',
+      path: '/w/a.ts',
+      formatter:
+          (path, text, {range, required tabSize, required insertSpaces}) async {
+            asked = '$path: $text';
+            return const IdeFormatOutcome([
+              LspTextEdit(
+                LspRange(LspPosition(0, 5), LspPosition(0, 6)),
+                ' = ',
+              ),
+            ]);
+          },
+    );
+    await rightClick(tester);
+    await tester.tap(find.text('Format Document'));
+    await tester.pumpAndSettle();
+    expect(asked, '/w/a.ts: let a=1');
+    expect(controller.document.snapshot.text, 'let a = 1');
+  });
+
+  testWidgets('none formats it: says so, and offers the server that would', (
+    tester,
+  ) async {
+    final notifications = IdeNotifications();
+    addTearDown(notifications.dispose);
+    final installed = <String>[];
+    await show(
+      tester,
+      'let a=1',
+      path: '/w/a.ts',
+      notifications: notifications,
+      formatter:
+          (
+            path,
+            text, {
+            range,
+            required tabSize,
+            required insertSpaces,
+          }) async => IdeFormatOutcome(
+            null,
+            missing: 'ts',
+            install: () async => installed.add('ts'),
+          ),
+    );
+    await rightClick(tester);
+    await tester.tap(find.text('Format Document'));
+    await tester.pumpAndSettle();
+    final note = notifications.notifications.single;
+    expect(
+      note.message,
+      "No formatter for this file. Install the 'ts' language server to "
+      'format TypeScript files.',
+    );
+    note.primary.single.run();
+    await tester.pump();
+    expect(installed, ['ts']);
   });
 }

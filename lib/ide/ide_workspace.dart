@@ -869,6 +869,8 @@ class IdeWorkspace extends ChangeNotifier {
   void _startSync(IdeDocument doc) {
     final sync = _sync;
     if (sync == null || !doc.isFile || _syncing.containsKey(doc.model)) return;
+    // Lent to [formatOutside]: the tab's text from now on.
+    if (_lent.remove(doc.path)) sync.closeDocument(doc.path);
     sync.openDocument(doc.path, doc.text, version: doc.model.version);
     _syncing[doc.model] = doc.model.changes.listen(
       (event) => sync.changeDocument(
@@ -898,6 +900,90 @@ class IdeWorkspace extends ChangeNotifier {
     if (subscription == null) return;
     unawaited(subscription.cancel());
     _sync?.closeDocument(doc.path);
+  }
+
+  /// The files [formatOutside] has open with the language servers, no tab
+  /// having them.
+  final Set<String> _lent = {};
+
+  /// How long [formatOutside] waits for the servers of a file to start.
+  static const formatStartTimeout = Duration(seconds: 20);
+
+  /// Formats [text], [path]'s as edited outside the IDE (beside the chat),
+  /// with this workspace's language servers: the file opened with them
+  /// meanwhile, unless a tab has it (with that text), and its servers
+  /// waited for. [IdeFormatOutcome.edits] null where none formats it.
+  Future<IdeFormatOutcome> formatOutside(
+    String path,
+    String text, {
+    LspRange? range,
+    required int tabSize,
+    required bool insertSpaces,
+  }) async {
+    final languages = this.languages;
+    final sync = _sync;
+    if (_disposed || languages == null || sync == null) {
+      return const IdeFormatOutcome(null);
+    }
+    path = paths.normalize(paths.absolute(path));
+    final request = range == null
+        ? LanguageRequest.format
+        : LanguageRequest.rangeFormat;
+    bool open() => _syncing.containsKey(_fileModel(path));
+    var lent = false;
+    if (open()) {
+      // Its tab's text is what the servers have.
+      if (_fileModel(path)!.snapshot.text != text) {
+        return const IdeFormatOutcome(null);
+      }
+    } else if (!_lent.contains(path)) {
+      sync.openDocument(path, text);
+      _lent.add(path);
+      lent = true;
+    }
+    try {
+      final started = DateTime.now();
+      while (!languages.supports(path, request)) {
+        final statuses = languages.statusFor(path);
+        final waited = DateTime.now().difference(started);
+        final starting = statuses.isEmpty
+            // Its servers are matched to it later on another machine.
+            ? waited < const Duration(seconds: 1)
+            : statuses.any(
+                (status) => switch (status.state) {
+                  LanguageServerState.idle ||
+                  LanguageServerState.starting ||
+                  LanguageServerState.restarting ||
+                  LanguageServerState.installing => true,
+                  _ => false,
+                },
+              );
+        if (!starting || waited > formatStartTimeout || _disposed) {
+          final missing = statuses
+              .where((status) => status.installable)
+              .firstOrNull;
+          return IdeFormatOutcome(
+            null,
+            missing: missing?.serverId,
+            install: missing == null
+                ? null
+                : () => languages.install(missing.serverId, path: path),
+          );
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+      final edits = await languages.format(
+        path,
+        range: range,
+        tabSize: tabSize,
+        insertSpaces: insertSpaces,
+      );
+      // A tab opened it meanwhile, with its own text.
+      if (lent && !_lent.contains(path)) return const IdeFormatOutcome(null);
+      return IdeFormatOutcome(edits);
+    } finally {
+      if (lent && _lent.remove(path) && !_disposed) sync.closeDocument(path);
+    }
   }
 
   /// Disposes [doc], but not the model another tab still has.
@@ -1065,4 +1151,18 @@ class IdeWorkspace extends ChangeNotifier {
     notifications.dispose();
     super.dispose();
   }
+}
+
+/// What [IdeWorkspace.formatOutside] came to.
+@immutable
+class IdeFormatOutcome {
+  const IdeFormatOutcome(this.edits, {this.missing, this.install});
+
+  /// The edits that format the text (none where it is formatted already);
+  /// null where no language server formats it.
+  final List<LspTextEdit>? edits;
+
+  /// A server that would, not installed yet, and what installs it.
+  final String? missing;
+  final Future<void> Function()? install;
 }

@@ -7317,6 +7317,12 @@ abstract class AppLocalizations {
   /// **'No formatter for this file.'**
   String get langNoFormatter;
 
+  /// No description provided for @langNoFormatterInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'No formatter for this file. Install the \'{id}\' language server to format {language} files.'**
+  String langNoFormatterInstall(String id, String language);
+
   /// No description provided for @langNoRefactorings.
   ///
   /// In en, this message translates to:

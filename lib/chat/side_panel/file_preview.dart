@@ -55,6 +55,7 @@ class FilePreview extends StatefulWidget {
     this.edit,
     this.onEdit,
     this.highlights,
+    this.formatter,
   });
 
   final FileOpenRequest request;
@@ -70,6 +71,9 @@ class FilePreview extends StatefulWidget {
   /// Where the editor's highlighting is kept past the preview, for its tab
   /// shown again to be colored at once; the editor's own when null.
   final IdeCodeHighlights? highlights;
+
+  /// Formats the file with the project's language servers.
+  final IdeTextFormatter? formatter;
 
   /// Reads it, on the project's host.
   final IdeFileService files;
@@ -566,6 +570,7 @@ class _FilePreviewState extends State<FilePreview> {
         path: _request.path,
         highlights: widget.highlights,
         interfaceSized: false,
+        formatter: widget.formatter,
         decorations: [
           if (marked)
             EditorDecoration(

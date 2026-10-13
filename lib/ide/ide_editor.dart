@@ -46,7 +46,8 @@ import 'git/git_blame.dart';
 import 'ide_commands.dart';
 import 'ide_find_widget.dart';
 import 'ide_menu.dart';
-import 'ide_status_bar.dart' show ideEolEdits;
+import 'ide_notifications.dart';
+import 'ide_status_bar.dart' show IdeLanguageNames, ideEolEdits;
 import 'ide_workspace.dart';
 import 'lsp/language_features.dart';
 import 'lsp/lsp_protocol.dart';
@@ -427,11 +428,34 @@ class IdeEditorState extends State<IdeEditor> {
           widget.onShowReferences?.call(title, locations),
       onApplyWorkspaceEdit: applyWorkspaceEdit,
       onFocusEditor: focus,
+      onFormatterMissing: _formatterMissing,
       semanticTokenStyler: _semanticTokenStyler,
       languageId: _textMateDocuments[doc]?.$2.languageId ?? 'plaintext',
       semanticSource: _semanticSources[doc],
     )..addListener(_languageChanged);
     _language!.l10n = _l10n;
+  }
+
+  /// No formatter for [path], but [serverId] would be one: installed from
+  /// a notification.
+  void _formatterMissing(String path, String serverId) {
+    final languages = widget.workspace.languages;
+    if (!mounted || languages == null) return;
+    final notifications = IdeNotificationsScope.maybeOf(context);
+    final l10n = context.l10n;
+    notifications?.notify(
+      IdeSeverity.info,
+      l10n.langNoFormatterInstall(serverId, IdeLanguageNames.forPath(path)),
+      primary: [
+        IdeNotificationAction(l10n.extInstall, () async {
+          try {
+            await languages.install(serverId, path: path);
+          } catch (error) {
+            if (mounted) widget.onError(error);
+          }
+        }),
+      ],
+    );
   }
 
   void _disposeLanguageSession() {
@@ -669,7 +693,7 @@ class IdeEditorState extends State<IdeEditor> {
     return switch (id) {
       'editor.action.marker.next' ||
       'editor.action.marker.prev' => widget.workspace.languages != null,
-      'editor.action.format' => _language?.canFormat() ?? false,
+      'editor.action.format' => _language != null,
       'editor.action.showContextMenu' => _nativeController != null,
       _ when _findCommands.contains(id) => true,
       _ => _language != null,
@@ -1336,9 +1360,11 @@ class IdeEditorState extends State<IdeEditor> {
   bool _languageCommandEnabled(String id) {
     final session = _language;
     if (session == null) return false;
-    if (id == 'editor.action.formatDocument') return session.canFormat();
-    if (id == 'editor.action.formatSelection') {
-      return session.canFormat(selection: true);
+    // As upstream's `formatDocument.none`: offered with no formatter too,
+    // to say so and which server would be one.
+    if (id == 'editor.action.formatDocument' ||
+        id == 'editor.action.formatSelection') {
+      return true;
     }
     final request = switch (id) {
       'editor.action.revealDefinition' => LanguageRequest.definition,

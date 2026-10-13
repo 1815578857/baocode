@@ -14,6 +14,7 @@ import '../../ide/git/ide_scm_view.dart' show IdeGitGraph;
 import '../../ide/ide_button.dart';
 import '../../ide/ide_dialog.dart';
 import '../../ide/ide_explorer.dart';
+import '../../ide/ide_code_editor.dart' show IdeTextFormatter;
 import '../../ide/ide_hover.dart';
 import '../../ide/file_views.dart';
 import '../../ide/ide_list.dart';
@@ -354,6 +355,7 @@ class AgentSidePanelView extends StatelessWidget {
     this.paths,
     this.colorize,
     this.onOpenInIde,
+    this.formatter,
     this.watchDirectory,
     this.git,
     this.terminals,
@@ -424,6 +426,9 @@ class AgentSidePanelView extends StatelessWidget {
 
   /// Opens a file shown in the IDE instead.
   final ValueChanged<FileOpenRequest>? onOpenInIde;
+
+  /// Formats a file edited here with the project's language servers.
+  final IdeTextFormatter? formatter;
 
   /// Changes to a folder's entries, for the files page's tree to follow;
   /// the explorer's own watch when null.
@@ -1171,6 +1176,7 @@ class AgentSidePanelView extends StatelessWidget {
     edit: tab.edit,
     onEdit: (edit) => panel.keepEdit(tab, edit),
     highlights: panel.highlights,
+    formatter: tab.request.local ? null : formatter,
     // Shown as a file, on this machine (see FileOpenScope.showLocal).
     files: tab.request.local ? _localFiles : files,
     root: tab.request.local ? null : _rootOf(tab.path),

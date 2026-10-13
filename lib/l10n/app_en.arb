@@ -3154,6 +3154,17 @@
   "langRenameNotApplied": "Rename couldn't be applied.",
   "langNoSelectionFormatter": "No formatter for selections in this file.",
   "langNoFormatter": "No formatter for this file.",
+  "langNoFormatterInstall": "No formatter for this file. Install the '{id}' language server to format {language} files.",
+  "@langNoFormatterInstall": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      },
+      "language": {
+        "type": "String"
+      }
+    }
+  },
   "langNoRefactorings": "No refactorings available",
   "langNoSourceActions": "No source actions available",
   "langNoCodeActions": "No code actions available",

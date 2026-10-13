@@ -2916,6 +2916,16 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       paths: paths,
       colorize: _colorizeCode,
       onOpenInIde: (request) => _openRequestInIde(thread, request),
+      // With its IDE's language servers.
+      formatter:
+          (path, text, {range, required tabSize, required insertSpaces}) =>
+              _ideSpace(multi?.path ?? location).formatOutside(
+                path,
+                text,
+                range: range,
+                tabSize: tabSize,
+                insertSpaces: insertSpaces,
+              ),
       git: _sidePanelGit(thread),
       terminals: _terminals?.sidePanelTerminals(thread.project.path),
       terminalSkipShell: chatTerminalSkipShell,

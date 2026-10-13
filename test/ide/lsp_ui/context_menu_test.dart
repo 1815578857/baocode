@@ -7,6 +7,7 @@ import 'package:baocode/ide/ide_quick_input.dart';
 import 'package:baocode/ide/lsp/language_features.dart';
 import 'package:baocode/ide/lsp/lsp_protocol.dart';
 
+import '../workbench/fake_files.dart';
 import 'fake_language_features.dart';
 import 'lsp_test_helpers.dart';
 
@@ -137,6 +138,9 @@ void main() {
       'F2',
       'Change All Occurrences',
       isNotEmpty,
+      // Offered without a formatter too, to say so.
+      'Format Document',
+      isNotEmpty,
       'Refactor...',
       isNotEmpty,
       'Source Action...',
@@ -178,5 +182,32 @@ void main() {
       surfaceController(tester).document.snapshot.text,
       '{\n    "errNo": 0,\n    "list": [\n        1,\n        2\n    ]\n}',
     );
+  });
+
+  testWidgets('no formatter: Format Document says so, and offers the '
+      'server that would be one', (tester) async {
+    final languages = FakeLanguageFeatures(supported: {})
+      ..statuses[inRoot(_a)] = const [
+        LanguageServerStatus(
+          serverId: 'dart-analyzer',
+          state: LanguageServerState.missing,
+          installable: true,
+        ),
+      ];
+    await pumpLanguageWorkbench(tester, {_a: _source}, languages, open: [_a]);
+    await _rightClick(tester, offsetOf(tester, 'greet'));
+    await tester.tap(find.text('Format Document'));
+    await settle(tester);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(
+      find.text(
+        "No formatter for this file. Install the 'dart-analyzer' language "
+        'server to format Dart files.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Install'));
+    await settle(tester);
+    expect(languages.installed, ['dart-analyzer']);
   });
 }
