@@ -122,6 +122,7 @@ class IdeWorkbench extends StatefulWidget {
     required this.project,
     required this.visible,
     required this.chat,
+    this.onAddToChat,
     required this.onBack,
     this.backLabel,
     this.editorBuilder,
@@ -184,6 +185,10 @@ class IdeWorkbench extends StatefulWidget {
   final Project project;
   final bool visible;
   final Widget chat;
+
+  /// Puts files and folders in [chat]'s composer (Source Control's Add to
+  /// Chat); none offered when null.
+  final ValueChanged<List<ComposerFile>>? onAddToChat;
   final VoidCallback onBack;
 
   /// The title bar's way back's label: Back to Chat, by default; in a
@@ -3497,6 +3502,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
           _open(path, focusEditor: focusEditor),
       onOpenChange: _openChange,
       onRevealInExplorer: _revealInExplorer,
+      onAddToChat: widget.onAddToChat,
       trash: WindowControls.canMoveToTrash ? WindowControls.moveToTrash : null,
       commitMessage: widget.commitMessage,
     ),

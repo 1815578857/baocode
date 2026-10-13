@@ -2278,6 +2278,10 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
             chat: shown
                 ? _ideConversation(_buildIdeChat(path))
                 : const SizedBox.shrink(),
+            onAddToChat: _workspace.ideChat(path) == null
+                ? null
+                : (files) =>
+                      _workspace.ideChat(path)?.session.draft.insertFiles(files),
           ),
         ),
       ),

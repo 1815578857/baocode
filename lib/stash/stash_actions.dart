@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:path/path.dart' as p;
 
+import '../chat/chat_models.dart' show ImageAttachment;
 import '../chat/composer/composer_files.dart';
 import '../chat/composer/composer_mock_data.dart' show Suggestion;
 import '../icons/project_icon_view.dart';
@@ -69,6 +70,12 @@ Future<bool> expandStash(StashController controller, int id) async {
   final requirement = await stashRequirement(
     note,
     project: project == null ? null : p.basename(project),
+    pictures: await _pictures(controller.store, note),
+    // Its files, and its project's code where it is on this machine.
+    folder: controller.store.absolute(''),
+    projectFolder: project != null && RemoteLocation.hostOf(project) == null
+        ? project
+        : null,
   );
   if (requirement == null || requirement.isEmpty) return false;
   await controller.store.update(id, (note) {
@@ -79,6 +86,42 @@ Future<bool> expandStash(StashController controller, int id) async {
   });
   return true;
 }
+
+/// [note]'s pictures for the model (see [StashPicture]): the first
+/// [_mostPictures], each sent where the API takes it (its kind, its size),
+/// with the text read out of it.
+Future<List<StashPicture>> _pictures(StashStore store, StashNote note) async {
+  final pictures = <StashPicture>[];
+  for (final path in note.images.toSet().take(_mostPictures)) {
+    final type = _pictureTypes[p.extension(path).toLowerCase()];
+    final remote = path.startsWith('http://') || path.startsWith('https://');
+    final bytes = type == null || remote
+        ? null
+        : await store.disk.readAsset(path);
+    pictures.add((
+      path: path,
+      image: bytes == null || bytes.isEmpty || bytes.length > _mostPictureBytes
+          ? null
+          : ImageAttachment(bytes: bytes, mediaType: type!),
+      text: store.pictureText[store.absolute(path)],
+    ));
+  }
+  return pictures;
+}
+
+const _mostPictures = 8;
+
+/// The API's limit on a picture.
+const _mostPictureBytes = 5 * 1024 * 1024;
+
+/// The kinds of picture the API takes.
+const _pictureTypes = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+};
 
 /// Opens a new agent in [id]'s stash's project, its message ready (the
 /// stash, and what to do with it) for the user to send or change: in a
