@@ -60,36 +60,29 @@ List<Suggestion> stashSuggestions(StashStore store, String heading) => [
       ),
 ];
 
-/// Writes a requirement for [id]'s stash after its text (the model's,
-/// from what it says), as `## 需求`: kept below what was written, not in
-/// its place. Whether it was written.
-Future<bool> expandStash(StashController controller, int id) async {
+/// [text], [id]'s stash's (as the editor gives it to a model: its
+/// pictures and files by their paths), said clearly (see
+/// [clarifyStashText]): its pictures sent along, its folder the one the
+/// model may read. Null when there is no answer.
+Future<String?> clarifyStash(
+  StashController controller,
+  int id,
+  String text,
+) async {
   final note = controller.store.byId(id);
-  if (note == null || note.original.trim().isEmpty) return false;
+  if (note == null || text.trim().isEmpty) return null;
   final project = note.project;
-  final requirement = await stashRequirement(
-    note,
+  return clarifyStashText(
+    text,
     project: project == null ? null : p.basename(project),
     pictures: await _pictures(controller.store, note),
-    // Its files, and its project's code where it is on this machine.
     folder: controller.store.absolute(''),
-    projectFolder: project != null && RemoteLocation.hostOf(project) == null
-        ? project
-        : null,
   );
-  if (requirement == null || requirement.isEmpty) return false;
-  await controller.store.update(id, (note) {
-    note.body = note.withRequirement(requirement);
-    if (note.status == StashStatus.collected) {
-      note.status = StashStatus.requirement;
-    }
-  });
-  return true;
 }
 
-/// [note]'s pictures for the model (see [StashPicture]): the first
-/// [_mostPictures], each sent where the API takes it (its kind, its size),
-/// with the text read out of it.
+/// [note]'s pictures for the model (see [StashPicture]), by their
+/// absolute paths: the first [_mostPictures], each sent where the API
+/// takes it (its kind, its size), with the text read out of it.
 Future<List<StashPicture>> _pictures(StashStore store, StashNote note) async {
   final pictures = <StashPicture>[];
   for (final path in note.images.toSet().take(_mostPictures)) {
@@ -99,7 +92,8 @@ Future<List<StashPicture>> _pictures(StashStore store, StashNote note) async {
         ? null
         : await store.disk.readAsset(path);
     pictures.add((
-      path: path,
+      // As the text given with them names it.
+      path: remote ? path : store.absolute(path),
       image: bytes == null || bytes.isEmpty || bytes.length > _mostPictureBytes
           ? null
           : ImageAttachment(bytes: bytes, mediaType: type!),

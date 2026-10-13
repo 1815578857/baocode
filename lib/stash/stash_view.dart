@@ -352,12 +352,23 @@ class StashViewState extends State<StashView> {
 
   Future<void> _expand(StashNote note) async {
     if (_expanding) return;
-    await _editor.currentState?.flush();
+    final editor = _editor.currentState?.editor;
+    if (editor == null) return;
     setState(() => _expanding = true);
-    final done = await expandStash(_controller, note.id);
+    // In the editor: Undo takes it back.
+    final done = await editor.rewrite(
+      (text) => clarifyStash(_controller, note.id, text),
+    );
     if (!mounted) return;
     setState(() => _expanding = false);
-    if (!done) {
+    if (done) {
+      await _editor.currentState?.flush();
+      await _controller.store.update(note.id, (note) {
+        if (note.status == StashStatus.collected) {
+          note.status = StashStatus.requirement;
+        }
+      });
+    } else {
       await showIdeDialog(
         context,
         message: context.l10n.stashExpandFailed,
@@ -1046,9 +1057,7 @@ class StashViewState extends State<StashView> {
               IdeHover(
                 message: l10n.stashExpandHint,
                 child: IdeButton(
-                  label: note.requirement == null
-                      ? l10n.stashExpand
-                      : l10n.stashExpandAgain,
+                  label: l10n.stashExpand,
                   icon: Codicons.sparkle,
                   spinning: _expanding,
                   secondary: true,

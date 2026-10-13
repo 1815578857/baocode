@@ -13812,25 +13812,19 @@ abstract class AppLocalizations {
   /// No description provided for @stashExpand.
   ///
   /// In en, this message translates to:
-  /// **'Expand to Requirement'**
+  /// **'Clarify'**
   String get stashExpand;
-
-  /// No description provided for @stashExpandAgain.
-  ///
-  /// In en, this message translates to:
-  /// **'Rewrite Requirement'**
-  String get stashExpandAgain;
 
   /// No description provided for @stashExpandHint.
   ///
   /// In en, this message translates to:
-  /// **'AI writes a requirement from it, under “## 需求”; what you wrote stays as it is'**
+  /// **'AI says your note clearly, filling in what its pictures and files show, adding no structure; it replaces the text, and Undo takes it back'**
   String get stashExpandHint;
 
   /// No description provided for @stashExpandFailed.
   ///
   /// In en, this message translates to:
-  /// **'The requirement could not be written. Is Claude Code signed in?'**
+  /// **'The note could not be clarified. Is Claude Code signed in?'**
   String get stashExpandFailed;
 
   /// No description provided for @stashImplement.

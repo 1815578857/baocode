@@ -41,6 +41,7 @@ import 'stash_caret.dart';
 import 'stash_html.dart';
 import 'stash_io_stub.dart' if (dart.library.io) 'stash_io.dart' as io;
 import 'stash_markdown.dart';
+import 'stash_note.dart' show StashNote;
 import 'stash_store.dart';
 
 /// What the editor's pictures and files need: where the stash's folder
@@ -1598,6 +1599,79 @@ class StashEditorState extends State<StashEditor> implements FileDropDelegate {
       _controller.formatSelection(Attribute.fromKeyValue(key, null));
     }
     _focus.requestFocus();
+  }
+
+  /// Its text, as [ask] rewrites it (given it as [stashTextForModel]
+  /// gives it), in its place: a step Undo takes back. Up to a requirement
+  /// section ([StashNote.requirementHeading]) if one was written, which
+  /// stays. Whether it was: not when there is no answer, or when the text
+  /// changed meanwhile.
+  Future<bool> rewrite(Future<String?> Function(String text) ask) async {
+    final end = _beforeRequirement();
+    if (end == 0) return false;
+    final slice = _controller.document.toDelta().slice(0, end);
+    final asked = stashTextForModel(slice, widget.store.absolute);
+    if (asked.text.trim().isEmpty) return false;
+    final better = await ask(asked.text);
+    if (better == null || !mounted) return false;
+    final document = _controller.document;
+    if (end > document.length - 1 ||
+        document.toDelta().slice(0, end) != slice) {
+      return false;
+    }
+    final replaced = stashTextFromModel(
+      better,
+      asked.attachments,
+      endsLine: switch (slice.toList().lastOrNull?.data) {
+        final String last => last.endsWith('\n'),
+        _ => false,
+      },
+    );
+    final after = TextSelection.collapsed(offset: _textLength(replaced));
+    _controller
+      ..compose(
+        (Delta()..delete(end)).concat(replaced),
+        after,
+        ChangeSource.local,
+      )
+      ..updateSelection(after, ChangeSource.local);
+    return true;
+  }
+
+  /// Where its text ends: before a requirement section's heading and the
+  /// empty lines above it, if there is one; else before the document's
+  /// last line break.
+  int _beforeRequirement() {
+    final plain = _controller.document.toPlainText();
+    final heading = StashNote.requirementHeading.replaceFirst(
+      RegExp(r'^#+\s*'),
+      '',
+    );
+    var end = plain.length - 1;
+    var offset = 0;
+    var lineStart = 0;
+    for (final op in _controller.document.toDelta().toList()) {
+      final data = op.data;
+      if (data is! String) {
+        offset += 1;
+        continue;
+      }
+      for (var i = 0; i < data.length; i++, offset++) {
+        if (data[i] != '\n') continue;
+        if (op.attributes?[Attribute.header.key] == 2 &&
+            plain.substring(lineStart, offset).trim() == heading) {
+          end = lineStart;
+          while (end > 0 &&
+              plain[end - 1] == '\n' &&
+              (end < 2 || plain[end - 2] == '\n')) {
+            end--;
+          }
+          return end;
+        }
+        lineStart = offset + 1;
+      }
+    }
+    return end;
   }
 
   Future<void> _polish() async {

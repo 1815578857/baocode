@@ -7909,16 +7909,13 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get stashExpand => '展开为需求';
+  String get stashExpand => '说清楚';
 
   @override
-  String get stashExpandAgain => '重写需求';
+  String get stashExpandHint => 'AI 把原话说清楚：结合图片和附件补全意思，不加结构；直接替换原文，可以撤销';
 
   @override
-  String get stashExpandHint => 'AI 根据内容写一份需求，追加在“## 需求”下，原文保留';
-
-  @override
-  String get stashExpandFailed => '没能写出需求。Claude Code 登录了吗？';
+  String get stashExpandFailed => '没能说清楚。Claude Code 登录了吗？';
 
   @override
   String get stashImplement => '在 BaoCode 中实施';

@@ -8392,18 +8392,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get stashExpand => 'Expand to Requirement';
-
-  @override
-  String get stashExpandAgain => 'Rewrite Requirement';
+  String get stashExpand => 'Clarify';
 
   @override
   String get stashExpandHint =>
-      'AI writes a requirement from it, under “## 需求”; what you wrote stays as it is';
+      'AI says your note clearly, filling in what its pictures and files show, adding no structure; it replaces the text, and Undo takes it back';
 
   @override
   String get stashExpandFailed =>
-      'The requirement could not be written. Is Claude Code signed in?';
+      'The note could not be clarified. Is Claude Code signed in?';
 
   @override
   String get stashImplement => 'Implement in BaoCode';

@@ -155,6 +155,41 @@ void main() {
     });
   });
 
+  testWidgets('said clearly, its text is replaced in one step Undo takes '
+      'back; its pictures and a requirement written before stay', (
+    tester,
+  ) async {
+    final controller = StashEditor.controllerFor(
+      stashDocument('btn hidden ![](1/a.png) sidebar\n\n## 需求\n\nold one\n'),
+    );
+    await _edit(tester, controller);
+    final state = tester.state<StashEditorState>(find.byType(StashEditor));
+    String? asked;
+    late bool done;
+    await tester.runAsync(() async {
+      done = await state.rewrite((text) async {
+        asked = text;
+        return text.replaceFirst('btn hidden', 'The button is hidden by');
+      });
+    });
+    await tester.pump();
+    expect(done, isTrue);
+    expect(asked, isNot(contains('需求')));
+    expect(asked, contains('1/a.png]'));
+    final markdown = stashDeltaToMarkdown(controller.document.toDelta());
+    expect(
+      markdown,
+      startsWith('The button is hidden by ![](1/a.png) sidebar'),
+    );
+    expect(markdown, contains('## 需求\n\nold one'));
+
+    controller.undo();
+    expect(
+      stashDeltaToMarkdown(controller.document.toDelta()),
+      startsWith('btn hidden ![](1/a.png) sidebar'),
+    );
+  });
+
   testWidgets('a tag never ends a line: a space after it', (tester) async {
     final document = Document()
       ..insert(0, 'see ')

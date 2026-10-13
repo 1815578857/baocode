@@ -6032,10 +6032,9 @@
       }
     }
   },
-  "stashExpand": "Expand to Requirement",
-  "stashExpandAgain": "Rewrite Requirement",
-  "stashExpandHint": "AI writes a requirement from it, under “## 需求”; what you wrote stays as it is",
-  "stashExpandFailed": "The requirement could not be written. Is Claude Code signed in?",
+  "stashExpand": "Clarify",
+  "stashExpandHint": "AI says your note clearly, filling in what its pictures and files show, adding no structure; it replaces the text, and Undo takes it back",
+  "stashExpandFailed": "The note could not be clarified. Is Claude Code signed in?",
   "stashImplement": "Implement in BaoCode",
   "stashImplementHow": "How should the agent work on it?",
   "stashImplementHowDetail": "In a new git worktree (a branch of its own, your working copy untouched), or directly in the project as it is.",
