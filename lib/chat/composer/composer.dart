@@ -464,11 +464,9 @@ class ChatComposerState extends State<ChatComposer>
     final found = <(int, int, String)>[];
     for (var i = 0; i < text.length; i++) {
       if (text[i] != '@' || (i > 0 && text[i - 1].trim().isNotEmpty)) continue;
-      if (parseFileReference(text, i) case (
-        :final path,
-        directory: false,
-        :final end,
-      ) when pastedAsPicture(path)) {
+      if (parseFileReference(text, i)
+          case (:final path, directory: false, :final end)
+          when pastedAsPicture(path)) {
         found.add((i, end, path));
         i = end - 1;
       }
@@ -887,9 +885,8 @@ class ChatComposerState extends State<ChatComposer>
     final caret = _controller.selection.baseOffset;
     final Embeddable token;
     if (suggestion.kind == SuggestionKind.stash) {
-      final stash = ComposerVocabulary.read(
-        context,
-      ).stash?.call(int.parse(suggestion.id));
+      final stash = ComposerVocabulary.read(context).stash
+          ?.call(int.parse(suggestion.id));
       if (stash == null) return;
       token = ComposerStashEmbed.of(stash);
     } else if (suggestion.kind == SuggestionKind.file ||
@@ -1362,10 +1359,8 @@ class ChatComposerState extends State<ChatComposer>
           onAcceptWithDetails: (details) =>
               _dropStashes(details.offset, details.data.references),
           builder: (context, stashes, _) => DragTarget<FileDragData>(
-            onWillAcceptWithDetails: (details) =>
-                details.data.files.isNotEmpty,
-            onMove: (details) =>
-                _showGhost(details.offset, details.data.files),
+            onWillAcceptWithDetails: (details) => details.data.files.isNotEmpty,
+            onMove: (details) => _showGhost(details.offset, details.data.files),
             onLeave: (_) => _hideGhost(),
             onAcceptWithDetails: (details) =>
                 fileDrop(details.offset, details.data.files),
@@ -1543,6 +1538,13 @@ class ChatComposerState extends State<ChatComposer>
   bool _selectDragging = false;
 
   void _handleSelectPointerDown(PointerDownEvent event) {
+    // Quill takes the keyboard on a click, not on a drag: text selected by
+    // one is to be deleted, typed over.
+    if (event.kind == PointerDeviceKind.mouse &&
+        event.buttons & kPrimaryMouseButton != 0 &&
+        !_focusNode.hasFocus) {
+      _focusNode.requestFocus();
+    }
     final plainPress =
         event.kind == PointerDeviceKind.mouse &&
         event.buttons == kPrimaryMouseButton &&

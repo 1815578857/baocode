@@ -82,6 +82,50 @@ void main() {
     },
   );
 
+  testWidgets('text selected by a drag, the editor not focused before, is '
+      'deleted by Backspace', (tester) async {
+    final document = Document()..insert(0, 'hello world');
+    final controller = StashEditor.controllerFor(document);
+    final focus = FocusNode();
+    addTearDown(focus.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          FlutterQuillLocalizations.delegate,
+        ],
+        home: Scaffold(
+          body: StashEditor(
+            controller: controller,
+            store: StashStore(MemoryStashDisk()),
+            ensureNote: () async => 1,
+            focusNode: focus,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(focus.hasFocus, isFalse);
+    final text = find.byType(QuillEditor);
+    final start = tester.getTopLeft(text) + const Offset(2, 10);
+    final mouse = await tester.startGesture(
+      start,
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pump();
+    for (var x = 10.0; x <= 300; x += 10) {
+      await mouse.moveTo(start + Offset(x, 0));
+      await tester.pump();
+    }
+    await mouse.up();
+    await tester.pumpAndSettle();
+    expect(controller.selection.isCollapsed, isFalse);
+    expect(focus.hasFocus, isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+    await tester.pumpAndSettle();
+    expect(document.toPlainText(), isNot(contains('hello')));
+  });
+
   testWidgets('a link is typed in the bar, not a dialog', (tester) async {
     final document = Document()..insert(0, 'see the docs');
     final controller = StashEditor.controllerFor(document);

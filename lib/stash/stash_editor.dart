@@ -5,7 +5,8 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, listEquals;
-import 'package:flutter/gestures.dart' show GestureRecognizer;
+import 'package:flutter/gestures.dart'
+    show GestureRecognizer, PointerDeviceKind, kPrimaryMouseButton;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -2066,7 +2067,16 @@ class StashEditorState extends State<StashEditor> implements FileDropDelegate {
               child: FileDropRegion(
                 delegate: this,
                 child: Listener(
-                  onPointerDown: (event) => _pressedAt = event.position,
+                  onPointerDown: (event) {
+                    _pressedAt = event.position;
+                    // Quill takes the keyboard on a click, not on a drag:
+                    // text selected by one is to be deleted, typed over.
+                    if (event.kind == PointerDeviceKind.mouse &&
+                        event.buttons & kPrimaryMouseButton != 0 &&
+                        !_focus.hasFocus) {
+                      _focus.requestFocus();
+                    }
+                  },
                   // Fading out at an edge scrolled past, the caret with it.
                   child: ScrollEdgeFade(
                     child: StashCaret(
