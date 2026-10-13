@@ -4994,6 +4994,12 @@ abstract class AppLocalizations {
   /// **'Open'**
   String get fileLinkOpen;
 
+  /// No description provided for @fileLinkOpenInPanel.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Side Panel'**
+  String get fileLinkOpenInPanel;
+
   /// Context menu item of an image the chat names: shows it enlarged over the window.
   ///
   /// In en, this message translates to:
@@ -13497,6 +13503,12 @@ abstract class AppLocalizations {
   /// **'Has AI make the selection clearer, in your words, without adding structure'**
   String get stashPolishHint;
 
+  /// No description provided for @stashPolishFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not polish: {error}'**
+  String stashPolishFailed(String error);
+
   /// No description provided for @stashLinkTitle.
   ///
   /// In en, this message translates to:
@@ -13586,6 +13598,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clear'**
   String get stashAiClear;
+
+  /// No description provided for @stashAiSearchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'AI search failed: {error}'**
+  String stashAiSearchFailed(String error);
+
+  /// No description provided for @stashAiNoAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'The model gave no usable answer.'**
+  String get stashAiNoAnswer;
+
+  /// No description provided for @aiModelAuxiliary.
+  ///
+  /// In en, this message translates to:
+  /// **'Same as Auxiliary Model'**
+  String get aiModelAuxiliary;
+
+  /// No description provided for @aiModelFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a model first: AI actions use it from then on'**
+  String get aiModelFirst;
+
+  /// No description provided for @aiModelNone.
+  ///
+  /// In en, this message translates to:
+  /// **'none picked yet'**
+  String get aiModelNone;
+
+  /// No description provided for @aiModelTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Model for AI actions: {model}'**
+  String aiModelTooltip(String model);
 
   /// No description provided for @stashFilterAnyTime.
   ///
@@ -13821,24 +13869,6 @@ abstract class AppLocalizations {
   /// **'More'**
   String get stashMore;
 
-  /// No description provided for @stashSplit.
-  ///
-  /// In en, this message translates to:
-  /// **'Split'**
-  String get stashSplit;
-
-  /// No description provided for @stashSplitHow.
-  ///
-  /// In en, this message translates to:
-  /// **'Put the cursor where to cut it, or separate the parts with a line of ---.'**
-  String get stashSplitHow;
-
-  /// No description provided for @stashSplitTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Split {stash} into {count}?'**
-  String stashSplitTitle(String stash, int count);
-
   /// No description provided for @stashExpand.
   ///
   /// In en, this message translates to:
@@ -13851,11 +13881,35 @@ abstract class AppLocalizations {
   /// **'AI says your note clearly, filling in what its pictures and files show, adding no structure; it replaces the text, and Undo takes it back'**
   String get stashExpandHint;
 
+  /// No description provided for @stashClarifying.
+  ///
+  /// In en, this message translates to:
+  /// **'Clarifying…'**
+  String get stashClarifying;
+
+  /// No description provided for @stashClarifyFailedShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Not clarified'**
+  String get stashClarifyFailedShort;
+
+  /// No description provided for @stashClarifyChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'The note changed while it was being clarified, so nothing was replaced. Try again.'**
+  String get stashClarifyChanged;
+
+  /// No description provided for @stashRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get stashRetry;
+
   /// No description provided for @stashExpandFailed.
   ///
   /// In en, this message translates to:
-  /// **'The note could not be clarified. Is Claude Code signed in?'**
-  String get stashExpandFailed;
+  /// **'The note could not be clarified: {error}'**
+  String stashExpandFailed(String error);
 
   /// No description provided for @stashImplement.
   ///

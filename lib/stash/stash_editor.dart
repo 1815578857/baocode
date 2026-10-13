@@ -30,6 +30,8 @@ import '../ide/ide_hover.dart';
 import '../ide/ide_input.dart';
 import '../ide/ide_menu.dart';
 import '../l10n/l10n.dart';
+import '../models/auxiliary_model_menu.dart';
+import '../models/model_providers.dart';
 import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
 import '../theme/material_file_icons.dart';
@@ -37,6 +39,7 @@ import '../theme/workbench_theme.dart' show themeColors;
 import '../workspace/editor_launcher.dart' show openExternal;
 import '../workspace/window_controls.dart';
 import '../ide/ide_motion.dart';
+import 'stash_ai.dart' show StashAiException;
 import 'stash_caret.dart';
 import 'stash_html.dart';
 import 'stash_io_stub.dart' if (dart.library.io) 'stash_io.dart' as io;
@@ -1601,77 +1604,26 @@ class StashEditorState extends State<StashEditor> implements FileDropDelegate {
     _focus.requestFocus();
   }
 
-  /// Its text, as [ask] rewrites it (given it as [stashTextForModel]
-  /// gives it), in its place: a step Undo takes back. Up to a requirement
-  /// section ([StashNote.requirementHeading]) if one was written, which
-  /// stays. Whether it was: not when there is no answer, or when the text
-  /// changed meanwhile.
-  Future<bool> rewrite(Future<String?> Function(String text) ask) async {
-    final end = _beforeRequirement();
-    if (end == 0) return false;
-    final slice = _controller.document.toDelta().slice(0, end);
-    final asked = stashTextForModel(slice, widget.store.absolute);
-    if (asked.text.trim().isEmpty) return false;
-    final better = await ask(asked.text);
-    if (better == null || !mounted) return false;
-    final document = _controller.document;
-    if (end > document.length - 1 ||
-        document.toDelta().slice(0, end) != slice) {
-      return false;
-    }
-    final replaced = stashTextFromModel(
-      better,
-      asked.attachments,
-      endsLine: switch (slice.toList().lastOrNull?.data) {
-        final String last => last.endsWith('\n'),
-        _ => false,
-      },
+  /// Its text as a model is given it (see [stashTextPart]).
+  StashTextPart? get textPart =>
+      stashTextPart(_controller.document, widget.store.absolute);
+
+  /// Its text, given to a model as [asked] ([textPart]), [reply] in its
+  /// place: a step Undo takes back. Whether it was: not when the text is no
+  /// longer [asked].
+  bool rewrite(String asked, String reply) {
+    final rewritten = stashTextRewrite(
+      _controller.document,
+      asked,
+      reply,
+      widget.store.absolute,
     );
-    final after = TextSelection.collapsed(offset: _textLength(replaced));
+    if (rewritten == null) return false;
+    final after = TextSelection.collapsed(offset: rewritten.length);
     _controller
-      ..compose(
-        (Delta()..delete(end)).concat(replaced),
-        after,
-        ChangeSource.local,
-      )
+      ..compose(rewritten.change, after, ChangeSource.local)
       ..updateSelection(after, ChangeSource.local);
     return true;
-  }
-
-  /// Where its text ends: before a requirement section's heading and the
-  /// empty lines above it, if there is one; else before the document's
-  /// last line break.
-  int _beforeRequirement() {
-    final plain = _controller.document.toPlainText();
-    final heading = StashNote.requirementHeading.replaceFirst(
-      RegExp(r'^#+\s*'),
-      '',
-    );
-    var end = plain.length - 1;
-    var offset = 0;
-    var lineStart = 0;
-    for (final op in _controller.document.toDelta().toList()) {
-      final data = op.data;
-      if (data is! String) {
-        offset += 1;
-        continue;
-      }
-      for (var i = 0; i < data.length; i++, offset++) {
-        if (data[i] != '\n') continue;
-        if (op.attributes?[Attribute.header.key] == 2 &&
-            plain.substring(lineStart, offset).trim() == heading) {
-          end = lineStart;
-          while (end > 0 &&
-              plain[end - 1] == '\n' &&
-              (end < 2 || plain[end - 2] == '\n')) {
-            end--;
-          }
-          return end;
-        }
-        lineStart = offset + 1;
-      }
-    }
-    return end;
   }
 
   Future<void> _polish() async {
@@ -1686,7 +1638,23 @@ class StashEditorState extends State<StashEditor> implements FileDropDelegate {
     if (asked.text.trim().isEmpty) return;
     setState(() => _polishing = true);
     try {
-      final better = await polish(asked.text);
+      final String? better;
+      try {
+        better = await polish(asked.text);
+      } on StashAiException catch (error) {
+        if (!mounted) return;
+        final l10n = context.l10n;
+        await showIdeDialog(
+          context,
+          message: l10n.stashPolishFailed(
+            error.message ?? l10n.stashAiNoAnswer,
+          ),
+          buttons: [l10n.commonOk],
+          cancel: null,
+          type: IdeDialogType.error,
+        );
+        return;
+      }
       if (better == null || !mounted) return;
       // Only if the text is as it was when asked.
       final document = _controller.document;
@@ -1796,12 +1764,32 @@ class StashEditorState extends State<StashEditor> implements FileDropDelegate {
       ),
       if (widget.onPolish != null) ...[
         const _BarDivider(),
-        _BarButton(
-          icon: Codicons.sparkle,
-          label: _polishing ? l10n.stashPolishing : l10n.stashPolish,
-          tooltip: l10n.stashPolishHint,
-          onTap: () => unawaited(_polish()),
-          busy: _polishing,
+        Builder(
+          builder: (context) => _BarButton(
+            icon: Codicons.sparkle,
+            label: _polishing ? l10n.stashPolishing : l10n.stashPolish,
+            tooltip: l10n.stashPolishHint,
+            onTap: () {
+              if (anchorOf(context) case final anchor?) {
+                unawaited(withActionsModel(context, anchor, _polish));
+              }
+            },
+            busy: _polishing,
+          ),
+        ),
+        Builder(
+          builder: (context) => _BarButton(
+            icon: Codicons.chevronDown,
+            tooltip: l10n.aiModelTooltip(
+              actionsModelName(l10n, ModelProviders.current) ??
+                  l10n.aiModelNone,
+            ),
+            onTap: () {
+              if (anchorOf(context) case final anchor?) {
+                unawaited(pickActionsModel(context, anchor));
+              }
+            },
+          ),
         ),
       ],
     ];
@@ -2602,6 +2590,96 @@ class _ImageEmbedBuilder extends _StashEmbedBuilder with _Tagged {
     }
     return number;
   }
+}
+
+/// A stash's text as a model is given it ([stashTextForModel]): up to
+/// its requirement section ([StashNote.requirementHeading]) if one was
+/// written, which stays as it is; [end] where it ends in the document,
+/// [endsLine] whether it ends its line.
+typedef StashTextPart = ({
+  int end,
+  String text,
+  List<(String, String)> attachments,
+  bool endsLine,
+});
+
+/// [document]'s text (see [StashTextPart]); null when it has none.
+StashTextPart? stashTextPart(
+  Document document,
+  String Function(String path) absolute,
+) {
+  final end = _textEnd(document);
+  if (end == 0) return null;
+  final slice = document.toDelta().slice(0, end);
+  final asked = stashTextForModel(slice, absolute);
+  if (asked.text.trim().isEmpty) return null;
+  return (
+    end: end,
+    text: asked.text,
+    attachments: asked.attachments,
+    endsLine: switch (slice.toList().lastOrNull?.data) {
+      final String last => last.endsWith('\n'),
+      _ => false,
+    },
+  );
+}
+
+/// What puts [reply], a model's to [document]'s text given it as [asked]
+/// ([stashTextPart]), in the text's place, and how long it is; null when
+/// the text is no longer [asked].
+({Delta change, int length})? stashTextRewrite(
+  Document document,
+  String asked,
+  String reply,
+  String Function(String path) absolute,
+) {
+  final part = stashTextPart(document, absolute);
+  if (part == null || part.text != asked) return null;
+  final replaced = stashTextFromModel(
+    reply,
+    part.attachments,
+    endsLine: part.endsLine,
+  );
+  return (
+    change: (Delta()..delete(part.end)).concat(replaced),
+    length: _textLength(replaced),
+  );
+}
+
+/// Where [document]'s text ends: before a requirement section's heading
+/// and the empty lines above it, if there is one; else before the
+/// document's last line break.
+int _textEnd(Document document) {
+  final plain = document.toPlainText();
+  final heading = StashNote.requirementHeading.replaceFirst(
+    RegExp(r'^#+\s*'),
+    '',
+  );
+  var end = plain.length - 1;
+  var offset = 0;
+  var lineStart = 0;
+  for (final op in document.toDelta().toList()) {
+    final data = op.data;
+    if (data is! String) {
+      offset += 1;
+      continue;
+    }
+    for (var i = 0; i < data.length; i++, offset++) {
+      if (data[i] != '\n') continue;
+      if (op.attributes?[Attribute.header.key] == 2 &&
+          plain.substring(lineStart, offset).trim() == heading) {
+        end = lineStart;
+        while (end > 0 &&
+            plain[end - 1] == '\n' &&
+            (end < 2 || plain[end - 2] == '\n')) {
+          end--;
+        }
+        return end;
+      }
+      lineStart = offset + 1;
+    }
+  }
+  return end;
 }
 
 /// How long [delta]'s text is (an embed is one), not its count of

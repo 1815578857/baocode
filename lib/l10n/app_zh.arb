@@ -816,6 +816,7 @@
   "tabCloseSaved": "关闭已保存",
   "tabCloseAll": "全部关闭",
   "fileLinkOpen": "打开",
+  "fileLinkOpenInPanel": "在侧边栏中打开",
   "fileLinkPreview": "预览",
   "fileLinkOpenInBrowser": "在浏览器中打开",
   "tabCopyPath": "复制路径",
@@ -2232,6 +2233,7 @@
   "stashPolish": "润色",
   "stashPolishing": "润色中…",
   "stashPolishHint": "让 AI 把选中的文字理顺，保持你的原意，不加结构",
+  "stashPolishFailed": "没能润色：{error}",
   "stashLinkTitle": "链接",
   "stashRemove": "移除",
   "stashEdit": "编辑",
@@ -2247,6 +2249,12 @@
   "stashAiSearchHint": "按意思而不只是字面去找。会调用模型，这个要花钱。",
   "stashAiResults": "{count, plural, =0{AI 没找到} other{AI 找到 {count} 条}}",
   "stashAiClear": "清除",
+  "stashAiSearchFailed": "AI 搜索失败：{error}",
+  "stashAiNoAnswer": "模型没有给出可用的回答。",
+  "aiModelAuxiliary": "跟随辅助模型",
+  "aiModelFirst": "先选一个模型，之后的 AI 操作都用它",
+  "aiModelNone": "尚未选择",
+  "aiModelTooltip": "AI 操作使用的模型：{model}",
   "stashFilterAnyTime": "任何时间",
   "stashFilterAnyProject": "所有项目",
   "stashFilterAnyStatus": "所有状态",
@@ -2286,12 +2294,13 @@
   "stashClose": "关闭 Stash",
   "stashCloseDetail": "关闭",
   "stashMore": "更多",
-  "stashSplit": "拆分",
-  "stashSplitHow": "把光标放在要切开的位置，或者用一行 --- 隔开各部分。",
-  "stashSplitTitle": "把 {stash} 拆成 {count} 条？",
   "stashExpand": "说清楚",
   "stashExpandHint": "AI 把原话说清楚：结合图片和附件补全意思，不加结构；直接替换原文，可以撤销",
-  "stashExpandFailed": "没能说清楚。Claude Code 登录了吗？",
+  "stashClarifying": "正在说清楚…",
+  "stashClarifyFailedShort": "没说清楚",
+  "stashClarifyChanged": "说清楚期间便签被改动了，没有替换，可以再试一次。",
+  "stashRetry": "重试",
+  "stashExpandFailed": "没能说清楚：{error}",
   "stashImplement": "在 BaoCode 中实施",
   "stashImplementHow": "让 agent 怎样开发？",
   "stashImplementHowDetail": "在新的 git worktree 里（独立分支，不动你当前的工作区），还是直接在项目当前分支上。",
@@ -2340,7 +2349,11 @@
   "stashCount": "{count} 条便签",
   "@stashCount": {
     "description": "What is dragged in the stash panel's list, when it is several stashes.",
-    "placeholders": {"count": {"type": "int"}}
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "stashFormatMore": "更多"
 }

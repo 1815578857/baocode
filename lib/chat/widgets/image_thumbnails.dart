@@ -3,15 +3,17 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 
 import '../../ide/ide_hover.dart';
 import '../../ide/ide_menu.dart';
 import '../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
+import '../../workspace/editor_launcher.dart' show openExternal;
 import '../../workspace/window_controls.dart';
 import '../chat_models.dart';
 import '../side_panel/file_link_menu.dart';
-import '../side_panel/file_open.dart';
+import '../side_panel/shown_files.dart';
 import 'hover_builder.dart';
 
 /// Pictures attached to a message, small; a click shows one whole. With
@@ -140,22 +142,14 @@ class _Thumbnail extends StatelessWidget {
   }
 }
 
-/// Shows [image] whole: where the chat's files open (the side panel, the
-/// IDE), as a file there (see [FileOpenScope.showImage]); else over the
-/// window, where a click closes it and a right click offers [menu] (a
-/// file's, say), or to copy it, as do ⌘C and Ctrl+C.
+/// Shows [image] whole, over the window. A click closes it; a right click
+/// offers [menu] (a file's, say), else [ImageMenu]'s; ⌘C and Ctrl+C copy
+/// it.
 void showImagePreview(
   BuildContext context,
   ImageAttachment image, {
   ChatItemMenu? menu,
 }) {
-  if (FileOpenScope.find(context)?.showImage(
-        image,
-        name: image.name ?? context.l10n.shownImage,
-      ) ??
-      false) {
-    return;
-  }
   showDialog<void>(
     context: context,
     // Black, not the theme's: as upstream's modal backdrops.
@@ -165,7 +159,8 @@ void showImagePreview(
 }
 
 /// What a right click on an image of a message offers: to show it whole,
-/// and to copy it.
+/// to copy it, and on this machine to open it in its app or show it in the
+/// file manager (as a file of its own, see [ShownFiles.bytes]).
 class ImageMenu implements ChatItemMenu {
   const ImageMenu(this.image);
 
@@ -183,6 +178,15 @@ class ImageMenu implements ChatItemMenu {
             l10n.fileLinkPreview,
             onSelected: () => showImagePreview(context, image),
           ),
+          if (WindowControls.canOpenInDefaultApp)
+            IdeMenuAction(
+              l10n.openInDefaultApp,
+              onSelected: () {
+                if (_imageFile(image, l10n) case final path?) {
+                  unawaited(openExternal(path));
+                }
+              },
+            ),
         ],
         [
           IdeMenuAction(
@@ -191,9 +195,37 @@ class ImageMenu implements ChatItemMenu {
                 unawaited(WindowControls.writePasteboardImage(image)),
           ),
         ],
+        [
+          if (WindowControls.canRevealInFileManager)
+            IdeMenuAction(
+              l10n.revealInFileManager,
+              onSelected: () {
+                if (_imageFile(image, l10n) case final path?) {
+                  unawaited(WindowControls.revealInFileManager(path));
+                }
+              },
+            ),
+        ],
       ]),
     );
   }
+}
+
+/// [image] as a file, to open in its app or show in the file manager;
+/// null where it cannot be one.
+String? _imageFile(ImageAttachment image, AppLocalizations l10n) {
+  final name = image.name ?? l10n.shownImage;
+  final extension = switch (image.mediaType) {
+    'image/jpeg' => '.jpg',
+    'image/gif' => '.gif',
+    'image/webp' => '.webp',
+    'image/bmp' => '.bmp',
+    _ => '.png',
+  };
+  return ShownFiles.bytes(
+    image.bytes,
+    name: p.extension(name).isEmpty ? '$name$extension' : name,
+  );
 }
 
 class _ImagePreview extends StatelessWidget {
@@ -206,10 +238,27 @@ class _ImagePreview extends StatelessWidget {
 
   Future<void> _showMenu(BuildContext context, Offset position) async {
     if (menu case final menu?) return menu.show(context, position);
+    final l10n = context.l10n;
+    final open = WindowControls.canOpenInDefaultApp;
+    final reveal = WindowControls.canRevealInFileManager;
     final chosen = await WindowControls.showContextMenu(position, [
-      NativeMenuItem('copyImage', context.l10n.imageCopy, key: 'c'),
+      NativeMenuItem('copyImage', l10n.imageCopy, key: 'c'),
+      if (open || reveal) const NativeMenuItem.separator(),
+      if (open) NativeMenuItem('open', l10n.openInDefaultApp),
+      if (reveal) NativeMenuItem('reveal', l10n.revealInFileManager),
     ]);
-    if (chosen == 'copyImage') _copy();
+    switch (chosen) {
+      case 'copyImage':
+        _copy();
+      case 'open':
+        if (_imageFile(image, l10n) case final path?) {
+          await openExternal(path);
+        }
+      case 'reveal':
+        if (_imageFile(image, l10n) case final path?) {
+          await WindowControls.revealInFileManager(path);
+        }
+    }
   }
 
   @override

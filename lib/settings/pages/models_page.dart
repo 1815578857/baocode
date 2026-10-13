@@ -15,12 +15,12 @@ import '../../l10n/l10n.dart';
 import '../../models/codex/codex_api.dart' show codexClientVersion;
 import '../../models/codex/codex_service.dart';
 import '../../models/codex/codex_usage.dart';
+import '../../models/auxiliary_model_menu.dart';
 import '../../models/featured_upstreams.dart';
 import '../../models/model_icons.dart';
 import '../../models/model_provider.dart';
 import '../../models/model_providers.dart';
 import '../../models/model_runtime.dart';
-import '../../models/upstream.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
@@ -225,32 +225,12 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
       trailing: SettingsDropdown(
         current: shown,
         semanticLabel: l10n.modelsChoiceLabel(l10n.modelsAuxiliary, shown),
-        entries: () => [
-          IdeMenuAction(
-            l10n.modelsAuxiliaryAuto,
-            checked: current == null,
-            onSelected: () => set(null),
-          ),
-          const IdeMenuSeparator(),
-          IdeMenuAction(
-            l10n.modelsAuxiliaryBuiltin,
-            checked: current == builtinProviderId,
-            onSelected: () => set(builtinProviderId),
-          ),
-          for (final provider in _providers.enabled)
-            IdeMenuAction(
-              provider.name,
-              checked: parseModelRef(current)?.provider == provider.id,
-              submenu: [
-                for (final model in provider.enabledModels)
-                  IdeMenuAction(
-                    model.displayName,
-                    checked: current == modelRef(provider.id, model.id),
-                    onSelected: () => set(modelRef(provider.id, model.id)),
-                  ),
-              ],
-            ),
-        ],
+        entries: () => auxiliaryModelEntries(
+          l10n,
+          _providers,
+          current: current,
+          onPick: set,
+        ),
       ),
     );
   }

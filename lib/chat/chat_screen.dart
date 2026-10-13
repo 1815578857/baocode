@@ -635,6 +635,8 @@ class _ChatScreenState extends State<ChatScreen>
             onOpen: _openFile,
             existence: _files,
             readBytes: links.readBytes,
+            inPanel: links.inPanel,
+            onOpenInIde: links.openInIde,
             roots: links.roots?.call() ?? const [],
             seen: _session.filesSeen,
             local: switch (_session.kernelContext.cwd) {

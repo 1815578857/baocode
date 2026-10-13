@@ -17,8 +17,10 @@ import 'package:baocode/theme/material_file_icons.dart';
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_quill/flutter_quill.dart' show FlutterQuillLocalizations;
+import 'package:flutter_quill/flutter_quill.dart'
+    show FlutterQuillLocalizations;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:baocode/workspace/pin_window_button.dart';
 import 'package:baocode/workspace/workspace.dart';
 
 import '../window/fake_window_host.dart';
@@ -163,6 +165,43 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('the panel is not kept on top unless its pin is on', (
+    tester,
+  ) async {
+    await setUpFlow(tester);
+    const window = MethodChannel('baocode/window.7');
+    final onTop = <Object?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(window, (
+      call,
+    ) async {
+      if (call.method == 'setAlwaysOnTop') onTop.add(call.arguments);
+      return null;
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          FlutterQuillLocalizations.delegate,
+        ],
+        home: Material(
+          child: StashPanelView(controller: controller, viewId: 7),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(onTop, [false]);
+
+    await tester.tap(find.byType(PinWindowButton));
+    await tester.pump();
+    expect(controller.pinned, isTrue);
+    expect(onTop, [false, true]);
+    await tester.tap(find.byType(PinWindowButton));
+    await tester.pump();
+    expect(onTop, [false, true, false]);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 3));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   testWidgets('the list of all: icons and numbers, picked with the keys, '
       'selected with Cmd, dragged into an order, deleted', (tester) async {
     await setUpFlow(tester);
@@ -186,13 +225,14 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    Finder row(String title) => find.ancestor(
-      of: find.text(title),
-      matching: find.byType(IdeListRow),
-    );
+    Finder row(String title) =>
+        find.ancestor(of: find.text(title), matching: find.byType(IdeListRow));
     expect(row('first'), findsOneWidget);
     expect(
-      find.descendant(of: row('third doc.pdf'), matching: find.byType(FileIcon)),
+      find.descendant(
+        of: row('third doc.pdf'),
+        matching: find.byType(FileIcon),
+      ),
       findsOneWidget,
     );
     // Its number shows on hover only.
@@ -224,10 +264,7 @@ void main() {
     await tester.tap(row('third doc.pdf'));
     await tester.sendKeyUpEvent(command);
     await tester.pumpAndSettle();
-    expect(
-      tester.widget<IdeListRow>(row('third doc.pdf')).selected,
-      isTrue,
-    );
+    expect(tester.widget<IdeListRow>(row('third doc.pdf')).selected, isTrue);
     final bottom = tester.getBottomLeft(row('first'));
     final drag = await tester.startGesture(tester.getCenter(row('first')));
     await drag.moveBy(const Offset(0, 20));

@@ -18,7 +18,7 @@ abstract interface class ChatItemMenu {
 }
 
 /// What a right click on a file the chat names offers, as an editor tab's
-/// menu does: open it, copy its path, and on this machine show it in the
+/// menu does: open it (in the side panel, in the IDE), copy its path, and on this machine show it in the
 /// file manager or open it in its app. An image also shows enlarged
 /// ([onPreview]) and copies ([onCopyImage]); a web page opens in the
 /// browser ([browser]).
@@ -30,6 +30,8 @@ class FileLinkMenu implements ChatItemMenu {
     required this.onOpen,
     this.paths,
     this.local = true,
+    this.inPanel = false,
+    this.onOpenInIde,
     this.onPreview,
     this.onCopyImage,
     this.browser = false,
@@ -46,7 +48,16 @@ class FileLinkMenu implements ChatItemMenu {
 
   /// The project's folder, which the relative path is from.
   final String root;
-  final VoidCallback onOpen;
+
+  /// Opens it where the chat's files open; none where it does not open
+  /// there (an image, not in the side panel).
+  final VoidCallback? onOpen;
+
+  /// Whether [onOpen] opens it in the side panel.
+  final bool inPanel;
+
+  /// Opens it in the IDE, where [onOpen] does not.
+  final VoidCallback? onOpenInIde;
   final p.Context? paths;
 
   /// Whether the file is this machine's (not a remote project's).
@@ -68,7 +79,13 @@ class FileLinkMenu implements ChatItemMenu {
               l10n.fileLinkOpenInBrowser,
               onSelected: () => unawaited(openExternal(path)),
             ),
-          IdeMenuAction(l10n.fileLinkOpen, onSelected: onOpen),
+          if (onOpen case final open?)
+            IdeMenuAction(
+              inPanel ? l10n.fileLinkOpenInPanel : l10n.fileLinkOpen,
+              onSelected: open,
+            ),
+          if (onOpenInIde case final open?)
+            IdeMenuAction(l10n.sidePanelOpenInIde, onSelected: open),
         ],
         [
           if (onCopyImage case final copy?)

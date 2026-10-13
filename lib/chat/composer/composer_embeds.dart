@@ -1362,9 +1362,12 @@ class _FileImageChipState extends State<FileImageChip> {
           ),
         );
         chip = PreviewClick(
-          // In the tab of what was looked at last.
-          onOpen: () => files.onOpen(
-            FileOpenRequest(path, readOnly: true, preview: true),
+          onOpen: () => unawaited(
+            files.preview(
+              context,
+              path,
+              orElse: () => files.onOpen(FileOpenRequest(path)),
+            ),
           ),
           child: FileLinkMenuRegion(
             menu: files.menuFor(

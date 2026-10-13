@@ -16,19 +16,38 @@ const _noteBudget = 6000;
 String _clip(String text, int most) =>
     text.length <= most ? text : '${text.substring(0, most)}…';
 
+/// Why an AI action the user asked for has no answer: what went wrong
+/// asking ([message], Claude Code's or the model's words), or none for an
+/// answer that was not one (empty, or not what was asked).
+class StashAiException implements Exception {
+  const StashAiException([this.message]);
+
+  final String? message;
+
+  @override
+  String toString() => message ?? 'No answer';
+}
+
+/// The model's reply to [prompt]: for an action the user asked for
+/// ([action]: the model picked for those, see
+/// [ModelProviders.actionsModel]), throwing [StashAiException] when there
+/// is none; else (a suggestion in the background), the auxiliary model's,
+/// null when there is none.
 Future<String?> _ask(
   String system,
   String prompt, {
   List<StashPicture> pictures = const [],
   ClaudeHaikuTools? tools,
+  bool action = false,
 }) async {
-  final auxiliary = ModelProviders.current.auxiliary(null);
+  final models = ModelProviders.current;
+  final model = action ? models.actions : models.auxiliary(null);
   try {
     final reply = await askClaudeHaiku(
       system,
       prompt,
-      model: auxiliary.model,
-      exact: auxiliary.exact,
+      model: model.model,
+      exact: model.exact,
       images: [
         for (final picture in pictures)
           if (picture.image case final image?)
@@ -37,8 +56,13 @@ Future<String?> _ask(
       tools: tools,
     );
     final text = reply.trim();
-    return text.isEmpty ? null : text;
-  } on Object {
+    if (text.isNotEmpty) return text;
+    if (action) throw const StashAiException();
+    return null;
+  } on StashAiException {
+    rethrow;
+  } on Object catch (error) {
+    if (action) throw StashAiException('$error');
     return null;
   }
 }
@@ -60,18 +84,24 @@ const _polishSystem =
     'Reply with the rewritten passage only, nothing before or after it.';
 
 /// [text] (a passage of [note]) made clearer: same language, same length
-/// or near it, no structure added; null when there is no answer.
-Future<String?> polishStashText(String text, {String? note}) async {
+/// or near it, no structure added; throws [StashAiException] when there is
+/// no answer.
+Future<String> polishStashText(String text, {String? note}) async {
   final context = note == null || note.trim() == text.trim()
       ? ''
       : '<note>\n${_clip(note, _noteBudget)}\n</note>\n\n';
-  final reply = await _ask(_polishSystem, '$context<text>\n$text\n</text>');
-  if (reply == null) return null;
+  final reply = (await _ask(
+    _polishSystem,
+    '$context<text>\n$text\n</text>',
+    action: true,
+  ))!;
   final cleaned = reply
       .replaceFirst(RegExp(r'^<text>\s*'), '')
       .replaceFirst(RegExp(r'\s*</text>$'), '');
   // Someone else's words around it: not what was asked.
-  if (cleaned.length > text.length * 2 + 80) return null;
+  if (cleaned.trim().isEmpty || cleaned.length > text.length * 2 + 80) {
+    throw const StashAiException();
+  }
   return cleaned;
 }
 
@@ -118,11 +148,11 @@ const _clarifySystem =
 
 /// [text] (a stash's, as [stashTextForModel] gives it) said clearly: its
 /// words, what its [pictures] show that they leave out filled in, nothing
-/// else added (see [_clarifySystem]); null when there is no answer.
-/// Pictures the model is not sent (too large), or not taken, go as their
-/// text. Given the stash [folder] (on this machine), the model may read
-/// the note's files there, nothing else.
-Future<String?> clarifyStashText(
+/// else added (see [_clarifySystem]); throws [StashAiException] when there
+/// is no answer. Pictures the model is not sent (too large), or not
+/// taken, go as their text. Given the stash [folder] (on this machine),
+/// the model may read the note's files there, nothing else.
+Future<String> clarifyStashText(
   String text, {
   String? project,
   List<StashPicture> pictures = const [],
@@ -142,23 +172,33 @@ Future<String?> clarifyStashText(
             '${_clip(picture.text!.trim(), _noteBudget ~/ 2)}\n</picture>\n\n',
   ].join();
   final sending = pictures.any((picture) => picture.image != null);
-  var reply = await _ask(
-    _clarifySystem,
-    '${read(true)}$note',
-    pictures: pictures,
-    tools: tools,
-  );
-  // A model that takes no pictures: their text alone.
-  if (reply == null && sending) {
-    reply = await _ask(_clarifySystem, '${read(false)}$note', tools: tools);
+  String reply;
+  try {
+    reply = (await _ask(
+      _clarifySystem,
+      '${read(true)}$note',
+      pictures: pictures,
+      tools: tools,
+      action: true,
+    ))!;
+  } on StashAiException {
+    // A model that takes no pictures: their text alone.
+    if (!sending) rethrow;
+    reply = (await _ask(
+      _clarifySystem,
+      '${read(false)}$note',
+      tools: tools,
+      action: true,
+    ))!;
   }
-  if (reply == null) return null;
   final cleaned = reply
       .replaceFirst(RegExp(r'^<note>\s*'), '')
       .replaceFirst(RegExp(r'\s*</note>$'), '')
       .trim();
   // Much more than it was: a requirement written, not what was asked.
-  if (cleaned.isEmpty || cleaned.length > text.length * 3 + 300) return null;
+  if (cleaned.isEmpty || cleaned.length > text.length * 3 + 300) {
+    throw const StashAiException();
+  }
   return cleaned;
 }
 
@@ -171,9 +211,9 @@ const _searchSystem =
     'their ids only, as a JSON array of numbers, e.g. [12, 3]; [] for none.';
 
 /// The ids of [notes] about [query], by meaning, most relevant first;
-/// null when there is no answer. [extra] is more of a note to look in
-/// (the text in its pictures).
-Future<List<int>?> searchStashes(
+/// throws [StashAiException] when there is no answer. [extra] is more of
+/// a note to look in (the text in its pictures).
+Future<List<int>> searchStashes(
   String query,
   List<StashNote> notes, {
   String Function(StashNote note)? extra,
@@ -195,13 +235,13 @@ Future<List<int>?> searchStashes(
     if (budget < 0) break;
     lines.writeln(line);
   }
-  final reply = await _ask(
+  final reply = (await _ask(
     _searchSystem,
     '<query>\n$query\n</query>\n\n$lines',
-  );
-  if (reply == null) return null;
+    action: true,
+  ))!;
   final array = RegExp(r'\[[\d,\s]*\]').firstMatch(reply)?[0];
-  if (array == null) return null;
+  if (array == null) throw const StashAiException();
   final known = {for (final note in notes) note.id};
   return [
     for (final id in (jsonDecode(array) as List).whereType<num>())

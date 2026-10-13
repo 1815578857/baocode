@@ -9,12 +9,14 @@ class StashSettings {
     this.showAll = false,
     this.directory,
     this.sort = StashSort.updated,
+    this.pinned = false,
   });
 
   static const hotkeyKey = 'stash.hotkey';
   static const showAllKey = 'stash.showAll';
   static const directoryKey = 'stash.directory';
   static const sortKey = 'stash.sort';
+  static const pinnedKey = 'stash.pinned';
 
   /// ⌃⇧Space, Ctrl+Shift+Space on Windows.
   static const defaultHotkey = 'ctrl+shift+space';
@@ -30,6 +32,10 @@ class StashSettings {
 
   /// How the panel's list of all orders them.
   final StashSort sort;
+
+  /// Whether the panel stays over other apps' windows (pinned in its top
+  /// bar); else it is in front as it shows, and others may cover it.
+  final bool pinned;
 
   static StashSettings parse(Map<String, Object?> settings) => StashSettings(
     hotkey: switch (settings[hotkeyKey]) {
@@ -47,6 +53,7 @@ class StashSettings {
         StashSort.values.asNameMap()[sort] ?? StashSort.updated,
       _ => StashSort.updated,
     },
+    pinned: settings[pinnedKey] == true,
   );
 
   /// [hotkey] as the menus show one: `⌃⇧Space` on macOS, `Ctrl+Shift+Space`

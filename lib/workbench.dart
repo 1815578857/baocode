@@ -3037,7 +3037,13 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     return FileLinkTarget(
       open: embedded
           ? (request) => _openRequestInIde(thread, request)
-          : (request) => _sidePanel.open(thread.session, request),
+          // From the conversation: the file alone, its list out of the way.
+          : (request) =>
+                _sidePanel.open(thread.session, request, listAway: true),
+      inPanel: !embedded,
+      openInIde: embedded
+          ? null
+          : (request) => _openRequestInIde(thread, request),
       exists: _projectFileChecks[thread.project.path] ??= fileExistsIn(
         files,
         paths: paths,

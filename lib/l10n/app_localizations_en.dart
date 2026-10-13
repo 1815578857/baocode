@@ -2800,6 +2800,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fileLinkOpen => 'Open';
 
   @override
+  String get fileLinkOpenInPanel => 'Open in Side Panel';
+
+  @override
   String get fileLinkPreview => 'Preview';
 
   @override
@@ -8204,6 +8207,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Has AI make the selection clearer, in your words, without adding structure';
 
   @override
+  String stashPolishFailed(String error) {
+    return 'Could not polish: $error';
+  }
+
+  @override
   String get stashLinkTitle => 'Link';
 
   @override
@@ -8261,6 +8269,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stashAiClear => 'Clear';
+
+  @override
+  String stashAiSearchFailed(String error) {
+    return 'AI search failed: $error';
+  }
+
+  @override
+  String get stashAiNoAnswer => 'The model gave no usable answer.';
+
+  @override
+  String get aiModelAuxiliary => 'Same as Auxiliary Model';
+
+  @override
+  String get aiModelFirst =>
+      'Pick a model first: AI actions use it from then on';
+
+  @override
+  String get aiModelNone => 'none picked yet';
+
+  @override
+  String aiModelTooltip(String model) {
+    return 'Model for AI actions: $model';
+  }
 
   @override
   String get stashFilterAnyTime => 'Any time';
@@ -8395,18 +8426,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stashMore => 'More';
 
   @override
-  String get stashSplit => 'Split';
-
-  @override
-  String get stashSplitHow =>
-      'Put the cursor where to cut it, or separate the parts with a line of ---.';
-
-  @override
-  String stashSplitTitle(String stash, int count) {
-    return 'Split $stash into $count?';
-  }
-
-  @override
   String get stashExpand => 'Clarify';
 
   @override
@@ -8414,8 +8433,22 @@ class AppLocalizationsEn extends AppLocalizations {
       'AI says your note clearly, filling in what its pictures and files show, adding no structure; it replaces the text, and Undo takes it back';
 
   @override
-  String get stashExpandFailed =>
-      'The note could not be clarified. Is Claude Code signed in?';
+  String get stashClarifying => 'Clarifying…';
+
+  @override
+  String get stashClarifyFailedShort => 'Not clarified';
+
+  @override
+  String get stashClarifyChanged =>
+      'The note changed while it was being clarified, so nothing was replaced. Try again.';
+
+  @override
+  String get stashRetry => 'Retry';
+
+  @override
+  String stashExpandFailed(String error) {
+    return 'The note could not be clarified: $error';
+  }
 
   @override
   String get stashImplement => 'Implement in BaoCode';

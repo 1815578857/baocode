@@ -111,16 +111,6 @@ void main() {
       expect(again.byId(2)?.id, 1);
     });
 
-    test('splits into new stashes, their pictures with them', () async {
-      final a = await store.create(body: 'one\n\ntwo ![](1/p.png)');
-      disk.assets['1/p.png'] = Uint8List(1);
-      final parts = await store.split(a.id, ['one', 'two ![](1/p.png)']);
-      expect(parts.map((n) => n.id), [1, 2]);
-      expect(parts[0].body, 'one');
-      expect(parts[1].body, 'two ![](2/p.png)');
-      expect(disk.assets.containsKey('2/p.png'), isTrue);
-    });
-
     test('copies small files, links big ones', () async {
       final a = await store.create();
       disk.sizes['/tmp/small.pdf'] = 10;

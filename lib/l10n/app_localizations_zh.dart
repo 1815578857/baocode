@@ -2696,6 +2696,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fileLinkOpen => '打开';
 
   @override
+  String get fileLinkOpenInPanel => '在侧边栏中打开';
+
+  @override
   String get fileLinkPreview => '预览';
 
   @override
@@ -7727,6 +7730,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get stashPolishHint => '让 AI 把选中的文字理顺，保持你的原意，不加结构';
 
   @override
+  String stashPolishFailed(String error) {
+    return '没能润色：$error';
+  }
+
+  @override
   String get stashLinkTitle => '链接';
 
   @override
@@ -7780,6 +7788,28 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get stashAiClear => '清除';
+
+  @override
+  String stashAiSearchFailed(String error) {
+    return 'AI 搜索失败：$error';
+  }
+
+  @override
+  String get stashAiNoAnswer => '模型没有给出可用的回答。';
+
+  @override
+  String get aiModelAuxiliary => '跟随辅助模型';
+
+  @override
+  String get aiModelFirst => '先选一个模型，之后的 AI 操作都用它';
+
+  @override
+  String get aiModelNone => '尚未选择';
+
+  @override
+  String aiModelTooltip(String model) {
+    return 'AI 操作使用的模型：$model';
+  }
 
   @override
   String get stashFilterAnyTime => '任何时间';
@@ -7913,24 +7943,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get stashMore => '更多';
 
   @override
-  String get stashSplit => '拆分';
-
-  @override
-  String get stashSplitHow => '把光标放在要切开的位置，或者用一行 --- 隔开各部分。';
-
-  @override
-  String stashSplitTitle(String stash, int count) {
-    return '把 $stash 拆成 $count 条？';
-  }
-
-  @override
   String get stashExpand => '说清楚';
 
   @override
   String get stashExpandHint => 'AI 把原话说清楚：结合图片和附件补全意思，不加结构；直接替换原文，可以撤销';
 
   @override
-  String get stashExpandFailed => '没能说清楚。Claude Code 登录了吗？';
+  String get stashClarifying => '正在说清楚…';
+
+  @override
+  String get stashClarifyFailedShort => '没说清楚';
+
+  @override
+  String get stashClarifyChanged => '说清楚期间便签被改动了，没有替换，可以再试一次。';
+
+  @override
+  String get stashRetry => '重试';
+
+  @override
+  String stashExpandFailed(String error) {
+    return '没能说清楚：$error';
+  }
 
   @override
   String get stashImplement => '在 BaoCode 中实施';

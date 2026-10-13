@@ -3,19 +3,29 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_quill/flutter_quill.dart' show ChangeSource;
 import 'package:path/path.dart' as p;
 
 import '../kernel/claude_code/claude_sdk_tools.dart';
 import '../remote/remote_location.dart';
+import '../settings/user_settings.dart' show GlobalStorage;
 import '../window/app_windows.dart';
 import '../workspace/workspace.dart';
+import 'stash_actions.dart' show clarifyStash;
 import 'stash_ai.dart';
-import 'stash_editor.dart' show StashRefs;
+import 'stash_editor.dart' show StashRefs, stashTextPart, stashTextRewrite;
 import 'stash_host.dart';
 import 'stash_io_stub.dart' if (dart.library.io) 'stash_io.dart' as io;
+import 'stash_markdown.dart';
 import 'stash_note.dart';
+import 'stash_note_editor.dart';
 import 'stash_settings.dart';
 import 'stash_store.dart';
+
+/// Why a stash could not be said clearly ([StashController.clarify]): its
+/// text [changed] meanwhile, or the model's [message] (none: no answer
+/// that was one).
+typedef StashClarifyFailure = ({bool changed, String? message});
 
 /// The app's side of the stash (see docs/stash.md): the shortcut and its
 /// panel, which stash it shows, and what goes on in the background (the
@@ -30,6 +40,7 @@ class StashController extends ChangeNotifier {
     this.updateSetting,
     this.settingsChanges,
     this.cacheDir,
+    this.storage,
   }) : host = host ?? StashHost.instance,
        _settings = settings ?? (() => const {});
 
@@ -48,6 +59,26 @@ class StashController extends ChangeNotifier {
 
   /// Where the text read out of pictures is kept; not kept without one.
   final String? cacheDir;
+
+  /// Where the stashes' page keeps its layout; not kept without one.
+  final GlobalStorage? storage;
+
+  static const detailWidthKey = 'stash.detailWidth';
+
+  /// The width of the stash shown beside the cards, as last dragged; null
+  /// for the page's own.
+  double? get detailWidth =>
+      _detailWidth ?? storage?.get<num>(detailWidthKey)?.toDouble();
+  double? _detailWidth;
+
+  set detailWidth(double? width) {
+    _detailWidth = width;
+    unawaited(
+      storage
+          ?.set(detailWidthKey, width)
+          .catchError((Object error) => debugPrint('$error')),
+    );
+  }
 
   StashSettings get settings => StashSettings.parse(_settings());
 
@@ -95,8 +126,11 @@ class StashController extends ChangeNotifier {
 
   Future<void> resumeHotkey() => _takeHotkey();
 
+  bool _disposed = false;
+
   @override
   void dispose() {
+    _disposed = true;
     for (final name in const ['stash_create', 'stash_complete', 'stash_read']) {
       ClaudeSdkTools.unregister(name);
     }
@@ -315,6 +349,18 @@ class StashController extends ChangeNotifier {
     );
   }
 
+  /// Whether the panel stays over other apps' windows.
+  bool get pinned => _pinned ?? settings.pinned;
+  bool? _pinned;
+
+  set pinned(bool value) {
+    _pinned = value;
+    notifyListeners();
+    unawaited(
+      updateSetting?.call(StashSettings.pinnedKey, value ? true : null),
+    );
+  }
+
   /// How the panel's list of all orders them.
   StashSort get sort => _sort ?? settings.sort;
   StashSort? _sort;
@@ -414,6 +460,83 @@ class StashController extends ChangeNotifier {
           : await io.gitBranchOf(project),
       thread: thread?.id,
     );
+  }
+
+  // --- Said clearly ------------------------------------------------------------
+
+  /// What says a stash's text clearly: [clarifyStash], but in tests.
+  @visibleForTesting
+  Future<String> Function(StashController controller, int id, String text)
+  clarifier = clarifyStash;
+
+  final Set<int> _clarifying = {};
+  final Map<int, StashClarifyFailure> _clarifyFailures = {};
+
+  /// Whether [id]'s stash is being said clearly ([clarify]).
+  bool clarifying(int id) => _clarifying.contains(id);
+
+  /// Why [id]'s stash could not be said clearly, the last time it was
+  /// asked to be; null when it was, or was not asked.
+  StashClarifyFailure? clarifyFailure(int id) => _clarifyFailures[id];
+
+  void dismissClarifyFailure(int id) {
+    if (_clarifyFailures.remove(id) != null) notifyListeners();
+  }
+
+  /// Says [id]'s stash clearly (see [clarifyStash]), in the background,
+  /// whatever shows meanwhile: its text replaced once the answer comes, in
+  /// the editor showing it if one does (Undo takes it back), else in its
+  /// file; a collected one is a requirement then. [clarifying] while it
+  /// goes on; [clarifyFailure] after, where it failed (no answer, or the
+  /// text changed meanwhile).
+  Future<void> clarify(int id) async {
+    if (_clarifying.contains(id)) return;
+    final note = store.byId(id);
+    if (note == null) return;
+    final asked = switch (StashNoteEditorState.showing(id)?.editor) {
+      final editor? => editor.textPart,
+      null => stashTextPart(stashDocument(note.body), store.absolute),
+    };
+    if (asked == null) return;
+    _clarifying.add(id);
+    _clarifyFailures.remove(id);
+    notifyListeners();
+    try {
+      final reply = await clarifier(this, id, asked.text);
+      if (!await _rewrite(id, asked.text, reply)) {
+        _clarifyFailures[id] = (changed: true, message: null);
+      } else {
+        await store.update(id, (note) {
+          if (note.status == StashStatus.collected) {
+            note.status = StashStatus.requirement;
+          }
+        });
+      }
+    } on StashAiException catch (error) {
+      _clarifyFailures[id] = (changed: false, message: error.message);
+    } finally {
+      _clarifying.remove(id);
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  /// [id]'s text, given to a model as [asked], [reply] in its place;
+  /// whether it was (not when it changed meanwhile).
+  Future<bool> _rewrite(int id, String asked, String reply) async {
+    if (StashNoteEditorState.showing(id) case final shown?) {
+      if (!(shown.editor?.rewrite(asked, reply) ?? false)) return false;
+      await shown.flush();
+      return true;
+    }
+    final note = store.byId(id);
+    if (note == null) return false;
+    final document = stashDocument(note.body);
+    final rewritten = stashTextRewrite(document, asked, reply, store.absolute);
+    if (rewritten == null) return false;
+    document.compose(rewritten.change, ChangeSource.local);
+    final body = stashDeltaToMarkdown(document.toDelta());
+    await store.update(id, (note) => note.body = body);
+    return true;
   }
 
   // --- Carried out in conversations ---------------------------------------------

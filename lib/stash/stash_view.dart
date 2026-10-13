@@ -1,8 +1,9 @@
 import 'dart:async';
+import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_quill/quill_delta.dart';
 import 'package:path/path.dart' as p;
 
 import '../chat/composer/composer_files.dart';
@@ -11,8 +12,12 @@ import '../ide/ide_button.dart';
 import '../ide/ide_dialog.dart';
 import '../ide/ide_hover.dart';
 import '../ide/ide_menu.dart';
+import '../ide/ide_modern_ui.dart';
 import '../ide/ide_quick_input.dart' show IdeKeycap;
+import '../ide/ide_spinning.dart';
 import '../l10n/l10n.dart';
+import '../models/auxiliary_model_menu.dart';
+import '../models/model_providers.dart';
 import '../platform/app_platform.dart';
 import '../sidebar/sidebar.dart' show SidebarIconButton;
 import '../theme/app_theme.dart';
@@ -27,7 +32,6 @@ import 'stash_ai.dart';
 import 'stash_controller.dart';
 import 'stash_editor.dart' show StashRefs, isRemoteStashPicture;
 import 'stash_io_stub.dart' if (dart.library.io) 'stash_io.dart' as io;
-import 'stash_markdown.dart';
 import 'stash_note.dart';
 import 'stash_note_editor.dart';
 import 'stash_settings.dart';
@@ -98,7 +102,15 @@ class StashViewState extends State<StashView> {
   String? _aiQuery;
   bool _aiSearching = false;
 
-  bool _expanding = false;
+  /// Why the AI found nothing for [_aiQuery], when it could not answer.
+  String? _aiError;
+
+  /// The width of the stash shown beside the cards, as dragged; null for
+  /// its own.
+  late double? _detailWidth = _controller.detailWidth;
+
+  /// Where a drag of the line between the cards and the stash began.
+  ({double x, double width})? _dragStart;
 
   @override
   void initState() {
@@ -215,19 +227,28 @@ class StashViewState extends State<StashView> {
     final query = _query.text.trim();
     if (query.isEmpty || _aiSearching) return;
     setState(() => _aiSearching = true);
+    final l10n = context.l10n;
     final store = _controller.store;
-    final results = await searchStashes(
-      query,
-      store.notes.where((note) => !note.isBlank).toList(),
-      extra: (note) => [
-        for (final image in note.images)
-          ?store.pictureText[store.absolute(image)],
-      ].join('\n'),
-    );
+    List<int> results;
+    String? error;
+    try {
+      results = await searchStashes(
+        query,
+        store.notes.where((note) => !note.isBlank).toList(),
+        extra: (note) => [
+          for (final image in note.images)
+            ?store.pictureText[store.absolute(image)],
+        ].join('\n'),
+      );
+    } on StashAiException catch (failure) {
+      results = const [];
+      error = failure.message ?? l10n.stashAiNoAnswer;
+    }
     if (!mounted) return;
     setState(() {
       _aiSearching = false;
-      _aiResults = results ?? const [];
+      _aiResults = results;
+      _aiError = error;
       _aiQuery = query;
     });
   }
@@ -313,70 +334,11 @@ class StashViewState extends State<StashView> {
     });
   }
 
-  /// Cuts the open stash where its rules (`---`) are, else at the caret.
-  Future<void> _split(StashNote note) async {
-    final l10n = context.l10n;
+  /// Says [note] clearly, in the background (see
+  /// [StashController.clarify]): what it has written first.
+  Future<void> _clarify(StashNote note) async {
     await _editor.currentState?.flush();
-    if (!mounted) return;
-    var parts = note.body.split(RegExp(r'\n[ \t]*-{3,}[ \t]*\n'));
-    if (parts.where((part) => part.trim().isNotEmpty).length < 2) {
-      final state = _editor.currentState;
-      final at = state?.caret;
-      final delta = state?.delta;
-      if (at == null || delta == null || at <= 0 || at >= delta.length - 1) {
-        await showIdeDialog(
-          context,
-          message: l10n.stashSplitHow,
-          buttons: [l10n.commonOk],
-          cancel: null,
-          type: IdeDialogType.info,
-        );
-        return;
-      }
-      parts = [
-        stashDeltaToMarkdown(delta.slice(0, at)),
-        stashDeltaToMarkdown(delta.slice(at)),
-      ];
-    }
-    if (!mounted) return;
-    final count = parts.where((part) => part.trim().isNotEmpty).length;
-    final choice = await showIdeDialog(
-      context,
-      message: l10n.stashSplitTitle(note.tag, count),
-      buttons: [l10n.stashSplit],
-      type: IdeDialogType.question,
-    );
-    if (choice != 0) return;
-    await _controller.store.split(note.id, parts);
-  }
-
-  Future<void> _expand(StashNote note) async {
-    if (_expanding) return;
-    final editor = _editor.currentState?.editor;
-    if (editor == null) return;
-    setState(() => _expanding = true);
-    // In the editor: Undo takes it back.
-    final done = await editor.rewrite(
-      (text) => clarifyStash(_controller, note.id, text),
-    );
-    if (!mounted) return;
-    setState(() => _expanding = false);
-    if (done) {
-      await _editor.currentState?.flush();
-      await _controller.store.update(note.id, (note) {
-        if (note.status == StashStatus.collected) {
-          note.status = StashStatus.requirement;
-        }
-      });
-    } else {
-      await showIdeDialog(
-        context,
-        message: context.l10n.stashExpandFailed,
-        buttons: [context.l10n.commonOk],
-        cancel: null,
-        type: IdeDialogType.error,
-      );
-    }
+    await _controller.clarify(note.id);
   }
 
   Future<void> _implement(StashNote note, Rect anchor) async {
@@ -501,18 +463,38 @@ class StashViewState extends State<StashView> {
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final wide = constraints.maxWidth >= 760;
+              final room = constraints.maxWidth;
+              final wide = room >= 760;
               final list = _buildList(l10n);
               if (open == null) return list;
               final detail = _buildDetail(l10n, open);
               if (!wide) return detail;
-              final width = (constraints.maxWidth * .48).clamp(380.0, 720.0);
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              final width = _widthOfDetail(room);
+              final dragging = _dragStart != null;
+              return Stack(
+                fit: StackFit.expand,
                 children: [
-                  Expanded(child: list),
-                  Container(width: 1, color: AppColors.partBorder),
-                  SizedBox(width: width, child: detail),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: list),
+                      _sash(room, dragging: dragging),
+                      SizedBox(width: width, child: detail),
+                    ],
+                  ),
+                  // The resize cursor wherever the pointer goes while
+                  // dragging; a press there (a drag whose end was lost)
+                  // ends it.
+                  if (dragging)
+                    Positioned.fill(
+                      child: Listener(
+                        behavior: HitTestBehavior.translucent,
+                        onPointerDown: (_) => _endDrag(),
+                        child: const MouseRegion(
+                          cursor: SystemMouseCursors.resizeColumn,
+                        ),
+                      ),
+                    ),
                 ],
               );
             },
@@ -520,6 +502,69 @@ class StashViewState extends State<StashView> {
         ),
       ],
     );
+  }
+
+  /// The least the cards keep beside the stash shown, and the least it is.
+  static const _minList = 320.0;
+  static const _minDetail = 380.0;
+
+  /// The stash's width beside the cards in [room]: as dragged, else about
+  /// half; the cards keep [_minList].
+  double _widthOfDetail(double room) {
+    final most = math.max(_minDetail, room - _minList - _sashWidth);
+    final width = _detailWidth ?? (room * .48).clamp(_minDetail, 720.0);
+    return width.clamp(_minDetail, most);
+  }
+
+  /// The strip between the cards and the stash that takes the drag, as the
+  /// side panel's edge: its line at rest, as thick as the IDE's sashes
+  /// while dragged. A double click puts it back where it was at first.
+  static const _sashWidth = 5.0;
+
+  Widget _sash(double room, {required bool dragging}) => MouseRegion(
+    cursor: SystemMouseCursors.resizeColumn,
+    child: GestureDetector(
+      key: const ValueKey('stash-sash'),
+      behavior: HitTestBehavior.opaque,
+      dragStartBehavior: DragStartBehavior.down,
+      onHorizontalDragStart: (details) => setState(
+        () => _dragStart = (
+          x: details.globalPosition.dx,
+          width: _widthOfDetail(room),
+        ),
+      ),
+      onHorizontalDragUpdate: (details) {
+        final start = _dragStart;
+        if (start == null) return;
+        setState(
+          () => _detailWidth = math.max(
+            _minDetail,
+            start.width - (details.globalPosition.dx - start.x),
+          ),
+        );
+      },
+      onHorizontalDragEnd: (_) => _endDrag(),
+      onHorizontalDragCancel: _endDrag,
+      onDoubleTap: () {
+        setState(() => _detailWidth = null);
+        _controller.detailWidth = null;
+      },
+      child: Container(
+        width: _sashWidth,
+        alignment: Alignment.centerRight,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          width: dragging ? IdeModernUI.gap : 1,
+          color: dragging ? IdeModernUI.sashHover : AppColors.partBorder,
+        ),
+      ),
+    ),
+  );
+
+  void _endDrag() {
+    if (!mounted || _dragStart == null) return;
+    setState(() => _dragStart = null);
+    _controller.detailWidth = _detailWidth;
   }
 
   Widget _buildTitleBar(AppLocalizations l10n) {
@@ -611,16 +656,21 @@ class StashViewState extends State<StashView> {
                   ),
                   if (_searching) ...[
                     const SizedBox(width: 8),
-                    IdeHover(
-                      message: l10n.stashAiSearchHint,
-                      child: IdeButton(
-                        label: l10n.stashAiSearch,
-                        icon: Codicons.sparkle,
-                        spinning: _aiSearching,
-                        secondary: true,
-                        onPressed: _aiSearching
-                            ? null
-                            : () => unawaited(_aiSearch()),
+                    Builder(
+                      builder: (context) => IdeHover(
+                        message: l10n.stashAiSearchHint,
+                        child: IdeButton(
+                          label: l10n.stashAiSearch,
+                          icon: Codicons.sparkle,
+                          spinning: _aiSearching,
+                          secondary: true,
+                          onPressed: _aiSearching
+                              ? null
+                              : () => _withModel(context, _aiSearch),
+                          onDropdown: (anchor) =>
+                              unawaited(pickActionsModel(context, anchor)),
+                          dropdownTooltip: _modelTooltip(l10n),
+                        ),
                       ),
                     ),
                   ],
@@ -651,11 +701,20 @@ class StashViewState extends State<StashView> {
                         color: AppColors.textMuted,
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        l10n.stashAiResults(notes.length),
-                        style: TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 12,
+                      Flexible(
+                        child: Text(
+                          switch (_aiError) {
+                            final error? => l10n.stashAiSearchFailed(error),
+                            null => l10n.stashAiResults(notes.length),
+                          },
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: _aiError == null
+                                ? AppColors.textMuted
+                                : themeColors['errorForeground'],
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -905,9 +964,23 @@ class StashViewState extends State<StashView> {
     );
   }
 
+  /// Runs [action], an AI action, once a model is picked for it (see
+  /// [withActionsModel]): the menu that picks one by [context]'s button.
+  void _withModel(BuildContext context, Future<void> Function() action) {
+    final anchor = anchorOf(context);
+    if (anchor == null) return;
+    unawaited(withActionsModel(context, anchor, action));
+  }
+
+  String _modelTooltip(AppLocalizations l10n) => l10n.aiModelTooltip(
+    actionsModelName(l10n, ModelProviders.current) ?? l10n.aiModelNone,
+  );
+
   Widget _buildDetail(AppLocalizations l10n, StashNote note) {
     final thread = _controller.threadOf(note);
     final suggested = note.suggestedProject;
+    final clarifying = _controller.clarifying(note.id);
+    final failure = _controller.clarifyFailure(note.id);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1048,20 +1121,47 @@ class StashViewState extends State<StashView> {
               ],
             ),
           ),
+        if (failure != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+            child: _Banner(
+              icon: Codicons.error,
+              iconColor: themeColors['errorForeground'],
+              text: failure.changed
+                  ? l10n.stashClarifyChanged
+                  : l10n.stashExpandFailed(
+                      failure.message ?? l10n.stashAiNoAnswer,
+                    ),
+              actions: [
+                (l10n.stashRetry, () => unawaited(_clarify(note))),
+                (
+                  l10n.stashDismiss,
+                  () => _controller.dismissClarifyFailure(note.id),
+                ),
+              ],
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
           child: Wrap(
             spacing: 6,
             runSpacing: 6,
             children: [
-              IdeHover(
-                message: l10n.stashExpandHint,
-                child: IdeButton(
-                  label: l10n.stashExpand,
-                  icon: Codicons.sparkle,
-                  spinning: _expanding,
-                  secondary: true,
-                  onPressed: _expanding ? null : () => unawaited(_expand(note)),
+              Builder(
+                builder: (context) => IdeHover(
+                  message: l10n.stashExpandHint,
+                  child: IdeButton(
+                    label: clarifying ? l10n.stashClarifying : l10n.stashExpand,
+                    icon: Codicons.sparkle,
+                    spinning: clarifying,
+                    secondary: true,
+                    onPressed: clarifying
+                        ? null
+                        : () => _withModel(context, () => _clarify(note)),
+                    onDropdown: (anchor) =>
+                        unawaited(pickActionsModel(context, anchor)),
+                    dropdownTooltip: _modelTooltip(l10n),
+                  ),
                 ),
               ),
               Builder(
@@ -1104,12 +1204,6 @@ class StashViewState extends State<StashView> {
                     ),
                   ),
                 ),
-              IdeButton(
-                label: l10n.stashSplit,
-                icon: Codicons.splitVertical,
-                secondary: true,
-                onPressed: () => unawaited(_split(note)),
-              ),
             ],
           ),
         ),
@@ -1278,11 +1372,32 @@ class _StashCard extends StatelessWidget {
                           Flexible(
                             child: _Badge(icon: Codicons.folder, label: name),
                           ),
+                        if (store.clarifying(note.id)) ...[
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: _Badge(
+                              icon: Codicons.sync,
+                              label: l10n.stashClarifying,
+                              spinning: true,
+                            ),
+                          ),
+                        ] else if (store.clarifyFailure(note.id) != null) ...[
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: _Badge(
+                              icon: Codicons.error,
+                              label: l10n.stashClarifyFailedShort,
+                              color: themeColors['errorForeground'],
+                            ),
+                          ),
+                        ],
                         if (note.status != StashStatus.collected) ...[
                           const SizedBox(width: 4),
-                          _Badge(
-                            icon: _statusIcon(note.status),
-                            label: stashStatusLabel(l10n, note.status),
+                          Flexible(
+                            child: _Badge(
+                              icon: _statusIcon(note.status),
+                              label: stashStatusLabel(l10n, note.status),
+                            ),
                           ),
                         ],
                       ],
@@ -1359,10 +1474,17 @@ class _DragFeedback extends StatelessWidget {
 }
 
 class _Badge extends StatelessWidget {
-  const _Badge({required this.icon, required this.label});
+  const _Badge({
+    required this.icon,
+    required this.label,
+    this.spinning = false,
+    this.color,
+  });
 
   final IconData icon;
   final String label;
+  final bool spinning;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1374,14 +1496,20 @@ class _Badge extends StatelessWidget {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 10, color: AppColors.textMuted),
+        if (spinning)
+          IdeSpinning(Icon(icon, size: 10, color: color ?? AppColors.textMuted))
+        else
+          Icon(icon, size: 10, color: color ?? AppColors.textMuted),
         const SizedBox(width: 3),
         Flexible(
           child: Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: AppColors.textMuted, fontSize: 10.5),
+            style: TextStyle(
+              color: color ?? AppColors.textMuted,
+              fontSize: 10.5,
+            ),
           ),
         ),
       ],
@@ -1452,9 +1580,11 @@ class _Banner extends StatelessWidget {
     required this.icon,
     required this.text,
     required this.actions,
+    this.iconColor,
   });
 
   final IconData icon;
+  final Color? iconColor;
   final String text;
   final List<(String, VoidCallback)> actions;
 
@@ -1469,7 +1599,7 @@ class _Banner extends StatelessWidget {
     ),
     child: Row(
       children: [
-        Icon(icon, size: 13, color: AppColors.textMuted),
+        Icon(icon, size: 13, color: iconColor ?? AppColors.textMuted),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -1630,10 +1760,4 @@ class _TitleFieldState extends State<_TitleField> {
       ),
     ),
   );
-}
-
-/// The caret and text of a [StashNoteEditor], for cutting it in two.
-extension on StashNoteEditorState {
-  int? get caret => editor?.widget.controller.selection.baseOffset;
-  Delta? get delta => editor?.widget.controller.document.toDelta();
 }

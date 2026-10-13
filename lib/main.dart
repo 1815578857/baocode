@@ -251,6 +251,7 @@ Future<void> main(List<String> arguments) async {
       updateSetting: files.settings.update,
       settingsChanges: files.settings,
       cacheDir: DataDirectory.current.cacheDir,
+      storage: files.storage,
     );
     unawaited(stash.start());
   }

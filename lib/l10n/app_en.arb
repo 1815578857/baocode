@@ -1251,7 +1251,11 @@
   "pastedTextGone": "This paste is no longer at {path}.",
   "@pastedTextGone": {
     "description": "Shown in place of a long paste kept in a file that has since gone.",
-    "placeholders": {"path": {"type": "String"}}
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
   },
   "pastedTextLines": "{count, plural, =1{+1 line} other{+{count} lines}}",
   "@pastedTextLines": {
@@ -1788,6 +1792,7 @@
   "tabCloseSaved": "Close Saved",
   "tabCloseAll": "Close All",
   "fileLinkOpen": "Open",
+  "fileLinkOpenInPanel": "Open in Side Panel",
   "fileLinkPreview": "Preview",
   "@fileLinkPreview": {
     "description": "Context menu item of an image the chat names: shows it enlarged over the window."
@@ -5878,7 +5883,13 @@
   "stashCodeChip": "Code",
   "stashTableChip": "Table",
   "stashLines": "{count} lines",
-  "@stashLines": {"placeholders": {"count": {"type": "int"}}},
+  "@stashLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "stashNewButton": "New",
   "stashNewTooltip": "New stash",
   "stashPlaceholder": "Jot it down…",
@@ -5907,6 +5918,14 @@
   "stashPolish": "Polish",
   "stashPolishing": "Polishing…",
   "stashPolishHint": "Has AI make the selection clearer, in your words, without adding structure",
+  "stashPolishFailed": "Could not polish: {error}",
+  "@stashPolishFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "stashLinkTitle": "Link",
   "stashRemove": "Remove",
   "stashEdit": "Edit",
@@ -5936,6 +5955,26 @@
     }
   },
   "stashAiClear": "Clear",
+  "stashAiSearchFailed": "AI search failed: {error}",
+  "@stashAiSearchFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "stashAiNoAnswer": "The model gave no usable answer.",
+  "aiModelAuxiliary": "Same as Auxiliary Model",
+  "aiModelFirst": "Pick a model first: AI actions use it from then on",
+  "aiModelNone": "none picked yet",
+  "aiModelTooltip": "Model for AI actions: {model}",
+  "@aiModelTooltip": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
   "stashFilterAnyTime": "Any time",
   "stashFilterAnyProject": "Any project",
   "stashFilterAnyStatus": "Any status",
@@ -6024,22 +6063,20 @@
   "stashClose": "Close Stash",
   "stashCloseDetail": "Close",
   "stashMore": "More",
-  "stashSplit": "Split",
-  "stashSplitHow": "Put the cursor where to cut it, or separate the parts with a line of ---.",
-  "stashSplitTitle": "Split {stash} into {count}?",
-  "@stashSplitTitle": {
+  "stashExpand": "Clarify",
+  "stashExpandHint": "AI says your note clearly, filling in what its pictures and files show, adding no structure; it replaces the text, and Undo takes it back",
+  "stashClarifying": "Clarifying…",
+  "stashClarifyFailedShort": "Not clarified",
+  "stashClarifyChanged": "The note changed while it was being clarified, so nothing was replaced. Try again.",
+  "stashRetry": "Retry",
+  "stashExpandFailed": "The note could not be clarified: {error}",
+  "@stashExpandFailed": {
     "placeholders": {
-      "stash": {
+      "error": {
         "type": "String"
-      },
-      "count": {
-        "type": "int"
       }
     }
   },
-  "stashExpand": "Clarify",
-  "stashExpandHint": "AI says your note clearly, filling in what its pictures and files show, adding no structure; it replaces the text, and Undo takes it back",
-  "stashExpandFailed": "The note could not be clarified. Is Claude Code signed in?",
   "stashImplement": "Implement in BaoCode",
   "stashImplementHow": "How should the agent work on it?",
   "stashImplementHowDetail": "In a new git worktree (a branch of its own, your working copy untouched), or directly in the project as it is.",
@@ -6169,7 +6206,11 @@
   "stashCount": "{count} stashes",
   "@stashCount": {
     "description": "What is dragged in the stash panel's list, when it is several stashes.",
-    "placeholders": {"count": {"type": "int"}}
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "stashFormatMore": "More",
   "@stashFormatMore": {

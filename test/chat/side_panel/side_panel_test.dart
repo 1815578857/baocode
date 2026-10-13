@@ -888,6 +888,22 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('side-panel-list-toggle')));
     await tester.pumpAndSettle();
     expect(tester.getSize(list).width, width + 40);
+
+    // A file the conversation opens shows alone, the list out of the way
+    // (not kept so); asked for, the list is back.
+    panel.open(session, const FileOpenRequest('/p/a.dart'), listAway: true);
+    await tester.pumpAndSettle();
+    expect(list, findsNothing);
+    expect(panel.toJson()['listShown'], isTrue);
+    await tester.tap(find.byKey(const ValueKey('side-panel-list-toggle')));
+    await tester.pumpAndSettle();
+    expect(list, findsOneWidget);
+    panel.open(session, const FileOpenRequest('/p/b.dart'), listAway: true);
+    await tester.pumpAndSettle();
+    expect(list, findsNothing);
+    panel.showSection(session, SidePanelSection.files);
+    await tester.pumpAndSettle();
+    expect(list, findsOneWidget);
   });
 
   testWidgets('the changes page lists Git\'s changes as the Source Control '
@@ -1085,10 +1101,7 @@ void main() {
     final (:panel, :session, files: _) = await _pumpChat(
       tester,
       git: git,
-      texts: {
-        '/p/lib/a/main.dart': 'main\n',
-        '/p/lib/a/util.dart': 'util\n',
-      },
+      texts: {'/p/lib/a/main.dart': 'main\n', '/p/lib/a/util.dart': 'util\n'},
     );
     panel.showSection(session, SidePanelSection.changes);
     await tester.pumpAndSettle();
@@ -1415,6 +1428,7 @@ void main() {
     // Too narrow for the panel beside the conversations: over them.
     tester.view.physicalSize = const Size(600, 800);
     await tester.pumpAndSettle();
+    await tester.pump(AgentSidePanelArea.overlayDelay);
     expect(_scrim, findsOneWidget);
     final sash = find.byKey(const ValueKey('side-panel-sash'));
     final drag = await tester.startGesture(tester.getCenter(sash));
@@ -1435,8 +1449,8 @@ void main() {
     expect(find.byType(FilePreview), findsOneWidget);
   });
 
-  testWidgets('a room short for a frame only does not put the panel over '
-      'the conversations', (tester) async {
+  testWidgets('a room short a while only (the sidebar giving way) does not '
+      'put the panel over the conversations', (tester) async {
     final (:panel, :session, files: _) = await _pumpChat(tester);
     tester.view.physicalSize = const Size(1600, 800);
     panel.show();
@@ -1450,10 +1464,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(_scrim, findsNothing);
 
-    // Short two frames running: over them.
+    // Narrowing frame by frame, as the sidebar's animation gives way, then
+    // wide enough: never over them.
+    for (final width in [500.0, 560.0, 600.0, 620.0]) {
+      tester.view.physicalSize = Size(width, 800);
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(_scrim, findsNothing);
+    }
+    tester.view.physicalSize = const Size(1600, 800);
+    await tester.pump(AgentSidePanelArea.overlayDelay * 2);
+    expect(_scrim, findsNothing);
+
+    // Short for longer: over them.
     tester.view.physicalSize = const Size(600, 800);
     await tester.pump();
-    await tester.pump();
+    expect(_scrim, findsNothing);
+    await tester.pump(AgentSidePanelArea.overlayDelay);
     expect(_scrim, findsOneWidget);
   });
 

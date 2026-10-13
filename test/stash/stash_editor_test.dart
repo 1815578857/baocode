@@ -14,11 +14,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:baocode/models/model_providers.dart';
 
 void main() {
   testWidgets(
     'the bar\'s polish, clicked, keeps the bar and replaces the text',
     (tester) async {
+      // Its model picked already: no menu first.
+      final previous = ModelProviders.current;
+      addTearDown(() => ModelProviders.current = previous);
+      await (ModelProviders.current = ModelProviders.memory()).setActionsModel(
+        ModelProviders.followAuxiliary,
+      );
       final document = Document()..insert(0, '321321\n321\n3123');
       final controller = StashEditor.controllerFor(document);
       final focus = FocusNode();
@@ -164,18 +171,19 @@ void main() {
     );
     await _edit(tester, controller);
     final state = tester.state<StashEditorState>(find.byType(StashEditor));
-    String? asked;
-    late bool done;
-    await tester.runAsync(() async {
-      done = await state.rewrite((text) async {
-        asked = text;
-        return text.replaceFirst('btn hidden', 'The button is hidden by');
-      });
-    });
-    await tester.pump();
-    expect(done, isTrue);
+    final asked = state.textPart!.text;
     expect(asked, isNot(contains('需求')));
     expect(asked, contains('1/a.png]'));
+    // Changed meanwhile: not replaced.
+    expect(state.rewrite('$asked!', 'whatever'), isFalse);
+    expect(
+      state.rewrite(
+        asked,
+        asked.replaceFirst('btn hidden', 'The button is hidden by'),
+      ),
+      isTrue,
+    );
+    await tester.pump();
     final markdown = stashDeltaToMarkdown(controller.document.toDelta());
     expect(
       markdown,

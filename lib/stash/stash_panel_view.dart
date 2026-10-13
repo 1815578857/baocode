@@ -20,6 +20,7 @@ import '../platform/app_platform.dart';
 import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' show themeColors;
+import '../workspace/pin_window_button.dart';
 import '../workspace/window_controls.dart';
 import 'stash_actions.dart' show stashReferenceOf, stashProjectIcon;
 import 'stash_controller.dart';
@@ -77,6 +78,7 @@ class _StashPanelViewState extends State<StashPanelView> {
     _controller.addListener(_changed);
     _controller.store.addListener(_changed);
     _controller.onHiding = _flush;
+    _keepOnTop();
     WindowControls.handleEditCommands(widget.viewId);
     WindowControls.setMenuCommands(widget.viewId, _menuCommand);
     FileDrops.listen(widget.viewId);
@@ -101,8 +103,20 @@ class _StashPanelViewState extends State<StashPanelView> {
     super.dispose();
   }
 
+  /// Whether the panel was last asked to stay on top.
+  bool? _onTop;
+
+  /// The panel over other apps' windows while pinned, as the pin is.
+  void _keepOnTop() {
+    final pinned = _controller.pinned;
+    if (pinned == _onTop) return;
+    _onTop = pinned;
+    unawaited(WindowControls.setAlwaysOnTop(pinned, viewId: widget.viewId));
+  }
+
   void _changed() {
     if (!mounted) return;
+    _keepOnTop();
     setState(() {});
     if (_controller.presentation != _presentation) {
       _presentation = _controller.presentation;
@@ -234,6 +248,8 @@ class _StashPanelViewState extends State<StashPanelView> {
                     headline: note == null
                         ? ''
                         : _controller.store.headline(note),
+                    pinned: _controller.pinned,
+                    onPinned: (pinned) => _controller.pinned = pinned,
                   ),
                   Expanded(child: editor),
                   _Footer(
@@ -319,7 +335,13 @@ class _TopBar extends StatelessWidget {
     required this.projectLabel,
     required this.onProject,
     required this.headline,
+    required this.pinned,
+    required this.onPinned,
   });
+
+  /// Whether the panel stays over other apps' windows; the pin changes it.
+  final bool pinned;
+  final ValueChanged<bool> onPinned;
 
   /// What the stash is called (see [StashStore.headline]).
   final String headline;
@@ -403,6 +425,8 @@ class _TopBar extends StatelessWidget {
                 },
               ),
             ),
+            const SizedBox(width: 4),
+            PinWindowButton(pinned: pinned, onChanged: onPinned),
             const SizedBox(width: 4),
             _PillButton(
               icon: Codicons.close,

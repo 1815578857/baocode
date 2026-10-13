@@ -647,7 +647,8 @@ std::optional<int64_t> AppWindows::CreateStash(
   const HWND handle = window->GetHandle();
   window->SetMinimumSize(Win32Window::Size(kStashMinWidth, kStashMinHeight));
   // Not one of the app's windows: no taskbar button, out of Alt+Tab, never
-  // minimized or maximized, and over every other window.
+  // minimized or maximized. Over every other window only while pinned (its
+  // top bar's pin: setAlwaysOnTop, see window_channel.cpp).
   ::SetWindowLongPtrW(
       handle, GWL_STYLE,
       ::GetWindowLongPtrW(handle, GWL_STYLE) & ~(WS_MINIMIZEBOX | WS_MAXIMIZEBOX));
@@ -655,8 +656,9 @@ std::optional<int64_t> AppWindows::CreateStash(
                       (::GetWindowLongPtrW(handle, GWL_EXSTYLE) |
                        WS_EX_TOOLWINDOW) &
                           ~WS_EX_APPWINDOW);
-  ::SetWindowPos(handle, HWND_TOPMOST, 0, 0, 0, 0,
-                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+  ::SetWindowPos(handle, nullptr, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE |
+                     SWP_FRAMECHANGED);
   // Where the user left it, as big as they made it, if that is on a
   // monitor still.
   RECT kept = {};
@@ -687,6 +689,11 @@ void AppWindows::ShowStash() {
   if (front != panel) {
     before_stash_ = front;
   }
+  // In front as it shows; kept over the others only while pinned.
+  const HWND order =
+      (::GetWindowLongPtrW(panel, GWL_EXSTYLE) & WS_EX_TOPMOST) != 0
+          ? HWND_TOPMOST
+          : HWND_TOP;
   // Where it was left; in the middle of the monitor the pointer is on the
   // first time, or when where it was is on no monitor now.
   RECT bounds = {};
@@ -707,13 +714,13 @@ void AppWindows::ShowStash() {
       const LONG top = (work.top + work.bottom - height) / 2;
       const RECT centered =
           Within({left, top, left + width, top + height}, work);
-      ::SetWindowPos(panel, HWND_TOPMOST, centered.left, centered.top, 0, 0,
+      ::SetWindowPos(panel, order, centered.left, centered.top, 0, 0,
                      SWP_NOSIZE | SWP_NOACTIVATE);
       stash_placed_ = true;
     }
   }
   ::ShowWindow(panel, SW_SHOW);
-  ::SetWindowPos(panel, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+  ::SetWindowPos(panel, order, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
   ::SetForegroundWindow(panel);
 }
 

@@ -13,8 +13,8 @@ extension BaoWindow: FlutterHostWindow {}
 
 /// The stash's panel (see lib/stash/, docs/stash.md): a view of the app's
 /// engine in a panel shown in front of every app, on every Space, without
-/// bringing the app in front (an ordinary window's level: not kept above
-/// the others once the user goes on in another app): the app the user was in stays the active one,
+/// bringing the app in front (an ordinary window's level, not kept above
+/// the others once the user goes on in another app, unless pinned): the app the user was in stays the active one,
 /// and has the keyboard back once the panel goes. Not in the Dock's or the
 /// Window menu's lists. Made once, hidden, and shown again at once each
 /// time the shortcut is pressed.
@@ -250,6 +250,9 @@ final class StashPanel: NSPanel, FlutterHostWindow {
       }
       result(nil)
     case "setAlwaysOnTop":
+      // Pinned (its top bar's pin): over other apps' windows; else an
+      // ordinary window's level, in front as it shows.
+      level = (call.arguments as? Bool ?? false) ? .floating : .normal
       result(nil)
     case "windowRoom":
       result(["width": 0.0, "height": 0.0])

@@ -53,17 +53,22 @@ void main() {
   final opened = <String>[];
   final requests = <FileOpenRequest>[];
   final read = <String>[];
+  final inIde = <String>[];
 
   Future<void> pump(
     WidgetTester tester,
     List<ChatItem> items, {
     bool local = true,
+    bool inPanel = false,
   }) async {
     opened.clear();
     requests.clear();
     read.clear();
+    inIde.clear();
     final existence = FileExistence((_) async => true);
     addTearDown(existence.dispose);
+    // Anew, with no menu left open.
+    await tester.pumpWidget(const SizedBox());
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAppTheme(),
@@ -76,6 +81,8 @@ void main() {
             },
             existence: existence,
             local: local,
+            inPanel: inPanel,
+            onOpenInIde: inPanel ? (request) => inIde.add(request.path) : null,
             readBytes: (path) async {
               read.add(path);
               return Uint8List.fromList(_png);
@@ -106,10 +113,10 @@ void main() {
   ];
 
   testWidgets('an image the conversation links to is an image\'s tag, '
-      'which a click shows in the tab of what was looked at last', (
+      'which a click shows enlarged over the window, not as a file', (
     tester,
   ) async {
-    await pump(tester, screenshots);
+    await pump(tester, screenshots, inPanel: true);
 
     expect(find.byType(FileImageChip), findsNWidgets(2));
     expect(find.text('旧版截图'), findsOneWidget);
@@ -118,10 +125,9 @@ void main() {
 
     await tester.tap(find.text('旧版截图'));
     await tester.pumpAndSettle();
-    expect(find.byType(InteractiveViewer), findsNothing);
-    expect(opened, ['/p/shots/old.png']);
-    expect(requests.single.preview, isTrue);
-    expect(requests.single.readOnly, isTrue);
+    expect(find.byType(InteractiveViewer), findsOneWidget);
+    expect(read.last, '/p/shots/old.png');
+    expect(opened, isEmpty);
   }, variant: _desktop);
 
   testWidgets('its right click has the file\'s menu, with the image\'s '
@@ -136,6 +142,15 @@ void main() {
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
     expect(opened, ['/p/shots/new.png']);
+
+    // Where files open in the side panel, an image does not: in the IDE.
+    await pump(tester, screenshots, inPanel: true);
+    await rightClick(tester, tester.getCenter(find.text('新版截图')));
+    expect(find.text('Open'), findsNothing);
+    expect(find.text('Open in Side Panel'), findsNothing);
+    await tester.tap(find.text('Open in Fast Ide'));
+    await tester.pumpAndSettle();
+    expect(inIde, ['/p/shots/new.png']);
   }, variant: _desktop);
 
   testWidgets('a web page here opens in the browser, from its menu too', (
@@ -154,6 +169,24 @@ void main() {
     );
     expect(find.text('Open in Browser'), findsOneWidget);
     expect(find.text('Open'), findsOneWidget);
+
+    // Where files open in the side panel: there, or in the IDE.
+    await pump(tester, report, inPanel: true);
+    await rightClick(
+      tester,
+      tester.getCenter(find.byType(FileIcon)) + const Offset(30, 0),
+    );
+    expect(find.text('Open in Browser'), findsOneWidget);
+    await tester.tap(find.text('Open in Side Panel'));
+    await tester.pumpAndSettle();
+    expect(opened, ['/p/out/report.html']);
+    await rightClick(
+      tester,
+      tester.getCenter(find.byType(FileIcon)) + const Offset(30, 0),
+    );
+    await tester.tap(find.text('Open in Fast Ide'));
+    await tester.pumpAndSettle();
+    expect(inIde, ['/p/out/report.html']);
 
     // A remote project's opens as other files.
     await pump(tester, report, local: false);
@@ -180,7 +213,13 @@ void main() {
       tester.getCenter(find.byType(ComposerImageChip).first),
     );
 
-    expect(find.text('Preview'), findsOneWidget);
-    expect(find.text('Copy Image'), findsOneWidget);
+    for (final item in [
+      'Preview',
+      'Copy Image',
+      'Open in Default App',
+      'Reveal in Finder',
+    ]) {
+      expect(find.text(item), findsOneWidget, reason: item);
+    }
   }, variant: _desktop);
 }

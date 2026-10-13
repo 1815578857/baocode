@@ -66,9 +66,18 @@ class StashNoteEditorState extends State<StashNoteEditor> {
   /// The stash's number; null while nothing was written in a new one.
   int? get id => _id;
 
+  /// Those built now, in any window.
+  static final Set<StashNoteEditorState> _live = {};
+
+  /// One showing [id]'s stash now, if any: where a change to it is made
+  /// for Undo to take it back.
+  static StashNoteEditorState? showing(int id) =>
+      _live.where((editor) => editor.mounted && editor._id == id).firstOrNull;
+
   @override
   void initState() {
     super.initState();
+    _live.add(this);
     _load();
     widget.store.addListener(_storeChanged);
   }
@@ -92,6 +101,7 @@ class StashNoteEditorState extends State<StashNoteEditor> {
 
   @override
   void dispose() {
+    _live.remove(this);
     unawaited(flush());
     widget.store.removeListener(_storeChanged);
     _changes?.cancel();

@@ -12,6 +12,7 @@ import '../../workspace/window_controls.dart';
 import '../chat_models.dart';
 import 'file_link.dart';
 import 'file_link_menu.dart';
+import '../widgets/image_thumbnails.dart' show showImagePreview;
 import 'shown_files.dart';
 
 /// A file to show: at [range], or as its changes ([diff]) against
@@ -97,9 +98,17 @@ class FileLinkTarget {
     this.readBytes,
     this.paths,
     this.roots,
+    this.inPanel = false,
+    this.openInIde,
   });
 
   final ValueChanged<FileOpenRequest> open;
+
+  /// Whether [open] shows them in the side panel (the agent window's).
+  final bool inPanel;
+
+  /// Opens one in the IDE of the project, where [open] does not.
+  final ValueChanged<FileOpenRequest>? openInIde;
 
   /// Reads the file at an absolute path (on the project's host): an image
   /// the chat names, to show; none, and images open as other files.
@@ -210,8 +219,16 @@ class FileOpenScope extends InheritedWidget {
     this.seen = const [],
     this.local = true,
     this.readBytes,
+    this.inPanel = false,
+    this.onOpenInIde,
     required super.child,
   });
+
+  /// See [FileLinkTarget.inPanel].
+  final bool inPanel;
+
+  /// See [FileLinkTarget.openInIde].
+  final ValueChanged<FileOpenRequest>? onOpenInIde;
 
   /// See [FileLinkTarget.readBytes].
   final Future<Uint8List> Function(String path)? readBytes;
@@ -346,11 +363,11 @@ class FileOpenScope extends InheritedWidget {
   }
 
   /// A click on [link], to the file at [path]: a web page here opens in
-  /// the browser ([opensInBrowser]); anything else opens (see [openLink]),
-  /// an image in the tab of what was looked at last.
+  /// the browser ([opensInBrowser]); an image shows enlarged over
+  /// [context]'s window ([preview]); anything else opens (see [openLink]).
   void activate(FileLink link, String path, BuildContext? context) {
-    if (link.range == null && showsImage(path)) {
-      onOpen(FileOpenRequest(path, readOnly: true, preview: true));
+    if (context != null && link.range == null && showsImage(path)) {
+      unawaited(preview(context, path, orElse: () => openLink(link)));
     } else if (link.range == null && opensInBrowser(path)) {
       unawaited(openExternal(path));
     } else {
@@ -406,27 +423,6 @@ class FileOpenScope extends InheritedWidget {
     return true;
   }
 
-  /// Shows [image] as a file (see [ShownFiles.bytes]), as [showLocal]
-  /// does; false where it cannot be one.
-  bool showImage(ImageAttachment image, {required String name}) {
-    final extension = switch (image.mediaType) {
-      'image/jpeg' => '.jpg',
-      'image/gif' => '.gif',
-      'image/webp' => '.webp',
-      'image/bmp' => '.bmp',
-      _ => '.png',
-    };
-    final path = ShownFiles.bytes(
-      image.bytes,
-      name: (paths ?? p.context).extension(name).isEmpty
-          ? '$name$extension'
-          : name,
-    );
-    if (path == null) return false;
-    showLocal(path);
-    return true;
-  }
-
   /// The image at [path], read; null when it cannot be.
   Future<ImageAttachment?> image(String path) async {
     final read = readBytes;
@@ -444,13 +440,38 @@ class FileOpenScope extends InheritedWidget {
     }
   }
 
+  /// Shows the image at [path] enlarged over [context]'s window, with the
+  /// file's menu; [orElse] where it cannot be read.
+  Future<void> preview(
+    BuildContext context,
+    String path, {
+    VoidCallback? orElse,
+  }) async {
+    final image = await this.image(path);
+    if (!context.mounted) return;
+    if (image == null) return orElse?.call();
+    showImagePreview(
+      context,
+      image,
+      menu: menuFor(
+        path,
+        orElse ?? () => onOpen(FileOpenRequest(path)),
+        context: context,
+        previewing: true,
+      ),
+    );
+  }
+
   /// The right click's menu of the file at [path] (absolute), [open]
-  /// opening it. An image also shows in the tab of what was looked at
-  /// last, and copies.
+  /// opening it (in the side panel, or the IDE: see [inPanel]); in the
+  /// IDE too ([onOpenInIde]). An image shows enlarged over [context]'s
+  /// window (unless it is [previewing]), not in the side panel, and
+  /// copies.
   FileLinkMenu menuFor(
     String path,
     VoidCallback open, {
     BuildContext? context,
+    bool previewing = false,
   }) {
     final image = context != null && showsImage(path);
     return FileLinkMenu(
@@ -458,9 +479,14 @@ class FileOpenScope extends InheritedWidget {
       root: root,
       paths: paths,
       local: local,
-      onOpen: open,
-      onPreview: image
-          ? () => onOpen(FileOpenRequest(path, readOnly: true, preview: true))
+      onOpen: image && inPanel ? null : open,
+      inPanel: inPanel,
+      onOpenInIde: switch (onOpenInIde) {
+        final inIde? => () => inIde(FileOpenRequest(path)),
+        null => null,
+      },
+      onPreview: image && !previewing
+          ? () => unawaited(preview(context, path))
           : null,
       onCopyImage: image
           ? () => unawaited(() async {
@@ -481,6 +507,8 @@ class FileOpenScope extends InheritedWidget {
       paths != oldWidget.paths ||
       local != oldWidget.local ||
       readBytes != oldWidget.readBytes ||
+      inPanel != oldWidget.inPanel ||
+      onOpenInIde != oldWidget.onOpenInIde ||
       !listEquals(roots, oldWidget.roots) ||
       !listEquals(seen, oldWidget.seen);
 }

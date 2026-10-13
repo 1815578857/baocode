@@ -97,6 +97,10 @@ class AgentSidePanelArea extends StatefulWidget {
   /// The strip at its left edge that takes the drag.
   static const sashWidth = 5.0;
 
+  /// How long the room is short before it goes over the conversations:
+  /// longer than the window's sidebar takes to give way.
+  static const overlayDelay = Duration(milliseconds: 260);
+
   /// How far in from the right [rail] is: clear of the history's
   /// scrollbar.
   static const railRight = 16.0;
@@ -113,29 +117,33 @@ class _AgentSidePanelAreaState extends State<AgentSidePanelArea> {
   bool _dragging = false;
   ({double x, double width})? _dragStart;
 
-  /// Whether it is over the conversations: once the room was short two
-  /// frames running. Short a frame only (the window's sidebar giving way a
-  /// frame late, a window opening), it stays beside them, not covering the
-  /// window for a frame.
+  /// Whether it is over the conversations: once the room was short for
+  /// longer than [overlayDelay]. Short a while only (the window's sidebar
+  /// giving way to it, which takes its animation; a window opening), it
+  /// stays beside them, narrower, not covering the window for a moment.
   bool _overlay = false;
 
-  /// The room was short this frame: over them next frame if it still is.
-  bool _short = false;
+  /// Runs while the room is short: over them once it ends.
+  Timer? _short;
 
   void _roomShort(bool short) {
     if (!short) {
-      _overlay = _short = false;
+      _short?.cancel();
+      _short = null;
+      _overlay = false;
       return;
     }
-    if (_overlay || _short) return;
-    _short = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_short) return;
-      setState(() {
-        _short = false;
-        _overlay = true;
-      });
+    if (_overlay || _short != null) return;
+    _short = Timer(AgentSidePanelArea.overlayDelay, () {
+      _short = null;
+      if (mounted) setState(() => _overlay = true);
     });
+  }
+
+  @override
+  void dispose() {
+    _short?.cancel();
+    super.dispose();
   }
 
   AgentSidePanel get _panel => widget.panel;
@@ -225,22 +233,15 @@ class _AgentSidePanelAreaState extends State<AgentSidePanelArea> {
                     children: [
                       _sash(),
                       Expanded(
-                        // A click anywhere in it puts the focus there (on
-                        // what takes it, else on the panel), for its keys.
-                        child: Listener(
-                          onPointerDown: (_) {
-                            if (!_panel.focusNode.hasFocus) {
-                              _panel.focusNode.requestFocus();
-                            }
-                          },
-                          child: Focus(
-                            focusNode: _panel.focusNode,
-                            // The editor's background, all of it: the
-                            // conversation's side, not the window's.
-                            child: ColoredBox(
-                              color: AppColors.code,
-                              child: widget.builder(context),
-                            ),
+                        // Never laid out narrower than its least: squeezed
+                        // a while (the sidebar giving way), what has no
+                        // room is cut off, as the sidebar's own is.
+                        child: ClipRect(
+                          child: OverflowBox(
+                            alignment: Alignment.centerLeft,
+                            minWidth: math.max(width, AgentSidePanel.minWidth),
+                            maxWidth: math.max(width, AgentSidePanel.minWidth),
+                            child: _content(context),
                           ),
                         ),
                       ),
@@ -267,6 +268,27 @@ class _AgentSidePanelAreaState extends State<AgentSidePanelArea> {
       },
     ),
   );
+
+  /// What it shows, beside its sash.
+  Widget _content(BuildContext context) =>
+      // A click anywhere in it puts the focus there (on what takes it, else
+      // on the panel), for its keys.
+      Listener(
+        onPointerDown: (_) {
+          if (!_panel.focusNode.hasFocus) {
+            _panel.focusNode.requestFocus();
+          }
+        },
+        child: Focus(
+          focusNode: _panel.focusNode,
+          // The editor's background, all of it: the conversation's side,
+          // not the window's.
+          child: ColoredBox(
+            color: AppColors.code,
+            child: widget.builder(context),
+          ),
+        ),
+      );
 
   Widget _sash() => MouseRegion(
     cursor: SystemMouseCursors.resizeColumn,

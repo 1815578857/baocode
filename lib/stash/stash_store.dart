@@ -284,7 +284,7 @@ class StashStore extends ChangeNotifier {
     return (path: await disk.copyAsset(id, path), copied: true, size: size);
   }
 
-  // --- Merging and splitting ---------------------------------------------------
+  // --- Merging -----------------------------------------------------------------
 
   /// Puts [ids]' stashes into one: the lowest number's, their texts one
   /// after another, oldest first. The others go, their numbers leading to
@@ -335,49 +335,6 @@ class StashStore extends ChangeNotifier {
     }
     await save(kept);
     return kept;
-  }
-
-  /// Splits [id]'s stash in [parts] (its text, cut where the user cut it):
-  /// the first stays its own, each other a new stash of its own, from the
-  /// same source, about the same project; their pictures and files moved
-  /// along with them.
-  Future<List<StashNote>> split(int id, List<String> parts) async {
-    final note = byId(id);
-    final cut = [
-      for (final part in parts)
-        if (part.trim().isNotEmpty) part.trim(),
-    ];
-    if (note == null || cut.length < 2) return [?note];
-    note.body = cut.first;
-    final made = [note];
-    for (final part in cut.skip(1)) {
-      final next = await create(source: note.source, project: note.project);
-      next.body = await _moveReferenced(part, from: note.id, to: next.id);
-      await save(next);
-      made.add(next);
-    }
-    await save(note);
-    return made;
-  }
-
-  /// [text]'s pictures and files in [from]'s folder, moved to [to]'s; the
-  /// text with their new paths.
-  Future<String> _moveReferenced(
-    String text, {
-    required int from,
-    required int to,
-  }) async {
-    final moved = <String, String>{};
-    for (final match in RegExp(
-      '(?<![\\w/])$from/[^\\s)"\'>]+',
-    ).allMatches(text)) {
-      final path = match[0]!;
-      if (moved.containsKey(path)) continue;
-      final bytes = await disk.readAsset(path);
-      if (bytes == null) continue;
-      moved[path] = await disk.writeAsset(to, p.basename(path), bytes);
-    }
-    return rewriteAssetPaths(text, moved);
   }
 
   // --- Search ----------------------------------------------------------------

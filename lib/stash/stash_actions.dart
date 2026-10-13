@@ -63,14 +63,14 @@ List<Suggestion> stashSuggestions(StashStore store, String heading) => [
 /// [text], [id]'s stash's (as the editor gives it to a model: its
 /// pictures and files by their paths), said clearly (see
 /// [clarifyStashText]): its pictures sent along, its folder the one the
-/// model may read. Null when there is no answer.
-Future<String?> clarifyStash(
+/// model may read. Throws [StashAiException] when there is no answer.
+Future<String> clarifyStash(
   StashController controller,
   int id,
   String text,
 ) async {
   final note = controller.store.byId(id);
-  if (note == null || text.trim().isEmpty) return null;
+  if (note == null || text.trim().isEmpty) throw const StashAiException();
   final project = note.project;
   return clarifyStashText(
     text,

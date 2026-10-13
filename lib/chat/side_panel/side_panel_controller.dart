@@ -172,9 +172,12 @@ class AgentSidePanel extends ChangeNotifier {
   double get listWidth => _listWidth;
   double _listWidth = defaultListWidth;
 
-  /// Whether the list at the left of each page shows.
-  bool get listShown => _listShown;
+  /// Whether the list at the left of each page shows: as kept, unless a
+  /// file the conversation opened put it out of the way ([open]'s
+  /// `listAway`) until the panel is asked for itself or the list is.
+  bool get listShown => _listShown && !_listAway;
   bool _listShown = true;
+  bool _listAway = false;
 
   /// The changes as a tree of their folders (as the Source Control view's
   /// View as Tree), or as a list.
@@ -244,6 +247,7 @@ class AgentSidePanel extends ChangeNotifier {
 
   void show() {
     _asks += 1;
+    _listAway = false;
     if (!_setShown(true)) notifyListeners();
   }
 
@@ -313,7 +317,8 @@ class AgentSidePanel extends ChangeNotifier {
   }
 
   void toggleList() {
-    _listShown = !_listShown;
+    _listShown = _listAway || !_listShown;
+    _listAway = false;
     _changed = true;
     notifyListeners();
     onSave?.call();
@@ -331,10 +336,17 @@ class AgentSidePanel extends ChangeNotifier {
 
   /// Shows [request] for [conversation], in front: a file on the files
   /// page, a file's changes on the changes page, the plan on its own; in
-  /// the tab of the same file if there is one.
-  void open(Object conversation, FileOpenRequest request) {
+  /// the tab of the same file if there is one. [listAway]: a file opened
+  /// from elsewhere (the conversation) shows alone, the page's list out
+  /// of the way until it is asked for (see [listShown]).
+  void open(
+    Object conversation,
+    FileOpenRequest request, {
+    bool listAway = false,
+  }) {
     final tabs = tabsOf(conversation);
     if (request.plan) return _openPlan(tabs, request);
+    if (listAway && !request.diff) _listAway = true;
     final list = request.diff ? tabs.diffs : tabs.files;
     var tab = list.where((tab) => tab.path == request.path).firstOrNull;
     if (tab == null) {
