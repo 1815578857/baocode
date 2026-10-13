@@ -669,8 +669,7 @@ class IdeEditorState extends State<IdeEditor> {
     return switch (id) {
       'editor.action.marker.next' ||
       'editor.action.marker.prev' => widget.workspace.languages != null,
-      'editor.action.format' =>
-        _language?.supports(LanguageRequest.format) ?? false,
+      'editor.action.format' => _language?.canFormat() ?? false,
       'editor.action.showContextMenu' => _nativeController != null,
       _ when _findCommands.contains(id) => true,
       _ => _language != null,
@@ -1337,6 +1336,10 @@ class IdeEditorState extends State<IdeEditor> {
   bool _languageCommandEnabled(String id) {
     final session = _language;
     if (session == null) return false;
+    if (id == 'editor.action.formatDocument') return session.canFormat();
+    if (id == 'editor.action.formatSelection') {
+      return session.canFormat(selection: true);
+    }
     final request = switch (id) {
       'editor.action.revealDefinition' => LanguageRequest.definition,
       'editor.action.goToTypeDefinition' => LanguageRequest.typeDefinition,
@@ -1345,8 +1348,6 @@ class IdeEditorState extends State<IdeEditor> {
       'editor.action.referenceSearch.trigger' => LanguageRequest.references,
       'editor.action.goToDeclaration' => LanguageRequest.definition,
       'editor.action.rename' => LanguageRequest.rename,
-      'editor.action.formatDocument' => LanguageRequest.format,
-      'editor.action.formatSelection' => LanguageRequest.rangeFormat,
       'editor.action.quickFix' ||
       'editor.action.refactor' ||
       'editor.action.sourceAction' => LanguageRequest.codeActions,
@@ -1561,9 +1562,7 @@ class IdeEditorState extends State<IdeEditor> {
       'editorHasMultipleSelections' => controller?.hasMultipleSelections,
       'editorReadonly' => widget.active.readOnly,
       'editorTabMovesFocus' => false,
-      'editorHasFormattingProvider' => session?.supports(
-        LanguageRequest.format,
-      ),
+      'editorHasFormattingProvider' => session?.canFormat(),
       'editorHasCompletionItemProvider' => session?.supports(
         LanguageRequest.completion,
       ),
@@ -1916,9 +1915,7 @@ class IdeEditorState extends State<IdeEditor> {
     try {
       await flush();
       final session = _language;
-      if (widget.formatOnSave &&
-          session != null &&
-          session.supports(LanguageRequest.format)) {
+      if (widget.formatOnSave && session != null && session.canFormat()) {
         await session.format();
       }
       final doc = widget.workspace.active;

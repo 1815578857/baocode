@@ -157,4 +157,26 @@ void main() {
     expect(find.text('Organize imports'), findsNothing);
     expect(find.text('Fix it'), findsNothing);
   });
+
+  testWidgets('JSON without a language server: the IDE formats it', (
+    tester,
+  ) async {
+    const json = 'data/a.json';
+    final languages = FakeLanguageFeatures(supported: {});
+    await pumpLanguageWorkbench(
+      tester,
+      {json: '{"errNo":0,"list":[1,2]}'},
+      languages,
+      open: [json],
+    );
+    // Its language picked once highlighted.
+    await settle(tester, const Duration(milliseconds: 200));
+    await _rightClick(tester, 2);
+    await tester.tap(find.text('Format Document'));
+    await settle(tester);
+    expect(
+      surfaceController(tester).document.snapshot.text,
+      '{\n    "errNo": 0,\n    "list": [\n        1,\n        2\n    ]\n}',
+    );
+  });
 }

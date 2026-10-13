@@ -13,6 +13,7 @@ import 'package:bao_editor/monaco/flutter/editor_decorations.dart';
 import 'package:bao_editor/monaco/flutter/editor_surface_controller.dart';
 import 'package:bao_editor/monaco/vs/editor/contrib/codeAction/common/types.dart';
 
+import '../builtin_formatting.dart';
 import '../ide_commands.dart';
 import '../ide_workspace.dart';
 import '../lsp/language_features.dart';
@@ -904,14 +905,30 @@ class EditorLanguageSession extends ChangeNotifier
 
   int _formatRequest = 0;
 
+  /// Whether Format Document (Format Selection with [selection]) can run:
+  /// the language server formats, else the IDE does ([BuiltinFormatting]).
+  bool canFormat({bool selection = false}) =>
+      supports(
+        selection ? LanguageRequest.rangeFormat : LanguageRequest.format,
+      ) ||
+      BuiltinFormatting.supports(_languageId);
+
   /// Format Document, or Format Selection with [selection] (the caret's
-  /// line when nothing is selected), as one undo step keeping the cursors.
-  /// Returns whether the document changed.
+  /// line when nothing is selected), as one undo step keeping the cursors;
+  /// by the IDE itself where no language server formats it. Returns whether
+  /// the document changed.
   Future<bool> format({bool selection = false}) async {
     if (_disposed) return false;
     final request = selection
         ? LanguageRequest.rangeFormat
         : LanguageRequest.format;
+    if (!supports(request) && BuiltinFormatting.supports(_languageId)) {
+      return BuiltinFormatting.format(
+        controller,
+        _languageId,
+        selection: selection,
+      );
+    }
     if (!supports(request)) {
       showMessage(
         selection ? l10n.langNoSelectionFormatter : l10n.langNoFormatter,
