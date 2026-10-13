@@ -118,6 +118,8 @@ final class StashPanel: NSPanel, FlutterHostWindow {
       }
     }
     syncScale()
+    // Light or dark as the color theme is now, as the app's windows are.
+    appearance = NSAppearance(named: BaoWindow.keptDarkAppearance ? .darkAqua : .aqua)
     makeKeyAndOrderFront(nil)
     orderFrontRegardless()
   }

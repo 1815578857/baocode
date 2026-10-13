@@ -507,11 +507,12 @@ class MainFlutterWindow: BaoWindow {
     switch call.method {
     case "setAppearance":
       // The color theme's type: the material under the sidebar, the
-      // traffic lights and system menus follow it, in every window. Kept
-      // for the next start.
+      // traffic lights and system menus follow it, in every window (the
+      // stash's panel too: its edge and shadow are the appearance's, darker
+      // under a dark one). Kept for the next start.
       let dark = call.arguments as? Bool ?? true
       UserDefaults.standard.set(dark, forKey: Self.darkAppearanceKey)
-      for window in NSApp.windows where window is BaoWindow {
+      for window in NSApp.windows where window is FlutterHostWindow {
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
       }
       result(nil)

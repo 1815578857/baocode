@@ -181,10 +181,8 @@ void main() {
     tester.view.physicalSize = const Size(900, 600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    final note = (await tester.runAsync(
-      () => store.create(body: 'btn hidden'),
-    ))!;
-    await tester.runAsync(() => controller.edit(note.id));
+    final note = await store.create(body: 'btn hidden');
+    await controller.edit(note.id);
     final answer = Completer<String>();
     controller.clarifier = (controller, id, text) => answer.future;
     await tester.pumpWidget(
