@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -14,7 +16,10 @@ import '../../theme/workbench_theme.dart' show themeColors;
 import '../chat_models.dart';
 import '../floating/hover_tooltip.dart';
 import '../widgets/file_label.dart';
+import '../side_panel/file_link_menu.dart';
+import '../side_panel/file_open.dart';
 import '../widgets/image_thumbnails.dart';
+import '../widgets/text_preview.dart';
 import 'composer_files.dart';
 import 'composer_mock_data.dart';
 
@@ -574,7 +579,8 @@ class ComposerCodeEmbedBuilder extends EmbedBuilder {
 
 /// The inline tag for lines of a file ([ComposerCodeEmbed] data), centered
 /// on text of [textStyle]: the file's name and the lines, the lines
-/// themselves on hover. In the composer and in sent messages alike.
+/// themselves on hover, all of them on a click (see [showTextPreview]). In
+/// the composer and in sent messages alike.
 ///
 /// Inside a selectable area it copies as its message text
 /// (`[lib/main.dart:12-30]`).
@@ -642,7 +648,14 @@ class ComposerCodeChip extends StatelessWidget {
       child: HoverTooltip(
         content: (context) =>
             _TextPreview(label: reference.label, text: reference.code),
-        child: tag,
+        child: PreviewClick(
+          onOpen: () => showTextPreview(
+            context,
+            title: reference.label,
+            text: reference.code,
+          ),
+          child: tag,
+        ),
       ),
     );
   }
@@ -737,7 +750,8 @@ class ComposerPastedTextEmbedBuilder extends EmbedBuilder {
 
 /// The inline tag for a long paste ([ComposerPastedTextEmbed] data),
 /// centered on text of [textStyle]: its number and its count of lines, its
-/// first lines on hover. In the composer and in sent messages alike.
+/// first lines on hover, all of it on a click (see [showTextPreview]). In
+/// the composer and in sent messages alike.
 ///
 /// Inside a selectable area it copies as its message text
 /// (`[Pasted text #1 +120 lines]`).
@@ -804,7 +818,11 @@ class ComposerPastedTextChip extends StatelessWidget {
       text: pasted.reference,
       child: HoverTooltip(
         content: (context) => _TextPreview(label: name, text: pasted.text),
-        child: tag,
+        child: PreviewClick(
+          onOpen: () =>
+              showTextPreview(context, title: name, text: pasted.text),
+          child: tag,
+        ),
       ),
     );
   }
@@ -840,8 +858,9 @@ class ComposerStashEmbedBuilder extends EmbedBuilder {
 }
 
 /// The inline tag for a stash ([ComposerStashEmbed] data), centered on
-/// text of [textStyle]: its number and title, its text on hover. In the
-/// composer and in sent messages alike.
+/// text of [textStyle]: its number and title, its text on hover, all of it
+/// on a click (see [showTextPreview]). In the composer and in sent messages
+/// alike.
 class ComposerStashChip extends StatelessWidget {
   const ComposerStashChip({
     super.key,
@@ -896,7 +915,10 @@ class ComposerStashChip extends StatelessWidget {
                       ' $title',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
               ],
@@ -905,14 +927,16 @@ class ComposerStashChip extends StatelessWidget {
         ),
       ),
     );
+    final label = title.isEmpty ? name : '$name · $title';
     return _SelectableToken(
       text: stash.reference,
       child: HoverTooltip(
-        content: (context) => _TextPreview(
-          label: title.isEmpty ? name : '$name · $title',
-          text: stash.text,
+        content: (context) => _TextPreview(label: label, text: stash.text),
+        child: PreviewClick(
+          onOpen: () =>
+              showTextPreview(context, title: label, text: stash.text),
+          child: tag,
         ),
-        child: tag,
       ),
     );
   }
@@ -1127,22 +1151,187 @@ class ComposerImageChip extends StatelessWidget {
     if (image != null) {
       chip = ImagePreviewClick(image: image, child: chip);
       chip = HoverTooltip(
-        content: (context) => ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 240, maxHeight: 180),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: Image.memory(
-              image.bytes,
-              fit: BoxFit.contain,
-              cacheWidth: 720,
-              gaplessPlayback: true,
-            ),
-          ),
-        ),
-        child: chip,
+        content: (context) => _ImageHover(image.bytes),
+        child: FileLinkMenuRegion(menu: ImageMenu(image), child: chip),
       );
     }
     return _SelectableToken(text: imageReference(number), child: chip);
+  }
+}
+
+/// An image on hover, small.
+class _ImageHover extends StatelessWidget {
+  const _ImageHover(this.bytes);
+
+  final Uint8List bytes;
+
+  @override
+  Widget build(BuildContext context) => ConstrainedBox(
+    constraints: const BoxConstraints(maxWidth: 240, maxHeight: 180),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Image.memory(
+        bytes,
+        fit: BoxFit.contain,
+        cacheWidth: 720,
+        gaplessPlayback: true,
+      ),
+    ),
+  );
+}
+
+/// The tag for an image file the chat links to, as an attached image's
+/// ([ComposerImageChip]): its picture small and the link's [label],
+/// centered on text of [textStyle]. A click shows it enlarged; a right
+/// click has the file's menu (see [FileOpenScope.menuFor]).
+class FileImageChip extends StatefulWidget {
+  const FileImageChip({
+    super.key,
+    required this.path,
+    required this.label,
+    required this.files,
+    required this.textStyle,
+  });
+
+  /// Absolute, on the project's host.
+  final String path;
+  final String label;
+  final FileOpenScope files;
+  final TextStyle textStyle;
+
+  /// [FileImageChip] as a span for rich text of [textStyle].
+  static InlineSpan span({
+    required String path,
+    required String label,
+    required FileOpenScope files,
+    required TextStyle textStyle,
+  }) => WidgetSpan(
+    alignment: PlaceholderAlignment.baseline,
+    baseline: TextBaseline.alphabetic,
+    child: FileImageChip(
+      path: path,
+      label: label,
+      files: files,
+      textStyle: textStyle,
+    ),
+  );
+
+  @override
+  State<FileImageChip> createState() => _FileImageChipState();
+}
+
+class _FileImageChipState extends State<FileImageChip> {
+  /// The images read lately, by path: the history builds its rows anew as
+  /// they scroll into view.
+  static final _read = <String, Future<ImageAttachment?>>{};
+
+  late Future<ImageAttachment?> _image = _imageOf(widget.path);
+
+  Future<ImageAttachment?> _imageOf(String path) {
+    if (_read.remove(path) case final read?) return _read[path] = read;
+    if (_read.length >= 24) _read.remove(_read.keys.first);
+    return _read[path] = widget.files.image(path);
+  }
+
+  @override
+  void didUpdateWidget(FileImageChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.path != oldWidget.path) _image = _imageOf(widget.path);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final FileImageChip(:path, :label, :files) = widget;
+    return FutureBuilder(
+      future: _image,
+      builder: (context, snapshot) {
+        final image = snapshot.data;
+        Widget chip = _CenteredOnText(
+          textStyle: widget.textStyle,
+          child: DefaultTextStyle.merge(
+            style: const TextStyle(
+              height: 1.25,
+              leadingDistribution: TextLeadingDistribution.even,
+            ),
+            child: SelectionContainer.disabled(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 1),
+                padding: const EdgeInsets.fromLTRB(2, 1, 5, 1),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: themeColors['chat.requestBorder']),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2.5),
+                      child: SizedBox.square(
+                        dimension: ComposerImageChip._pictureSize,
+                        child: image == null
+                            ? Icon(
+                                snapshot.connectionState == ConnectionState.done
+                                    ? Icons.broken_image_outlined
+                                    : Icons.image_outlined,
+                                size: 12,
+                                color: AppColors.textMuted,
+                              )
+                            : Image.memory(
+                                image.bytes,
+                                fit: BoxFit.cover,
+                                cacheWidth: (ComposerImageChip._pictureSize * 3)
+                                    .round(),
+                                gaplessPlayback: true,
+                                errorBuilder: (context, error, stack) => Icon(
+                                  Icons.broken_image_outlined,
+                                  size: 12,
+                                  color: AppColors.textFaint,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: AppColors.text, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+        chip = PreviewClick(
+          onOpen: () => unawaited(
+            files.preview(
+              context,
+              path,
+              orElse: () => files.onOpen(FileOpenRequest(path)),
+            ),
+          ),
+          child: FileLinkMenuRegion(
+            menu: files.menuFor(
+              path,
+              () => files.onOpen(FileOpenRequest(path)),
+              context: context,
+            ),
+            child: chip,
+          ),
+        );
+        if (image != null) {
+          chip = HoverTooltip(
+            content: (context) => _ImageHover(image.bytes),
+            child: chip,
+          );
+        }
+        return _SelectableToken(text: label, child: chip);
+      },
+    );
   }
 }
 

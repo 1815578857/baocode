@@ -4988,6 +4988,18 @@ abstract class AppLocalizations {
   /// **'Open'**
   String get fileLinkOpen;
 
+  /// Context menu item of an image the chat names: shows it enlarged over the window.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get fileLinkPreview;
+
+  /// Context menu item of an HTML file the chat names: opens it in the default web browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Browser'**
+  String get fileLinkOpenInBrowser;
+
   /// No description provided for @tabCopyPath.
   ///
   /// In en, this message translates to:

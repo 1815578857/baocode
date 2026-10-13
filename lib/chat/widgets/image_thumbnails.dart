@@ -1,13 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../ide/ide_hover.dart';
+import '../../ide/ide_menu.dart';
 import '../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 import '../../workspace/window_controls.dart';
 import '../chat_models.dart';
+import '../side_panel/file_link_menu.dart';
 import 'hover_builder.dart';
-import '../../ide/ide_hover.dart';
 
 /// Pictures attached to a message, small; a click shows one whole. With
 /// [onRemove], each has a button to take it off (as in the composer).
@@ -63,39 +67,44 @@ class _Thumbnail extends StatelessWidget {
       builder: (context, hovered) => Stack(
         clipBehavior: Clip.none,
         children: [
-          Listener(
-            onPointerDown: (_) => ImagePressScope._press(context),
-            child: GestureDetector(
-              onTap: () => showImagePreview(context, image),
-              child: IdeHover(
-                message: image.name ?? '',
-                child: Container(
-                  width: size,
-                  height: size,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  // Over the picture, which is clipped to the same corners:
-                  // under it, the picture's corners would cover its curve.
-                  foregroundDecoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: hovered
-                          ? AppColors.textFaint
-                          : AppColors.borderStrong,
+          // In a message, a right click offers its menu (see
+          // fileLinkMenuAt).
+          FileLinkMenuRegion(
+            menu: ImageMenu(image),
+            child: Listener(
+              onPointerDown: (_) => PreviewPressScope._press(context),
+              child: GestureDetector(
+                onTap: () => showImagePreview(context, image),
+                child: IdeHover(
+                  message: image.name ?? '',
+                  child: Container(
+                    width: size,
+                    height: size,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                  ),
-                  child: Image.memory(
-                    image.bytes,
-                    fit: BoxFit.cover,
-                    cacheWidth: (size * 3).round(),
-                    gaplessPlayback: true,
-                    errorBuilder: (context, error, stack) => Icon(
-                      Icons.broken_image_outlined,
-                      size: 16,
-                      color: AppColors.textFaint,
+                    // Over the picture, which is clipped to the same corners:
+                    // under it, the picture's corners would cover its curve.
+                    foregroundDecoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: hovered
+                            ? AppColors.textFaint
+                            : AppColors.borderStrong,
+                      ),
+                    ),
+                    child: Image.memory(
+                      image.bytes,
+                      fit: BoxFit.cover,
+                      cacheWidth: (size * 3).round(),
+                      gaplessPlayback: true,
+                      errorBuilder: (context, error, stack) => Icon(
+                        Icons.broken_image_outlined,
+                        size: 16,
+                        color: AppColors.textFaint,
+                      ),
                     ),
                   ),
                 ),
@@ -131,24 +140,62 @@ class _Thumbnail extends StatelessWidget {
 }
 
 /// Shows [image] whole, over the window. A click closes it; a right click
-/// offers to copy it, as do ⌘C and Ctrl+C.
-void showImagePreview(BuildContext context, ImageAttachment image) {
+/// offers [menu] (a file's, say), or to copy it, as do ⌘C and Ctrl+C.
+void showImagePreview(
+  BuildContext context,
+  ImageAttachment image, {
+  ChatItemMenu? menu,
+}) {
   showDialog<void>(
     context: context,
     // Black, not the theme's: as upstream's modal backdrops.
     barrierColor: Colors.black87,
-    builder: (context) => _ImagePreview(image: image),
+    builder: (context) => _ImagePreview(image: image, menu: menu),
   );
 }
 
-class _ImagePreview extends StatelessWidget {
-  const _ImagePreview({required this.image});
+/// What a right click on an image of a message offers: to show it whole,
+/// and to copy it.
+class ImageMenu implements ChatItemMenu {
+  const ImageMenu(this.image);
 
   final ImageAttachment image;
+
+  @override
+  Future<void> show(BuildContext context, Offset position) {
+    final l10n = context.l10n;
+    return showIdeMenu(
+      context,
+      position: position,
+      entries: ideMenuGroups([
+        [
+          IdeMenuAction(
+            l10n.fileLinkPreview,
+            onSelected: () => showImagePreview(context, image),
+          ),
+        ],
+        [
+          IdeMenuAction(
+            l10n.imageCopy,
+            onSelected: () =>
+                unawaited(WindowControls.writePasteboardImage(image)),
+          ),
+        ],
+      ]),
+    );
+  }
+}
+
+class _ImagePreview extends StatelessWidget {
+  const _ImagePreview({required this.image, this.menu});
+
+  final ImageAttachment image;
+  final ChatItemMenu? menu;
 
   void _copy() => WindowControls.writePasteboardImage(image);
 
   Future<void> _showMenu(BuildContext context, Offset position) async {
+    if (menu case final menu?) return menu.show(context, position);
     final chosen = await WindowControls.showContextMenu(position, [
       NativeMenuItem('copyImage', context.l10n.imageCopy, key: 'c'),
     ]);
@@ -186,9 +233,7 @@ class _ImagePreview extends StatelessWidget {
 }
 
 /// [child], which a click shows [image] whole from (see [showImagePreview]).
-/// Hears the click itself rather than through a gesture, so a selection of
-/// the text around it (in an editor, a message) goes on as it would.
-class ImagePreviewClick extends StatefulWidget {
+class ImagePreviewClick extends StatelessWidget {
   const ImagePreviewClick({
     super.key,
     required this.image,
@@ -199,10 +244,27 @@ class ImagePreviewClick extends StatefulWidget {
   final Widget child;
 
   @override
-  State<ImagePreviewClick> createState() => _ImagePreviewClickState();
+  Widget build(BuildContext context) => PreviewClick(
+    onOpen: () => showImagePreview(context, image),
+    child: child,
+  );
 }
 
-class _ImagePreviewClickState extends State<ImagePreviewClick> {
+/// [child], a tag for something shown shortened (an image, a long paste),
+/// which a click opens whole ([onOpen]). Hears the click itself rather
+/// than through a gesture, so a selection of the text around it (in an
+/// editor, a message) goes on as it would.
+class PreviewClick extends StatefulWidget {
+  const PreviewClick({super.key, required this.onOpen, required this.child});
+
+  final VoidCallback onOpen;
+  final Widget child;
+
+  @override
+  State<PreviewClick> createState() => _PreviewClickState();
+}
+
+class _PreviewClickState extends State<PreviewClick> {
   /// Where a primary press went down; null for other presses.
   Offset? _pressedAt;
 
@@ -213,7 +275,7 @@ class _ImagePreviewClickState extends State<ImagePreviewClick> {
     // Shift extends a selection.
     if (!primary || HardwareKeyboard.instance.isShiftPressed) return;
     _pressedAt = event.position;
-    ImagePressScope._press(context);
+    PreviewPressScope._press(context);
   }
 
   void _handleUp(PointerUpEvent event) {
@@ -224,7 +286,7 @@ class _ImagePreviewClickState extends State<ImagePreviewClick> {
         (event.position - pressedAt).distance > kTouchSlop) {
       return;
     }
-    showImagePreview(context, widget.image);
+    widget.onOpen();
   }
 
   @override
@@ -239,10 +301,11 @@ class _ImagePreviewClickState extends State<ImagePreviewClick> {
   );
 }
 
-/// Tells what is around images a press on one of them (which opens its
-/// preview) from a press on the rest of it: [onPress] hears it first.
-class ImagePressScope extends InheritedWidget {
-  const ImagePressScope({
+/// Tells what is around images and tags a press on one of them (which opens
+/// it whole, see [PreviewClick]) from a press on the rest of it: [onPress]
+/// hears it first.
+class PreviewPressScope extends InheritedWidget {
+  const PreviewPressScope({
     super.key,
     required this.onPress,
     required super.child,
@@ -251,8 +314,8 @@ class ImagePressScope extends InheritedWidget {
   final VoidCallback onPress;
 
   static void _press(BuildContext context) =>
-      context.getInheritedWidgetOfExactType<ImagePressScope>()?.onPress();
+      context.getInheritedWidgetOfExactType<PreviewPressScope>()?.onPress();
 
   @override
-  bool updateShouldNotify(ImagePressScope oldWidget) => false;
+  bool updateShouldNotify(PreviewPressScope oldWidget) => false;
 }

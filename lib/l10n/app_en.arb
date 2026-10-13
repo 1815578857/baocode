@@ -1783,6 +1783,14 @@
   "tabCloseSaved": "Close Saved",
   "tabCloseAll": "Close All",
   "fileLinkOpen": "Open",
+  "fileLinkPreview": "Preview",
+  "@fileLinkPreview": {
+    "description": "Context menu item of an image the chat names: shows it enlarged over the window."
+  },
+  "fileLinkOpenInBrowser": "Open in Browser",
+  "@fileLinkOpenInBrowser": {
+    "description": "Context menu item of an HTML file the chat names: opens it in the default web browser."
+  },
   "tabCopyPath": "Copy Path",
   "tabCopyRelativePath": "Copy Relative Path",
   "tabRevealInExplorerView": "Reveal in Explorer View",

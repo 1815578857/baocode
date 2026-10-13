@@ -2691,6 +2691,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fileLinkOpen => '打开';
 
   @override
+  String get fileLinkPreview => '预览';
+
+  @override
+  String get fileLinkOpenInBrowser => '在浏览器中打开';
+
+  @override
   String get tabCopyPath => '复制路径';
 
   @override

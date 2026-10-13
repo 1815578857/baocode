@@ -815,6 +815,8 @@
   "tabCloseSaved": "关闭已保存",
   "tabCloseAll": "全部关闭",
   "fileLinkOpen": "打开",
+  "fileLinkPreview": "预览",
+  "fileLinkOpenInBrowser": "在浏览器中打开",
   "tabCopyPath": "复制路径",
   "tabCopyRelativePath": "复制相对路径",
   "tabRevealInExplorerView": "在资源管理器视图中显示",

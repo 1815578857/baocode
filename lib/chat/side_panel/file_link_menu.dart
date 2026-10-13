@@ -11,18 +11,35 @@ import '../../l10n/l10n.dart';
 import '../../workspace/editor_launcher.dart';
 import '../../workspace/window_controls.dart';
 
+/// What a right click on something the chat shows offers in place of the
+/// selection's menu: a file it names ([FileLinkMenu]), an image.
+abstract interface class ChatItemMenu {
+  Future<void> show(BuildContext context, Offset position);
+}
+
 /// What a right click on a file the chat names offers, as an editor tab's
 /// menu does: open it, copy its path, and on this machine show it in the
-/// file manager or open it in its app.
+/// file manager or open it in its app. An image also shows enlarged
+/// ([onPreview]) and copies ([onCopyImage]); a web page opens in the
+/// browser ([browser]).
 @immutable
-class FileLinkMenu {
+class FileLinkMenu implements ChatItemMenu {
   const FileLinkMenu({
     required this.path,
     required this.root,
     required this.onOpen,
     this.paths,
     this.local = true,
+    this.onPreview,
+    this.onCopyImage,
+    this.browser = false,
   });
+
+  final VoidCallback? onPreview;
+  final VoidCallback? onCopyImage;
+
+  /// Whether it opens in the browser: a web page on this machine.
+  final bool browser;
 
   /// The file's absolute path, as its host spells it ([paths]).
   final String path;
@@ -35,6 +52,7 @@ class FileLinkMenu {
   /// Whether the file is this machine's (not a remote project's).
   final bool local;
 
+  @override
   Future<void> show(BuildContext context, Offset position) {
     final l10n = context.l10n;
     final paths = this.paths ?? p.context;
@@ -42,8 +60,19 @@ class FileLinkMenu {
       context,
       position: position,
       entries: ideMenuGroups([
-        [IdeMenuAction(l10n.fileLinkOpen, onSelected: onOpen)],
         [
+          if (onPreview case final preview?)
+            IdeMenuAction(l10n.fileLinkPreview, onSelected: preview),
+          if (browser && local)
+            IdeMenuAction(
+              l10n.fileLinkOpenInBrowser,
+              onSelected: () => unawaited(openExternal(path)),
+            ),
+          IdeMenuAction(l10n.fileLinkOpen, onSelected: onOpen),
+        ],
+        [
+          if (onCopyImage case final copy?)
+            IdeMenuAction(l10n.imageCopy, onSelected: copy),
           IdeMenuAction(
             l10n.tabCopyPath,
             onSelected: () => Clipboard.setData(ClipboardData(text: path)),
@@ -70,8 +99,7 @@ class FileLinkMenu {
             if (WindowControls.canOpenInDefaultApp)
               IdeMenuAction(
                 l10n.openInDefaultApp,
-                onSelected: () =>
-                    unawaited(openExternal(path)),
+                onSelected: () => unawaited(openExternal(path)),
               ),
           ],
       ]),
@@ -89,14 +117,17 @@ class FileLinkRecognizer extends TapGestureRecognizer {
 
 /// [child], whose right click offers [menu] (see [fileLinkMenuAt]).
 class FileLinkMenuRegion extends StatelessWidget {
-  const FileLinkMenuRegion({super.key, required this.menu, required this.child});
+  const FileLinkMenuRegion({
+    super.key,
+    required this.menu,
+    required this.child,
+  });
 
-  final FileLinkMenu? menu;
+  final ChatItemMenu? menu;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) =>
-      menu == null
+  Widget build(BuildContext context) => menu == null
       ? child
       : MetaData(
           metaData: menu,
@@ -106,9 +137,10 @@ class FileLinkMenuRegion extends StatelessWidget {
 }
 
 /// The menu of the file link at [position] (global) in [context]'s view:
-/// a link's text, its icon, or a step naming a file; null where there is
-/// none. For a selection's right click, which takes it over its own.
-FileLinkMenu? fileLinkMenuAt(BuildContext context, Offset position) {
+/// a link's text, its icon, a step naming a file, or an image; null where
+/// there is none. For a selection's right click, which takes it over its
+/// own.
+ChatItemMenu? fileLinkMenuAt(BuildContext context, Offset position) {
   final result = HitTestResult();
   WidgetsBinding.instance.hitTestInView(
     result,
@@ -119,7 +151,7 @@ FileLinkMenu? fileLinkMenuAt(BuildContext context, Offset position) {
     switch (entry.target) {
       case TextSpan(recognizer: FileLinkRecognizer(:final menu)):
         return menu;
-      case RenderMetaData(metaData: final FileLinkMenu menu):
+      case RenderMetaData(metaData: final ChatItemMenu menu):
         return menu;
     }
   }

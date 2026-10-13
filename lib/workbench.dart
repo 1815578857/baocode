@@ -30,7 +30,8 @@ import 'customize/customize_view.dart';
 import 'extensions/theme_extensions.dart';
 import 'ide/git/git_repository.dart';
 import 'ide/git/repository_scan.dart';
-import 'ide/file_service.dart' show IdeFileService, IdeHostFiles, readFileBytes;
+import 'ide/file_service.dart'
+    show IdeFileService, IdeHostFiles, readBytesThrough, readFileBytes;
 import 'ide/ide_chat_title.dart';
 import 'ide/ide_color_theme_picker.dart';
 import 'ide/ide_commands.dart';
@@ -3024,6 +3025,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         files,
         paths: paths,
       ),
+      readBytes: (path) => readBytesThrough(files, path),
       paths: paths,
       roots: () =>
           _workspace.workspaceAt(thread.project.path)?.folders ?? const [],

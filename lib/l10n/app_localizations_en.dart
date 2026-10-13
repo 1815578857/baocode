@@ -2795,6 +2795,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fileLinkOpen => 'Open';
 
   @override
+  String get fileLinkPreview => 'Preview';
+
+  @override
+  String get fileLinkOpenInBrowser => 'Open in Browser';
+
+  @override
   String get tabCopyPath => 'Copy Path';
 
   @override

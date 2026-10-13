@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:markdown/markdown.dart' as md;
+import 'package:path/path.dart' as p;
 
 import '../../theme/app_theme.dart';
 import '../../theme/material_file_icons.dart';
@@ -8,6 +9,7 @@ import '../../theme/workbench_theme.dart' show WorkbenchThemeScope, themeColors;
 import '../../workspace/editor_launcher.dart';
 import '../side_panel/file_link.dart';
 import '../side_panel/file_link_menu.dart';
+import '../composer/composer_embeds.dart' show FileImageChip;
 import '../side_panel/file_open.dart';
 import 'code_citation.dart';
 import 'hover_scrollbar.dart';
@@ -105,10 +107,27 @@ class _MarkdownViewState extends State<MarkdownView> {
     }
 
     final options = MarkdownOptions(
-      link: (href) => _linkRecognizer(href) ?? files.linkRecognizer(href),
-      code: files.codeRecognizer,
+      link: (href) =>
+          _linkRecognizer(href) ?? files.linkRecognizer(href, context: context),
+      code: (code) => files.codeRecognizer(code, context: context),
       linkIcon: (href) => icon(FileLink.parseHref(href)),
       codeIcon: (code) => icon(FileLink.parseText(code)),
+      // An image as an attached one's tag.
+      fileTag: (href, label) {
+        final link = FileLink.parseHref(href);
+        final path = link == null || link.range != null
+            ? null
+            : files.resolve(link.path);
+        if (path == null || !files.showsImage(path)) return null;
+        return FileImageChip.span(
+          path: path,
+          label: label.trim().isEmpty
+              ? (files.paths ?? p.context).basename(path)
+              : label.trim(),
+          files: files,
+          textStyle: style ?? baseStyle,
+        );
+      },
     );
     Widget blocks(BuildContext context) => MarkdownBlocks(
       nodes: nodes,
@@ -137,6 +156,7 @@ class MarkdownOptions {
     this.code,
     this.linkIcon,
     this.codeIcon,
+    this.fileTag,
     this.image,
     this.onToggleTask,
   });
@@ -163,6 +183,10 @@ class MarkdownOptions {
   /// the icon of the file or folder it opens, say; nothing when null.
   final Widget? Function(String? href)? linkIcon;
   final Widget? Function(String code)? codeIcon;
+
+  /// What a link to `href` labeled [label] shows in its place, as a tag:
+  /// an image file's, say; the link when null, or it gives none.
+  final InlineSpan? Function(String? href, String label)? fileTag;
 
   /// An image (`![alt](src "title")`, or HTML's with its [width] and
   /// [height] in pixels); its alt text in brackets when null.
@@ -578,6 +602,13 @@ InlineSpan _inline(md.Node node, MarkdownOptions options) {
   List<InlineSpan> inner() => [
     for (final child in children) _inline(child, options),
   ];
+  if (node.tag == 'a') {
+    final href = node.attributes['href'];
+    if (options.fileTag?.call(href, _unescape(node.textContent))
+        case final tag?) {
+      return tag;
+    }
+  }
   return switch (node.tag) {
     'strong' || 'b' => TextSpan(
       style: TextStyle(

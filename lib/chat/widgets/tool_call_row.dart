@@ -107,7 +107,11 @@ class ToolCallRow extends StatelessWidget {
     }
     if (file != null) {
       header = FileLinkMenuRegion(
-        menu: files!.menuFor(file.path, () => files.onOpen(file)),
+        menu: files!.menuFor(
+          file.path,
+          () => files.onOpen(file),
+          context: context,
+        ),
         child: header,
       );
     }

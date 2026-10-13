@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/gestures.dart';
@@ -6,7 +7,10 @@ import 'package:flutter/widgets.dart';
 import 'package:path/path.dart' as p;
 
 import '../../ide/file_service.dart';
+import '../../workspace/editor_launcher.dart';
+import '../../workspace/window_controls.dart';
 import '../chat_models.dart';
+import '../widgets/image_thumbnails.dart';
 import 'file_link.dart';
 import 'file_link_menu.dart';
 
@@ -71,11 +75,16 @@ class FileLinkTarget {
   const FileLinkTarget({
     required this.open,
     this.exists,
+    this.readBytes,
     this.paths,
     this.roots,
   });
 
   final ValueChanged<FileOpenRequest> open;
+
+  /// Reads the file at an absolute path (on the project's host): an image
+  /// the chat names, to show; none, and images open as other files.
+  final Future<Uint8List> Function(String path)? readBytes;
 
   /// A multi-folder workspace's folders as they are now: its files are
   /// theirs (see [FileOpenScope.roots]).
@@ -181,8 +190,12 @@ class FileOpenScope extends InheritedWidget {
     this.roots = const [],
     this.seen = const [],
     this.local = true,
+    this.readBytes,
     required super.child,
   });
+
+  /// See [FileLinkTarget.readBytes].
+  final Future<Uint8List> Function(String path)? readBytes;
 
   final String root;
 
@@ -285,36 +298,137 @@ class FileOpenScope extends InheritedWidget {
 
   /// What a click on a markdown link to [href] does: opens the file it goes
   /// to, when that is in [root]; null for any other. A right click has its
-  /// menu (see [FileLinkMenu]).
-  GestureRecognizer? linkRecognizer(String? href) {
+  /// menu (see [FileLinkMenu]). An image shows enlarged, over [context]'s
+  /// window, and a web page here opens in the browser (see [activate]).
+  GestureRecognizer? linkRecognizer(String? href, {BuildContext? context}) {
     final link = FileLink.parseHref(href);
     if (link == null) return null;
     final path = resolve(link.path);
     if (path == null) return null;
-    return FileLinkRecognizer(menuFor(path, () => openLink(link)))
-      ..onTap = () => openLink(link);
+    return FileLinkRecognizer(
+      menuFor(path, () => openLink(link), context: context),
+    )..onTap = () => activate(link, path, context);
   }
 
   /// What a click on inline [code] does: opens the file it names, once
   /// that is known to exist in [root]; null until then, and for any other.
-  GestureRecognizer? codeRecognizer(String code) {
+  GestureRecognizer? codeRecognizer(String code, {BuildContext? context}) {
     final link = FileLink.parseText(code);
     if (link == null) return null;
     final path = resolve(link.path);
     if (path == null || existence.known(path) != true) return null;
-    return FileLinkRecognizer(menuFor(path, () => openLink(link)))
-      ..onTap = () => openLink(link);
+    return FileLinkRecognizer(
+      menuFor(path, () => openLink(link), context: context),
+    )..onTap = () => activate(link, path, context);
+  }
+
+  /// A click on [link], to the file at [path]: an image shows enlarged
+  /// over [context]'s window ([showsImage]), a web page here opens in the
+  /// browser ([opensInBrowser]); anything else opens (see [openLink]).
+  void activate(FileLink link, String path, BuildContext? context) {
+    if (context != null && link.range == null && showsImage(path)) {
+      unawaited(preview(context, path, orElse: () => openLink(link)));
+    } else if (link.range == null && opensInBrowser(path)) {
+      unawaited(openExternal(path));
+    } else {
+      openLink(link);
+    }
+  }
+
+  /// Whether a click on the image at [path] shows it enlarged: one the
+  /// window draws, which can be read.
+  bool showsImage(String path) =>
+      readBytes != null &&
+      _imageTypes.containsKey(
+        (paths ?? p.context).extension(path).toLowerCase(),
+      );
+
+  /// Whether a click on [path] opens it in the browser: a web page on this
+  /// machine.
+  bool opensInBrowser(String path) =>
+      local &&
+      const {
+        '.html',
+        '.htm',
+      }.contains((paths ?? p.context).extension(path).toLowerCase());
+
+  static const _imageTypes = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.bmp': 'image/bmp',
+  };
+
+  /// The image at [path], read; null when it cannot be.
+  Future<ImageAttachment?> image(String path) async {
+    final read = readBytes;
+    if (read == null) return null;
+    try {
+      return ImageAttachment(
+        bytes: await read(path),
+        mediaType:
+            _imageTypes[(paths ?? p.context).extension(path).toLowerCase()] ??
+            'image/png',
+        name: (paths ?? p.context).basename(path),
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  /// Shows the image at [path] enlarged over [context]'s window, with the
+  /// file's menu; [orElse] where it cannot be read.
+  Future<void> preview(
+    BuildContext context,
+    String path, {
+    VoidCallback? orElse,
+  }) async {
+    final image = await this.image(path);
+    if (!context.mounted) return;
+    if (image == null) return orElse?.call();
+    showImagePreview(
+      context,
+      image,
+      menu: menuFor(
+        path,
+        orElse ?? () => onOpen(FileOpenRequest(path)),
+        context: context,
+        previewing: true,
+      ),
+    );
   }
 
   /// The right click's menu of the file at [path] (absolute), [open]
-  /// opening it.
-  FileLinkMenu menuFor(String path, VoidCallback open) => FileLinkMenu(
-    path: path,
-    root: root,
-    paths: paths,
-    local: local,
-    onOpen: open,
-  );
+  /// opening it. An image also shows enlarged over [context]'s window
+  /// (unless it is [previewing]), and copies.
+  FileLinkMenu menuFor(
+    String path,
+    VoidCallback open, {
+    BuildContext? context,
+    bool previewing = false,
+  }) {
+    final image = context != null && showsImage(path);
+    return FileLinkMenu(
+      path: path,
+      root: root,
+      paths: paths,
+      local: local,
+      onOpen: open,
+      onPreview: image && !previewing
+          ? () => unawaited(preview(context, path))
+          : null,
+      onCopyImage: image
+          ? () => unawaited(() async {
+              if (await this.image(path) case final image?) {
+                await WindowControls.writePasteboardImage(image);
+              }
+            }())
+          : null,
+      browser: opensInBrowser(path),
+    );
+  }
 
   @override
   bool updateShouldNotify(FileOpenScope oldWidget) =>
@@ -323,6 +437,7 @@ class FileOpenScope extends InheritedWidget {
       existence != oldWidget.existence ||
       paths != oldWidget.paths ||
       local != oldWidget.local ||
+      readBytes != oldWidget.readBytes ||
       !listEquals(roots, oldWidget.roots) ||
       !listEquals(seen, oldWidget.seen);
 }

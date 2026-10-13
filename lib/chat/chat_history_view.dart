@@ -1623,7 +1623,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   }
 
   /// The file link the last right click pressed on (see [_contextMenu]).
-  FileLinkMenu? _linkMenu;
+  ChatItemMenu? _linkMenu;
 
   /// The selection's right click: on a file the conversation names, that
   /// file's menu (see [FileLinkMenu]) in place of the selection's.

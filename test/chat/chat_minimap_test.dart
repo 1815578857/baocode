@@ -6,6 +6,7 @@ import 'package:baocode/chat/chat_history_view.dart';
 import 'package:baocode/chat/chat_models.dart';
 import 'package:baocode/chat/chat_session.dart';
 import 'package:baocode/chat/composer/composer_draft.dart';
+import 'package:baocode/chat/composer/composer_files.dart';
 import 'package:baocode/chat/widgets/assistant_text.dart';
 import 'package:baocode/chat/widgets/chat_minimap.dart';
 import 'package:baocode/theme/app_theme.dart';
@@ -198,6 +199,23 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
     expect(position.pixels, position.maxScrollExtent);
+  });
+
+  test('a message samples as its bubble shows it: a paste as its tag, '
+      'a long one as its first lines', () {
+    double height(String text) =>
+        ChatMinimap.sampledHeight(UserMessageItem(text: text));
+    final pasted = PastedText(
+      number: 1,
+      text: [for (var i = 0; i < 548; i++) 'UPDATE t SET a = $i;'].join('\n'),
+    );
+    expect(
+      height('${pasted.reference} 去掉注释。${codeAppendix([pasted])}'),
+      height('${pasted.reference} 去掉注释。'),
+    );
+    final three = height('one\ntwo\nthree');
+    expect(height('one\ntwo\nthree\nfour'), greaterThan(three));
+    expect(height([for (var i = 0; i < 40; i++) 'line $i'].join('\n')), three);
   });
 
   testWidgets('the wheel over it scrolls the history', (tester) async {
