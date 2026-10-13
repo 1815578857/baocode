@@ -1,3 +1,8 @@
+import 'dart:async';
+
+import 'package:baocode/stash/stash_note_editor.dart';
+import 'package:baocode/stash/stash_ai.dart';
+import 'package:baocode/models/model_providers.dart';
 import 'package:baocode/chat/composer/composer_files.dart';
 import 'package:baocode/kernel/claude_code/claude_sdk_tools.dart';
 import 'package:baocode/l10n/l10n.dart';
@@ -162,6 +167,67 @@ void main() {
     await controller.present();
     expect(controller.editing, isNot(draft));
     expect(store.byId(controller.editing!)!.isDraft, isTrue);
+    controller.dispose();
+  });
+
+  testWidgets('Clarify in the panel\'s bar: in the background, its answer '
+      'in the text; failed, why on hover and again on a click', (tester) async {
+    await setUpFlow(tester);
+    final previous = ModelProviders.current;
+    addTearDown(() => ModelProviders.current = previous);
+    await (ModelProviders.current = ModelProviders.memory()).setActionsModel(
+      ModelProviders.followAuxiliary,
+    );
+    tester.view.physicalSize = const Size(900, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final note = (await tester.runAsync(
+      () => store.create(body: 'btn hidden'),
+    ))!;
+    await tester.runAsync(() => controller.edit(note.id));
+    final answer = Completer<String>();
+    controller.clarifier = (controller, id, text) => answer.future;
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          FlutterQuillLocalizations.delegate,
+        ],
+        home: Material(
+          child: StashPanelView(controller: controller, viewId: 0),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final l10n = englishLocalizations;
+
+    await tester.tap(find.text(l10n.stashExpand));
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(controller.clarifying(note.id), isTrue);
+    expect(find.text(l10n.stashClarifying), findsOneWidget);
+    answer.complete('The button is hidden.');
+    await tester.pumpAndSettle();
+    expect(controller.clarifying(note.id), isFalse);
+    expect(
+      StashNoteEditorState.showing(note.id)!.markdown,
+      startsWith('The button is hidden.'),
+    );
+
+    var asked = 0;
+    controller.clarifier = (controller, id, text) async {
+      asked++;
+      throw const StashAiException('Not signed in');
+    };
+    await tester.tap(find.text(l10n.stashExpand));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.stashClarifyFailedShort), findsOneWidget);
+    await tester.tap(find.text(l10n.stashClarifyFailedShort));
+    await tester.pumpAndSettle();
+    expect(asked, 2);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 3));
     controller.dispose();
   });
 

@@ -14,8 +14,11 @@ import '../ide/ide_input.dart';
 import '../ide/ide_list.dart';
 import '../ide/ide_menu.dart';
 import '../ide/ide_motion.dart';
+import '../ide/ide_spinning.dart';
 import '../keybindings/keybinding_service.dart';
 import '../l10n/l10n.dart';
+import '../models/auxiliary_model_menu.dart';
+import '../models/model_providers.dart';
 import '../platform/app_platform.dart';
 import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
@@ -145,6 +148,13 @@ class _StashPanelViewState extends State<StashPanelView> {
 
   void _new() => unawaited(_controller.startNew());
 
+  /// Says the stash clearly, in the background (see
+  /// [StashController.clarify]): what it has written first.
+  Future<void> _clarify(int id) async {
+    await _flush();
+    await _controller.clarify(id);
+  }
+
   /// The panel's own keys (StashPanel.swift sends them, ahead of the app's
   /// menu), Esc among them.
   void _menuCommand(String command) {
@@ -250,6 +260,14 @@ class _StashPanelViewState extends State<StashPanelView> {
                         : _controller.store.headline(note),
                     pinned: _controller.pinned,
                     onPinned: (pinned) => _controller.pinned = pinned,
+                    clarify: switch (note) {
+                      final note? when !note.isBlank => _ClarifyPill(
+                        clarifying: _controller.clarifying(note.id),
+                        failure: _controller.clarifyFailure(note.id),
+                        onClarify: () => _clarify(note.id),
+                      ),
+                      _ => null,
+                    },
                   ),
                   Expanded(child: editor),
                   _Footer(
@@ -337,7 +355,11 @@ class _TopBar extends StatelessWidget {
     required this.headline,
     required this.pinned,
     required this.onPinned,
+    this.clarify,
   });
+
+  /// Says the stash clearly; none while there is nothing written.
+  final Widget? clarify;
 
   /// Whether the panel stays over other apps' windows; the pin changes it.
   final bool pinned;
@@ -412,6 +434,10 @@ class _TopBar extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
+            if (clarify case final clarify?) ...[
+              clarify,
+              const SizedBox(width: 6),
+            ],
             Builder(
               builder: (context) => _PillButton(
                 icon: Codicons.folder,
@@ -1527,6 +1553,127 @@ class _PillButton extends StatelessWidget {
       },
     ),
   );
+}
+
+/// Say Clearly in the bar, as in the Stash page's detail: the model it
+/// asks picked by its arrow (one for every AI action, picked the first
+/// time it is used); turning while it goes on, in the background; where it
+/// failed, why in its tooltip, and a click tries again.
+class _ClarifyPill extends StatelessWidget {
+  const _ClarifyPill({
+    required this.clarifying,
+    required this.failure,
+    required this.onClarify,
+  });
+
+  final bool clarifying;
+  final StashClarifyFailure? failure;
+  final Future<void> Function() onClarify;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final failure = this.failure;
+    final error = themeColors['errorForeground'];
+    return HoverBuilder(
+      cursor: clarifying ? MouseCursor.defer : SystemMouseCursors.click,
+      builder: (context, hovered) {
+        final lit = hovered && !clarifying;
+        final color = failure != null
+            ? error
+            : lit
+            ? AppColors.text
+            : AppColors.textMuted;
+        final icon = clarifying
+            ? IdeSpinning(Icon(Codicons.sync, size: 13, color: color))
+            : Icon(
+                failure == null ? Codicons.sparkle : Codicons.error,
+                size: 13,
+                color: color,
+              );
+        return Container(
+          height: 24,
+          decoration: BoxDecoration(
+            color: lit ? AppColors.hover : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.partBorder),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Builder(
+                builder: (context) => IdeHover(
+                  message: switch (failure) {
+                    null => l10n.stashExpandHint,
+                    (changed: true, message: _) => l10n.stashClarifyChanged,
+                    (changed: false, :final message) => l10n.stashExpandFailed(
+                      message ?? l10n.stashAiNoAnswer,
+                    ),
+                  },
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: clarifying
+                        ? null
+                        : () {
+                            final anchor = anchorOf(context);
+                            if (anchor == null) return;
+                            unawaited(
+                              withActionsModel(context, anchor, onClarify),
+                            );
+                          },
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 0, 6, 0),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          icon,
+                          const SizedBox(width: 5),
+                          Text(
+                            clarifying
+                                ? l10n.stashClarifying
+                                : failure != null
+                                ? l10n.stashClarifyFailedShort
+                                : l10n.stashExpand,
+                            maxLines: 1,
+                            style: TextStyle(color: color, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Container(width: 1, height: 12, color: AppColors.partBorder),
+              Builder(
+                builder: (context) => IdeHover(
+                  message: l10n.aiModelTooltip(
+                    actionsModelName(l10n, ModelProviders.current) ??
+                        l10n.aiModelNone,
+                  ),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      final anchor = anchorOf(context);
+                      if (anchor == null) return;
+                      unawaited(pickActionsModel(context, anchor));
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(3, 0, 6, 0),
+                      child: Icon(
+                        Codicons.chevronDown,
+                        size: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _Footer extends StatelessWidget {

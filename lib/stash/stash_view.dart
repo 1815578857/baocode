@@ -3,6 +3,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart'
+    show SliverConstraints, SliverGridLayout, SliverGridRegularTileLayout;
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
@@ -645,12 +647,7 @@ class StashViewState extends State<StashView> with _StashActions {
     SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       sliver: SliverGrid.builder(
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 300,
-          mainAxisExtent: 132,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-        ),
+        gridDelegate: const _StashCardGrid(),
         itemCount: notes.length,
         itemBuilder: (context, i) {
           final note = notes[i];
@@ -1887,4 +1884,39 @@ class _TitleFieldState extends State<_TitleField> {
       ),
     ),
   );
+}
+
+/// The cards in as many columns as fit cards at least [minWidth] wide (a
+/// thumbnail, the title and summary beside it, the badges under them), one
+/// at the least.
+class _StashCardGrid extends SliverGridDelegate {
+  const _StashCardGrid();
+
+  static const minWidth = 250.0;
+  static const height = 132.0;
+  static const spacing = 10.0;
+
+  @override
+  SliverGridLayout getLayout(SliverConstraints constraints) {
+    final width = constraints.crossAxisExtent;
+    final columns = math.max(
+      1,
+      ((width + spacing) / (minWidth + spacing)).floor(),
+    );
+    final cardWidth = math.max(
+      0.0,
+      (width - spacing * (columns - 1)) / columns,
+    );
+    return SliverGridRegularTileLayout(
+      crossAxisCount: columns,
+      mainAxisStride: height + spacing,
+      crossAxisStride: cardWidth + spacing,
+      childMainAxisExtent: height,
+      childCrossAxisExtent: cardWidth,
+      reverseCrossAxis: axisDirectionIsReversed(constraints.crossAxisDirection),
+    );
+  }
+
+  @override
+  bool shouldRelayout(_StashCardGrid oldDelegate) => false;
 }
