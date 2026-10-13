@@ -34,6 +34,8 @@ import '../../keybindings/chat_keybindings.dart';
 import '../../keybindings/keybinding_service.dart';
 import '../../l10n/l10n.dart';
 import '../../sidebar/sidebar.dart' show SidebarIconButton;
+import '../../stash/stash_backlog.dart';
+import '../../stash/stash_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
 import '../../theme/material_file_icons.dart';
@@ -409,6 +411,7 @@ class AgentSidePanelView extends StatelessWidget {
               SidePanelSection.files => _filesPage(context, tabs),
               SidePanelSection.changes => _changesPage(context, tabs),
               SidePanelSection.terminal => _terminalPage(context, tabs),
+              SidePanelSection.backlog => _backlogPage(context),
               SidePanelSection.plan => _planPage(context, tabs.plan!),
             },
           ),
@@ -843,6 +846,22 @@ class AgentSidePanelView extends StatelessWidget {
     );
   }
 
+  /// The project's stashes not done (docs/stash.md), to drag into the
+  /// message or carry out.
+  Widget _backlogPage(BuildContext context) => switch ((
+    StashController.current,
+    session.kernelContext.cwd,
+  )) {
+    (final controller?, final project?) => StashBacklog(
+      key: const ValueKey(('page', SidePanelSection.backlog)),
+      controller: controller,
+      project: project,
+    ),
+    _ => const SizedBox.shrink(
+      key: ValueKey(('page', SidePanelSection.backlog)),
+    ),
+  };
+
   /// The plan the agent wrote, on its own: no list, its tab over it.
   Widget _planPage(BuildContext context, SidePanelTab plan) => Column(
     key: const ValueKey(('page', SidePanelSection.plan)),
@@ -1160,6 +1179,7 @@ extension SidePanelSectionUi on SidePanelSection {
     SidePanelSection.files => Codicons.files,
     SidePanelSection.changes => Codicons.sourceControl,
     SidePanelSection.terminal => Codicons.terminal,
+    SidePanelSection.backlog => Codicons.note,
     SidePanelSection.plan => Codicons.checklist,
   };
 
@@ -1168,6 +1188,7 @@ extension SidePanelSectionUi on SidePanelSection {
     SidePanelSection.files => ChatCommandIds.sidePanelFiles,
     SidePanelSection.changes => ChatCommandIds.sidePanelChanges,
     SidePanelSection.terminal => ChatCommandIds.sidePanelTerminal,
+    SidePanelSection.backlog => ChatCommandIds.sidePanelBacklog,
     SidePanelSection.plan => null,
   };
 
@@ -1175,6 +1196,7 @@ extension SidePanelSectionUi on SidePanelSection {
     SidePanelSection.files => context.l10n.sidePanelFiles,
     SidePanelSection.changes => context.l10n.sidePanelChanges,
     SidePanelSection.terminal => context.l10n.sidePanelTerminal,
+    SidePanelSection.backlog => context.l10n.stashBacklog,
     SidePanelSection.plan => context.l10n.sidePanelPlan,
   };
 }
@@ -1209,7 +1231,9 @@ class SidePanelRail extends StatelessWidget {
               .where((task) => task.status == CommandStatus.running)
               .length ??
           0,
-    SidePanelSection.files || SidePanelSection.plan => 0,
+    SidePanelSection.files ||
+    SidePanelSection.backlog ||
+    SidePanelSection.plan => 0,
   };
 
   static const _button = 26.0;
@@ -1366,7 +1390,9 @@ class _SectionBar extends StatelessWidget {
                   selected: shown == section,
                   compact: compact,
                   count: switch (section) {
-                    SidePanelSection.files || SidePanelSection.plan => 0,
+                    SidePanelSection.files ||
+                    SidePanelSection.backlog ||
+                    SidePanelSection.plan => 0,
                     SidePanelSection.changes => changes,
                     SidePanelSection.terminal => running,
                   },

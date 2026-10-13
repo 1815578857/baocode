@@ -20,6 +20,7 @@ import 'claude_code_transport.dart';
 import 'claude_code_translator.dart';
 import 'claude_elicitation.dart';
 import 'claude_goal.dart';
+import 'claude_sdk_tools.dart';
 import 'control_channel.dart';
 
 /// Reads a kept session: its conversation lines, oldest first, along the
@@ -362,9 +363,11 @@ class ClaudeCodeKernel
       final workspace = _workspace;
       _launchedProvider = _providerKey;
       _launchedWindow = _autocompact;
+      final sdkServers = ClaudeSdkTools.servers;
       final transport = await _start(
         ClaudeLaunch(
           cwd: _cwd,
+          sdkServers: sdkServers,
           resume: _sessionId,
           model: model,
           // Plan is entered once started.
@@ -393,7 +396,10 @@ class ClaudeCodeKernel
       final control = _control = ControlChannel(transport.write);
       _subscription = transport.messages.listen(_receive);
       _applyInitialize(
-        await control.request('initialize', {'promptSuggestions': true}),
+        await control.request('initialize', {
+          'promptSuggestions': true,
+          if (sdkServers.isNotEmpty) 'sdkMcpServers': sdkServers,
+        }),
       );
       if (_mode != _cliMode) {
         _cliMode = _mode;
@@ -1391,9 +1397,26 @@ class ClaudeCodeKernel
         unawaited(_permission(id, request));
       case 'elicitation':
         _elicitation(id, request);
+      case 'mcp_message':
+        unawaited(_mcpMessage(id, request));
       default:
         control.refuse(id, 'Not supported by this client');
     }
+  }
+
+  /// What the agent says to one of the app's own MCP servers (see
+  /// claude_sdk_tools.dart), answered.
+  Future<void> _mcpMessage(String id, Map<String, Object?> request) async {
+    final message = (request['message'] as Map?)?.cast<String, Object?>();
+    if (request['server_name'] != ClaudeSdkTools.server || message == null) {
+      _control?.refuse(id, 'No such server');
+      return;
+    }
+    final response = await ClaudeSdkTools.handle(
+      message,
+      ClaudeSdkCall(cwd: _cwd, sessionId: _sessionId),
+    );
+    _control?.respond(id, {'mcp_response': response});
   }
 
   /// An MCP server asks the user for input: its form as questions, or a

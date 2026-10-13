@@ -8027,4 +8027,479 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mobilePairAllow => 'Allow';
+
+  @override
+  String get cmdSidePanelBacklog => 'Show Project Backlog';
+
+  @override
+  String get settingsSectionStash => 'Stash';
+
+  @override
+  String get stashTitle => 'Stash';
+
+  @override
+  String get stashHeading => 'Stash';
+
+  @override
+  String get stashBacklog => 'Backlog';
+
+  @override
+  String get stashBacklogEmpty =>
+      'No stashes about this project yet. Link one to it, or press + to write one.';
+
+  @override
+  String get stashNew => 'New stash';
+
+  @override
+  String get stashLinkOpen => 'Open link';
+
+  @override
+  String get stashLinkEdit => 'Edit link';
+
+  @override
+  String get stashDraft => 'Draft';
+
+  @override
+  String get stashCodeChip => 'Code';
+
+  @override
+  String get stashTableChip => 'Table';
+
+  @override
+  String stashLines(int count) {
+    return '$count lines';
+  }
+
+  @override
+  String get stashNewButton => 'New';
+
+  @override
+  String get stashNewTooltip => 'New stash';
+
+  @override
+  String get stashPlaceholder => 'Jot it down…';
+
+  @override
+  String get stashHintNew => 'New';
+
+  @override
+  String get stashProjectTooltip => 'Project it is about';
+
+  @override
+  String get stashNoProject => 'No project';
+
+  @override
+  String get stashFormatBold => 'Bold';
+
+  @override
+  String get stashFormatItalic => 'Italic';
+
+  @override
+  String get stashFormatStrike => 'Strikethrough';
+
+  @override
+  String get stashFormatUnderline => 'Underline';
+
+  @override
+  String get stashFormatCode => 'Code';
+
+  @override
+  String get stashFormatLink => 'Link';
+
+  @override
+  String get stashFormatColor => 'Text and background color';
+
+  @override
+  String get stashFormatHeading1 => 'Heading 1';
+
+  @override
+  String get stashFormatHeading2 => 'Heading 2';
+
+  @override
+  String get stashFormatHeading3 => 'Heading 3';
+
+  @override
+  String get stashFormatBullets => 'Bulleted list';
+
+  @override
+  String get stashFormatNumbers => 'Numbered list';
+
+  @override
+  String get stashFormatTasks => 'Task list';
+
+  @override
+  String get stashFormatQuote => 'Quote';
+
+  @override
+  String get stashFormatCodeBlock => 'Code block';
+
+  @override
+  String get stashFormatClear => 'Clear formatting';
+
+  @override
+  String get stashPolish => 'Polish';
+
+  @override
+  String get stashPolishing => 'Polishing…';
+
+  @override
+  String get stashPolishHint =>
+      'Has AI make the selection clearer, in your words, without adding structure';
+
+  @override
+  String get stashLinkTitle => 'Link';
+
+  @override
+  String get stashRemove => 'Remove';
+
+  @override
+  String get stashEdit => 'Edit';
+
+  @override
+  String get stashFormulaTitle => 'Formula (TeX)';
+
+  @override
+  String get stashTableTitle => 'Table (Markdown)';
+
+  @override
+  String get stashCodeTitle => 'Code block';
+
+  @override
+  String stashBigFileTitle(String name) {
+    return '“$name” is over 200 MB';
+  }
+
+  @override
+  String get stashBigFileDetail =>
+      'Link to it where it is, or copy it into the stash anyway?';
+
+  @override
+  String get stashBigFileLink => 'Link';
+
+  @override
+  String get stashBigFileCopy => 'Copy';
+
+  @override
+  String get stashSearchPlaceholder =>
+      'Search stashes, and the text in their pictures';
+
+  @override
+  String get stashAiSearch => 'AI search';
+
+  @override
+  String get stashAiSearchHint =>
+      'Finds stashes by what they mean, not only their words. Asks the model: it costs.';
+
+  @override
+  String stashAiResults(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'AI found $count',
+      one: 'AI found 1',
+      zero: 'AI found nothing',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stashAiClear => 'Clear';
+
+  @override
+  String get stashFilterAnyTime => 'Any time';
+
+  @override
+  String get stashFilterAnyProject => 'Any project';
+
+  @override
+  String get stashFilterAnyStatus => 'Any status';
+
+  @override
+  String get stashFilterOpen => 'Not done';
+
+  @override
+  String get stashGroupPinned => 'Pinned';
+
+  @override
+  String get stashGroupToday => 'Today';
+
+  @override
+  String get stashGroupYesterday => 'Yesterday';
+
+  @override
+  String get stashGroupWeek => 'Past 7 days';
+
+  @override
+  String get stashGroupMonth => 'Past 30 days';
+
+  @override
+  String get stashGroupEarlier => 'Earlier';
+
+  @override
+  String get stashGroupDone => 'Done';
+
+  @override
+  String get stashStatus => 'Status';
+
+  @override
+  String get stashStatusCollected => 'Collected';
+
+  @override
+  String get stashStatusRequirement => 'Requirement';
+
+  @override
+  String get stashStatusImplementing => 'Implementing';
+
+  @override
+  String get stashStatusDone => 'Done';
+
+  @override
+  String stashEmpty(String hotkey) {
+    return 'Nothing stashed yet.\nPress $hotkey in any app to jot something down.';
+  }
+
+  @override
+  String get stashNoMatch => 'No stash matches.';
+
+  @override
+  String get stashPin => 'Pin';
+
+  @override
+  String get stashUnpin => 'Unpin';
+
+  @override
+  String get stashOpenInPanel => 'Open in Floating Panel';
+
+  @override
+  String get stashLinkProject => 'Link to Project';
+
+  @override
+  String get stashMerge => 'Merge';
+
+  @override
+  String stashMergeTitle(String stashes) {
+    return 'Merge $stashes?';
+  }
+
+  @override
+  String stashMergeDetail(String target) {
+    return 'Their text goes into $target, one after another; the others go, their numbers leading to it.';
+  }
+
+  @override
+  String stashMergeSuggestion(String stashes) {
+    return '$stashes look like the same thing.';
+  }
+
+  @override
+  String get stashDismiss => 'Dismiss';
+
+  @override
+  String get stashReveal => 'Show in Finder';
+
+  @override
+  String get stashDelete => 'Delete';
+
+  @override
+  String stashDeleteOne(String stash) {
+    return 'Delete $stash?';
+  }
+
+  @override
+  String stashDeleteMany(int count) {
+    return 'Delete $count stashes?';
+  }
+
+  @override
+  String get stashDeleteDetail =>
+      'Their pictures and files go with them. This cannot be undone.';
+
+  @override
+  String stashPicked(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get stashMarkDone => 'Mark Done';
+
+  @override
+  String get stashReopen => 'Reopen';
+
+  @override
+  String get stashClearPicked => 'Clear selection';
+
+  @override
+  String get stashClose => 'Close Stash';
+
+  @override
+  String get stashCloseDetail => 'Close';
+
+  @override
+  String get stashMore => 'More';
+
+  @override
+  String get stashSplit => 'Split';
+
+  @override
+  String get stashSplitHow =>
+      'Put the cursor where to cut it, or separate the parts with a line of ---.';
+
+  @override
+  String stashSplitTitle(String stash, int count) {
+    return 'Split $stash into $count?';
+  }
+
+  @override
+  String get stashExpand => 'Expand to Requirement';
+
+  @override
+  String get stashExpandAgain => 'Rewrite Requirement';
+
+  @override
+  String get stashExpandHint =>
+      'AI writes a requirement from it, under “## 需求”; what you wrote stays as it is';
+
+  @override
+  String get stashExpandFailed =>
+      'The requirement could not be written. Is Claude Code signed in?';
+
+  @override
+  String get stashImplement => 'Implement in BaoCode';
+
+  @override
+  String get stashImplementHow => 'How should the agent work on it?';
+
+  @override
+  String get stashImplementHowDetail =>
+      'In a new git worktree (a branch of its own, your working copy untouched), or directly in the project as it is.';
+
+  @override
+  String get stashImplementWorktree => 'New Worktree';
+
+  @override
+  String get stashImplementDirect => 'Directly';
+
+  @override
+  String stashImplementStarter(String stash) {
+    return 'Please implement what $stash asks for.';
+  }
+
+  @override
+  String get stashImplementInWorktree =>
+      'First create a new git worktree on a new branch for this work and do it there; tell me the branch when done.';
+
+  @override
+  String get stashImplementInPlace =>
+      'Work directly in this project, on the current branch.';
+
+  @override
+  String stashImplementComplete(int id) {
+    return 'When it is finished, mark it done with the stash_complete tool (id $id).';
+  }
+
+  @override
+  String get stashThreadStarting =>
+      'A conversation is ready for it; send its message to start.';
+
+  @override
+  String stashThreadLinked(String title) {
+    return 'Implemented in conversation “$title”';
+  }
+
+  @override
+  String get stashOpenThread => 'Open';
+
+  @override
+  String stashProjectSuggestion(String project) {
+    return 'AI thinks this is about $project.';
+  }
+
+  @override
+  String get stashLinkIt => 'Link';
+
+  @override
+  String stashSourceBanner(String stash, String title) {
+    return 'Source: Stash $stash · $title';
+  }
+
+  @override
+  String get stashSettingsDescription =>
+      'A note jotted down from any app, in a floating panel, to turn into work later.';
+
+  @override
+  String get stashSettingsHotkey => 'Shortcut';
+
+  @override
+  String stashSettingsHotkeyCurrent(String hotkey) {
+    return '$hotkey shows the panel from any app.';
+  }
+
+  @override
+  String get stashSettingsHotkeyNone =>
+      'No shortcut: the panel only shows from the Stash page.';
+
+  @override
+  String get stashSettingsHotkeyTaken =>
+      'Another app holds this shortcut; pick another.';
+
+  @override
+  String get stashSettingsHotkeyHelp =>
+      'As ctrl+shift+space, cmd+alt+n…; empty for none.';
+
+  @override
+  String get stashSettingsDirectory => 'Location';
+
+  @override
+  String get stashSettingsDirectoryChange => 'Change…';
+
+  @override
+  String get stashSettingsDirectoryReset => 'Default';
+
+  @override
+  String get stashSettingsDirectoryRestart =>
+      'Takes effect after BaoCode restarts.';
+
+  @override
+  String get stashAll => 'All';
+
+  @override
+  String get stashAllTooltip => 'Show every stash';
+
+  @override
+  String get stashHintSave => 'Save';
+
+  @override
+  String get stashHintClose => 'Close';
+
+  @override
+  String get stashSaved => 'Saved';
+
+  @override
+  String get stashFilter => 'Filter';
+
+  @override
+  String get stashSort => 'Sort';
+
+  @override
+  String get stashSortManual => 'Custom (drag to order)';
+
+  @override
+  String get stashSortUpdated => 'Last edited';
+
+  @override
+  String get stashSortCreated => 'Last created';
+
+  @override
+  String get stashSortNumber => 'Number';
+
+  @override
+  String get stashOpen => 'Open';
+
+  @override
+  String stashCount(int count) {
+    return '$count stashes';
+  }
+
+  @override
+  String get stashFormatMore => 'More';
 }

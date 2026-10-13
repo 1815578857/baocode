@@ -13190,6 +13190,834 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Allow'**
   String get mobilePairAllow;
+
+  /// No description provided for @cmdSidePanelBacklog.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Project Backlog'**
+  String get cmdSidePanelBacklog;
+
+  /// No description provided for @settingsSectionStash.
+  ///
+  /// In en, this message translates to:
+  /// **'Stash'**
+  String get settingsSectionStash;
+
+  /// No description provided for @stashTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stash'**
+  String get stashTitle;
+
+  /// No description provided for @stashHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Stash'**
+  String get stashHeading;
+
+  /// No description provided for @stashBacklog.
+  ///
+  /// In en, this message translates to:
+  /// **'Backlog'**
+  String get stashBacklog;
+
+  /// No description provided for @stashBacklogEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No stashes about this project yet. Link one to it, or press + to write one.'**
+  String get stashBacklogEmpty;
+
+  /// No description provided for @stashNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New stash'**
+  String get stashNew;
+
+  /// No description provided for @stashLinkOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open link'**
+  String get stashLinkOpen;
+
+  /// No description provided for @stashLinkEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit link'**
+  String get stashLinkEdit;
+
+  /// No description provided for @stashDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get stashDraft;
+
+  /// No description provided for @stashCodeChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get stashCodeChip;
+
+  /// No description provided for @stashTableChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Table'**
+  String get stashTableChip;
+
+  /// No description provided for @stashLines.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} lines'**
+  String stashLines(int count);
+
+  /// No description provided for @stashNewButton.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get stashNewButton;
+
+  /// No description provided for @stashNewTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'New stash'**
+  String get stashNewTooltip;
+
+  /// No description provided for @stashPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Jot it down…'**
+  String get stashPlaceholder;
+
+  /// No description provided for @stashHintNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get stashHintNew;
+
+  /// No description provided for @stashProjectTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Project it is about'**
+  String get stashProjectTooltip;
+
+  /// No description provided for @stashNoProject.
+  ///
+  /// In en, this message translates to:
+  /// **'No project'**
+  String get stashNoProject;
+
+  /// No description provided for @stashFormatBold.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold'**
+  String get stashFormatBold;
+
+  /// No description provided for @stashFormatItalic.
+  ///
+  /// In en, this message translates to:
+  /// **'Italic'**
+  String get stashFormatItalic;
+
+  /// No description provided for @stashFormatStrike.
+  ///
+  /// In en, this message translates to:
+  /// **'Strikethrough'**
+  String get stashFormatStrike;
+
+  /// No description provided for @stashFormatUnderline.
+  ///
+  /// In en, this message translates to:
+  /// **'Underline'**
+  String get stashFormatUnderline;
+
+  /// No description provided for @stashFormatCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get stashFormatCode;
+
+  /// No description provided for @stashFormatLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get stashFormatLink;
+
+  /// No description provided for @stashFormatColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Text and background color'**
+  String get stashFormatColor;
+
+  /// No description provided for @stashFormatHeading1.
+  ///
+  /// In en, this message translates to:
+  /// **'Heading 1'**
+  String get stashFormatHeading1;
+
+  /// No description provided for @stashFormatHeading2.
+  ///
+  /// In en, this message translates to:
+  /// **'Heading 2'**
+  String get stashFormatHeading2;
+
+  /// No description provided for @stashFormatHeading3.
+  ///
+  /// In en, this message translates to:
+  /// **'Heading 3'**
+  String get stashFormatHeading3;
+
+  /// No description provided for @stashFormatBullets.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulleted list'**
+  String get stashFormatBullets;
+
+  /// No description provided for @stashFormatNumbers.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbered list'**
+  String get stashFormatNumbers;
+
+  /// No description provided for @stashFormatTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Task list'**
+  String get stashFormatTasks;
+
+  /// No description provided for @stashFormatQuote.
+  ///
+  /// In en, this message translates to:
+  /// **'Quote'**
+  String get stashFormatQuote;
+
+  /// Selection bar menu: makes the lines a code block, typed in in place.
+  ///
+  /// In en, this message translates to:
+  /// **'Code block'**
+  String get stashFormatCodeBlock;
+
+  /// No description provided for @stashFormatClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear formatting'**
+  String get stashFormatClear;
+
+  /// No description provided for @stashPolish.
+  ///
+  /// In en, this message translates to:
+  /// **'Polish'**
+  String get stashPolish;
+
+  /// No description provided for @stashPolishing.
+  ///
+  /// In en, this message translates to:
+  /// **'Polishing…'**
+  String get stashPolishing;
+
+  /// No description provided for @stashPolishHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Has AI make the selection clearer, in your words, without adding structure'**
+  String get stashPolishHint;
+
+  /// No description provided for @stashLinkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get stashLinkTitle;
+
+  /// No description provided for @stashRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get stashRemove;
+
+  /// No description provided for @stashEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get stashEdit;
+
+  /// No description provided for @stashFormulaTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Formula (TeX)'**
+  String get stashFormulaTitle;
+
+  /// No description provided for @stashTableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Table (Markdown)'**
+  String get stashTableTitle;
+
+  /// No description provided for @stashCodeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Code block'**
+  String get stashCodeTitle;
+
+  /// No description provided for @stashBigFileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” is over 200 MB'**
+  String stashBigFileTitle(String name);
+
+  /// No description provided for @stashBigFileDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Link to it where it is, or copy it into the stash anyway?'**
+  String get stashBigFileDetail;
+
+  /// No description provided for @stashBigFileLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get stashBigFileLink;
+
+  /// No description provided for @stashBigFileCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get stashBigFileCopy;
+
+  /// No description provided for @stashSearchPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search stashes, and the text in their pictures'**
+  String get stashSearchPlaceholder;
+
+  /// No description provided for @stashAiSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'AI search'**
+  String get stashAiSearch;
+
+  /// No description provided for @stashAiSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Finds stashes by what they mean, not only their words. Asks the model: it costs.'**
+  String get stashAiSearchHint;
+
+  /// No description provided for @stashAiResults.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{AI found nothing} =1{AI found 1} other{AI found {count}}}'**
+  String stashAiResults(int count);
+
+  /// No description provided for @stashAiClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get stashAiClear;
+
+  /// No description provided for @stashFilterAnyTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Any time'**
+  String get stashFilterAnyTime;
+
+  /// No description provided for @stashFilterAnyProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Any project'**
+  String get stashFilterAnyProject;
+
+  /// No description provided for @stashFilterAnyStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Any status'**
+  String get stashFilterAnyStatus;
+
+  /// No description provided for @stashFilterOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Not done'**
+  String get stashFilterOpen;
+
+  /// No description provided for @stashGroupPinned.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned'**
+  String get stashGroupPinned;
+
+  /// No description provided for @stashGroupToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get stashGroupToday;
+
+  /// No description provided for @stashGroupYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get stashGroupYesterday;
+
+  /// No description provided for @stashGroupWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Past 7 days'**
+  String get stashGroupWeek;
+
+  /// No description provided for @stashGroupMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Past 30 days'**
+  String get stashGroupMonth;
+
+  /// No description provided for @stashGroupEarlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier'**
+  String get stashGroupEarlier;
+
+  /// No description provided for @stashGroupDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get stashGroupDone;
+
+  /// No description provided for @stashStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get stashStatus;
+
+  /// No description provided for @stashStatusCollected.
+  ///
+  /// In en, this message translates to:
+  /// **'Collected'**
+  String get stashStatusCollected;
+
+  /// No description provided for @stashStatusRequirement.
+  ///
+  /// In en, this message translates to:
+  /// **'Requirement'**
+  String get stashStatusRequirement;
+
+  /// No description provided for @stashStatusImplementing.
+  ///
+  /// In en, this message translates to:
+  /// **'Implementing'**
+  String get stashStatusImplementing;
+
+  /// No description provided for @stashStatusDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get stashStatusDone;
+
+  /// No description provided for @stashEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing stashed yet.\nPress {hotkey} in any app to jot something down.'**
+  String stashEmpty(String hotkey);
+
+  /// No description provided for @stashNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No stash matches.'**
+  String get stashNoMatch;
+
+  /// No description provided for @stashPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin'**
+  String get stashPin;
+
+  /// No description provided for @stashUnpin.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin'**
+  String get stashUnpin;
+
+  /// No description provided for @stashOpenInPanel.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Floating Panel'**
+  String get stashOpenInPanel;
+
+  /// No description provided for @stashLinkProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Link to Project'**
+  String get stashLinkProject;
+
+  /// No description provided for @stashMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge'**
+  String get stashMerge;
+
+  /// No description provided for @stashMergeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge {stashes}?'**
+  String stashMergeTitle(String stashes);
+
+  /// No description provided for @stashMergeDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Their text goes into {target}, one after another; the others go, their numbers leading to it.'**
+  String stashMergeDetail(String target);
+
+  /// No description provided for @stashMergeSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'{stashes} look like the same thing.'**
+  String stashMergeSuggestion(String stashes);
+
+  /// No description provided for @stashDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get stashDismiss;
+
+  /// No description provided for @stashReveal.
+  ///
+  /// In en, this message translates to:
+  /// **'Show in Finder'**
+  String get stashReveal;
+
+  /// No description provided for @stashDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get stashDelete;
+
+  /// No description provided for @stashDeleteOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {stash}?'**
+  String stashDeleteOne(String stash);
+
+  /// No description provided for @stashDeleteMany.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {count} stashes?'**
+  String stashDeleteMany(int count);
+
+  /// No description provided for @stashDeleteDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Their pictures and files go with them. This cannot be undone.'**
+  String get stashDeleteDetail;
+
+  /// No description provided for @stashPicked.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String stashPicked(int count);
+
+  /// No description provided for @stashMarkDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark Done'**
+  String get stashMarkDone;
+
+  /// No description provided for @stashReopen.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen'**
+  String get stashReopen;
+
+  /// No description provided for @stashClearPicked.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear selection'**
+  String get stashClearPicked;
+
+  /// No description provided for @stashClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close Stash'**
+  String get stashClose;
+
+  /// No description provided for @stashCloseDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get stashCloseDetail;
+
+  /// No description provided for @stashMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get stashMore;
+
+  /// No description provided for @stashSplit.
+  ///
+  /// In en, this message translates to:
+  /// **'Split'**
+  String get stashSplit;
+
+  /// No description provided for @stashSplitHow.
+  ///
+  /// In en, this message translates to:
+  /// **'Put the cursor where to cut it, or separate the parts with a line of ---.'**
+  String get stashSplitHow;
+
+  /// No description provided for @stashSplitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Split {stash} into {count}?'**
+  String stashSplitTitle(String stash, int count);
+
+  /// No description provided for @stashExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand to Requirement'**
+  String get stashExpand;
+
+  /// No description provided for @stashExpandAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Rewrite Requirement'**
+  String get stashExpandAgain;
+
+  /// No description provided for @stashExpandHint.
+  ///
+  /// In en, this message translates to:
+  /// **'AI writes a requirement from it, under “## 需求”; what you wrote stays as it is'**
+  String get stashExpandHint;
+
+  /// No description provided for @stashExpandFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The requirement could not be written. Is Claude Code signed in?'**
+  String get stashExpandFailed;
+
+  /// No description provided for @stashImplement.
+  ///
+  /// In en, this message translates to:
+  /// **'Implement in BaoCode'**
+  String get stashImplement;
+
+  /// No description provided for @stashImplementHow.
+  ///
+  /// In en, this message translates to:
+  /// **'How should the agent work on it?'**
+  String get stashImplementHow;
+
+  /// No description provided for @stashImplementHowDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'In a new git worktree (a branch of its own, your working copy untouched), or directly in the project as it is.'**
+  String get stashImplementHowDetail;
+
+  /// No description provided for @stashImplementWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'New Worktree'**
+  String get stashImplementWorktree;
+
+  /// No description provided for @stashImplementDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Directly'**
+  String get stashImplementDirect;
+
+  /// No description provided for @stashImplementStarter.
+  ///
+  /// In en, this message translates to:
+  /// **'Please implement what {stash} asks for.'**
+  String stashImplementStarter(String stash);
+
+  /// No description provided for @stashImplementInWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'First create a new git worktree on a new branch for this work and do it there; tell me the branch when done.'**
+  String get stashImplementInWorktree;
+
+  /// No description provided for @stashImplementInPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Work directly in this project, on the current branch.'**
+  String get stashImplementInPlace;
+
+  /// No description provided for @stashImplementComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'When it is finished, mark it done with the stash_complete tool (id {id}).'**
+  String stashImplementComplete(int id);
+
+  /// No description provided for @stashThreadStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'A conversation is ready for it; send its message to start.'**
+  String get stashThreadStarting;
+
+  /// No description provided for @stashThreadLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'Implemented in conversation “{title}”'**
+  String stashThreadLinked(String title);
+
+  /// No description provided for @stashOpenThread.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get stashOpenThread;
+
+  /// No description provided for @stashProjectSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'AI thinks this is about {project}.'**
+  String stashProjectSuggestion(String project);
+
+  /// No description provided for @stashLinkIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get stashLinkIt;
+
+  /// No description provided for @stashSourceBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Source: Stash {stash} · {title}'**
+  String stashSourceBanner(String stash, String title);
+
+  /// No description provided for @stashSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'A note jotted down from any app, in a floating panel, to turn into work later.'**
+  String get stashSettingsDescription;
+
+  /// No description provided for @stashSettingsHotkey.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortcut'**
+  String get stashSettingsHotkey;
+
+  /// No description provided for @stashSettingsHotkeyCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'{hotkey} shows the panel from any app.'**
+  String stashSettingsHotkeyCurrent(String hotkey);
+
+  /// No description provided for @stashSettingsHotkeyNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No shortcut: the panel only shows from the Stash page.'**
+  String get stashSettingsHotkeyNone;
+
+  /// No description provided for @stashSettingsHotkeyTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Another app holds this shortcut; pick another.'**
+  String get stashSettingsHotkeyTaken;
+
+  /// No description provided for @stashSettingsHotkeyHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'As ctrl+shift+space, cmd+alt+n…; empty for none.'**
+  String get stashSettingsHotkeyHelp;
+
+  /// No description provided for @stashSettingsDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get stashSettingsDirectory;
+
+  /// No description provided for @stashSettingsDirectoryChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change…'**
+  String get stashSettingsDirectoryChange;
+
+  /// No description provided for @stashSettingsDirectoryReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get stashSettingsDirectoryReset;
+
+  /// No description provided for @stashSettingsDirectoryRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Takes effect after BaoCode restarts.'**
+  String get stashSettingsDirectoryRestart;
+
+  /// Opens the list of every stash beside the one written in, in the stash panel.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get stashAll;
+
+  /// Tooltip of the stash panel's All button.
+  ///
+  /// In en, this message translates to:
+  /// **'Show every stash'**
+  String get stashAllTooltip;
+
+  /// Key hint in the stash panel footer: the shortcut saves.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get stashHintSave;
+
+  /// Key hint in the stash panel footer: the shortcut closes the panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get stashHintClose;
+
+  /// Shown briefly in the stash panel after saving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get stashSaved;
+
+  /// Tooltip of the filter button in the stash panel's list.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get stashFilter;
+
+  /// Menu title in the stash panel's list for how the stashes are ordered.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get stashSort;
+
+  /// Sort option: the order the user dragged the stashes in.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom (drag to order)'**
+  String get stashSortManual;
+
+  /// Sort option: the last edited stash first.
+  ///
+  /// In en, this message translates to:
+  /// **'Last edited'**
+  String get stashSortUpdated;
+
+  /// Sort option: the last created stash first.
+  ///
+  /// In en, this message translates to:
+  /// **'Last created'**
+  String get stashSortCreated;
+
+  /// Sort option: by stash number, highest first.
+  ///
+  /// In en, this message translates to:
+  /// **'Number'**
+  String get stashSortNumber;
+
+  /// Context menu item of a stash in the panel's list: opens it in the panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get stashOpen;
+
+  /// What is dragged in the stash panel's list, when it is several stashes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} stashes'**
+  String stashCount(int count);
+
+  /// Tooltip of the stash editor selection toolbar button that opens the less used formats.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get stashFormatMore;
 }
 
 class _AppLocalizationsDelegate

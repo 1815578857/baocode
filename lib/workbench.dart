@@ -92,6 +92,8 @@ import 'remote/remote_status.dart';
 import 'remote/ssh_host.dart';
 import 'remote/ssh_password_dialog.dart';
 import 'remote/ssh_passwords.dart';
+import 'stash/stash_controller.dart';
+import 'stash/stash_view.dart';
 import 'workspace/chat_drag.dart';
 import 'workspace/chat_grid_view.dart';
 import 'workspace/chat_terminal.dart';
@@ -469,6 +471,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     widget.window?.attach(this);
     _windows?.addListener(_windowsChanged);
     if (_main) {
+      // A conversation's "Source: Stash #12" shows it here.
+      StashController.current?.showPage = _showStash;
       OpenRequests.listen((paths) => unawaited(_openPaths(paths)));
       _workspace.addListener(_syncRecentMenu);
       _syncRecentMenu();
@@ -610,6 +614,10 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   void dispose() {
     if (SshHosts.instance.passwords.ask == _askSshPassword) {
       SshHosts.instance.passwords.ask = null;
+    }
+    if (StashController.current case final stash?
+        when stash.showPage == _showStash) {
+      stash.showPage = null;
     }
     _terminals
       ?..removeListener(_terminalsChanged)
@@ -781,6 +789,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       ChatCommandIds.searchAgents: _searchAgents,
       ChatCommandIds.search: () => unawaited(_openPalette()),
       if (widget.customizations != null) _customizeCommand: _showCustomize,
+      if (StashController.current != null) _stashCommand: _showStash,
       if (current != null) ...{
         ChatCommandIds.openIde: () => _workspace.openInIde(current),
         ..._sidePanelCommands(),
@@ -976,12 +985,41 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     if (kind != null) _customizeKey.currentState?.show(kind);
     setState(() {
       _customizing = true;
+      _stashing = false;
       if (kind != null) _customizeKind = kind;
     });
   }
 
+  /// The conversations show again, in place of Customize or the stashes.
   void _closeCustomize() {
-    if (_customizing) setState(() => _customizing = false);
+    if (_customizing || _stashing) {
+      setState(() => _customizing = _stashing = false);
+    }
+  }
+
+  // --- The stashes ------------------------------------------------------------
+
+  /// The stashes' page's command, for the palette and the keys.
+  static const _stashCommand = 'baocode.stash.show';
+
+  /// The stashes (docs/stash.md) show in place of the chat.
+  bool _stashing = false;
+  int? _stashShown;
+  final GlobalKey<StashViewState> _stashKey = GlobalKey();
+
+  /// Something shows in place of the conversations.
+  bool get _replacingChat => _customizing || _stashing;
+
+  /// Shows the stashes, [id]'s if given.
+  void _showStash([int? id]) {
+    if (StashController.current == null) return;
+    _closeDrawer();
+    if (id != null) _stashKey.currentState?.show(id);
+    setState(() {
+      _stashing = true;
+      _customizing = false;
+      _stashShown = id;
+    });
   }
 
   bool _paletteOpen = false;
@@ -2417,6 +2455,10 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
           ? null
           : () => _customizing ? _closeCustomize() : _showCustomize(),
       customizing: _customizing,
+      onStash: agent != null || StashController.current == null
+          ? null
+          : () => _stashing ? _closeCustomize() : _showStash(),
+      stashing: _stashing,
       drag: _drag,
     );
   }
@@ -2609,7 +2651,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       WindowControls.drawsHeader &&
       _narrow &&
       !_showsIde &&
-      !_customizing &&
+      !_replacingChat &&
       // An agent's window has its one conversation.
       (_agentWindow ||
           (_workspace.grid.length <= 1 && _workspace.current != null));
@@ -2764,7 +2806,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   Widget _withSidePanel(Widget child) => AgentSidePanelArea(
     panel: _sidePanel,
     // Customize, in place of the conversations, isn't one of theirs.
-    hidden: _sidePanelHidden || _customizing,
+    hidden: _sidePanelHidden || _replacingChat,
     // Just under the conversation's title bar, whose right has the
     // window's buttons on macOS; at the top under Windows' header, already
     // a bar of its own (the title row's right is empty, the rail beside
@@ -2773,7 +2815,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     // Not in a narrow window, where the conversation has no room to spare
     // (the title bar's toggle shows the panel).
     rail: switch (_agentThread ?? _workspace.current) {
-      final thread? when !_narrow && !_customizing && !thread.untouched =>
+      final thread? when !_narrow && !_replacingChat && !thread.untouched =>
         _sidePanelRail(thread),
       _ => null,
     },
@@ -2988,6 +3030,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   };
 
   Widget _buildGrid({required bool showToggle}) {
+    if (_stashing) {
+      if (StashController.current case final stash?) {
+        return _buildStash(stash, showToggle: showToggle);
+      }
+    }
     if (_customizing) {
       if (widget.customizations case final store?) {
         return _buildCustomize(store, showToggle: showToggle);
@@ -3009,6 +3056,29 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
           : AppColors.unfocusedConversationSurface,
       focused: _workspace.current,
       onLinesMoved: _workspace.keepGridLines,
+    );
+  }
+
+  /// The stashes, in place of the conversations, as Customize is.
+  Widget _buildStash(StashController stash, {required bool showToggle}) {
+    final header = WindowControls.drawsHeader;
+    return StashView(
+      key: _stashKey,
+      controller: stash,
+      initial: _stashShown,
+      onClose: _closeCustomize,
+      onOpenAgent: _openAgent,
+      leading: !header && showToggle
+          ? SidebarIconButton(
+              icon: Codicons.layoutSidebarLeftOff,
+              tooltip: context.l10n.windowShowSidebar,
+              command: 'workbench.action.toggleSidebarVisibility',
+              onTap: _toggle,
+            )
+          : null,
+      titleBarInset: !header && showToggle
+          ? AppMetrics.trafficLightsWidth + 8
+          : 12.0,
     );
   }
 
@@ -3223,7 +3293,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   /// the files page, where it is edited (its cursor and selection with
   /// it); on the changes page, whose changes show.
   OpenEditor? _sidePanelEditor(AgentThread thread) {
-    if (!_sidePanel.shown || _sidePanelHidden || _customizing) return null;
+    if (!_sidePanel.shown || _sidePanelHidden || _replacingChat) return null;
     if (!identical(_agentThread ?? _workspace.current, thread)) return null;
     final tabs = _sidePanel.tabsOf(thread.session);
     return switch (tabs.shown) {
@@ -3240,7 +3310,9 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         final tab? => OpenEditor(tab.path),
         null => null,
       },
-      SidePanelSection.terminal || SidePanelSection.plan => null,
+      SidePanelSection.terminal ||
+      SidePanelSection.backlog ||
+      SidePanelSection.plan => null,
     };
   }
 

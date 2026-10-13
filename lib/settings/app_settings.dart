@@ -30,6 +30,7 @@ import 'pages/language_page.dart';
 import 'pages/network_page.dart';
 import 'pages/notifications_page.dart';
 import 'pages/settings_widgets.dart' show SettingsPage;
+import 'pages/stash_page.dart';
 import 'pages/updates_page.dart';
 import 'settings_dialog.dart';
 import 'user_settings.dart';
@@ -152,6 +153,8 @@ class AppSettings {
         };
       case SettingsSection.notifications:
         return NotificationsSettingsPage(settings: files?.settings);
+      case SettingsSection.stash:
+        return StashSettingsPage(settings: files?.settings);
       case SettingsSection.language:
         return LanguageSettingsPage(locale: locale);
       case SettingsSection.keyboard:

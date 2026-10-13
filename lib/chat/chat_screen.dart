@@ -8,6 +8,9 @@ import '../kernel/kernel_types.dart';
 import '../keybindings/chat_keybindings.dart';
 import '../l10n/l10n.dart';
 import '../remote/remote_status.dart' show ClaudeInstallBanner, SshHostBanner;
+import '../stash/stash_actions.dart';
+import '../stash/stash_banner.dart';
+import '../stash/stash_store.dart';
 import '../theme/app_theme.dart';
 import '../workspace/title_bar_double_click.dart';
 import 'agent_view.dart';
@@ -590,6 +593,21 @@ class _ChatScreenState extends State<ChatScreen>
             commands: _commandSuggestions(),
             suggestFiles: _suggestFiles(root),
             sessions: widget.sessions,
+            // The stashes, after the files (see docs/stash.md).
+            stashes: switch (StashStore.current) {
+              final store? => () => stashSuggestions(
+                store,
+                context.l10n.stashHeading,
+              ),
+              null => null,
+            },
+            stash: switch (StashStore.current) {
+              final store? => (id) => switch (store.byId(id)) {
+                final note? => stashReferenceOf(store, note),
+                null => null,
+              },
+              null => null,
+            },
             child: child!,
           ),
         );
@@ -650,6 +668,12 @@ class _ChatScreenState extends State<ChatScreen>
                         minimap: _minimap,
                         onOpenAgent: _openAgent,
                         onSetGoal: _setGoal,
+                      ),
+                      // The stash it carries out, if any (docs/stash.md).
+                      ListenableBuilder(
+                        listenable: _session,
+                        builder: (context, _) =>
+                            StashSourceBanner(session: _session.sessionId),
                       ),
                       ListenableBuilder(
                         listenable: _session,
