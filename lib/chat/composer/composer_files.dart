@@ -45,6 +45,11 @@ class FileDragData {
   final List<ComposerFile> files;
 }
 
+/// Whether a picture a pasted text refers to by its path (`@/…/shot.png`)
+/// goes in as the picture itself: those copied out of a stash (the stashes
+/// set it). Any other stays a tag of its path.
+bool Function(String path) pastedAsPicture = (_) => false;
+
 /// [path] as the composer shows and sends it: from the project's [root]
 /// when it is in the project, else as it is.
 String displayPath(String path, String? root) {
@@ -236,6 +241,53 @@ class PastedText extends AppendedText {
   int get hashCode => Object.hash(number, text);
 }
 
+/// A stash (see lib/stash/), put in the composer by `@` or dragged there:
+/// the message refers to it as `[Stash #12]`, and carries its text after
+/// its own (see [codeAppendix]), so that an agent on any host can read it.
+@immutable
+class StashReference extends AppendedText {
+  const StashReference({required this.id, required this.text, this.title = ''});
+
+  /// Its number.
+  final int id;
+
+  /// What it says, as markdown (its pictures by their absolute paths).
+  final String text;
+
+  /// What the tag shows beside its number; not sent.
+  final String title;
+
+  /// `[Stash #12]`.
+  @override
+  String get reference => '[Stash #$id]';
+
+  @override
+  String get content => text;
+
+  Map<String, Object> toJson() => {'id': id, 'text': text, 'title': title};
+
+  static StashReference fromJson(Map<String, Object?> json) => StashReference(
+    id: json['id'] as int,
+    text: json['text'] as String,
+    title: json['title'] as String? ?? '',
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is StashReference && other.id == id && other.text == text;
+
+  @override
+  int get hashCode => Object.hash(id, text);
+}
+
+/// What is dragged from the stash's page to a composer.
+@immutable
+class StashDragData {
+  const StashDragData(this.references);
+
+  final List<StashReference> references;
+}
+
 /// What the IDE's editor copied last, with where it is from: pasted into the
 /// composer while the clipboard still holds it, it goes in as a reference
 /// to those lines rather than as their text.
@@ -316,6 +368,7 @@ String _fenceFor(String code) {
 
 final _referenceLine = RegExp(r'^\[(.+):(\d+)(?:-(\d+))?\]$');
 final _pastedLine = RegExp(r'^\[Pasted text #(\d+)(?: \+\d+ lines?)?\]$');
+final _stashLine = RegExp(r'^\[Stash #(\d+)\]$');
 
 /// The last block of a [codeAppendix] at the end of [text], and the text
 /// before it; null when it does not end in one.
@@ -334,6 +387,8 @@ final _pastedLine = RegExp(r'^\[Pasted text #(\d+)(?: \+\d+ lines?)?\]$');
     reference = PastedText(number: int.parse(match[1]!), text: content);
     // Its count of lines is the text's own.
     if (reference.reference != header) return null;
+  } else if (_stashLine.firstMatch(header) case final match?) {
+    reference = StashReference(id: int.parse(match[1]!), text: content);
   } else if (_referenceLine.firstMatch(header) case final match?) {
     final start = int.parse(match[2]!);
     reference = CodeReference(

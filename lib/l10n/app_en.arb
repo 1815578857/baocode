@@ -5827,5 +5827,308 @@
     }
   },
   "mobilePairRequestBody": "It found this computer nearby. Allow it only if the phone shows the same code.",
-  "mobilePairAllow": "Allow"
+  "mobilePairAllow": "Allow",
+  "cmdSidePanelBacklog": "Show Project Backlog",
+  "settingsSectionStash": "Stash",
+  "stashTitle": "Stash",
+  "stashHeading": "Stash",
+  "stashBacklog": "Backlog",
+  "stashBacklogEmpty": "No stashes about this project yet. Link one to it, or press + to write one.",
+  "stashNew": "New stash",
+  "stashLinkOpen": "Open link",
+  "stashLinkEdit": "Edit link",
+  "stashDraft": "Draft",
+  "stashCodeChip": "Code",
+  "stashTableChip": "Table",
+  "stashLines": "{count} lines",
+  "@stashLines": {"placeholders": {"count": {"type": "int"}}},
+  "stashNewButton": "New",
+  "stashNewTooltip": "New stash",
+  "stashPlaceholder": "Jot it down…",
+  "stashHintNew": "New",
+  "stashProjectTooltip": "Project it is about",
+  "stashNoProject": "No project",
+  "stashFormatBold": "Bold",
+  "stashFormatItalic": "Italic",
+  "stashFormatStrike": "Strikethrough",
+  "stashFormatUnderline": "Underline",
+  "stashFormatCode": "Code",
+  "stashFormatLink": "Link",
+  "stashFormatColor": "Text and background color",
+  "stashFormatHeading1": "Heading 1",
+  "stashFormatHeading2": "Heading 2",
+  "stashFormatHeading3": "Heading 3",
+  "stashFormatBullets": "Bulleted list",
+  "stashFormatNumbers": "Numbered list",
+  "stashFormatTasks": "Task list",
+  "stashFormatQuote": "Quote",
+  "stashFormatCodeBlock": "Code block",
+  "@stashFormatCodeBlock": {
+    "description": "Selection bar menu: makes the lines a code block, typed in in place."
+  },
+  "stashFormatClear": "Clear formatting",
+  "stashPolish": "Polish",
+  "stashPolishing": "Polishing…",
+  "stashPolishHint": "Has AI make the selection clearer, in your words, without adding structure",
+  "stashLinkTitle": "Link",
+  "stashRemove": "Remove",
+  "stashEdit": "Edit",
+  "stashFormulaTitle": "Formula (TeX)",
+  "stashTableTitle": "Table (Markdown)",
+  "stashCodeTitle": "Code block",
+  "stashBigFileTitle": "“{name}” is over 200 MB",
+  "@stashBigFileTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "stashBigFileDetail": "Link to it where it is, or copy it into the stash anyway?",
+  "stashBigFileLink": "Link",
+  "stashBigFileCopy": "Copy",
+  "stashSearchPlaceholder": "Search stashes, and the text in their pictures",
+  "stashAiSearch": "AI search",
+  "stashAiSearchHint": "Finds stashes by what they mean, not only their words. Asks the model: it costs.",
+  "stashAiResults": "{count, plural, =0{AI found nothing} =1{AI found 1} other{AI found {count}}}",
+  "@stashAiResults": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stashAiClear": "Clear",
+  "stashFilterAnyTime": "Any time",
+  "stashFilterAnyProject": "Any project",
+  "stashFilterAnyStatus": "Any status",
+  "stashFilterOpen": "Not done",
+  "stashGroupPinned": "Pinned",
+  "stashGroupToday": "Today",
+  "stashGroupYesterday": "Yesterday",
+  "stashGroupWeek": "Past 7 days",
+  "stashGroupMonth": "Past 30 days",
+  "stashGroupEarlier": "Earlier",
+  "stashGroupDone": "Done",
+  "stashStatus": "Status",
+  "stashStatusCollected": "Collected",
+  "stashStatusRequirement": "Requirement",
+  "stashStatusImplementing": "Implementing",
+  "stashStatusDone": "Done",
+  "stashEmpty": "Nothing stashed yet.\nPress {hotkey} in any app to jot something down.",
+  "@stashEmpty": {
+    "placeholders": {
+      "hotkey": {
+        "type": "String"
+      }
+    }
+  },
+  "stashNoMatch": "No stash matches.",
+  "stashPin": "Pin",
+  "stashUnpin": "Unpin",
+  "stashOpenInPanel": "Open in Floating Panel",
+  "stashLinkProject": "Link to Project",
+  "stashMerge": "Merge",
+  "stashMergeTitle": "Merge {stashes}?",
+  "@stashMergeTitle": {
+    "placeholders": {
+      "stashes": {
+        "type": "String"
+      }
+    }
+  },
+  "stashMergeDetail": "Their text goes into {target}, one after another; the others go, their numbers leading to it.",
+  "@stashMergeDetail": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "stashMergeSuggestion": "{stashes} look like the same thing.",
+  "@stashMergeSuggestion": {
+    "placeholders": {
+      "stashes": {
+        "type": "String"
+      }
+    }
+  },
+  "stashDismiss": "Dismiss",
+  "stashReveal": "Show in Finder",
+  "stashDelete": "Delete",
+  "stashDeleteOne": "Delete {stash}?",
+  "@stashDeleteOne": {
+    "placeholders": {
+      "stash": {
+        "type": "String"
+      }
+    }
+  },
+  "stashDeleteMany": "Delete {count} stashes?",
+  "@stashDeleteMany": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stashDeleteDetail": "Their pictures and files go with them. This cannot be undone.",
+  "stashPicked": "{count} selected",
+  "@stashPicked": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stashMarkDone": "Mark Done",
+  "stashReopen": "Reopen",
+  "stashClearPicked": "Clear selection",
+  "stashClose": "Close Stash",
+  "stashCloseDetail": "Close",
+  "stashMore": "More",
+  "stashSplit": "Split",
+  "stashSplitHow": "Put the cursor where to cut it, or separate the parts with a line of ---.",
+  "stashSplitTitle": "Split {stash} into {count}?",
+  "@stashSplitTitle": {
+    "placeholders": {
+      "stash": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stashExpand": "Expand to Requirement",
+  "stashExpandAgain": "Rewrite Requirement",
+  "stashExpandHint": "AI writes a requirement from it, under “## 需求”; what you wrote stays as it is",
+  "stashExpandFailed": "The requirement could not be written. Is Claude Code signed in?",
+  "stashImplement": "Implement in BaoCode",
+  "stashImplementHow": "How should the agent work on it?",
+  "stashImplementHowDetail": "In a new git worktree (a branch of its own, your working copy untouched), or directly in the project as it is.",
+  "stashImplementWorktree": "New Worktree",
+  "stashImplementDirect": "Directly",
+  "stashImplementStarter": "Please implement what {stash} asks for.",
+  "@stashImplementStarter": {
+    "placeholders": {
+      "stash": {
+        "type": "String"
+      }
+    }
+  },
+  "stashImplementInWorktree": "First create a new git worktree on a new branch for this work and do it there; tell me the branch when done.",
+  "stashImplementInPlace": "Work directly in this project, on the current branch.",
+  "stashImplementComplete": "When it is finished, mark it done with the stash_complete tool (id {id}).",
+  "@stashImplementComplete": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "stashThreadStarting": "A conversation is ready for it; send its message to start.",
+  "stashThreadLinked": "Implemented in conversation “{title}”",
+  "@stashThreadLinked": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "stashOpenThread": "Open",
+  "stashProjectSuggestion": "AI thinks this is about {project}.",
+  "@stashProjectSuggestion": {
+    "placeholders": {
+      "project": {
+        "type": "String"
+      }
+    }
+  },
+  "stashLinkIt": "Link",
+  "stashSourceBanner": "Source: Stash {stash} · {title}",
+  "@stashSourceBanner": {
+    "placeholders": {
+      "stash": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "stashSettingsDescription": "A note jotted down from any app, in a floating panel, to turn into work later.",
+  "stashSettingsHotkey": "Shortcut",
+  "stashSettingsHotkeyCurrent": "{hotkey} shows the panel from any app.",
+  "@stashSettingsHotkeyCurrent": {
+    "placeholders": {
+      "hotkey": {
+        "type": "String"
+      }
+    }
+  },
+  "stashSettingsHotkeyNone": "No shortcut: the panel only shows from the Stash page.",
+  "stashSettingsHotkeyTaken": "Another app holds this shortcut; pick another.",
+  "stashSettingsHotkeyHelp": "As ctrl+shift+space, cmd+alt+n…; empty for none.",
+  "stashSettingsDirectory": "Location",
+  "stashSettingsDirectoryChange": "Change…",
+  "stashSettingsDirectoryReset": "Default",
+  "stashSettingsDirectoryRestart": "Takes effect after BaoCode restarts.",
+  "stashAll": "All",
+  "@stashAll": {
+    "description": "Opens the list of every stash beside the one written in, in the stash panel."
+  },
+  "stashAllTooltip": "Show every stash",
+  "@stashAllTooltip": {
+    "description": "Tooltip of the stash panel's All button."
+  },
+  "stashHintSave": "Save",
+  "@stashHintSave": {
+    "description": "Key hint in the stash panel footer: the shortcut saves."
+  },
+  "stashHintClose": "Close",
+  "@stashHintClose": {
+    "description": "Key hint in the stash panel footer: the shortcut closes the panel."
+  },
+  "stashSaved": "Saved",
+  "@stashSaved": {
+    "description": "Shown briefly in the stash panel after saving."
+  },
+  "stashFilter": "Filter",
+  "@stashFilter": {
+    "description": "Tooltip of the filter button in the stash panel's list."
+  },
+  "stashSort": "Sort",
+  "@stashSort": {
+    "description": "Menu title in the stash panel's list for how the stashes are ordered."
+  },
+  "stashSortManual": "Custom (drag to order)",
+  "@stashSortManual": {
+    "description": "Sort option: the order the user dragged the stashes in."
+  },
+  "stashSortUpdated": "Last edited",
+  "@stashSortUpdated": {
+    "description": "Sort option: the last edited stash first."
+  },
+  "stashSortCreated": "Last created",
+  "@stashSortCreated": {
+    "description": "Sort option: the last created stash first."
+  },
+  "stashSortNumber": "Number",
+  "@stashSortNumber": {
+    "description": "Sort option: by stash number, highest first."
+  },
+  "stashOpen": "Open",
+  "@stashOpen": {
+    "description": "Context menu item of a stash in the panel's list: opens it in the panel."
+  },
+  "stashCount": "{count} stashes",
+  "@stashCount": {
+    "description": "What is dragged in the stash panel's list, when it is several stashes.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "stashFormatMore": "More",
+  "@stashFormatMore": {
+    "description": "Tooltip of the stash editor selection toolbar button that opens the less used formats."
+  }
 }

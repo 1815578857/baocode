@@ -60,9 +60,14 @@ class ClaudeLaunch {
     this.directories = const [],
     this.instructions,
     this.models = const [],
+    this.sdkServers = const [],
   });
 
   final String cwd;
+
+  /// The app's own MCP servers (see claude_sdk_tools.dart), their tools
+  /// allowed without asking: they only do what the app does.
+  final List<String> sdkServers;
 
   /// Folders it works in besides [cwd] (a multi-folder workspace's): each
   /// an `--add-dir`, their `CLAUDE.md` read as [cwd]'s is.
@@ -222,6 +227,16 @@ class ClaudeLaunch {
       jsonEncode(settings),
     ],
     if (!persist) '--no-session-persistence',
+    if (sdkServers.isNotEmpty) ...[
+      '--mcp-config',
+      jsonEncode({
+        'mcpServers': {
+          for (final name in sdkServers) name: {'type': 'sdk', 'name': name},
+        },
+      }),
+      '--allowedTools',
+      sdkServers.map((name) => 'mcp__$name').join(','),
+    ],
     '--append-system-prompt',
     switch (instructions) {
       final instructions? when instructions.isNotEmpty =>

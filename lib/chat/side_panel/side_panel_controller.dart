@@ -49,8 +49,9 @@ class SidePanelTab {
 
 /// The side panel's pages, each a list at the left and the tabs it opened
 /// at the right: the project's files, the agent's changes, its background
-/// commands; and the plan the agent wrote, alone, while there is one.
-enum SidePanelSection { files, changes, terminal, plan }
+/// commands, the project's backlog of stashes; and the plan the agent
+/// wrote, alone, while there is one.
+enum SidePanelSection { files, changes, terminal, backlog, plan }
 
 /// The pages there whether or not there is anything on them: not the
 /// plan's, there only once the agent wrote one.
@@ -58,6 +59,7 @@ const alwaysShownSections = [
   SidePanelSection.files,
   SidePanelSection.changes,
   SidePanelSection.terminal,
+  SidePanelSection.backlog,
 ];
 
 /// Each conversation keeps its page, and the tabs open on each.
@@ -90,7 +92,7 @@ class SidePanelTabs {
   SidePanelTab? get current => switch (section) {
     SidePanelSection.files => active,
     SidePanelSection.changes => activeDiff,
-    SidePanelSection.terminal => null,
+    SidePanelSection.terminal || SidePanelSection.backlog => null,
     SidePanelSection.plan => plan,
   };
 }
@@ -455,6 +457,8 @@ class AgentSidePanel extends ChangeNotifier {
         if (tabs.terminal case final id?) {
           return closeTerminal(conversation, id);
         }
+      case SidePanelSection.backlog:
+        break;
     }
     hide();
   }

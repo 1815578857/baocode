@@ -7554,4 +7554,464 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mobilePairAllow => '允许';
+
+  @override
+  String get cmdSidePanelBacklog => '显示项目 Backlog';
+
+  @override
+  String get settingsSectionStash => 'Stash';
+
+  @override
+  String get stashTitle => 'Stash';
+
+  @override
+  String get stashHeading => 'Stash';
+
+  @override
+  String get stashBacklog => 'Backlog';
+
+  @override
+  String get stashBacklogEmpty => '这个项目还没有 Stash。把便签关联到它，或者点 + 新写一条。';
+
+  @override
+  String get stashNew => '新便签';
+
+  @override
+  String get stashLinkOpen => '打开链接';
+
+  @override
+  String get stashLinkEdit => '编辑链接';
+
+  @override
+  String get stashDraft => '草稿';
+
+  @override
+  String get stashCodeChip => '代码';
+
+  @override
+  String get stashTableChip => '表格';
+
+  @override
+  String stashLines(int count) {
+    return '$count 行';
+  }
+
+  @override
+  String get stashNewButton => '新建';
+
+  @override
+  String get stashNewTooltip => '新建便签';
+
+  @override
+  String get stashPlaceholder => '随手记下…';
+
+  @override
+  String get stashHintNew => '新建';
+
+  @override
+  String get stashProjectTooltip => '关联的项目';
+
+  @override
+  String get stashNoProject => '无项目';
+
+  @override
+  String get stashFormatBold => '粗体';
+
+  @override
+  String get stashFormatItalic => '斜体';
+
+  @override
+  String get stashFormatStrike => '删除线';
+
+  @override
+  String get stashFormatUnderline => '下划线';
+
+  @override
+  String get stashFormatCode => '代码';
+
+  @override
+  String get stashFormatLink => '链接';
+
+  @override
+  String get stashFormatColor => '文字颜色与背景色';
+
+  @override
+  String get stashFormatHeading1 => '一级标题';
+
+  @override
+  String get stashFormatHeading2 => '二级标题';
+
+  @override
+  String get stashFormatHeading3 => '三级标题';
+
+  @override
+  String get stashFormatBullets => '无序列表';
+
+  @override
+  String get stashFormatNumbers => '有序列表';
+
+  @override
+  String get stashFormatTasks => '任务列表';
+
+  @override
+  String get stashFormatQuote => '引用';
+
+  @override
+  String get stashFormatCodeBlock => '代码块';
+
+  @override
+  String get stashFormatClear => '清除格式';
+
+  @override
+  String get stashPolish => '润色';
+
+  @override
+  String get stashPolishing => '润色中…';
+
+  @override
+  String get stashPolishHint => '让 AI 把选中的文字理顺，保持你的原意，不加结构';
+
+  @override
+  String get stashLinkTitle => '链接';
+
+  @override
+  String get stashRemove => '移除';
+
+  @override
+  String get stashEdit => '编辑';
+
+  @override
+  String get stashFormulaTitle => '公式（TeX）';
+
+  @override
+  String get stashTableTitle => '表格（Markdown）';
+
+  @override
+  String get stashCodeTitle => '代码块';
+
+  @override
+  String stashBigFileTitle(String name) {
+    return '“$name”超过 200 MB';
+  }
+
+  @override
+  String get stashBigFileDetail => '只链接到它所在的位置，还是仍然复制进便签？';
+
+  @override
+  String get stashBigFileLink => '只链接';
+
+  @override
+  String get stashBigFileCopy => '复制';
+
+  @override
+  String get stashSearchPlaceholder => '搜索便签（包括图片里的文字）';
+
+  @override
+  String get stashAiSearch => 'AI 搜索';
+
+  @override
+  String get stashAiSearchHint => '按意思而不只是字面去找。会调用模型，这个要花钱。';
+
+  @override
+  String stashAiResults(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'AI 找到 $count 条',
+      zero: 'AI 没找到',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stashAiClear => '清除';
+
+  @override
+  String get stashFilterAnyTime => '任何时间';
+
+  @override
+  String get stashFilterAnyProject => '所有项目';
+
+  @override
+  String get stashFilterAnyStatus => '所有状态';
+
+  @override
+  String get stashFilterOpen => '未完成';
+
+  @override
+  String get stashGroupPinned => '置顶';
+
+  @override
+  String get stashGroupToday => '今天';
+
+  @override
+  String get stashGroupYesterday => '昨天';
+
+  @override
+  String get stashGroupWeek => '过去 7 天';
+
+  @override
+  String get stashGroupMonth => '过去 30 天';
+
+  @override
+  String get stashGroupEarlier => '更早';
+
+  @override
+  String get stashGroupDone => '已完成';
+
+  @override
+  String get stashStatus => '状态';
+
+  @override
+  String get stashStatusCollected => '收集';
+
+  @override
+  String get stashStatusRequirement => '已成需求';
+
+  @override
+  String get stashStatusImplementing => '实施中';
+
+  @override
+  String get stashStatusDone => '已完成';
+
+  @override
+  String stashEmpty(String hotkey) {
+    return '还没有便签。\n在任何应用里按 $hotkey 随手记一条。';
+  }
+
+  @override
+  String get stashNoMatch => '没有匹配的便签。';
+
+  @override
+  String get stashPin => '置顶';
+
+  @override
+  String get stashUnpin => '取消置顶';
+
+  @override
+  String get stashOpenInPanel => '在浮动面板中打开';
+
+  @override
+  String get stashLinkProject => '关联项目';
+
+  @override
+  String get stashMerge => '合并';
+
+  @override
+  String stashMergeTitle(String stashes) {
+    return '合并 $stashes？';
+  }
+
+  @override
+  String stashMergeDetail(String target) {
+    return '它们的内容会依次并入 $target，其余几条删除，编号会指向它。';
+  }
+
+  @override
+  String stashMergeSuggestion(String stashes) {
+    return '$stashes 看起来是同一件事。';
+  }
+
+  @override
+  String get stashDismiss => '忽略';
+
+  @override
+  String get stashReveal => '在访达中显示';
+
+  @override
+  String get stashDelete => '删除';
+
+  @override
+  String stashDeleteOne(String stash) {
+    return '删除 $stash？';
+  }
+
+  @override
+  String stashDeleteMany(int count) {
+    return '删除 $count 条便签？';
+  }
+
+  @override
+  String get stashDeleteDetail => '它们的图片和文件也会一并删除，无法撤销。';
+
+  @override
+  String stashPicked(int count) {
+    return '已选 $count 条';
+  }
+
+  @override
+  String get stashMarkDone => '标为已完成';
+
+  @override
+  String get stashReopen => '恢复未完成';
+
+  @override
+  String get stashClearPicked => '取消选择';
+
+  @override
+  String get stashClose => '关闭 Stash';
+
+  @override
+  String get stashCloseDetail => '关闭';
+
+  @override
+  String get stashMore => '更多';
+
+  @override
+  String get stashSplit => '拆分';
+
+  @override
+  String get stashSplitHow => '把光标放在要切开的位置，或者用一行 --- 隔开各部分。';
+
+  @override
+  String stashSplitTitle(String stash, int count) {
+    return '把 $stash 拆成 $count 条？';
+  }
+
+  @override
+  String get stashExpand => '展开为需求';
+
+  @override
+  String get stashExpandAgain => '重写需求';
+
+  @override
+  String get stashExpandHint => 'AI 根据内容写一份需求，追加在“## 需求”下，原文保留';
+
+  @override
+  String get stashExpandFailed => '没能写出需求。Claude Code 登录了吗？';
+
+  @override
+  String get stashImplement => '在 BaoCode 中实施';
+
+  @override
+  String get stashImplementHow => '让 agent 怎样开发？';
+
+  @override
+  String get stashImplementHowDetail =>
+      '在新的 git worktree 里（独立分支，不动你当前的工作区），还是直接在项目当前分支上。';
+
+  @override
+  String get stashImplementWorktree => '新建 worktree';
+
+  @override
+  String get stashImplementDirect => '直接开发';
+
+  @override
+  String stashImplementStarter(String stash) {
+    return '请实现 $stash 中的需求。';
+  }
+
+  @override
+  String get stashImplementInWorktree =>
+      '先为这项工作新建一个 git worktree（新分支），在其中开发，完成后告诉我分支名。';
+
+  @override
+  String get stashImplementInPlace => '直接在当前项目、当前分支上开发。';
+
+  @override
+  String stashImplementComplete(int id) {
+    return '全部完成后，用 stash_complete 工具把它标记为已完成（id $id）。';
+  }
+
+  @override
+  String get stashThreadStarting => '已为它开好对话，发送消息后开始实施。';
+
+  @override
+  String stashThreadLinked(String title) {
+    return '已在对话“$title”中实施';
+  }
+
+  @override
+  String get stashOpenThread => '打开';
+
+  @override
+  String stashProjectSuggestion(String project) {
+    return 'AI 觉得这条和 $project 有关。';
+  }
+
+  @override
+  String get stashLinkIt => '关联';
+
+  @override
+  String stashSourceBanner(String stash, String title) {
+    return '来源：Stash $stash · $title';
+  }
+
+  @override
+  String get stashSettingsDescription =>
+      '在任何应用里随手记下的便签，浮动面板呼出，之后可以变成需求交给 agent。';
+
+  @override
+  String get stashSettingsHotkey => '快捷键';
+
+  @override
+  String stashSettingsHotkeyCurrent(String hotkey) {
+    return '在任何应用里按 $hotkey 呼出面板。';
+  }
+
+  @override
+  String get stashSettingsHotkeyNone => '没有快捷键：只能从 Stash 页打开面板。';
+
+  @override
+  String get stashSettingsHotkeyTaken => '这个快捷键被其他应用占用了，请换一个。';
+
+  @override
+  String get stashSettingsHotkeyHelp =>
+      '写法如 ctrl+shift+space、cmd+alt+n；留空表示不用。';
+
+  @override
+  String get stashSettingsDirectory => '存放位置';
+
+  @override
+  String get stashSettingsDirectoryChange => '更改…';
+
+  @override
+  String get stashSettingsDirectoryReset => '恢复默认';
+
+  @override
+  String get stashSettingsDirectoryRestart => '重启 BaoCode 后生效。';
+
+  @override
+  String get stashAll => '所有';
+
+  @override
+  String get stashAllTooltip => '显示所有便签';
+
+  @override
+  String get stashHintSave => '保存';
+
+  @override
+  String get stashHintClose => '关闭';
+
+  @override
+  String get stashSaved => '已保存';
+
+  @override
+  String get stashFilter => '过滤';
+
+  @override
+  String get stashSort => '排序';
+
+  @override
+  String get stashSortManual => '自定义（拖动排序）';
+
+  @override
+  String get stashSortUpdated => '最近编辑';
+
+  @override
+  String get stashSortCreated => '最近创建';
+
+  @override
+  String get stashSortNumber => '编号';
+
+  @override
+  String get stashOpen => '打开';
+
+  @override
+  String stashCount(int count) {
+    return '$count 条便签';
+  }
+
+  @override
+  String get stashFormatMore => '更多';
 }

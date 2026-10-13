@@ -141,6 +141,8 @@ class Sidebar extends StatefulWidget {
     this.onSearch,
     this.onCustomize,
     this.customizing = false,
+    this.onStash,
+    this.stashing = false,
     this.drag,
     this.link,
     this.current,
@@ -209,6 +211,13 @@ class Sidebar extends StatefulWidget {
 
   /// They show: the Customize row is selected.
   final bool customizing;
+
+  /// Shows the stashes in place of the chat (docs/stash.md); no Stash row
+  /// without it.
+  final VoidCallback? onStash;
+
+  /// They show: the Stash row is selected.
+  final bool stashing;
 
   /// An agent was opened or created from here (the drawer closes).
   final VoidCallback? onOpened;
@@ -546,7 +555,16 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
                 selected: widget.customizing,
                 onTap: customize,
               ),
-            if (widget.onSearch != null || widget.onCustomize != null)
+            if (widget.onStash case final stash?)
+              _NavRow(
+                icon: Codicons.note,
+                label: context.l10n.stashTitle,
+                selected: widget.stashing,
+                onTap: stash,
+              ),
+            if (widget.onSearch != null ||
+                widget.onCustomize != null ||
+                widget.onStash != null)
               const SizedBox(height: 4),
             _buildGroupingBar(),
             Expanded(child: _buildList()),

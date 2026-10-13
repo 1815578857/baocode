@@ -71,6 +71,9 @@ abstract final class ChatCommandIds {
   static const sidePanelFiles = 'baocode.chat.sidePanel.files';
   static const sidePanelTerminal = 'baocode.chat.sidePanel.terminal';
 
+  /// The project's backlog: its stashes not done (docs/stash.md).
+  static const sidePanelBacklog = 'baocode.chat.sidePanel.backlog';
+
   /// Closes the side panel's tab in front, on its page shown; hides the
   /// panel where the page has none.
   static const sidePanelCloseTab = 'baocode.chat.sidePanel.closeTab';
@@ -190,6 +193,7 @@ final List<CommandInfo> chatExtraCommands = [
     (ChatCommandIds.sidePanelChanges, 'Show Agent Changes'),
     (ChatCommandIds.sidePanelFiles, 'Show Agent Files'),
     (ChatCommandIds.sidePanelTerminal, 'Show Agent Terminals'),
+    (ChatCommandIds.sidePanelBacklog, 'Show Project Backlog'),
     (ChatCommandIds.sidePanelCloseTab, 'Close Side Panel Tab'),
     (ChatCommandIds.closeTab, 'Close Chat'),
     (ChatCommandIds.focusInput, 'Focus Chat Input'),

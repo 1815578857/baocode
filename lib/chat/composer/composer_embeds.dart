@@ -8,6 +8,7 @@ import 'package:flutter_quill/quill_delta.dart';
 import '../../kernel/kernel_types.dart' show FileSuggestion;
 import '../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/codicons.dart';
 import '../../theme/material_file_icons.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
 import '../chat_models.dart';
@@ -142,6 +143,23 @@ class ComposerPastedTextEmbed {
   static String plainText(Object? data) => decode(data).reference;
 }
 
+/// Inline, atomic reference to a stash: the message's text says
+/// `[Stash #12]`, and the stash's text goes after it (see
+/// [StashReference], [codeAppendix]).
+class ComposerStashEmbed {
+  static const type = 'composer-stash';
+
+  static Embeddable of(StashReference stash) =>
+      Embeddable(type, jsonEncode(stash.toJson()));
+
+  static StashReference decode(Object? data) => StashReference.fromJson(
+    jsonDecode(data as String) as Map<String, Object?>,
+  );
+
+  /// Text it contributes to the sent message and to plain-text copies.
+  static String plainText(Object? data) => decode(data).reference;
+}
+
 /// Where what is dragged over the composer would go, released: the tags it
 /// would put in, faint. Never sent; only there while the drag is.
 class ComposerGhostEmbed {
@@ -200,10 +218,19 @@ class ComposerVocabulary extends InheritedWidget {
     required this.commands,
     this.suggestFiles,
     this.sessions,
+    this.stashes,
+    this.stash,
     required super.child,
   });
 
   final List<Suggestion> commands;
+
+  /// The stashes `@` offers ([Suggestion.stash]s), listed after the files;
+  /// none without it.
+  final List<Suggestion> Function()? stashes;
+
+  /// The stash numbered so, to put in; null when it is gone.
+  final StashReference? Function(int id)? stash;
 
   /// Files and folders matching what follows an `@` (see [fileSuggestion]);
   /// null when there is no looking.
@@ -231,6 +258,7 @@ class ComposerVocabulary extends InheritedWidget {
   bool updateShouldNotify(ComposerVocabulary oldWidget) =>
       !identical(commands, oldWidget.commands) ||
       (sessions == null) != (oldWidget.sessions == null) ||
+      (stashes == null) != (oldWidget.stashes == null) ||
       (suggestFiles == null) != (oldWidget.suggestFiles == null);
 }
 
@@ -317,6 +345,7 @@ Delta composerDeltaFromPaste(
           delta.insert(switch (reference) {
             CodeReference() => ComposerCodeEmbed.of(reference).toJson(),
             PastedText() => ComposerPastedTextEmbed.of(reference).toJson(),
+            StashReference() => ComposerStashEmbed.of(reference).toJson(),
           });
           i = close + 1;
           continue;
@@ -451,6 +480,11 @@ class ComposerTokenChip extends StatelessWidget {
                 ],
               ),
               SuggestionKind.file => FileLabel(token.label, fontSize: 12),
+              // Stashes have tags of their own ([ComposerStashChip]).
+              SuggestionKind.stash => Text(
+                token.label,
+                style: TextStyle(color: AppColors.text, fontSize: 12),
+              ),
               SuggestionKind.session => Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -770,6 +804,114 @@ class ComposerPastedTextChip extends StatelessWidget {
       text: pasted.reference,
       child: HoverTooltip(
         content: (context) => _TextPreview(label: name, text: pasted.text),
+        child: tag,
+      ),
+    );
+  }
+}
+
+class ComposerStashEmbedBuilder extends EmbedBuilder {
+  const ComposerStashEmbedBuilder();
+
+  @override
+  String get key => ComposerStashEmbed.type;
+
+  @override
+  bool get expanded => false;
+
+  // As a token's (see [ComposerTokenEmbedBuilder]).
+  @override
+  WidgetSpan buildWidgetSpan(Widget widget) => WidgetSpan(
+    alignment: PlaceholderAlignment.baseline,
+    baseline: TextBaseline.alphabetic,
+    child: widget,
+  );
+
+  @override
+  String toPlainText(Embed node) =>
+      ComposerStashEmbed.plainText(node.value.data);
+
+  @override
+  Widget build(BuildContext context, EmbedContext embedContext) =>
+      ComposerStashChip(
+        data: embedContext.node.value.data,
+        textStyle: embedContext.textStyle,
+      );
+}
+
+/// The inline tag for a stash ([ComposerStashEmbed] data), centered on
+/// text of [textStyle]: its number and title, its text on hover. In the
+/// composer and in sent messages alike.
+class ComposerStashChip extends StatelessWidget {
+  const ComposerStashChip({
+    super.key,
+    required this.data,
+    required this.textStyle,
+  });
+
+  final Object? data;
+  final TextStyle textStyle;
+
+  /// [ComposerStashChip] as a span for rich text of [textStyle].
+  static InlineSpan span(Object? data, TextStyle textStyle) => WidgetSpan(
+    alignment: PlaceholderAlignment.baseline,
+    baseline: TextBaseline.alphabetic,
+    child: ComposerStashChip(data: data, textStyle: textStyle),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final stash = ComposerStashEmbed.decode(data);
+    final name = 'Stash #${stash.id}';
+    final title = stash.title.trim();
+    final tag = _CenteredOnText(
+      textStyle: textStyle,
+      child: DefaultTextStyle.merge(
+        style: const TextStyle(
+          height: 1.25,
+          leadingDistribution: TextLeadingDistribution.even,
+        ),
+        child: SelectionContainer.disabled(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 1),
+            padding: const EdgeInsets.fromLTRB(4, 1, 5, 1),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: themeColors['chat.requestBorder']),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Codicons.note, size: 13, color: AppColors.textMuted),
+                const SizedBox(width: 4),
+                Text(
+                  name,
+                  style: TextStyle(color: AppColors.text, fontSize: 12),
+                ),
+                if (title.isNotEmpty)
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 220),
+                    child: Text(
+                      ' $title',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    return _SelectableToken(
+      text: stash.reference,
+      child: HoverTooltip(
+        content: (context) => _TextPreview(
+          label: title.isEmpty ? name : '$name · $title',
+          text: stash.text,
+        ),
         child: tag,
       ),
     );
