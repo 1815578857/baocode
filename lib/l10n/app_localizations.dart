@@ -13956,8 +13956,56 @@ abstract class AppLocalizations {
   /// No description provided for @stashSettingsHotkeyHelp.
   ///
   /// In en, this message translates to:
-  /// **'As ctrl+shift+space, cmd+alt+n…; empty for none.'**
+  /// **'Click, then press the new keys; Escape keeps it, Delete clears it.'**
   String get stashSettingsHotkeyHelp;
+
+  /// No description provided for @stashHotkeyPress.
+  ///
+  /// In en, this message translates to:
+  /// **'Press the keys…'**
+  String get stashHotkeyPress;
+
+  /// No description provided for @stashHotkeyRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs a modifier with a letter, digit or common key'**
+  String get stashHotkeyRefused;
+
+  /// No description provided for @stashHotkeyNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get stashHotkeyNone;
+
+  /// No description provided for @stashHotkeyClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get stashHotkeyClear;
+
+  /// No description provided for @stashHotkeyDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get stashHotkeyDefault;
+
+  /// No description provided for @stashHotkeyGlobal.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the Stash panel'**
+  String get stashHotkeyGlobal;
+
+  /// No description provided for @stashHotkeyGlobalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A global shortcut: works from any app.'**
+  String get stashHotkeyGlobalHint;
+
+  /// No description provided for @stashHotkeyTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'The panel\'s shortcut; click to change'**
+  String get stashHotkeyTooltip;
 
   /// No description provided for @stashSettingsDirectory.
   ///

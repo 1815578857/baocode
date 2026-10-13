@@ -198,80 +198,66 @@ class _StashPanelViewState extends State<StashPanelView> {
     );
     // The theme's colors as they are, not over the system's material: under
     // a panel that is the main window, blurred, which no part of the app
-    // looks like. The window's own corners and frame on Windows (the
-    // system's).
-    final radius = mac ? BorderRadius.circular(12) : BorderRadius.zero;
+    // looks like. The window's own corners and edge, as the main window's
+    // (the system's).
     // Its dialogs and menus come in lively, not as the IDE's.
     return IdeMotion(
       lively: true,
       child: Focus(
         focusNode: _focus,
         onKeyEvent: _key,
-        child: Container(
-          foregroundDecoration: mac
-              ? BoxDecoration(
-                  borderRadius: radius,
-                  border: Border.all(color: AppColors.partBorder),
-                )
-              : null,
-          child: ClipRRect(
-            borderRadius: radius,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final narrow = constraints.maxWidth < _narrow;
-                final showAll = _controller.showAll;
-                Widget all() => _AllStashes(
-                  controller: _controller,
-                  focusNode: _listFocus,
-                  onPick: (id) => unawaited(_controller.edit(id)),
-                  onEdit: () => _editor.currentState?.focusEnd(),
-                  flush: _flush,
-                );
-                final main = ColoredBox(
-                  color: AppColors.code,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _TopBar(
-                        viewId: widget.viewId,
-                        note: note,
-                        showAll: showAll,
-                        onAll: narrow
-                            ? null
-                            : () => _controller.showAll = !showAll,
-                        onNew: _new,
-                        onClose: _close,
-                        projectLabel: _projectLabel(note),
-                        onProject: _pickProject,
-                        headline: note == null
-                            ? ''
-                            : _controller.store.headline(note),
-                      ),
-                      Expanded(child: editor),
-                      _Footer(
-                        status: _saved ? l10n.stashSaved : null,
-                        hints: [
-                          (mac ? '⌘S' : 'Ctrl+S', l10n.stashHintSave),
-                          (mac ? '⌘N' : 'Ctrl+N', l10n.stashHintNew),
-                          (mac ? '⌘W' : 'Ctrl+W', l10n.stashHintClose),
-                        ],
-                      ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final narrow = constraints.maxWidth < _narrow;
+            final showAll = _controller.showAll;
+            Widget all() => _AllStashes(
+              controller: _controller,
+              focusNode: _listFocus,
+              onPick: (id) => unawaited(_controller.edit(id)),
+              onEdit: () => _editor.currentState?.focusEnd(),
+              flush: _flush,
+            );
+            final main = ColoredBox(
+              color: AppColors.code,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TopBar(
+                    viewId: widget.viewId,
+                    note: note,
+                    showAll: showAll,
+                    onAll: narrow ? null : () => _controller.showAll = !showAll,
+                    onNew: _new,
+                    onClose: _close,
+                    projectLabel: _projectLabel(note),
+                    onProject: _pickProject,
+                    headline: note == null
+                        ? ''
+                        : _controller.store.headline(note),
+                  ),
+                  Expanded(child: editor),
+                  _Footer(
+                    status: _saved ? l10n.stashSaved : null,
+                    hints: [
+                      (mac ? '⌘S' : 'Ctrl+S', l10n.stashHintSave),
+                      (mac ? '⌘N' : 'Ctrl+N', l10n.stashHintNew),
+                      (mac ? '⌘W' : 'Ctrl+W', l10n.stashHintClose),
                     ],
                   ),
-                );
-                if (!showAll || narrow) return main;
-                // As the main window is: the sidebar the whole height, the
-                // stash beside it.
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(width: _listWidth, child: all()),
-                    Expanded(child: main),
-                  ],
-                );
-              },
-            ),
-          ),
+                ],
+              ),
+            );
+            if (!showAll || narrow) return main;
+            // As the main window is: the sidebar the whole height, the
+            // stash beside it.
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(width: _listWidth, child: all()),
+                Expanded(child: main),
+              ],
+            );
+          },
         ),
       ),
     );

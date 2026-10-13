@@ -11,6 +11,7 @@ import '../ide/ide_button.dart';
 import '../ide/ide_dialog.dart';
 import '../ide/ide_hover.dart';
 import '../ide/ide_menu.dart';
+import '../ide/ide_quick_input.dart' show IdeKeycap;
 import '../l10n/l10n.dart';
 import '../platform/app_platform.dart';
 import '../sidebar/sidebar.dart' show SidebarIconButton;
@@ -46,10 +47,15 @@ class StashView extends StatefulWidget {
     this.leading,
     this.titleBarInset = 12,
     this.initial,
+    this.onHotkeySettings,
   });
 
   final StashController controller;
   final VoidCallback onClose;
+
+  /// Settings → Stash, where its shortcut is changed: the title bar shows
+  /// the shortcut, a click away from it.
+  final VoidCallback? onHotkeySettings;
 
   /// Shows [thread] (a stash carried out in it, or about to be).
   final ValueChanged<AgentThread> onOpenAgent;
@@ -533,6 +539,28 @@ class StashViewState extends State<StashView> {
               style: TextStyle(color: AppColors.textFaint, fontSize: 12),
             ),
             const Spacer(),
+            if (widget.onHotkeySettings case final onTap?) ...[
+              IdeHover(
+                message: l10n.stashHotkeyTooltip,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: onTap,
+                    child: _hotkeyLabel().isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(5),
+                            child: Icon(
+                              Codicons.keyboard,
+                              size: 16,
+                              color: AppColors.textMuted,
+                            ),
+                          )
+                        : IdeKeycap(_hotkeyLabel()),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
             SidebarIconButton(
               icon: Codicons.add,
               tooltip: l10n.stashNewTooltip,

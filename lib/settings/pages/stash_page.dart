@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 
 import '../../ide/ide_button.dart';
 import '../../l10n/l10n.dart';
-import '../../platform/app_platform.dart';
 import '../../stash/stash_controller.dart';
 import '../../stash/stash_settings.dart';
 import '../../workspace/editor_launcher.dart' show openExternal;
 import '../../workspace/window_controls.dart';
 import '../user_settings.dart';
 import 'settings_widgets.dart';
+import 'stash_hotkey_field.dart';
 
 /// Settings → Stash (docs/stash.md; see [StashSettings] for the keys):
 /// the shortcut that shows its panel from any app, and where the stashes
@@ -53,42 +53,13 @@ class _StashSettingsPageState extends State<StashSettingsPage> {
 
   Widget _page(BuildContext context, StashSettings current) {
     final l10n = context.l10n;
-    final mac = AppPlatform.isMacOS;
     final controller = StashController.current;
-    final taken = controller?.hotkeyTaken;
-    final label = StashSettings.label(current.hotkey, mac: mac);
     final root = controller?.store.root;
     return SettingsPage(
       title: l10n.settingsSectionStash,
       description: l10n.stashSettingsDescription,
       children: [
-        SettingsCard(
-          children: [
-            SettingsRow(
-              label: l10n.stashSettingsHotkey,
-              description: [
-                if (label.isEmpty)
-                  l10n.stashSettingsHotkeyNone
-                else
-                  l10n.stashSettingsHotkeyCurrent(label),
-                if (taken == false && label.isNotEmpty) l10n.stashSettingsHotkeyTaken,
-                l10n.stashSettingsHotkeyHelp,
-              ].join('\n'),
-              trailing: SettingsTextField(
-                value: current.hotkey,
-                hint: StashSettings.defaultHotkey,
-                semanticLabel: l10n.stashSettingsHotkey,
-                onSubmitted: (value) {
-                  final spec = value.trim().toLowerCase().replaceAll(' ', '');
-                  _write(
-                    StashSettings.hotkeyKey,
-                    spec == StashSettings.defaultHotkey ? null : spec,
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+        StashHotkeyCard(settings: widget.settings),
         SettingsCard(
           children: [
             SettingsRow(

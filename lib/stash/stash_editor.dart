@@ -1911,10 +1911,36 @@ class StashEditorState extends State<StashEditor> implements FileDropDelegate {
         VerticalSpacing.zero,
         VerticalSpacing.zero,
         null,
-        null,
+        _StashCheckbox(line: base.fontSize! * base.height!),
+        indentWidthBuilder: _indentWidth,
       ),
       placeHolder: block(TextStyle(color: AppColors.textFaint)),
       palette: StashColors.palette(dark: dark),
+    );
+  }
+
+  /// A task's box at the text's left edge, its text just after it (Quill
+  /// leaves a list's width, the box at its right); other lists as Quill
+  /// has them.
+  static HorizontalSpacing _indentWidth(
+    Block block,
+    BuildContext context,
+    int count,
+    LeadingBlockNumberPointWidth numberPointWidthBuilder,
+  ) {
+    final list = block.style.attributes[Attribute.list.key];
+    if (list != Attribute.checked && list != Attribute.unchecked) {
+      return TextBlockUtils.defaultIndentWidthBuilder(
+        block,
+        context,
+        count,
+        numberPointWidthBuilder,
+      );
+    }
+    final indent = block.style.attributes[Attribute.indent.key]?.value;
+    return HorizontalSpacing(
+      _StashCheckbox.size + 8 + (indent is int ? 14.0 * indent : 0),
+      0,
     );
   }
 
@@ -3554,4 +3580,62 @@ class _RenderCenteredOnText extends RenderProxyBox {
     BoxConstraints constraints,
     TextBaseline baseline,
   ) => getDryLayout(constraints).height / 2 + _centerAboveBaseline;
+}
+
+/// A task's box, as the app draws checkboxes (not Material's): at the
+/// left of the room before its text, centered on its first [line] (the
+/// paragraph's line height).
+class _StashCheckbox extends QuillCheckboxBuilder {
+  _StashCheckbox({required this.line});
+
+  static const size = 14.0;
+
+  final double line;
+
+  @override
+  Widget build({
+    required BuildContext context,
+    required bool isChecked,
+    required ValueChanged<bool> onChanged,
+  }) {
+    final colors = themeColors;
+    return Align(
+      alignment: Alignment.topLeft,
+      child: Padding(
+        padding: EdgeInsets.only(top: math.max(0, (line - size) / 2)),
+        child: Semantics(
+          checked: isChecked,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => onChanged(!isChecked),
+              child: Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  color: isChecked
+                      ? AppColors.accent
+                      : colors['checkbox.background'],
+                  border: Border.all(
+                    color: isChecked
+                        ? AppColors.accent
+                        : colors['checkbox.border'],
+                  ),
+                  borderRadius: BorderRadius.circular(3.5),
+                ),
+                child: isChecked
+                    ? Icon(
+                        Codicons.check,
+                        size: 12,
+                        color: colors['button.foreground'],
+                      )
+                    : null,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

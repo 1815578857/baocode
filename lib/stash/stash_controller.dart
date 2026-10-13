@@ -85,6 +85,16 @@ class StashController extends ChangeNotifier {
 
   void _settingsChanged() => unawaited(_takeHotkey());
 
+  /// Lets the shortcut go while a new one is recorded: pressed, it would
+  /// show the panel rather than reach the recorder. [resumeHotkey] takes
+  /// it (or the one recorded) again.
+  Future<void> pauseHotkey() async {
+    _hotkey = null;
+    await host.setHotkey('');
+  }
+
+  Future<void> resumeHotkey() => _takeHotkey();
+
   @override
   void dispose() {
     for (final name in const ['stash_create', 'stash_complete', 'stash_read']) {

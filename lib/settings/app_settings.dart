@@ -13,6 +13,7 @@ import '../keybindings/vscode_import.dart';
 import '../l10n/l10n.dart';
 import '../link/link_host.dart';
 import '../models/model_providers.dart';
+import '../stash/stash_controller.dart';
 import '../theme/workbench_theme.dart' show WorkbenchThemeService;
 import '../tips/builtin_tips.dart';
 import '../tips/feature_tip.dart';
@@ -30,6 +31,7 @@ import 'pages/language_page.dart';
 import 'pages/network_page.dart';
 import 'pages/notifications_page.dart';
 import 'pages/settings_widgets.dart' show SettingsPage;
+import 'pages/stash_hotkey_field.dart';
 import 'pages/stash_page.dart';
 import 'pages/updates_page.dart';
 import 'settings_dialog.dart';
@@ -170,6 +172,12 @@ class AppSettings {
             onImport: installs == null
                 ? null
                 : () => unawaited(showImport(context)),
+            global: StashController.current == null
+                ? null
+                : StashHotkeyCard(
+                    settings: files?.settings,
+                    label: context.l10n.stashHotkeyGlobal,
+                  ),
           ),
         );
       case SettingsSection.updates:

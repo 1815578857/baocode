@@ -7996,8 +7996,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get stashSettingsHotkeyTaken => '这个快捷键被其他应用占用了，请换一个。';
 
   @override
-  String get stashSettingsHotkeyHelp =>
-      '写法如 ctrl+shift+space、cmd+alt+n；留空表示不用。';
+  String get stashSettingsHotkeyHelp => '点击后按下新的组合键；Esc 取消，Delete 清除。';
+
+  @override
+  String get stashHotkeyPress => '按下组合键…';
+
+  @override
+  String get stashHotkeyRefused => '要带修饰键，配字母、数字或常用键';
+
+  @override
+  String get stashHotkeyNone => '未设置';
+
+  @override
+  String get stashHotkeyClear => '清除';
+
+  @override
+  String get stashHotkeyDefault => '恢复默认';
+
+  @override
+  String get stashHotkeyGlobal => '呼出 Stash 快捷窗口';
+
+  @override
+  String get stashHotkeyGlobalHint => '全局快捷键，在任何应用里都能用。';
+
+  @override
+  String get stashHotkeyTooltip => '呼出快捷窗口的快捷键，点击更改';
 
   @override
   String get stashSettingsDirectory => '存放位置';

@@ -12,8 +12,9 @@ protocol FlutterHostWindow: NSWindow {
 extension BaoWindow: FlutterHostWindow {}
 
 /// The stash's panel (see lib/stash/, docs/stash.md): a view of the app's
-/// engine in a panel that floats over every app, on every Space, without
-/// bringing the app in front: the app the user was in stays the active one,
+/// engine in a panel shown in front of every app, on every Space, without
+/// bringing the app in front (an ordinary window's level: not kept above
+/// the others once the user goes on in another app): the app the user was in stays the active one,
 /// and has the keyboard back once the panel goes. Not in the Dock's or the
 /// Window menu's lists. Made once, hidden, and shown again at once each
 /// time the shortcut is pressed.
@@ -52,9 +53,9 @@ final class StashPanel: NSPanel, FlutterHostWindow {
       standardWindowButton(button)?.isHidden = true
     }
     isMovableByWindowBackground = true
-    level = .floating
+    level = .normal
     hidesOnDeactivate = false
-    isFloatingPanel = true
+    isFloatingPanel = false
     becomesKeyOnlyIfNeeded = false
     worksWhenModal = true
     isExcludedFromWindowsMenu = true
@@ -70,10 +71,6 @@ final class StashPanel: NSPanel, FlutterHostWindow {
     contentViewController = StashContent(flutter: flutter, size: Self.defaultSize)
     setContentSize(Self.defaultSize)
     contentMinSize = Self.minimumSize
-    // Rounded, as the system's panels are.
-    flutter.view.wantsLayer = true
-    flutter.view.layer?.cornerRadius = 12
-    flutter.view.layer?.masksToBounds = true
 
     let messenger = flutter.engine.binaryMessenger
     let suffix = ".\(flutter.viewIdentifier)"
@@ -263,7 +260,7 @@ final class StashPanel: NSPanel, FlutterHostWindow {
 }
 
 /// The panel's content: the system's sidebar material, blurring what is
-/// behind it, under the Flutter view, rounded as the panel is. Active
+/// behind it, under the Flutter view. Active
 /// always: the panel takes the keyboard without the app coming in front.
 private final class StashContent: NSViewController {
   private let flutter: FlutterViewController
@@ -284,25 +281,13 @@ private final class StashContent: NSViewController {
     material.material = .sidebar
     material.blendingMode = .behindWindow
     material.state = .active
-    material.maskImage = Self.roundedMask(radius: 12)
+    // The window's own corners and edge, as the main window's: the
+    // system's, which clips the content to them.
     addChild(flutter)
     flutter.view.frame = material.bounds
     flutter.view.autoresizingMask = [.width, .height]
     material.addSubview(flutter.view)
     view = material
-  }
-
-  /// A rounded rectangle that stretches to any size, its corners kept.
-  private static func roundedMask(radius: CGFloat) -> NSImage {
-    let edge = radius * 2 + 1
-    let image = NSImage(size: NSSize(width: edge, height: edge), flipped: false) { rect in
-      NSColor.black.setFill()
-      NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
-      return true
-    }
-    image.capInsets = NSEdgeInsets(top: radius, left: radius, bottom: radius, right: radius)
-    image.resizingMode = .stretch
-    return image
   }
 }
 

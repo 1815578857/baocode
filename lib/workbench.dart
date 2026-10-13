@@ -3097,6 +3097,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       initial: _stashShown,
       onClose: _closeCustomize,
       onOpenAgent: _openAgent,
+      onHotkeySettings: () => unawaited(openSettings(SettingsSection.stash)),
       leading: !header && showToggle
           ? SidebarIconButton(
               icon: Codicons.layoutSidebarLeftOff,

@@ -8486,7 +8486,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stashSettingsHotkeyHelp =>
-      'As ctrl+shift+space, cmd+alt+n…; empty for none.';
+      'Click, then press the new keys; Escape keeps it, Delete clears it.';
+
+  @override
+  String get stashHotkeyPress => 'Press the keys…';
+
+  @override
+  String get stashHotkeyRefused =>
+      'Needs a modifier with a letter, digit or common key';
+
+  @override
+  String get stashHotkeyNone => 'None';
+
+  @override
+  String get stashHotkeyClear => 'Clear';
+
+  @override
+  String get stashHotkeyDefault => 'Default';
+
+  @override
+  String get stashHotkeyGlobal => 'Show the Stash panel';
+
+  @override
+  String get stashHotkeyGlobalHint => 'A global shortcut: works from any app.';
+
+  @override
+  String get stashHotkeyTooltip => 'The panel\'s shortcut; click to change';
 
   @override
   String get stashSettingsDirectory => 'Location';

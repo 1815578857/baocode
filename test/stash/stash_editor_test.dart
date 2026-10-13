@@ -130,6 +130,31 @@ void main() {
     expect(tester.getCenter(find.text('X')).dy, closeTo(y, 2));
   });
 
+  testWidgets('a task box is at the left edge of the text, centered on its '
+      'line, and checks it', (tester) async {
+    final document = Document()
+      ..insert(0, 'plain\ntask\n')
+      ..format(6, 1, Attribute.unchecked);
+    final controller = StashEditor.controllerFor(document);
+    await _edit(tester, controller);
+    final box = find.byWidgetPredicate(
+      (widget) => widget is Semantics && widget.properties.checked != null,
+    );
+    expect(box, findsOneWidget);
+    final plain = tester.getRect(find.text('plain', findRichText: true));
+    final task = tester.getRect(find.text('task', findRichText: true));
+    final square = tester.getRect(box);
+    expect(square.left, closeTo(plain.left, 0.5));
+    expect(square.center.dy, closeTo(task.center.dy, 1));
+    expect(task.left, closeTo(square.right + 8, 0.5));
+
+    await tester.tap(box);
+    await tester.pump();
+    expect(controller.document.toDelta().toList()[1].attributes, {
+      Attribute.list.key: Attribute.checked.value,
+    });
+  });
+
   testWidgets('a tag never ends a line: a space after it', (tester) async {
     final document = Document()
       ..insert(0, 'see ')
