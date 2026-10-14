@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:bao_editor/monaco/flutter/editor_document_model.dart';
 import 'package:baocode/ide/markdown/markdown_preview.dart';
+import 'package:baocode/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -90,13 +91,9 @@ Future<void> _doubleClick(
 }
 
 void main() {
-  testWidgets('heading rules are as faint as horizontal rules', (tester) async {
-    await pumpPreview(
-      tester,
-      EditorDocumentModel('# Title\n\n## Section\n\n---'),
-    );
-    final separator = tester.widget<Divider>(find.byType(Divider)).color;
-    expect(separator!.a, lessThan(1));
+  testWidgets('heading rules use the sidebar divider color', (tester) async {
+    await pumpPreview(tester, EditorDocumentModel('# Title\n\n## Section'));
+    final separator = AppColors.partBorder;
     for (final title in ['Title', 'Section']) {
       final containers = tester.widgetList<Container>(
         find.ancestor(of: _text(title), matching: find.byType(Container)),
