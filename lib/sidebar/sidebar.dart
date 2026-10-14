@@ -1380,7 +1380,6 @@ class _SidebarState extends State<Sidebar>
               identical(thread, _current)),
       focusedItem: identical(_listSelection.focused, thread),
       focused: _listFocus.hasFocus,
-      shown: _workspace.grid.contains(thread) || identical(thread, _current),
       menuTargets: () => _targetsFor(thread),
       onContextMenu: () => _rowContext(thread),
       onPinAll: (threads, pinned) => _workspace.setPinnedAll(threads, pinned),
@@ -2658,7 +2657,6 @@ class _ThreadRow extends StatelessWidget {
     required this.selected,
     required this.focusedItem,
     required this.focused,
-    required this.shown,
     required this.drag,
     required this.showProject,
     this.projectIcon,
@@ -2684,8 +2682,6 @@ class _ThreadRow extends StatelessWidget {
   final bool focusedItem;
   final bool focused;
 
-  /// Open in a pane beside the selected one.
-  final bool shown;
   final ChatDrag? drag;
   final bool showProject;
 
@@ -2817,16 +2813,6 @@ class _ThreadRow extends StatelessWidget {
                   ],
                 ),
               ),
-              if (shown && !selected)
-                Positioned(
-                  left: 0,
-                  top: 6,
-                  bottom: 6,
-                  width: 2,
-                  child: ColoredBox(
-                    color: IdeListColors.inactiveSelectionForeground,
-                  ),
-                ),
             ],
           );
         },

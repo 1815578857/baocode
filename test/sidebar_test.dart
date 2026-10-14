@@ -719,6 +719,15 @@ void main() {
     await tester.pump();
     expect(tester.widget<IdeListRow>(row).selected, isFalse);
     expect(decoration().color, isNull);
+    expect(
+      find.descendant(
+        of: row,
+        matching: find.byWidgetPredicate(
+          (widget) => widget is Positioned && widget.left == 0 && widget.width == 2,
+        ),
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('high contrast themes outline the hovered row, as the IDE '

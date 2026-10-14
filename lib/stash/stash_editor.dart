@@ -2422,6 +2422,7 @@ class _ColorButtonState extends State<_ColorButton> {
               color: background ? AppColors.text : (color ?? AppColors.text),
               fontSize: 12,
               fontWeight: FontWeight.w600,
+              decoration: TextDecoration.none,
             ),
           ),
         ),
@@ -2440,41 +2441,46 @@ class _ColorButtonState extends State<_ColorButton> {
           Positioned(
             left: origin.dx,
             top: origin.dy,
-            child: PopIn(
-              alignment: Alignment.topLeft,
-              offset: const Offset(0, -4),
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: themeColors['editorWidget.background'],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: themeColors['editorWidget.border']),
-                  boxShadow: [
-                    BoxShadow(
-                      color: themeColors['widget.shadow'],
-                      blurRadius: 10,
+            // Like the bar, picking a color is still inside the editor.
+            child: TextFieldTapRegion(
+              child: PopIn(
+                alignment: Alignment.topLeft,
+                offset: const Offset(0, -4),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: themeColors['editorWidget.background'],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: themeColors['editorWidget.border'],
                     ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        swatch('color', null, background: false),
-                        for (final name in StashColors.text)
-                          swatch('color', name, background: false),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        swatch('background', null, background: true),
-                        for (final name in StashColors.background)
-                          swatch('background', name, background: true),
-                      ],
-                    ),
-                  ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: themeColors['widget.shadow'],
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          swatch('color', null, background: false),
+                          for (final name in StashColors.text)
+                            swatch('color', name, background: false),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          swatch('background', null, background: true),
+                          for (final name in StashColors.background)
+                            swatch('background', name, background: true),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
