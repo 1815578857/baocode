@@ -65,9 +65,25 @@ Map<String, String> launchEnvironment({
         '127.0.0.1',
         'localhost',
       ].join(','),
+    // A provider spoken to directly carries its own headers in Claude
+    // Code's variable (a proxied one goes through the proxy, which sets
+    // them itself): `Name: Value` a line, only the names that may be set.
+    // A `{{…}}` variable is not filled here (the CLI cannot): it stands
+    // as written.
+    if (!provider.protocol.proxied)
+      if (customHeadersEnvironment(provider.headers) case final custom
+          when custom.isNotEmpty)
+        ClaudeModelVariables.customHeadersVariable: custom,
     ...provider.env,
   };
 }
+
+/// [headers] as [ClaudeModelVariables.customHeaders] shows them: a
+/// `Name: Value` a line, only the names that may be set ([sanitizeHeaders]).
+String customHeadersEnvironment(Map<String, String> headers) => [
+  for (final MapEntry(:key, :value) in sanitizeHeaders(headers).entries)
+    '$key: $value',
+].join('\n');
 
 /// The model [modelId] of [provider] as Claude Code is told to ask for it:
 /// for a proxied model, the effort after it in parentheses (`gpt-5(high)`,
@@ -100,6 +116,11 @@ abstract final class ClaudeModelVariables {
   static const subagentForce = 'CLAUDE_CODE_SUBAGENT_MODEL_FORCE';
   static const alwaysEnableEffort = 'CLAUDE_CODE_ALWAYS_ENABLE_EFFORT';
   static const nonessentialTraffic = 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC';
+
+  /// The provider's own request headers, an Anthropic-compatible one
+  /// spoken to directly: `Name: Value` a line (Claude Code's own variable,
+  /// [cleared] for every other session).
+  static const customHeadersVariable = 'ANTHROPIC_CUSTOM_HEADERS';
 
   /// The window of a model not Claude's: the CLI takes 200K for one it
   /// does not know, and compacts within it whatever `--autocompact` says.

@@ -588,6 +588,42 @@ void main() {
     }
   });
 
+  test('an upstream is asked with the provider\'s custom headers, their '
+      'variables filled, a key not overwritten', () async {
+    const session = '3f1c2a9e-0d4b-4c6e-9a7f-1b2c3d4e5f60';
+    provider = provider.copyWith(
+      headers: {
+        'x-session-id': '{{CLAUDE_SESSION_ID}}',
+        'x-model': '{{ANTHROPIC_MODEL}}',
+        'x-tenant': 'acme',
+        // A key must not go from here, and no auth header is overwritten.
+        'authorization': 'Bearer nope',
+        'x-api-key': 'nope',
+      },
+    );
+    upstream.reply = (_) => (200, const []);
+    await post(
+      await messages(),
+      {
+        'model': 'gpt-5',
+        'stream': true,
+        'metadata': {
+          'user_id': jsonEncode({'session_id': session}),
+        },
+        'messages': [
+          {'role': 'user', 'content': 'hi'},
+        ],
+      },
+      headers: {'authorization': 'Bearer tok'},
+    );
+    final sent = upstream.requests.single.headers;
+    expect(sent['x-session-id'], session);
+    expect(sent['x-model'], 'gpt-5');
+    expect(sent['x-tenant'], 'acme');
+    expect(sent['authorization'], 'Bearer sk-upstream');
+    expect(sent.containsKey('x-api-key'), isFalse);
+  });
+
   test('an unknown provider or endpoint is not found', () async {
     final endpoint = await proxy.endpoint('gw');
     final base = endpoint.baseUrl.replaceFirst('/p/gw', '');

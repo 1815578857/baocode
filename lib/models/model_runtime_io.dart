@@ -97,6 +97,10 @@ Future<List<RemoteModel>> _listModels(
         : url;
     final request = await client.getUrl(pageUrl);
     upstreamHeaders(provider, key).forEach(request.headers.set);
+    // The provider's own headers too, so a listing an upstream gates on
+    // one (a session or tenant header) is answered: no model or session
+    // to stand for here, so those variables go as written.
+    customUpstreamHeaders(provider).forEach(request.headers.set);
     request.headers.set(HttpHeaders.acceptHeader, 'application/json');
     final response = await request.close().timeout(const Duration(seconds: 30));
     final text = await utf8.decodeStream(response);

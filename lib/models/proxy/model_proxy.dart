@@ -174,6 +174,9 @@ class ModelProxy {
     Map<String, Object?> body,
     HttpResponse response,
   ) async {
+    // Claude Code's session id, for the custom headers' variables
+    // ({{CLAUDE_SESSION_ID}}): the same its `metadata.user_id` carries.
+    final session = sessionId(body);
     final requested = parseSuffix('${body['model'] ?? ''}');
     final modelId = requested.modelName.trim();
     // The effort picked goes with the model's name: none, or `none`, and
@@ -222,7 +225,14 @@ class ModelProxy {
     final Stream<String> lines;
     if (provider.protocol == ProviderProtocol.codex) {
       upstream = null;
-      final opened = await _openCodex(provider, body, outgoing, response);
+      final opened = await _openCodex(
+        provider,
+        body,
+        outgoing,
+        response,
+        modelId,
+        session,
+      );
       if (opened == null) return;
       lines = opened;
     } else {
@@ -234,6 +244,13 @@ class ModelProxy {
       final upstreamRequest = await client.postUrl(url);
       final key = await _key(provider.id);
       upstreamHeaders(provider, key).forEach(upstreamRequest.headers.set);
+      // The user's own headers after them: a name that may not be set is
+      // left out, so none of the above is overwritten.
+      customUpstreamHeaders(
+        provider,
+        session: session,
+        model: modelId,
+      ).forEach(upstreamRequest.headers.set);
       upstreamRequest.headers
         ..contentType = ContentType.json
         ..set(
@@ -323,6 +340,8 @@ class ModelProxy {
     Map<String, Object?> body,
     Map<String, Object?> outgoing,
     HttpResponse response,
+    String modelId,
+    String? session,
   ) async {
     final codex = _codex;
     if (codex == null) {
@@ -330,14 +349,21 @@ class ModelProxy {
       return null;
     }
     prepareCodexRequest(outgoing);
-    final session = promptCacheKey(body);
+    final cacheKey = promptCacheKey(body);
+    // The user's own headers on the Codex backend too, with the same
+    // session and model variables.
+    final custom = customUpstreamHeaders(
+      provider,
+      session: session,
+      model: modelId,
+    );
     final client = await _upstream();
     final tried = <String>{};
     var stripped = false;
     String? lastError;
     var lastStatus = 429;
     while (true) {
-      final account = codex.pick(provider, session: session, exclude: tried);
+      final account = codex.pick(provider, session: cacheKey, exclude: tried);
       if (account == null) {
         final message =
             lastError ??
@@ -367,10 +393,11 @@ class ModelProxy {
         codexHeaders(
           token,
           accountId: account.accountId,
-          session: '${outgoing['prompt_cache_key'] ?? session ?? ''}',
+          session: '${outgoing['prompt_cache_key'] ?? cacheKey ?? ''}',
           events: true,
           version: codexVersionOf(provider),
         ).forEach(request.headers.set);
+        custom.forEach(request.headers.set);
         request.headers.contentType = ContentType.json;
         request.add(utf8.encode(jsonEncode(outgoing)));
         unawaited(
@@ -507,11 +534,10 @@ int estimateInputTokens(Map<String, Object?> request) {
   return (utf8.encode(text).length / 4).ceil();
 }
 
-/// The `prompt_cache_key` of [request]'s conversation: Claude Code's
-/// session (in `metadata.user_id`, as JSON, or as the older
-/// `…_session_<id>`), hashed, so the upstream is not told it. Null without
-/// one.
-String? promptCacheKey(Map<String, Object?> request) {
+/// Claude Code's session id in [request]: the `session_id` of its
+/// `metadata.user_id` (as JSON, or the older `…_session_<id>`). Null
+/// without one. What a custom header's `{{CLAUDE_SESSION_ID}}` stands for.
+String? sessionId(Map<String, Object?> request) {
   final userId = switch (request['metadata']) {
     {'user_id': final String id} => id.trim(),
     _ => '',
@@ -526,7 +552,16 @@ String? promptCacheKey(Map<String, Object?> request) {
     final legacy = userId.lastIndexOf('_session_');
     if (legacy >= 0) session = userId.substring(legacy + 9).trim();
   }
-  if (session.isEmpty) return null;
+  return session.isEmpty ? null : session;
+}
+
+/// The `prompt_cache_key` of [request]'s conversation: Claude Code's
+/// session (in `metadata.user_id`, as JSON, or as the older
+/// `…_session_<id>`), hashed, so the upstream is not told it. Null without
+/// one.
+String? promptCacheKey(Map<String, Object?> request) {
+  final session = sessionId(request);
+  if (session == null) return null;
   final digest = sha256.convert(utf8.encode('baocode:$session'));
   return 'baocode-${'$digest'.substring(0, 32)}';
 }
