@@ -53,6 +53,7 @@ import 'package:bao_editor/monaco/vs/editor/contrib/gotoError/browser/marker_nav
 
 import 'extensions/ide_extensions.dart';
 import 'extensions/ide_extensions_view.dart';
+import 'explorer_excludes.dart';
 import 'explorer_history.dart'
     show explorerRedoCommandId, explorerUndoCommandId;
 import 'file_views.dart';
@@ -652,6 +653,12 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     );
   }
 
+  /// The file and folder patterns the explorer leaves out
+  /// (`explorer.exclude` in settings.json; see [IdeExplorerExcludes]).
+  IdeExplorerExcludes get _excludes => IdeExplorerExcludes.parse(
+    widget.settings?[IdeExplorerExcludes.settingKey],
+  );
+
   /// Whether the editors kept are being opened again: until they are, the
   /// window is not kept, lest those not open yet be forgotten.
   bool _restoring = false;
@@ -739,6 +746,9 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   /// settings.json read again: what it says now, written here or not.
   void _settingsChanged() {
     _settingsSet.clear();
+    // The explorer's exclusions follow the file (a pattern added elsewhere
+    // shows at once).
+    _explorer.excludes = _excludes;
     // Auto save turned on (or its delay changed) saves what is unsaved.
     _scheduleAutoSave();
     setState(() {});
@@ -1085,6 +1095,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       root: workspace.root,
       roots: workspace.roots,
       paths: workspace.paths,
+      excludes: _excludes,
       // Without a folder, no tree to keep current.
       watch: workspace.hasFolder
           ? workspace.watchFolder
@@ -2063,6 +2074,15 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   /// else the default profile's.
   void _newTerminal({TerminalProfile? profile}) {
     _terminals?.create(profile: profile);
+    _showTerminal();
+  }
+
+  /// Open in Terminal (the explorer's context menu): a terminal started in
+  /// [folder], shown and focused. As VS Code's `openInTerminal`.
+  void _openInTerminal(String folder) {
+    final terminals = _terminals;
+    if (terminals == null) return;
+    terminals.create(cwd: folder);
     _showTerminal();
   }
 
@@ -3701,6 +3721,9 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                               );
                               _showView(IdeSideView.search);
                             },
+                            onOpenInTerminal: _terminals == null
+                                ? null
+                                : _openInTerminal,
                           ),
                   ),
                 IdePane(

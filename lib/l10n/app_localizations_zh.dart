@@ -2969,6 +2969,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get explorerFindInFolder => '在文件夹中查找...';
 
   @override
+  String get explorerOpenInTerminal => '在终端中打开';
+
+  @override
   String get explorerRename => '重命名...';
 
   @override
@@ -5079,6 +5082,27 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get generalSettingsWindows => '窗口';
+
+  @override
+  String get generalSettingsIde => 'Fast IDE';
+
+  @override
+  String get generalSettingsAutoOpenChanges => '以 Diff 显示智能体改动';
+
+  @override
+  String get generalSettingsAutoOpenChangesDescription =>
+      'IDE 显示时，智能体每改一个文件就在编辑器中以 Diff 形式打开（对比改动前后的内容），随改随看。';
+
+  @override
+  String get explorerExcludeSetting => '隐藏的文件和文件夹';
+
+  @override
+  String get explorerExcludeSettingDescription =>
+      '资源管理器中不显示的文件和文件夹，用逗号分隔：文件名（`node_modules`、`*.log`）匹配任意位置，路径（`build/**`、`src/generated`）匹配所在文件夹内的位置。';
+
+  @override
+  String get explorerExcludeSettingPlaceholder =>
+      '例如 .git, node_modules, *.log';
 
   @override
   String get claudePathSetting => '路径';

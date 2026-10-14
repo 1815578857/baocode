@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import '../../ide/explorer_excludes.dart';
+import '../../ide/ide_agent_changes.dart';
 import '../../ide/ide_button.dart';
 import '../../ide/ide_menu.dart';
 import '../../ide/ide_notifications.dart' show IdeSeverity;
@@ -195,7 +197,7 @@ class GeneralSettingsPage extends StatelessWidget {
     );
   }
 
-  void _write(String key, String? value) {
+  void _write(String key, Object? value) {
     final settings = this.settings;
     if (settings == null) return;
     unawaited(
@@ -205,6 +207,17 @@ class GeneralSettingsPage extends StatelessWidget {
         debugPrint('$key not kept: $error');
       }),
     );
+  }
+
+  /// The explorer's exclusions as a list for
+  /// [IdeExplorerExcludes.settingKey]: the comma-separated patterns typed
+  /// in the field, trimmed; null (the setting removed) when there are none.
+  static List<String>? _excludePatterns(String value) {
+    final patterns = [
+      for (final part in value.split(','))
+        if (part.trim().isNotEmpty) part.trim(),
+    ];
+    return patterns.isEmpty ? null : patterns;
   }
 
   @override
@@ -320,6 +333,42 @@ class GeneralSettingsPage extends StatelessWidget {
             SettingsGroup(
               title: l10n.generalSettingsWindows,
               children: _windowRows(context),
+            ),
+            SettingsGroup(
+              title: l10n.generalSettingsIde,
+              children: [
+                SettingsCard(
+                  children: [
+                    SettingsSwitchRow(
+                      label: l10n.generalSettingsAutoOpenChanges,
+                      description: l10n.generalSettingsAutoOpenChangesDescription,
+                      value: IdeAgentChanges.enabledBy(
+                        settings?[IdeAgentChanges.enabledSetting],
+                      ),
+                      onChanged: (on) => _write(
+                        IdeAgentChanges.enabledSetting,
+                        on ? null : false,
+                      ),
+                    ),
+                    SettingsRow(
+                      label: l10n.explorerExcludeSetting,
+                      description: l10n.explorerExcludeSettingDescription,
+                      trailing: SettingsTextField(
+                        value: IdeExplorerExcludes.parse(
+                          settings?[IdeExplorerExcludes.settingKey],
+                        ).patterns.join(', '),
+                        width: 260,
+                        hint: l10n.explorerExcludeSettingPlaceholder,
+                        semanticLabel: l10n.explorerExcludeSetting,
+                        onSubmitted: (value) => _write(
+                          IdeExplorerExcludes.settingKey,
+                          _excludePatterns(value),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
             if (ShellCommand.supported)
               const SettingsCard(children: [_ShellCommandSetting()]),

@@ -38,6 +38,7 @@ import 'ide/file_service.dart'
         ideIsImagePath,
         readBytesThrough,
         readFileBytes;
+import 'ide/ide_agent_changes.dart';
 import 'ide/ide_chat_title.dart';
 import 'ide/ide_color_theme_picker.dart';
 import 'ide/ide_commands.dart';
@@ -2005,6 +2006,32 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     _focusChat(thread);
   }
 
+  /// Copies [thread]'s conversation into a new agent, opened as a tab in
+  /// [folder], as the sidebar's Fork does.
+  Future<void> _forkIdeChat(String folder, AgentThread thread) async {
+    final forked = await _workspace.fork(thread);
+    if (forked == null || !mounted) return;
+    _openIdeChat(folder, forked);
+  }
+
+  /// Deletes [thread]'s conversation once confirmed, as the sidebar's
+  /// Delete asks.
+  Future<void> _confirmDeleteThread(AgentThread thread) async {
+    final l10n = context.l10n;
+    final title = thread.localizedTitle(l10n);
+    final choice = await showIdeDialog(
+      context,
+      message: l10n.sidebarDeleteAgentTitle,
+      detail: thread.kernel.catalog == null
+          ? l10n.sidebarDeleteAgentMessage(title)
+          : l10n.sidebarDeleteAgentMessageKernel(title, thread.kernel.label),
+      buttons: [l10n.commonDelete],
+      type: IdeDialogType.warning,
+    );
+    if (choice != 0) return;
+    _workspace.delete(thread);
+  }
+
   /// The IDE's chat in [folder]: its tabs over the one shown, the agent
   /// told of the file open in its editor. Without a folder, in that of the
   /// file in front (see [_looseChatFolder]); a way to open one until there
@@ -2029,9 +2056,29 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   /// The IDE's chat tabs in [folder] over the one shown.
   Widget _ideChatIn(String folder, OpenEditor? Function() openEditor) {
     final current = _workspace.ideChat(folder);
+    // Reads and writes the setting live, as the IDE's own do.
+    final settings = widget.settings?.files?.settings;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // The agent's changes open as diffs in the editor as it makes them
+        // (Cursor-like), while this IDE shows; see [IdeAgentChanges].
+        ListenableBuilder(
+          listenable: settings ?? Listenable.merge(const []),
+          builder: (context, _) => current == null
+              ? const SizedBox.shrink()
+              : IdeAgentChanges(
+                  session: current.session,
+                  enabled:
+                      _showsIde &&
+                      _ideFolder == folder &&
+                      IdeAgentChanges.enabledBy(
+                        settings?[IdeAgentChanges.enabledSetting],
+                      ),
+                  open: (change, original) =>
+                      _openChange(current, change, original),
+                ),
+        ),
         IdeChatTitle(
           tabs: _workspace.ideChats(folder),
           threads: [
@@ -2045,6 +2092,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
           onPin: (thread) => _workspace.setPinned(thread, !thread.pinned),
           onMove: (thread, index) =>
               _workspace.moveIdeChat(folder, thread, index),
+          onRename: _workspace.rename,
+          onFork: (thread) => unawaited(_forkIdeChat(folder, thread)),
+          onArchive: (thread) =>
+              _workspace.setArchived(thread, !thread.archived),
+          onDelete: (thread) => unawaited(_confirmDeleteThread(thread)),
         ),
         Expanded(
           child: current == null
