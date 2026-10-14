@@ -143,7 +143,7 @@ async () => (await cloudflare.request({
 
 ## 4. 在本机跑起来
 
-> 如果你已经安装了 BaoCode 的桌面端，它自带的 cloudflared 会自动处理；否则，需要先安装：`brew install cloudflared`（macOS）。
+> 需要先安装 `cloudflared`（macOS）：`brew install cloudflared`。
 
 把 c 步拿到的 token 存成文件：
 
