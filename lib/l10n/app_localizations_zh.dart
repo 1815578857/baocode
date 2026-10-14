@@ -6014,10 +6014,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modelsHeadersDescription =>
-      '每行一个 Name: Value，对此上游的每次请求都会带上。值里可用 {{CLAUDE_SESSION_ID}}（本次对话的会话）与 {{ANTHROPIC_MODEL}}（所请求的模型）。鉴权头（Authorization、x-api-key）在此忽略：Key 在下方设置。';
+      '每行一个 Name: Value，对此上游的每次请求都会带上。值里可用 {{CLAUDE_SESSION_ID}}（本次对话的会话）与 {{ANTHROPIC_MODEL}}（所请求的模型）；走直连 Anthropic 协议时这两个变量原样发出，可用的只有固定值。鉴权头（Authorization、x-api-key）在此忽略：Key 在下方设置。';
 
   @override
-  String get modelsHeadersPlaceholder => 'x-session-id: {{CLAUDE_SESSION_ID}}';
+  String get modelsHeadersPlaceholder => 'x-session-id: my-session';
 
   @override
   String get modelsDelete => '删除上游';

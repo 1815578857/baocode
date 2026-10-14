@@ -6427,10 +6427,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelsHeadersDescription =>
-      'One Name: Value a line, sent on every request to this upstream. Values may use {{CLAUDE_SESSION_ID}} (this conversation\'s session) and {{ANTHROPIC_MODEL}} (the model asked for). Auth headers (Authorization, x-api-key) are ignored here: the key is set above.';
+      'One Name: Value a line, sent on every request to this upstream. Values may use {{CLAUDE_SESSION_ID}} (this conversation\'s session) and {{ANTHROPIC_MODEL}} (the model asked for); over the direct Anthropic protocol those two go as written, so only fixed values work there. Auth headers (Authorization, x-api-key) are ignored here: the key is set above.';
 
   @override
-  String get modelsHeadersPlaceholder => 'x-session-id: {{CLAUDE_SESSION_ID}}';
+  String get modelsHeadersPlaceholder => 'x-session-id: my-session';
 
   @override
   String get modelsDelete => 'Delete Upstream';
