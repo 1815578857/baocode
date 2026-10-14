@@ -468,6 +468,7 @@ class ModelProvider {
     this.promptCacheKey = true,
     this.fastMode = false,
     this.env = const {},
+    this.headers = const {},
     this.accounts = const [],
     this.balance = AccountBalance.roundRobin,
     this.clientVersion,
@@ -505,6 +506,14 @@ class ModelProvider {
 
   /// More environment for Claude Code, after what is set from the above.
   final Map<String, String> env;
+
+  /// Request headers of the user's own, sent on every request to it
+  /// (`x-session-id`: `{{CLAUDE_SESSION_ID}}`). Values may stand a
+  /// whitelisted variable in `{{…}}` ([substituteVariables]); an unknown
+  /// name stands as written. One of the auth headers is refused: a key
+  /// does not go from here, and none of theirs is overwritten
+  /// ([sanitizeHeaders]).
+  final Map<String, String> headers;
 
   /// The accounts it is signed in to, when it [ProviderProtocol.usesAccounts].
   final List<ProviderAccount> accounts;
@@ -567,6 +576,7 @@ class ModelProvider {
     bool? promptCacheKey,
     bool? fastMode,
     Map<String, String>? env,
+    Map<String, String>? headers,
     List<ProviderAccount>? accounts,
     AccountBalance? balance,
     String? Function()? clientVersion,
@@ -586,6 +596,7 @@ class ModelProvider {
     promptCacheKey: promptCacheKey ?? this.promptCacheKey,
     fastMode: fastMode ?? this.fastMode,
     env: env ?? this.env,
+    headers: headers ?? this.headers,
     accounts: accounts ?? this.accounts,
     balance: balance ?? this.balance,
     clientVersion: clientVersion == null ? this.clientVersion : clientVersion(),
@@ -626,6 +637,7 @@ class ModelProvider {
     if (!promptCacheKey) 'promptCacheKey': false,
     if (fastMode) 'fastMode': true,
     if (env.isNotEmpty) 'env': env,
+    if (headers.isNotEmpty) 'headers': headers,
     if (accounts.isNotEmpty)
       'accounts': [for (final account in accounts) account.toJson()],
     if (balance != AccountBalance.roundRobin) 'balance': balance.id,
@@ -661,6 +673,11 @@ class ModelProvider {
           for (final MapEntry(:key, :value) in env.entries)
             if (key is String && key.isNotEmpty && value != null) key: '$value',
       },
+      headers: {
+        if (json['headers'] case final Map headers)
+          for (final MapEntry(:key, :value) in headers.entries)
+            if (isHeaderName(key) && value != null) key: '$value',
+      },
       accounts: [
         for (final account in json['accounts'] as List? ?? const [])
           ?ProviderAccount.fromJson(account),
@@ -685,6 +702,7 @@ class ModelProvider {
     disableNonessentialTraffic,
     preserveThinking,
     env.toString(),
+    headers.toString(),
   ].join('|');
 }
 
@@ -705,6 +723,66 @@ String modelRef(String providerId, String modelId) => '@$providerId/$modelId';
     provider: value.substring(1, slash),
     model: value.substring(slash + 1),
   );
+}
+
+/// Whether [name] can be a request header name: an RFC 7230 token.
+bool isHeaderName(String name) =>
+    RegExp(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$").hasMatch(name);
+
+/// The custom headers' names a [ModelProvider.headers] may not set: a key
+/// must not go from settings, and none of the headers the app sets itself
+/// (or the auth) may be overwritten.
+const reservedHeaderNames = {
+  'authorization',
+  'x-api-key',
+  'proxy-authorization',
+  'cookie',
+  'set-cookie',
+  'host',
+  'content-length',
+  'user-agent',
+  'accept',
+  'accept-encoding',
+  'anthropic-version',
+};
+
+/// Whether a [ModelProvider.headers] may set [name]: a valid name that is
+/// not [reservedHeaderNames].
+bool isSettableHeader(String name) =>
+    isHeaderName(name) && !reservedHeaderNames.contains(name.toLowerCase());
+
+/// [headers] with the names that may not be set left out: how they go to
+/// an upstream ([upstreamHeaders]).
+Map<String, String> sanitizeHeaders(Map<String, String> headers) => {
+  for (final MapEntry(:key, :value) in headers.entries)
+    if (isSettableHeader(key)) key: value,
+};
+
+/// What a `{{…}}` in a custom header's value may stand for: a whitelisted
+/// name, looked up in [request], replaced only when it is such a one (an
+/// unknown name, or none, is left as it was written: no expression is
+/// evaluated, no code runs).
+///
+/// [session] is Claude Code's session id (its `metadata.user_id`'s
+/// `session_id`), [model] the upstream model the request asks for;
+/// [request]'s own values answer beside them (`request_id` where a
+/// protocol carries one, `conversation_id` for Codex).
+String substituteVariables(
+  String value,
+  Map<String, String> request, {
+  String? session,
+  String? model,
+}) {
+  final known = {
+    ...request,
+    'CLAUDE_SESSION_ID': session,
+    'ANTHROPIC_MODEL': model,
+  };
+  return value.replaceAllMapped(RegExp(r'\{\{([^}]*)\}\}'), (match) {
+    final name = match.group(1)!.trim();
+    final replacement = known[name];
+    return replacement == null || replacement.isEmpty ? match.group(0)! : replacement;
+  });
 }
 
 /// A context window as short as the picker shows it: `128K`, `1M`.

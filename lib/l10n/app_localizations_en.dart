@@ -6423,6 +6423,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'One KEY=VALUE a line, given to Claude Code after the settings above.';
 
   @override
+  String get modelsHeaders => 'Custom Headers';
+
+  @override
+  String get modelsHeadersDescription =>
+      'One Name: Value a line, sent on every request to this upstream. Values may use {{CLAUDE_SESSION_ID}} (this conversation\'s session) and {{ANTHROPIC_MODEL}} (the model asked for). Auth headers (Authorization, x-api-key) are ignored here: the key is set above.';
+
+  @override
+  String get modelsHeadersPlaceholder => 'x-session-id: {{CLAUDE_SESSION_ID}}';
+
+  @override
   String get modelsDelete => 'Delete Upstream';
 
   @override

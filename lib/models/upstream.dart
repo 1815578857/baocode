@@ -162,6 +162,22 @@ Map<String, String> upstreamHeaders(ModelProvider provider, String? key) => {
       'authorization': 'Bearer $key',
 };
 
+/// The custom headers [provider] is asked with ([ModelProvider.headers]),
+/// their `{{…}}` variables standing for [request]'s values, [session]
+/// (Claude Code's session id) and [model] (the upstream model): a name
+/// that may not be set left out ([sanitizeHeaders]), so a key never goes
+/// from here and no auth header is overwritten, and only whitelisted
+/// variables are replaced ([substituteVariables]).
+Map<String, String> customUpstreamHeaders(
+  ModelProvider provider, {
+  String? session,
+  String? model,
+  Map<String, String> request = const {},
+}) => {
+  for (final MapEntry(:key, :value) in sanitizeHeaders(provider.headers).entries)
+    key: substituteVariables(value, request, session: session, model: model),
+};
+
 /// The models in a `/v1/models` answer: OpenAI's `data` (or a bare list),
 /// Anthropic's `data` with `display_name`; a context window where the
 /// upstream says (OpenRouter's `context_length`, and others').

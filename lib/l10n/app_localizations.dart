@@ -10563,6 +10563,24 @@ abstract class AppLocalizations {
   /// **'One KEY=VALUE a line, given to Claude Code after the settings above.'**
   String get modelsEnvDescription;
 
+  /// No description provided for @modelsHeaders.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Headers'**
+  String get modelsHeaders;
+
+  /// No description provided for @modelsHeadersDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'One Name: Value a line, sent on every request to this upstream. Values may use {{CLAUDE_SESSION_ID}} (this conversation\'s session) and {{ANTHROPIC_MODEL}} (the model asked for). Auth headers (Authorization, x-api-key) are ignored here: the key is set above.'**
+  String get modelsHeadersDescription;
+
+  /// No description provided for @modelsHeadersPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'x-session-id: {{CLAUDE_SESSION_ID}}'**
+  String get modelsHeadersPlaceholder;
+
   /// No description provided for @modelsDelete.
   ///
   /// In en, this message translates to:

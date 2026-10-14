@@ -6010,6 +6010,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get modelsEnvDescription => '每行一个 KEY=VALUE，在以上设置之后传给 Claude Code。';
 
   @override
+  String get modelsHeaders => '自定义请求头';
+
+  @override
+  String get modelsHeadersDescription =>
+      '每行一个 Name: Value，对此上游的每次请求都会带上。值里可用 {{CLAUDE_SESSION_ID}}（本次对话的会话）与 {{ANTHROPIC_MODEL}}（所请求的模型）。鉴权头（Authorization、x-api-key）在此忽略：Key 在下方设置。';
+
+  @override
+  String get modelsHeadersPlaceholder => 'x-session-id: {{CLAUDE_SESSION_ID}}';
+
+  @override
   String get modelsDelete => '删除上游';
 
   @override

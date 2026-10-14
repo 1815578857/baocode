@@ -538,6 +538,30 @@ void main() {
     expect(find.bySemanticsLabel('Fast Mode'), findsNothing);
   });
 
+  testWidgets('custom request headers are set, and a variable expression '
+      'kept', (tester) async {
+    await providers.save(
+      const ModelProvider(id: 'gw', name: 'Gateway', baseUrl: 'https://gw'),
+    );
+    await pump(tester);
+    await tester.tap(find.text('Gateway'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    expect(find.text('Custom Headers'), findsOneWidget);
+    await tester.ensureVisible(find.bySemanticsLabel('Custom Headers'));
+    await tester.pumpAndSettle();
+    await type(
+      tester,
+      'Custom Headers',
+      'x-session-id: {{CLAUDE_SESSION_ID}}\nAuthorization: Bearer nope',
+    );
+    // The auth header a custom one may not be: left out.
+    expect(providers.provider('gw')!.headers, {
+      'x-session-id': '{{CLAUDE_SESSION_ID}}',
+    });
+  });
+
   testWidgets('deleting an upstream asks first, and takes its key', (
     tester,
   ) async {

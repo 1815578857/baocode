@@ -1395,6 +1395,22 @@ class _ProviderSettingsPageState extends State<ProviderSettingsPage> {
         ],
       ),
       SettingsRow(
+        label: l10n.modelsHeaders,
+        description: l10n.modelsHeadersDescription,
+        below: [
+          const SizedBox(height: 4),
+          _Field(
+            value: formatHeaders(provider.headers),
+            label: l10n.modelsHeaders,
+            placeholder: l10n.modelsHeadersPlaceholder,
+            lines: 6,
+            onCommit: (text) => unawaited(
+              _save(_providerNow.copyWith(headers: parseHeaders(text))),
+            ),
+          ),
+        ],
+      ),
+      SettingsRow(
         label: l10n.modelsDelete,
         description: l10n.modelsDeleteDescription,
         trailing: IdeButton(
@@ -1422,6 +1438,23 @@ Map<String, String> parseEnvironment(String text) => {
       if (line.substring(0, line.indexOf('=')).trim() case final key
           when RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(key))
         key: line.substring(line.indexOf('=') + 1).trim(),
+};
+
+/// [headers] as the Custom Headers field shows it: `Name: Value` a line.
+String formatHeaders(Map<String, String> headers) =>
+    [for (final MapEntry(:key, :value) in headers.entries) '$key: $value']
+        .join('\n');
+
+/// The Custom Headers field's [text]: `Name: Value` a line, blank lines and
+/// `#` comments skipped, a name that may not be set ([isSettableHeader], an
+/// auth header among them) dropped.
+Map<String, String> parseHeaders(String text) => {
+  for (final line in text.split('\n'))
+    if (line.trim() case final line
+        when line.isNotEmpty && !line.startsWith('#') && line.contains(':'))
+      if (line.substring(0, line.indexOf(':')).trim() case final name
+          when isSettableHeader(name))
+        name: line.substring(line.indexOf(':') + 1).trim(),
 };
 
 /// A model in its upstream's list: whether it is offered, its names and
