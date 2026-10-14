@@ -180,6 +180,10 @@ String localizedCommandLabel(AppLocalizations l10n, String id, String english) {
     'scm.clearInput' => l10n.cmdScmClearInput,
     'git.commit' => l10n.scmCommit,
     'git.checkout' => l10n.cmdGitCheckout,
+    'git.fetch' => l10n.scmFetch,
+    'git.fetchAll' => l10n.scmFetchFromAllRemotes,
+    'git.pull' => l10n.scmPull,
+    'git.push' => l10n.scmPush,
     'git.blame.toggleEditorDecoration' =>
       l10n.cmdToggleGitBlameEditorDecoration,
     'workbench.action.problems.focus' => l10n.cmdProblemsFocus,

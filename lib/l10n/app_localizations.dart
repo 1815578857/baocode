@@ -6476,6 +6476,42 @@ abstract class AppLocalizations {
   /// **'Synchronizing Changes...'**
   String get scmSynchronizingChanges;
 
+  /// No description provided for @scmFetch.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch'**
+  String get scmFetch;
+
+  /// No description provided for @scmFetchFromAllRemotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch From All Remotes'**
+  String get scmFetchFromAllRemotes;
+
+  /// No description provided for @scmPull.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull'**
+  String get scmPull;
+
+  /// No description provided for @scmPush.
+  ///
+  /// In en, this message translates to:
+  /// **'Push'**
+  String get scmPush;
+
+  /// No description provided for @scmPickRepository.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick Repository'**
+  String get scmPickRepository;
+
+  /// No description provided for @scmUnpickRepository.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpick Repository'**
+  String get scmUnpickRepository;
+
   /// No description provided for @scmPullCommits.
   ///
   /// In en, this message translates to:

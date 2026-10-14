@@ -3569,6 +3569,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scmSynchronizingChanges => '正在同步更改...';
 
   @override
+  String get scmFetch => '获取';
+
+  @override
+  String get scmFetchFromAllRemotes => '从所有远程获取';
+
+  @override
+  String get scmPull => '拉取';
+
+  @override
+  String get scmPush => '推送';
+
+  @override
+  String get scmPickRepository => '选中仓库';
+
+  @override
+  String get scmUnpickRepository => '取消选中仓库';
+
+  @override
   String scmPullCommits(int count, String upstream) {
     return '从 $upstream 拉取 $count 个提交';
   }

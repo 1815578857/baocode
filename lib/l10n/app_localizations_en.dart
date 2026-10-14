@@ -3816,6 +3816,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scmSynchronizingChanges => 'Synchronizing Changes...';
 
   @override
+  String get scmFetch => 'Fetch';
+
+  @override
+  String get scmFetchFromAllRemotes => 'Fetch From All Remotes';
+
+  @override
+  String get scmPull => 'Pull';
+
+  @override
+  String get scmPush => 'Push';
+
+  @override
+  String get scmPickRepository => 'Pick Repository';
+
+  @override
+  String get scmUnpickRepository => 'Unpick Repository';
+
+  @override
   String scmPullCommits(int count, String upstream) {
     return 'Pull $count commits from $upstream';
   }
