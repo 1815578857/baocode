@@ -6674,6 +6674,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cmdOpenRemoteFolder => '打开远程项目...';
 
   @override
+  String get cmdOpenRemoteFile => '打开远程文件...';
+
+  @override
   String get remoteHostPlaceholder =>
       '选择 ~/.ssh/config 中的主机，或输入 user@host[:port]';
 
@@ -6734,6 +6737,37 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String remoteListFailed(String path) {
     return '无法列出 $path';
+  }
+
+  @override
+  String get remoteFileHostPlaceholder => '选择主机，浏览它的文件';
+
+  @override
+  String remoteFilePlaceholder(String host) {
+    return '$host 上的文件：选择一个，或输入路径';
+  }
+
+  @override
+  String remoteOpenFile(String path) {
+    return '打开 $path';
+  }
+
+  @override
+  String remoteOpenFailed(String path) {
+    return '无法打开 $path';
+  }
+
+  @override
+  String get remoteRecentFiles => '最近的远程文件';
+
+  @override
+  String remoteOpenFileOn(String host) {
+    return '在 $host 上打开文件...';
+  }
+
+  @override
+  String remoteStatusActions(String host) {
+    return '点击查看主机和 $host 的操作';
   }
 
   @override

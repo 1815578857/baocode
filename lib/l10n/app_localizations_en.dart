@@ -7119,6 +7119,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cmdOpenRemoteFolder => 'Open Remote Project...';
 
   @override
+  String get cmdOpenRemoteFile => 'Open Remote File...';
+
+  @override
   String get remoteHostPlaceholder =>
       'Select a host of ~/.ssh/config, or type user@host[:port]';
 
@@ -7181,6 +7184,37 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String remoteListFailed(String path) {
     return 'Could not list $path';
+  }
+
+  @override
+  String get remoteFileHostPlaceholder => 'Select a host, to browse its files';
+
+  @override
+  String remoteFilePlaceholder(String host) {
+    return 'A file on $host: pick one, or type a path';
+  }
+
+  @override
+  String remoteOpenFile(String path) {
+    return 'Open $path';
+  }
+
+  @override
+  String remoteOpenFailed(String path) {
+    return 'Could not open $path';
+  }
+
+  @override
+  String get remoteRecentFiles => 'Recent Remote Files';
+
+  @override
+  String remoteOpenFileOn(String host) {
+    return 'Open File on $host...';
+  }
+
+  @override
+  String remoteStatusActions(String host) {
+    return 'Click for the hosts and $host\'s actions';
   }
 
   @override
