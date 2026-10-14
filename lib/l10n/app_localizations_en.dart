@@ -1679,6 +1679,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get sidebarDeleteAgentsTitle => 'Delete agents?';
+
+  @override
+  String sidebarDeleteAgentsMessage(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'The $count agents and their conversations will be deleted',
+      one: 'The agent and its conversation will be deleted',
+    );
+    return '$_temp0, from their kernels too. This cannot be undone.';
+  }
+
+  @override
   String sidebarDeleteAgentMessageKernel(String title, String kernel) {
     return '“$title” and its conversation will be deleted, from $kernel too. This cannot be undone.';
   }
@@ -8498,11 +8512,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stashLinkIt => 'Link';
-
-  @override
-  String stashSourceBanner(String stash, String title) {
-    return 'Source: Stash $stash · $title';
-  }
 
   @override
   String get stashSettingsDescription =>

@@ -3236,6 +3236,18 @@ abstract class AppLocalizations {
   /// **'“{title}” and its conversation will be removed.'**
   String sidebarDeleteAgentMessage(String title);
 
+  /// No description provided for @sidebarDeleteAgentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete agents?'**
+  String get sidebarDeleteAgentsTitle;
+
+  /// No description provided for @sidebarDeleteAgentsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{The agent and its conversation will be deleted} other{The {count} agents and their conversations will be deleted}}, from their kernels too. This cannot be undone.'**
+  String sidebarDeleteAgentsMessage(int count);
+
   /// No description provided for @sidebarDeleteAgentMessageKernel.
   ///
   /// In en, this message translates to:
@@ -13982,12 +13994,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Link'**
   String get stashLinkIt;
-
-  /// No description provided for @stashSourceBanner.
-  ///
-  /// In en, this message translates to:
-  /// **'Source: Stash {stash} · {title}'**
-  String stashSourceBanner(String stash, String title);
 
   /// No description provided for @stashSettingsDescription.
   ///

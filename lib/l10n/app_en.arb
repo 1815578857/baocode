@@ -875,6 +875,15 @@
       }
     }
   },
+  "sidebarDeleteAgentsTitle": "Delete agents?",
+  "sidebarDeleteAgentsMessage": "{count, plural, =1{The agent and its conversation will be deleted} other{The {count} agents and their conversations will be deleted}}, from their kernels too. This cannot be undone.",
+  "@sidebarDeleteAgentsMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "sidebarDeleteAgentMessageKernel": "“{title}” and its conversation will be deleted, from {kernel} too. This cannot be undone.",
   "@sidebarDeleteAgentMessageKernel": {
     "placeholders": {
@@ -6127,17 +6136,6 @@
     }
   },
   "stashLinkIt": "Link",
-  "stashSourceBanner": "Source: Stash {stash} · {title}",
-  "@stashSourceBanner": {
-    "placeholders": {
-      "stash": {
-        "type": "String"
-      },
-      "title": {
-        "type": "String"
-      }
-    }
-  },
   "stashSettingsDescription": "A note jotted down from any app, in a floating panel, to turn into work later.",
   "stashSettingsHotkey": "Shortcut",
   "stashSettingsHotkeyCurrent": "{hotkey} shows the panel from any app.",

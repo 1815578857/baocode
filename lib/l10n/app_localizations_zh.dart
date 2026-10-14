@@ -1623,6 +1623,14 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get sidebarDeleteAgentsTitle => '删除智能体？';
+
+  @override
+  String sidebarDeleteAgentsMessage(int count) {
+    return '$count 个智能体及其对话将被删除，内核中的记录也会一并删除。此操作无法撤销。';
+  }
+
+  @override
   String sidebarDeleteAgentMessageKernel(String title, String kernel) {
     return '“$title”及其对话将被删除，$kernel 中的记录也会一并删除。此操作无法撤销。';
   }
@@ -8012,11 +8020,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get stashLinkIt => '关联';
-
-  @override
-  String stashSourceBanner(String stash, String title) {
-    return '来源：Stash $stash · $title';
-  }
 
   @override
   String get stashSettingsDescription =>
