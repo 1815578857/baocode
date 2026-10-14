@@ -3101,6 +3101,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get explorerFindInFolder => 'Find in Folder...';
 
   @override
+  String get explorerOpenInTerminal => 'Open in Terminal';
+
+  @override
   String get explorerRename => 'Rename...';
 
   @override
@@ -5465,6 +5468,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get generalSettingsWindows => 'Windows';
+
+  @override
+  String get generalSettingsIde => 'Fast IDE';
+
+  @override
+  String get generalSettingsAutoOpenChanges => 'Show agent changes as diffs';
+
+  @override
+  String get generalSettingsAutoOpenChangesDescription =>
+      'While the IDE shows, a file the agent changes opens as a diff of it against its text before, as the agent edits it.';
+
+  @override
+  String get explorerExcludeSetting => 'Hidden files and folders';
+
+  @override
+  String get explorerExcludeSettingDescription =>
+      'Files and folders the explorer does not show, comma separated: a name (`node_modules`, `*.log`) matches anywhere, a path (`build/**`, `src/generated`) matches within the folder.';
+
+  @override
+  String get explorerExcludeSettingPlaceholder =>
+      'e.g. .git, node_modules, *.log';
 
   @override
   String get claudePathSetting => 'Path';

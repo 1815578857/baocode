@@ -8,6 +8,7 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../chat/widgets/pixel_loader.dart';
 import '../keybindings/chat_keybindings.dart';
@@ -36,6 +37,10 @@ class IdeChatTitle extends StatelessWidget {
     required this.onClose,
     required this.onPin,
     required this.onMove,
+    required this.onRename,
+    required this.onFork,
+    required this.onArchive,
+    required this.onDelete,
   });
 
   /// The chats open as tabs, in order.
@@ -60,6 +65,19 @@ class IdeChatTitle extends StatelessWidget {
 
   /// Moves a tab dragged to [index] among the tabs.
   final void Function(AgentThread thread, int index) onMove;
+
+  /// Renames an agent to the given title, as the sidebar's Rename does.
+  final void Function(AgentThread thread, String title) onRename;
+
+  /// Copies the agent's conversation into a new one (as the sidebar's Fork),
+  /// opened as a tab.
+  final ValueChanged<AgentThread> onFork;
+
+  /// Archives an agent, or unarchives an archived one.
+  final ValueChanged<AgentThread> onArchive;
+
+  /// Deletes an agent's conversation, once confirmed.
+  final ValueChanged<AgentThread> onDelete;
 
   /// The agents as the history lists them: pinned ones first, then by date.
   /// A new one nothing was sent to has no history yet.
@@ -126,6 +144,10 @@ class IdeChatTitle extends StatelessWidget {
               onClose: onClose,
               onPin: onPin,
               onMove: onMove,
+              onRename: onRename,
+              onFork: onFork,
+              onArchive: onArchive,
+              onDelete: onDelete,
             ),
           ),
           // Squares nearer the strip's height than a view title's.
@@ -162,6 +184,10 @@ class _ChatTabs extends StatefulWidget {
     required this.onClose,
     required this.onPin,
     required this.onMove,
+    required this.onRename,
+    required this.onFork,
+    required this.onArchive,
+    required this.onDelete,
   });
 
   final List<AgentThread> tabs;
@@ -170,6 +196,10 @@ class _ChatTabs extends StatefulWidget {
   final ValueChanged<List<AgentThread>> onClose;
   final ValueChanged<AgentThread> onPin;
   final void Function(AgentThread thread, int index) onMove;
+  final void Function(AgentThread thread, String title) onRename;
+  final ValueChanged<AgentThread> onFork;
+  final ValueChanged<AgentThread> onArchive;
+  final ValueChanged<AgentThread> onDelete;
 
   @override
   State<_ChatTabs> createState() => _ChatTabsState();
@@ -183,6 +213,9 @@ class _ChatTabsState extends State<_ChatTabs> {
   /// or after the last; none where it is already.
   AgentThread? _dragged;
   int? _spot;
+
+  /// The tab whose title is edited in place.
+  AgentThread? _renaming;
 
   @override
   void initState() {
@@ -198,6 +231,10 @@ class _ChatTabsState extends State<_ChatTabs> {
       _scheduleReveal();
     }
     _keys.removeWhere((thread, _) => !widget.tabs.contains(thread));
+    // A renamed tab gone from the tabs leaves no edit behind.
+    if (_renaming != null && !widget.tabs.contains(_renaming)) {
+      _renaming = null;
+    }
   }
 
   @override
@@ -268,7 +305,7 @@ class _ChatTabsState extends State<_ChatTabs> {
   }
 
   /// A tab's right-click menu, at [position]: as an editor tab's, its
-  /// closes; then its agent's pin.
+  /// closes; then its agent's, as the sidebar's (Rename, Pin, Fork…).
   void _showMenu(AgentThread thread, Offset position) {
     final tabs = widget.tabs;
     final at = tabs.indexOf(thread);
@@ -284,6 +321,9 @@ class _ChatTabsState extends State<_ChatTabs> {
         if (mounted) onSelected();
       },
     );
+    // A fork keeps the conversation: none before its first message.
+    final canFork =
+        thread.id != null && (!thread.isOpen || thread.session.canFork);
     unawaited(
       showIdeMenu(
         context,
@@ -306,13 +346,31 @@ class _ChatTabsState extends State<_ChatTabs> {
             item(l10n.tabCloseAll, () => widget.onClose([...widget.tabs])),
           ],
           [
-            // A new one, nothing sent to it, is in no list to pin it in.
-            if (!thread.untouched && !thread.archived)
+            item(l10n.commonRename, () => setState(() => _renaming = thread)),
+            // A new one, nothing sent to it, is in no list to pin or
+            // archive it in.
+            if (!thread.untouched) ...[
+              if (!thread.archived)
+                item(
+                  thread.pinned ? l10n.sidebarUnpin : l10n.sidebarPin,
+                  () => widget.onPin(thread),
+                ),
               item(
-                thread.pinned ? l10n.sidebarUnpin : l10n.sidebarPin,
-                () => widget.onPin(thread),
+                thread.archived ? l10n.sidebarUnarchive : l10n.sidebarArchive,
+                () => widget.onArchive(thread),
+              ),
+            ],
+            if (canFork)
+              item(l10n.sidebarFork, () => widget.onFork(thread)),
+            // Claude Code finds the conversation by it (none before the
+            // first message).
+            if (thread.id case final id?)
+              item(
+                l10n.sidebarCopySessionId,
+                () => unawaited(Clipboard.setData(ClipboardData(text: id))),
               ),
           ],
+          [item(l10n.commonDelete, () => widget.onDelete(thread))],
         ]),
       ),
     );
@@ -342,6 +400,11 @@ class _ChatTabsState extends State<_ChatTabs> {
                   title: thread.localizedTitle(l10n),
                   active: identical(thread, widget.current),
                   closeTooltip: l10n.commonClose,
+                  renaming: identical(thread, _renaming),
+                  onRename: (text) {
+                    setState(() => _renaming = null);
+                    if (text != null) widget.onRename(thread, text);
+                  },
                   onSelect: () => widget.onOpen(thread),
                   onClose: () => widget.onClose([thread]),
                   onMenu: (position) => _showMenu(thread, position),
@@ -504,6 +567,8 @@ class _ChatTab extends StatelessWidget {
     required this.title,
     required this.active,
     required this.closeTooltip,
+    required this.renaming,
+    required this.onRename,
     required this.onSelect,
     required this.onClose,
     required this.onMenu,
@@ -513,6 +578,11 @@ class _ChatTab extends StatelessWidget {
   final String title;
   final bool active;
   final String closeTooltip;
+
+  /// Its title edited in place; [onRename] takes the new one, or null when
+  /// the edit was cancelled.
+  final bool renaming;
+  final ValueChanged<String?> onRename;
   final VoidCallback onSelect;
   final VoidCallback onClose;
 
@@ -526,6 +596,8 @@ class _ChatTab extends StatelessWidget {
       icon: _ThreadIcon(thread),
       label: title,
       active: active,
+      renaming: renaming,
+      onRenamed: onRename,
       mark: switch (status) {
         ThreadStatus.needsInput ||
         ThreadStatus.unread => (_) => Center(child: _StatusMark(status)),

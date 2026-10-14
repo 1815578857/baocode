@@ -418,6 +418,61 @@ void main() {
     expect(workspace.threads, containsAll([thread, ...others]));
   });
 
+  testWidgets('a chat tab\'s right click, as the sidebar\'s menu: rename in '
+      'place, Pin, Archive and Delete', (tester) async {
+    final workspace = await _pumpApp(tester);
+    final thread = workspace.current!;
+    workspace.openInIde(thread);
+    await tester.pump();
+    await tester.pump();
+
+    final title = find.byType(IdeChatTitle);
+    Future<void> openMenu(AgentThread t) async {
+      final tab = find.descendant(of: title, matching: find.text(t.title));
+      await tester.ensureVisible(tab);
+      await tester.pumpAndSettle();
+      await tester.tap(tab, buttons: kSecondaryMouseButton);
+      await tester.pumpAndSettle();
+    }
+
+    // The menu carries the conversation's own actions.
+    await openMenu(thread);
+    for (final label in ['Rename', 'Pin', 'Archive', 'Delete']) {
+      expect(find.text(label), findsOneWidget, reason: label);
+    }
+
+    // Rename: an input in the tab, over the title.
+    await tester.tap(find.text('Rename'));
+    await tester.pumpAndSettle();
+    final field = find.descendant(
+      of: title,
+      matching: find.byType(TextField),
+    );
+    expect(field, findsOneWidget);
+    await tester.enterText(field, 'Renamed here');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(thread.title, 'Renamed here');
+    expect(
+      find.descendant(of: title, matching: find.text('Renamed here')),
+      findsOneWidget,
+    );
+
+    // Archive: it leaves the listed tabs.
+    await openMenu(thread);
+    await tester.tap(find.text('Archive'));
+    await tester.pumpAndSettle();
+    expect(thread.archived, isTrue);
+
+    // Delete: confirmed, the agent goes.
+    await openMenu(thread);
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete').last);
+    await tester.pumpAndSettle();
+    expect(workspace.threads, isNot(contains(thread)));
+  });
+
   testWidgets('⌘W/Ctrl+W from the chat closes its tab shown, the next '
       'then; from an editor, the editor', (tester) async {
     final workspace = await _pumpApp(tester);

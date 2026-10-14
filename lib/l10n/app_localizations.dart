@@ -5420,6 +5420,12 @@ abstract class AppLocalizations {
   /// **'Find in Folder...'**
   String get explorerFindInFolder;
 
+  /// No description provided for @explorerOpenInTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Terminal'**
+  String get explorerOpenInTerminal;
+
   /// No description provided for @explorerRename.
   ///
   /// In en, this message translates to:
@@ -8954,6 +8960,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Windows'**
   String get generalSettingsWindows;
+
+  /// No description provided for @generalSettingsIde.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast IDE'**
+  String get generalSettingsIde;
+
+  /// No description provided for @generalSettingsAutoOpenChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Show agent changes as diffs'**
+  String get generalSettingsAutoOpenChanges;
+
+  /// No description provided for @generalSettingsAutoOpenChangesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'While the IDE shows, a file the agent changes opens as a diff of it against its text before, as the agent edits it.'**
+  String get generalSettingsAutoOpenChangesDescription;
+
+  /// No description provided for @explorerExcludeSetting.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden files and folders'**
+  String get explorerExcludeSetting;
+
+  /// No description provided for @explorerExcludeSettingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Files and folders the explorer does not show, comma separated: a name (`node_modules`, `*.log`) matches anywhere, a path (`build/**`, `src/generated`) matches within the folder.'**
+  String get explorerExcludeSettingDescription;
+
+  /// No description provided for @explorerExcludeSettingPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. .git, node_modules, *.log'**
+  String get explorerExcludeSettingPlaceholder;
 
   /// No description provided for @claudePathSetting.
   ///
