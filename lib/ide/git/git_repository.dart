@@ -308,6 +308,42 @@ class IdeGitRepository extends ChangeNotifier {
     if (head.ahead > 0) await service.push(remote, '$branch:$name');
   });
 
+  /// Git: Fetch (`Repository.fetch`), or from every remote
+  /// (`Repository.fetchAll`, which the title bar's Fetch From All Remotes
+  /// runs) when [remote] is null.
+  Future<void> fetch({String? remote}) =>
+      _operate(() => service.fetch(remote: remote));
+
+  /// Git: Pull (`Repository.pull`): pulls the branch's upstream. Throws
+  /// when the branch has none (`Repository.pull`'s "no tracking
+  /// information" message), for the view to report.
+  Future<void> pull() => _operate(() async {
+    final (remote, name) = await _upstream('pull');
+    await service.pull(remote, name);
+  });
+
+  /// Git: Push (`Repository.push`): pushes the branch to its upstream.
+  /// Throws when the branch has none.
+  Future<void> push() => _operate(() async {
+    final branch = _state?.head.branch;
+    final (remote, name) = await _upstream('push');
+    await service.push(remote, '$branch:$name');
+  });
+
+  /// The branch's upstream as (remote, remote branch), or an error saying
+  /// there is none to [action] from or to.
+  Future<(String, String)> _upstream(String action) async {
+    final branch = _state?.head.branch;
+    final upstream = _state?.head.upstream;
+    if (branch == null || upstream == null) {
+      throw IdeGitException(
+        'There is no tracking information for the current branch: '
+        'nothing to $action.',
+      );
+    }
+    return splitUpstream(upstream, await service.remotes());
+  }
+
   /// Publish Branch to [remote] (`Repository.pushTo`, setting the
   /// upstream).
   Future<void> publish(String remote) => _whileSyncing(() async {

@@ -1235,6 +1235,10 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     _editWatches.clear();
     workspace.layout.removeListener(_layoutChanged);
     _git?.removeListener(_gitChanged);
+    for (final git in _watchedRepositories) {
+      git.removeListener(_repositoryChanged);
+    }
+    _watchedRepositories.clear();
     _git = null;
     _gitState = null;
     for (final session in _scmSessions.values) {
@@ -1273,12 +1277,54 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       _gitState = state;
       if (state != null) unawaited(widget.workspace.reloadRevisions());
     }
-    final count = state?.count ?? 0;
+    // The activity bar's badge counts every repository's changes (#68); the
+    // status bar's branch, the one shown.
+    _listenToRepositories();
+    final count = _changesInAllRepositories;
     final branch = state?.head.branch;
     if (count == _gitCount && branch == _gitBranch && !loaded) return;
     _gitCount = count;
     _gitBranch = branch;
     if (mounted) setState(() {});
+  }
+
+  /// Every repository's changes, or the shown one's where the workspace is
+  /// one ([_gitCount]).
+  int get _changesInAllRepositories {
+    final repositories = widget.workspace.repositories;
+    if (repositories.length <= 1) return _git?.state?.count ?? 0;
+    return repositories.fold(
+      0,
+      (sum, repository) => sum + (repository.$2.state?.count ?? 0),
+    );
+  }
+
+  /// Follows every repository of the workspace, so a change in any of them
+  /// updates the badge (#68). The shown one is followed by [_gitChanged]'s
+  /// own listener.
+  void _listenToRepositories() {
+    final repositories = widget.workspace.repositories;
+    final current = {for (final (_, git) in repositories) git};
+    for (final git in _watchedRepositories.toList()) {
+      if (current.contains(git)) continue;
+      git.removeListener(_repositoryChanged);
+      _watchedRepositories.remove(git);
+    }
+    for (final git in current) {
+      if (_watchedRepositories.add(git)) {
+        git.addListener(_repositoryChanged);
+      }
+    }
+  }
+
+  final Set<IdeGitRepository> _watchedRepositories = {};
+
+  void _repositoryChanged() {
+    if (!mounted) return;
+    final count = _changesInAllRepositories;
+    if (count == _gitCount) return;
+    _gitCount = count;
+    setState(() {});
   }
 
   /// The status bar's bell follows them.
@@ -3526,6 +3572,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       onAddToChat: widget.onAddToChat,
       trash: WindowControls.canMoveToTrash ? WindowControls.moveToTrash : null,
       commitMessage: widget.commitMessage,
+      onCheckout: _gitCheckoutOf,
     ),
     IdeSideView.debug => switch (_debug) {
       final debug? => DebugView(

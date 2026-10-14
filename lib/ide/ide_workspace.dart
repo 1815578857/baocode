@@ -353,7 +353,16 @@ class IdeWorkspace extends ChangeNotifier {
 
   IdeGitRepository? _activeRepository;
 
-  /// The repository Source Control, the status bar and the timeline show:
+  /// The repositories picked in Source Control's REPOSITORIES with Cmd
+  /// (Ctrl) (#76); CHANGES shows them grouped once there is more than one,
+  /// the one [selectRepository] picked otherwise. Kept with the workspace,
+  /// not the view's session, which follows the shown repository.
+  final Set<IdeGitRepository> scmSelectedRepositories = {};
+
+  /// Repositories whose groups are folded in CHANGES, by root (#76).
+  final Set<String> scmCollapsedRepositories = {};
+
+  /// The repository SCm, the status bar and the timeline show:
   /// the one picked of a workspace's (its first until one is).
   void selectRepository(IdeGitRepository repository) {
     if (identical(repository, _activeRepository)) return;

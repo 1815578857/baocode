@@ -18,15 +18,17 @@
 // lists' keys, through [IdeKeyboardList]).
 //
 // Deviations: a commit's file in the graph opens the file, not a diff
-// editor; of push, pull
-// and fetch only the action button's Sync Changes and Publish Branch, with
-// no remote providers (Publish to GitHub) and a menu at the button for the
-// remote to publish to, where upstream has a quick pick; no stash, branch
-// or tag commands; the smart commit's Always and Never, and the sync's
-// Don't Show Again, last for the session; Generate Commit Message asks
-// Claude Haiku (see commit_message.dart), where VS Code asks Copilot. The
-// keyboard walks the graph's commits, not the files of an expanded one; the
-// commit input keeps no history of messages (`scm.viewPreviousCommit`).
+// editor; the action button has Sync Changes and Publish Branch, with no
+// remote providers (Publish to GitHub) and a menu at the button for the
+// remote to publish to, where upstream has a quick pick; Fetch, Fetch From
+// All Remotes, Pull and Push are the Changes pane's `...` and the palette's
+// Git commands (a repository's `...` in REPOSITORIES runs them on it), where
+// upstream has them in the title bar's overflow; no stash, branch or tag
+// commands; the smart commit's Always and Never, and the sync's Don't Show
+// Again, last for the session; Generate Commit Message asks Claude Haiku
+// (see commit_message.dart), where VS Code asks Copilot. The keyboard walks
+// the graph's commits, not the files of an expanded one; the commit input
+// keeps no history of messages (`scm.viewPreviousCommit`).
 
 import 'dart:async';
 import 'dart:math' as math;
@@ -101,7 +103,7 @@ class IdeScmSession {
 
   final TextEditingController message = TextEditingController();
   final Set<String> expandedPanes = {'changes', 'graph'};
-  final Set<IdeGitGroup> collapsedGroups = {};
+  final Set<String> collapsedGroups = {};
   final Set<String> expandedCommits = {};
 
   /// View as Tree (the default here) or View as List, and the list's order.
@@ -222,11 +224,16 @@ class IdeScmView extends StatefulWidget {
     this.onAddToChat,
     this.trash,
     this.commitMessage,
+    this.onCheckout,
   });
 
   final IdeWorkspace workspace;
   final IdeScmSession session;
   final IdeNotifications notifications;
+
+  /// Checkout to… (the workbench's Branch picker) on a repository; none
+  /// offered when null.
+  final ValueChanged<IdeGitRepository>? onCheckout;
 
   /// Opens a file in the editor.
   final Future<void> Function(String path, {bool focusEditor}) onOpen;
@@ -257,32 +264,68 @@ class IdeScmView extends StatefulWidget {
   State<IdeScmView> createState() => IdeScmViewState();
 }
 
-/// A row of the Changes list the keyboard walks: a resource group, a
-/// folder of the tree, or a change.
+/// A row of the Changes list the keyboard walks: a repository's header
+/// (when more than one repository shows, #76), a resource group, a folder
+/// of the tree, or a change.
 sealed class _ScmRow {
   /// What `_selected` holds for it.
   String get key;
 
-  /// Its group's or folder's key; null for a group.
+  /// Its group's or folder's key; null for a group and a repository.
   String? get parent;
+
+  /// The repository it belongs to; null when one repository shows alone.
+  IdeGitRepository? get repo;
 }
 
-final class _GroupRow implements _ScmRow {
-  _GroupRow(this.group, this.resources);
+/// A repository's row in CHANGES (its name, branch and change count),
+/// shown above its groups when more than one repository is picked (#76).
+final class _RepositoryRow implements _ScmRow {
+  _RepositoryRow(this.repo, this.changes);
 
-  final IdeGitGroup group;
-  final List<IdeGitResource> resources;
+  /// The repository whose changes its groups' rows follow.
+  @override
+  final IdeGitRepository repo;
+
+  /// How many changes it has, for its badge.
+  final int changes;
 
   @override
-  String get key => group.name;
+  String get key => 'repo:${repo.service.root}';
 
   @override
   String? get parent => null;
 }
 
-final class _FolderRow implements _ScmRow {
-  _FolderRow(this.group, this.folder, this.depth, this.key, this.parent);
+final class _GroupRow implements _ScmRow {
+  _GroupRow(this.repo, this.group, this.resources);
 
+  @override
+  final IdeGitRepository? repo;
+  final IdeGitGroup group;
+  final List<IdeGitResource> resources;
+
+  @override
+  String get key => repo == null
+      ? group.name
+      : '${repo!.service.root}\x00${group.name}';
+
+  @override
+  String? get parent => repo == null ? null : 'repo:${repo!.service.root}';
+}
+
+final class _FolderRow implements _ScmRow {
+  _FolderRow(
+    this.repo,
+    this.group,
+    this.folder,
+    this.depth,
+    this.key,
+    this.parent,
+  );
+
+  @override
+  final IdeGitRepository? repo;
   final IdeGitGroup group;
   final IdeScmTreeFolder folder;
   final int depth;
@@ -293,8 +336,10 @@ final class _FolderRow implements _ScmRow {
 }
 
 final class _ResourceRow implements _ScmRow {
-  _ResourceRow(this.resource, this.treeDepth, this.parent);
+  _ResourceRow(this.repo, this.resource, this.treeDepth, this.parent);
 
+  @override
+  final IdeGitRepository? repo;
   final IdeGitResource resource;
 
   /// Its depth in the tree; null in the list.
@@ -306,29 +351,44 @@ final class _ResourceRow implements _ScmRow {
   late final String key = '${resource.group.name}:${resource.path}';
 }
 
-/// The Changes list's rows for a status and the view's settings when they
-/// were made: made again only when one of them changed, for the list's
-/// builds and its keyboard asking for them many times between.
+/// The Changes list's rows for the shown repositories and the view's
+/// settings when they were made: made again only when one of them changed,
+/// for the list's builds and its keyboard asking for them many times
+/// between.
 final class _ScmRows {
-  _ScmRows(this.state, IdeScmSession session, this.rows)
+  _ScmRows(this.repos, IdeScmSession session, this.rows)
     : treeView = session.treeView,
       sort = session.sort,
       collapsedGroups = {...session.collapsedGroups},
       collapsedFolders = {...session.collapsedFolders};
 
-  final IdeGitState state;
+  /// The repositories shown (their statuses), in the order they list.
+  final List<(IdeGitRepository, IdeGitState)> repos;
   final bool treeView;
   final IdeScmSort sort;
-  final Set<IdeGitGroup> collapsedGroups;
+  final Set<String> collapsedGroups;
   final Set<String> collapsedFolders;
   final List<_ScmRow> rows;
 
-  bool isFor(IdeGitState state, IdeScmSession session) =>
-      identical(state, this.state) &&
+  bool isFor(List<(IdeGitRepository, IdeGitState)> repos, IdeScmSession session) =>
+      _sameRepos(repos, this.repos) &&
       session.treeView == treeView &&
       session.sort == sort &&
       setEquals(session.collapsedGroups, collapsedGroups) &&
       setEquals(session.collapsedFolders, collapsedFolders);
+
+  static bool _sameRepos(
+    List<(IdeGitRepository, IdeGitState)> a,
+    List<(IdeGitRepository, IdeGitState)> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!identical(a[i].$1, b[i].$1) || !identical(a[i].$2, b[i].$2)) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   /// Each row's index by its key.
   late final Map<String, int> indices = {
@@ -439,10 +499,22 @@ class IdeScmViewState extends State<IdeScmView>
           IdeViewTitle(context.l10n.scmTitle),
           // A workspace's folders' repositories, the one shown picked.
           if (widget.workspace.repositories.length > 1)
-            _Repositories(workspace: widget.workspace),
+            _Repositories(
+              workspace: widget.workspace,
+              session: _session,
+              onChanged: _rebuild,
+              onCommit: (git) => unawaited(_commit(repo: git)),
+              onMenu: (git, position, anchor) => unawaited(
+                _repositoryMenu(git, position, anchor),
+              ),
+            ),
           Expanded(
             child: ListenableBuilder(
-              listenable: Listenable.merge([?git]),
+              // The shown repositories, so a change in a picked one
+              // rebuilds CHANGES.
+              listenable: Listenable.merge([
+                for (final repo in _shownRepositories) repo,
+              ]),
               builder: (context, _) => git == null
                   ? _Welcome([context.l10n.scmNoProviders])
                   : _body(git),
@@ -490,7 +562,7 @@ class IdeScmViewState extends State<IdeScmView>
               IdePaneAction(
                 icon: Codicons.refresh,
                 tooltip: l10n.commonRefresh,
-                onPressed: () => unawaited(git.refresh()),
+                onPressed: () => unawaited(_refreshRepositories()),
               ),
               IdeMenuButton(
                 icon: Codicons.ellipsis,
@@ -559,6 +631,21 @@ class IdeScmViewState extends State<IdeScmView>
   /// `scm.acceptInput`: the Git repository's `git.commit`.
   Future<void> commit() => _commit();
 
+  /// `git.fetch` (Git: Fetch): every remote of the repository shown.
+  Future<void> fetch() async {
+    final git = _git;
+    if (git != null) await _run(git.fetch);
+  }
+
+  /// `git.fetchAll` (Git: Fetch From All Remotes).
+  Future<void> fetchAll() => _fetchAll();
+
+  /// `git.pull` (Git: Pull): pulls every shown repository.
+  Future<void> pull() => _pullAll();
+
+  /// `git.push` (Git: Push): pushes every shown repository.
+  Future<void> push() => _pushAll();
+
   /// `scm.clearInput`.
   void clearInput() => _session.message.clear();
 
@@ -573,27 +660,37 @@ class IdeScmViewState extends State<IdeScmView>
 
   bool get _graphHasFocus => _graph.hasFocus;
 
-  List<_ScmRow> get _rows => switch (_git?.state) {
-    final state? => _rowsOf(state).rows,
-    null => const [],
-  };
+  /// The shown repositories with their statuses, the ones CHANGES lists.
+  List<(IdeGitRepository, IdeGitState)> get _shownStates => [
+    for (final git in _shownRepositories)
+      if (git.state case final state?) (git, state),
+  ];
+
+  /// How many repositories CHANGES shows (more than one groups them).
+  int get _reposShown => _shownStates.length;
+
+  List<_ScmRow> get _rows {
+    final states = _shownStates;
+    return states.isEmpty ? const [] : _rowsOf(states).rows;
+  }
 
   _ScmRows? _rowCache;
 
-  /// [state]'s rows ([_changeRows]), made again only when it or the view's
-  /// settings changed.
-  _ScmRows _rowsOf(IdeGitState state) {
-    if (_rowCache case final cache? when cache.isFor(state, _session)) {
+  /// The rows of [states] ([_changeRows]), made again only when they or the
+  /// view's settings changed.
+  _ScmRows _rowsOf(List<(IdeGitRepository, IdeGitState)> states) {
+    if (_rowCache case final cache? when cache.isFor(states, _session)) {
       return cache;
     }
-    return _rowCache = _ScmRows(state, _session, _changeRows(state));
+    return _rowCache = _ScmRows(states, _session, _changeRows(states));
   }
 
   /// The index of the row of [key] among [_rows]; -1 for none.
-  int _indexOf(String? key) => switch (_git?.state) {
-    final state? when key != null => _rowsOf(state).indices[key] ?? -1,
-    _ => -1,
-  };
+  int _indexOf(String? key) {
+    if (key == null) return -1;
+    final states = _shownStates;
+    return states.isEmpty ? -1 : _rowsOf(states).indices[key] ?? -1;
+  }
 
   List<IdeGraphRow> get _commits => _git?.graph ?? const [];
 
@@ -661,12 +758,14 @@ class IdeScmViewState extends State<IdeScmView>
   List<IdeGitResource> _targets(
     String key,
     IdeGitGroup group,
-    List<IdeGitResource> own,
-  ) {
+    List<IdeGitResource> own, {
+    IdeGitRepository? repo,
+  }) {
     if (_selection.length < 2 || !_isSelected(key)) return own;
     final targets = <String, IdeGitResource>{};
     for (final row in _rows) {
       if (!_isSelected(row.key)) continue;
+      if (!identical(row.repo, repo)) continue;
       switch (row) {
         case _ResourceRow(:final resource) when resource.group == group:
           targets[resource.path] = resource;
@@ -685,18 +784,36 @@ class IdeScmViewState extends State<IdeScmView>
     return at < 0 ? null : _rows[at];
   }
 
+  /// A group of a repository, keyed so a multi-repository list folds each
+  /// on its own.
+  static String _groupKey(IdeGitRepository? repo, IdeGitGroup group) =>
+      repo == null
+      ? group.name
+      : '${repo.service.root}\x00${group.name}';
+
   bool _isCollapsed(_ScmRow row) => switch (row) {
-    _GroupRow(:final group) => _session.collapsedGroups.contains(group),
+    _RepositoryRow(:final repo) =>
+      widget.workspace.scmCollapsedRepositories.contains(repo.service.root),
+    _GroupRow(:final repo, :final group) => _session.collapsedGroups.contains(
+      _groupKey(repo, group),
+    ),
     _FolderRow(:final key) => _session.collapsedFolders.contains(key),
     _ResourceRow() => false,
   };
 
   void _setCollapsed(_ScmRow row, bool collapsed) => setState(() {
     switch (row) {
-      case _GroupRow(:final group):
+      case _RepositoryRow(:final repo):
+        final root = repo.service.root;
         collapsed
-            ? _session.collapsedGroups.add(group)
-            : _session.collapsedGroups.remove(group);
+            ? widget.workspace.scmCollapsedRepositories.add(root)
+            : widget.workspace.scmCollapsedRepositories.remove(root);
+      case _GroupRow():
+        final key = _rowGroupKey(row);
+        if (key == null) return;
+        collapsed
+            ? _session.collapsedGroups.add(key)
+            : _session.collapsedGroups.remove(key);
       case _FolderRow(:final key):
         collapsed
             ? _session.collapsedFolders.add(key)
@@ -835,26 +952,41 @@ class IdeScmViewState extends State<IdeScmView>
       _graph.collapseAll();
       return;
     }
-    final state = _git?.state;
-    if (state == null) return;
+    final states = _shownStates;
+    if (states.isEmpty) return;
     final focused = _focusedRow;
     setState(() {
-      for (final group in IdeGitGroup.values) {
-        void collapse(List<IdeScmTreeNode> nodes) {
-          for (final node in nodes) {
-            if (node is! IdeScmTreeFolder) continue;
-            _session.collapsedFolders.add(_folderKey(group, node));
-            collapse(node.children);
+      for (final (git, state) in states) {
+        final repo = states.length > 1 ? git : null;
+        for (final group in IdeGitGroup.values) {
+          void collapse(List<IdeScmTreeNode> nodes) {
+            for (final node in nodes) {
+              if (node is! IdeScmTreeFolder) continue;
+              _session.collapsedFolders.add(_folderKey(repo, group, node));
+              collapse(node.children);
+            }
           }
-        }
 
-        collapse(ideScmGroupTree(state, group));
-        _session.collapsedGroups.add(group);
+          collapse(ideScmGroupTree(state, group));
+          _session.collapsedGroups.add(_groupKey(repo, group));
+        }
       }
       // The focus goes to its group.
-      if (focused != null) _selectOnly(focused.key.split(':').first);
+      final key = focused == null ? null : _rowGroupKey(focused);
+      if (key != null) _selectOnly(key);
     });
   }
+
+  /// The key of [row]'s group, or null for a repository's row.
+  static String? _rowGroupKey(_ScmRow row) => switch (row) {
+    _GroupRow(:final repo, :final group) => _groupKey(repo, group),
+    _FolderRow(:final repo, :final group) => _groupKey(repo, group),
+    _ResourceRow(:final repo, :final resource) => _groupKey(
+      repo,
+      resource.group,
+    ),
+    _RepositoryRow() => null,
+  };
 
   @override
   bool listTreeKey(String key) {
@@ -882,7 +1014,8 @@ class IdeScmViewState extends State<IdeScmView>
   // --- Changes -------------------------------------------------------------
 
   Widget _changesList(IdeGitRepository git, IdeGitState state) {
-    final rows = _rowsOf(state);
+    final states = _shownStates;
+    final rows = _rowsOf(states);
     // Only the rows shown are built, and where one is is worked out from
     // their height: there can be thousands, and a scrollbar dragged.
     final list = IdeAnimatedList.builder(
@@ -896,22 +1029,37 @@ class IdeScmViewState extends State<IdeScmView>
         children: [
           _inputRow(state),
           _actionButtonRow(git, state),
-          if (state.didHitLimit) _limitRow(git, state),
+          // Past the limit with one repository; with several, each shows
+          // its own notice below its header.
+          if (state.didHitLimit && states.length <= 1) _limitRow(git, state),
         ],
       ),
       keys: rows.keys,
       itemBuilder: (context, index) {
-        return switch (rows.rows[index]) {
+        final row = rows.rows[index];
+        final stateOf = row.repo?.state ?? state;
+        final repo = row.repo ?? git;
+        final grouped = states.length > 1;
+        return switch (row) {
+          _RepositoryRow(:final repo) => _repositoryRow(repo),
           _GroupRow(:final group, :final resources) => _groupRow(
-            git,
+            row.key,
+            grouped ? repo : git,
             group,
             resources,
           ),
           _FolderRow(:final group, :final folder, :final depth, :final key) =>
-            _folderRow(git, state, group, folder, depth, key),
+            _folderRow(
+              grouped ? repo : git,
+              stateOf,
+              group,
+              folder,
+              depth,
+              key,
+            ),
           _ResourceRow(:final resource, :final treeDepth) => _resourceRow(
-            git,
-            state,
+            grouped ? repo : git,
+            stateOf,
             resource,
             treeDepth: treeDepth,
           ),
@@ -989,19 +1137,40 @@ class IdeScmViewState extends State<IdeScmView>
     }
   }
 
-  /// The Changes list's rows: each group shown (Merge and Staged Changes
-  /// hide when empty; Changes does not) and, unless collapsed, its tree's
-  /// folders (expanded or not) and files under it (depth 1), or its list.
-  List<_ScmRow> _changeRows(IdeGitState state) {
+  /// The Changes list's rows: when more than one repository shows, each
+  /// repository's header (#76) over its groups; each group shown (Merge and
+  /// Staged Changes hide when empty; Changes does not) and, unless
+  /// collapsed, its tree's folders (expanded or not) and files under it
+  /// (depth 1), or its list.
+  List<_ScmRow> _changeRows(List<(IdeGitRepository, IdeGitState)> states) {
     final rows = <_ScmRow>[];
+    final grouped = states.length > 1;
+    for (final (git, state) in states) {
+      if (grouped) {
+        rows.add(_RepositoryRow(git, state.count));
+        // A folded repository shows its header alone.
+        if (widget.workspace.scmCollapsedRepositories.contains(state.root)) continue;
+      }
+      _repoRows(rows, grouped ? git : null, state);
+    }
+    return rows;
+  }
+
+  void _repoRows(
+    List<_ScmRow> rows,
+    IdeGitRepository? repo,
+    IdeGitState state,
+  ) {
     for (final group in IdeGitGroup.values) {
       final resources = state.group(group);
       if (resources.isEmpty && group != IdeGitGroup.workingTree) continue;
-      rows.add(_GroupRow(group, resources));
-      if (_session.collapsedGroups.contains(group)) continue;
+      final groupRow = _GroupRow(repo, group, resources);
+      rows.add(groupRow);
+      if (_session.collapsedGroups.contains(groupRow.key)) continue;
+      final parent = groupRow.key;
       if (!_session.treeView) {
         for (final resource in _sorted(resources)) {
-          rows.add(_ResourceRow(resource, null, group.name));
+          rows.add(_ResourceRow(repo, resource, null, parent));
         }
         continue;
       }
@@ -1009,24 +1178,28 @@ class IdeScmViewState extends State<IdeScmView>
         for (final node in nodes) {
           switch (node) {
             case IdeScmTreeFolder():
-              final key = _folderKey(group, node);
-              rows.add(_FolderRow(group, node, depth, key, parent));
+              final key = _folderKey(repo, group, node);
+              rows.add(_FolderRow(repo, group, node, depth, key, parent));
               if (!_session.collapsedFolders.contains(key)) {
                 add(node.children, depth + 1, key);
               }
             case IdeScmTreeFile(:final resource):
-              rows.add(_ResourceRow(resource, depth, parent));
+              rows.add(_ResourceRow(repo, resource, depth, parent));
           }
         }
       }
 
-      add(ideScmGroupTree(state, group), 2, group.name);
+      add(ideScmGroupTree(state, group), 2, parent);
     }
-    return rows;
   }
 
-  static String _folderKey(IdeGitGroup group, IdeScmTreeFolder folder) =>
-      '${group.name}:folder:${folder.path}';
+  static String _folderKey(
+    IdeGitRepository? repo,
+    IdeGitGroup group,
+    IdeScmTreeFolder folder,
+  ) => repo == null
+      ? '${group.name}:folder:${folder.path}'
+      : '${repo.service.root}\x00${group.name}:folder:${folder.path}';
 
   /// `Menus.ViewSort`: View as List or Tree, and the list's order.
   List<IdeMenuEntry> _viewSortMenu() => ideMenuGroups([
@@ -1072,7 +1245,12 @@ class IdeScmViewState extends State<IdeScmView>
     final actions = _folderActions(
       git,
       group,
-      () => _targets(key, group, folder.resources.toList()),
+      () => _targets(
+        key,
+        group,
+        folder.resources.toList(),
+        repo: _reposShown > 1 ? git : null,
+      ),
     );
     final bubble = git.decorations?.folder(folder.path)?.color;
     final row = IdeListRow(
@@ -1103,14 +1281,16 @@ class IdeScmViewState extends State<IdeScmView>
                 if (group == IdeGitGroup.workingTree)
                   IdeMenuAction(
                     context.l10n.scmAddToGitignore,
-                    onSelected: () => unawaited(_ignore(state, [folder.path])),
+                    onSelected: () =>
+                        unawaited(_ignore(state, [folder.path])),
                   ),
               ],
               ..._pathMenu(state, folder.path, folder: true),
               [
                 IdeMenuAction(
                   context.l10n.commonCollapseAll,
-                  onSelected: () => _collapse(group, under: folder.path),
+                  onSelected: () =>
+                      _collapse(group, repo: git, under: folder.path),
                 ),
               ],
             ]),
@@ -1198,7 +1378,9 @@ class IdeScmViewState extends State<IdeScmView>
       _Action(
         context.l10n.scmDiscardChanges,
         Codicons.discard,
-        () => unawaited(_discard(targets())),
+        () => unawaited(
+          _discard(targets(), repo: _reposShown > 1 ? git : null),
+        ),
       ),
       _Action(
         context.l10n.scmStageChanges,
@@ -1465,6 +1647,115 @@ class IdeScmViewState extends State<IdeScmView>
     }
   }
 
+  /// Git: Fetch From All Remotes (`git.fetchAll`): every remote of every
+  /// repository in the workspace.
+  Future<void> _fetchAll() async {
+    final repositories = widget.workspace.repositories;
+    if (repositories.isEmpty) {
+      _report(const IdeGitException('No Git repositories to fetch from.'));
+      return;
+    }
+    await Future.wait([
+      for (final (_, git) in repositories) _run(git.fetch),
+    ]);
+  }
+
+  /// Refresh (the CHANGES pane's): reads the status of every shown
+  /// repository.
+  Future<void> _refreshRepositories() async {
+    for (final git in _shownRepositories) {
+      await _run(git.refresh);
+    }
+  }
+
+  /// Git: Pull (`git.pull`): pulls the upstream of every shown repository.
+  Future<void> _pullAll() async {
+    for (final git in _shownRepositories) {
+      await _run(git.pull);
+    }
+  }
+
+  /// Git: Push (`git.push`): pushes every shown repository.
+  Future<void> _pushAll() async {
+    for (final git in _shownRepositories) {
+      await _run(git.push);
+    }
+  }
+
+  /// A repository's `...` in REPOSITORIES (`git.pull`, `git.push`, Fetch
+  /// From All Remotes, Checkout to…), and picking it.
+  Future<void> _repositoryMenu(
+    IdeGitRepository git,
+    Offset position,
+    Rect? anchor,
+  ) async {
+    final l10n = context.l10n;
+    final picked = widget.workspace.scmSelectedRepositories.contains(git);
+    await showIdeMenu(
+      context,
+      anchor: anchor,
+      position: anchor == null ? position : null,
+      entries: ideMenuGroups([
+        [
+          IdeMenuAction(
+            picked ? l10n.scmUnpickRepository : l10n.scmPickRepository,
+            onSelected: () {
+              if (picked) {
+                widget.workspace.scmSelectedRepositories.remove(git);
+              } else {
+                widget.workspace.scmSelectedRepositories.add(git);
+              }
+              widget.workspace.selectRepository(git);
+              _rebuild();
+            },
+          ),
+        ],
+        [
+          IdeMenuAction(
+            l10n.scmFetch,
+            onSelected: () => unawaited(_run(git.fetch)),
+          ),
+          IdeMenuAction(
+            l10n.scmFetchFromAllRemotes,
+            onSelected: () => unawaited(_fetchAll()),
+          ),
+        ],
+        [
+          IdeMenuAction(
+            l10n.scmPull,
+            onSelected: () => unawaited(_run(git.pull)),
+          ),
+          IdeMenuAction(
+            l10n.scmPush,
+            onSelected: () => unawaited(_run(git.push)),
+          ),
+        ],
+        [
+          if (widget.onCheckout case final checkout?)
+            IdeMenuAction(
+              l10n.gitCheckoutBranchTag,
+              onSelected: () => checkout(git),
+            ),
+        ],
+      ]),
+    );
+  }
+
+  /// The repositories CHANGES shows: the picked ones of REPOSITORIES, or
+  /// the one Source Control is on.
+  List<IdeGitRepository> get _shownRepositories {
+    final all = widget.workspace.repositories;
+    final picked = widget.workspace.scmSelectedRepositories;
+    if (all.length > 1 && picked.isNotEmpty) {
+      return [
+        for (final (_, git) in all)
+          if (picked.contains(git)) git,
+      ];
+    }
+    final active = widget.workspace.git;
+    return active == null ? const [] : [active];
+  }
+
   Widget _commitButton(IdeGitRepository git, {required bool enabled}) =>
       _SplitButton(
         icon: Codicons.check,
@@ -1496,16 +1787,73 @@ class IdeScmViewState extends State<IdeScmView>
         ),
       );
 
+  /// A repository's row in CHANGES when several show (#76): its name in
+  /// bold, its branch and how many changes it has, folding every group
+  /// under it.
+  Widget _repositoryRow(IdeGitRepository git) {
+    final root = git.state?.root ?? git.service.root;
+    final branch = git.state?.head.branch;
+    final collapsed = widget.workspace.scmCollapsedRepositories.contains(root);
+    return IdeListRow(
+      key: ValueKey('repo:$root'),
+      focused: _listFocus.hasFocus,
+      onTap: () {
+        _listFocus.requestFocus();
+        setState(() {
+          if (!widget.workspace.scmCollapsedRepositories.remove(root)) {
+            widget.workspace.scmCollapsedRepositories.add(root);
+          }
+        });
+      },
+      tooltip: root,
+      builder: (context, hovered) => Padding(
+        padding: const EdgeInsets.only(left: 8, right: 12),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 22,
+              child: Transform.translate(
+                offset: const Offset(3, 0),
+                child: Icon(
+                  collapsed ? Codicons.chevronRight : Codicons.chevronDown,
+                  size: 16,
+                  color: themeColors['sideBar.foreground'],
+                ),
+              ),
+            ),
+            Icon(Codicons.repo, size: 16, color: themeColors['icon.foreground']),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                p.basename(root),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            if (branch case final branch?)
+              Flexible(child: _RepositoryBranch(branch)),
+            const SizedBox(width: 6),
+            IdeTitleBadge(git.state?.count ?? 0),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _groupRow(
+    String key,
     IdeGitRepository git,
     IdeGitGroup group,
     List<IdeGitResource> resources,
   ) {
-    final collapsed = _session.collapsedGroups.contains(group);
-    final key = group.name;
+    final collapsed = _session.collapsedGroups.contains(key);
     void toggle() => setState(() {
-      if (!_session.collapsedGroups.remove(group)) {
-        _session.collapsedGroups.add(group);
+      if (!_session.collapsedGroups.remove(key)) {
+        _session.collapsedGroups.add(key);
       }
     });
     final actions = _groupActions(git, group, resources);
@@ -1541,7 +1889,7 @@ class IdeScmViewState extends State<IdeScmView>
               if (_session.treeView)
                 IdeMenuAction(
                   context.l10n.commonCollapseAll,
-                  onSelected: () => _collapse(group),
+                  onSelected: () => _collapse(group, repo: git),
                 ),
             ],
           ]),
@@ -1588,17 +1936,23 @@ class IdeScmViewState extends State<IdeScmView>
     );
   }
 
-  /// Folds the folders of [group]'s tree: those in the folder at [under]
-  /// (it too), or all of them.
-  void _collapse(IdeGitGroup group, {String? under}) {
-    final state = _git?.state;
+  /// Folds the folders of [group]'s tree (of [git]'s when several
+  /// repositories show): those in the folder at [under] (it too), or all of
+  /// them.
+  void _collapse(IdeGitGroup group, {IdeGitRepository? repo, String? under}) {
+    final state = (repo ?? _git)?.state;
     if (state == null) return;
+    final grouped = _reposShown > 1;
     setState(() {
       void collapse(List<IdeScmTreeNode> nodes, bool inside) {
         for (final node in nodes) {
           if (node is! IdeScmTreeFolder) continue;
           final mine = inside || under == null || node.path == under;
-          if (mine) _session.collapsedFolders.add(_folderKey(group, node));
+          if (mine) {
+            _session.collapsedFolders.add(
+              _folderKey(grouped ? repo : null, group, node),
+            );
+          }
           collapse(node.children, mine);
         }
       }
@@ -1707,7 +2061,9 @@ class IdeScmViewState extends State<IdeScmView>
       _Action(
         context.l10n.scmDiscardAll,
         Codicons.discard,
-        () => unawaited(_discard(resources)),
+        () => unawaited(
+          _discard(resources, repo: _reposShown > 1 ? git : null),
+        ),
       ),
       _Action(
         context.l10n.scmStageAll,
@@ -1749,7 +2105,9 @@ class IdeScmViewState extends State<IdeScmView>
         _Action(
           context.l10n.scmDiscardChanges,
           Codicons.discard,
-          () => unawaited(_discard(targets())),
+          () => unawaited(
+            _discard(targets(), repo: _reposShown > 1 ? git : null),
+          ),
         ),
         _Action(
           context.l10n.scmStageChanges,
@@ -1799,7 +2157,12 @@ class IdeScmViewState extends State<IdeScmView>
     final paths = state.pathContext;
     final relative = paths.relative(resource.path, from: state.root);
     final folder = paths.dirname(relative);
-    List<IdeGitResource> targets() => _targets(key, resource.group, [resource]);
+    List<IdeGitResource> targets() => _targets(
+      key,
+      resource.group,
+      [resource],
+      repo: _reposShown > 1 ? git : null,
+    );
     final actions = _resourceActions(git, resource, targets);
     void open({bool focus = false}) =>
         unawaited(widget.onOpenChange(resource, focusEditor: focus));
@@ -1925,7 +2288,9 @@ class IdeScmViewState extends State<IdeScmView>
           if (working) ...[
             IdeMenuAction(
               l10n.scmDiscardChanges,
-              onSelected: () => unawaited(_discard(targets)),
+              onSelected: () => unawaited(
+                _discard(targets, repo: _reposShown > 1 ? git : null),
+              ),
             ),
             IdeMenuAction(
               l10n.scmAddToGitignore,
@@ -2020,6 +2385,19 @@ class IdeScmViewState extends State<IdeScmView>
           ),
         ],
       ),
+      const IdeMenuSeparator(),
+      IdeMenuAction(
+        l10n.scmFetchFromAllRemotes,
+        onSelected: () => unawaited(_fetchAll()),
+      ),
+      IdeMenuAction(
+        l10n.scmPull,
+        onSelected: () => unawaited(_pullAll()),
+      ),
+      IdeMenuAction(
+        l10n.scmPush,
+        onSelected: () => unawaited(_pushAll()),
+      ),
     ];
   }
 
@@ -2027,11 +2405,20 @@ class IdeScmViewState extends State<IdeScmView>
 
   /// `git.commit` and its variants: [all] null commits the staged changes,
   /// or everything when none are (the smart commit, asked first); false
-  /// only the staged ones; true everything.
-  Future<void> _commit({bool? all, bool amend = false}) async {
-    final git = _git;
+  /// only the staged ones; true everything. On [repo] (the repository the
+  /// row's Commit is in), or the one Source Control is on.
+  Future<void> _commit({bool? all, bool amend = false, IdeGitRepository? repo}) async {
+    final git = repo ?? _git;
     final state = git?.state;
-    if (git == null || state == null) return;
+    if (git == null || state == null) {
+      if (repo != null) {
+        widget.notifications.notify(
+          IdeSeverity.info,
+          context.l10n.scmNoChangesToCommit,
+        );
+      }
+      return;
+    }
     final l10n = context.l10n;
     final message = _session.message.text;
     if (message.trim().isEmpty && !amend) {
@@ -2071,28 +2458,29 @@ class IdeScmViewState extends State<IdeScmView>
         primary: [
           IdeNotificationAction(
             l10n.scmCreateEmptyCommit,
-            () => unawaited(_runCommit(message, empty: true)),
+            () => unawaited(_runCommit(message, git: git, empty: true)),
           ),
         ],
       );
       return;
     }
-    await _runCommit(message, all: commitAll, amend: amend);
+    await _runCommit(message, all: commitAll, amend: amend, git: git);
   }
 
   Future<void> _runCommit(
     String message, {
+    IdeGitRepository? git,
     bool all = false,
     bool amend = false,
     bool empty = false,
   }) async {
-    final git = _git;
-    if (git == null) return;
+    final repo = git ?? _git;
+    if (repo == null) return;
     try {
       if (all && !amend) {
-        await git.commitEverything(message);
+        await repo.commitEverything(message);
       } else {
-        await git.commit(message, all: all, amend: amend, empty: empty);
+        await repo.commit(message, all: all, amend: amend, empty: empty);
       }
       if (_session.message.text == message) _session.message.clear();
     } catch (error) {
@@ -2127,9 +2515,13 @@ class IdeScmViewState extends State<IdeScmView>
   }
 
   /// `git.clean` and `git.cleanAll`: confirms as VS Code does, tracked
-  /// files and untracked ones apart, then discards.
-  Future<void> _discard(List<IdeGitResource> resources) async {
-    final git = _git;
+  /// files and untracked ones apart, then discards. On [repo] (the row's
+  /// repository with several), or the one Source Control is on.
+  Future<void> _discard(
+    List<IdeGitResource> resources, {
+    IdeGitRepository? repo,
+  }) async {
+    final git = repo ?? _git;
     if (git == null || resources.isEmpty) return;
     final untracked = [
       for (final r in resources)
@@ -2230,8 +2622,8 @@ class IdeScmViewState extends State<IdeScmView>
     await widget.workspace.reload([for (final r in chosen) r.path]);
   }
 
-  /// `git.ignore`: appends the files to the repository's `.gitignore` in
-  /// its editor, and saves it.
+  /// `git.ignore`: appends the files to [state]'s repository's
+  /// `.gitignore` in its editor, and saves it.
   Future<void> _ignore(IdeGitState state, List<String> paths) async {
     final pathContext = state.pathContext;
     final ignoreFile = pathContext.join(state.root, '.gitignore');
@@ -3099,11 +3491,29 @@ String _subject(IdeGitCommit commit, AppLocalizations l10n) {
 
 /// VS Code's Source Control Repositories view: a workspace's repositories,
 /// each with its branch and how many changes; the one clicked is the one
-/// Source Control shows.
+/// Source Control shows, and Cmd/Ctrl clicking one adds it to the pick
+/// (#76), CHANGES then showing the picked repositories grouped.
 class _Repositories extends StatelessWidget {
-  const _Repositories({required this.workspace});
+  const _Repositories({
+    required this.workspace,
+    required this.session,
+    required this.onChanged,
+    required this.onCommit,
+    required this.onMenu,
+  });
 
   final IdeWorkspace workspace;
+  final IdeScmSession session;
+
+  /// Called when the pick changed (to rebuild CHANGES).
+  final VoidCallback onChanged;
+
+  /// Commit's on a repository ([IdeScmViewState._commit] of it).
+  final ValueChanged<IdeGitRepository> onCommit;
+
+  /// Opens a repository's `...` menu at a position, over it.
+  final void Function(IdeGitRepository git, Offset position, Rect? anchor)
+  onMenu;
 
   @override
   Widget build(BuildContext context) {
@@ -3112,6 +3522,13 @@ class _Repositories extends StatelessWidget {
       listenable: Listenable.merge([for (final (_, git) in repositories) git]),
       builder: (context, _) {
         final active = workspace.git;
+        final picked = workspace.scmSelectedRepositories;
+        // Shown as CHANGES groups them: the pick when it has more than one
+        // (the one shown among them), else the one shown alone.
+        final grouped = picked.length > 1;
+        bool shown(IdeGitRepository git) => grouped
+            ? picked.contains(git) || identical(git, active)
+            : identical(git, active);
         return Padding(
           padding: const EdgeInsets.only(bottom: 6),
           child: Column(
@@ -3130,25 +3547,23 @@ class _Repositories extends StatelessWidget {
               ),
               for (final (root, git) in repositories)
                 IdeListRow(
-                  key: ValueKey(root),
-                  selected: identical(git, active),
+                  key: ValueKey('repo-row:$root'),
+                  selected: shown(git),
                   focused: true,
                   tooltip: root,
-                  onTap: () => workspace.selectRepository(git),
+                  onTap: () => _select(git),
+                  onContextMenu: (position) =>
+                      onMenu(git, position, null),
                   // Upstream's `.scm-provider`: the icon (`repo-selected` on
-                  // the one shown), the name in bold, then the actions,
-                  // the branch's among them, at the right end; they are cut
-                  // short before the name is (`flex: 1 10000 auto`, at
-                  // least 24px). The count badge is not shown, as
-                  // `scm.providerCountBadge` is `hidden` by default.
+                  // the one shown), the name in bold, then the branch at the
+                  // right end (`flex: 1 10000 auto`, at least 24px), the
+                  // actions while hovered.
                   builder: (context, hovered) => Padding(
                     padding: const EdgeInsets.only(left: 12, right: 8),
                     child: Row(
                       children: [
                         Icon(
-                          identical(git, active)
-                              ? Codicons.repoSelected
-                              : Codicons.repo,
+                          shown(git) ? Codicons.repoSelected : Codicons.repo,
                           size: 16,
                           color: themeColors['icon.foreground'],
                         ),
@@ -3175,6 +3590,40 @@ class _Repositories extends StatelessWidget {
                                     ),
                                   ),
                                 ),
+                                // The repository's changes, as its CHANGES
+                                // header groups them, and the actions while
+                                // hovered: before the branch, which stays
+                                // at the right end.
+                                if (git.state?.count case final count?)
+                                  if (grouped) ...[
+                                    const Spacer(),
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 6),
+                                      child: IdeTitleBadge(count),
+                                    ),
+                                  ],
+                                if (hovered) ...[
+                                  const Spacer(),
+                                  _InlineAction(
+                                    icon: Codicons.check,
+                                    tooltip: context.l10n.scmCommit,
+                                    onPressed: () => onCommit(git),
+                                  ),
+                                  _InlineAction(
+                                    icon: Codicons.repoFetch,
+                                    tooltip: context.l10n.scmFetch,
+                                    onPressed: () => unawaited(git.fetch()),
+                                  ),
+                                  _InlineAction(
+                                    icon: Codicons.ellipsis,
+                                    tooltip: context.l10n.commonMoreActions,
+                                    onPressed: () => onMenu(
+                                      git,
+                                      Offset.zero,
+                                      _anchorOf(context),
+                                    ),
+                                  ),
+                                ],
                                 if (git.state?.head.branch case final branch?)
                                   Expanded(child: _RepositoryBranch(branch)),
                               ],
@@ -3190,6 +3639,42 @@ class _Repositories extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// The `...`'s menu drops from the row's right end.
+  Rect? _anchorOf(BuildContext context) {
+    final box = context.findRenderObject();
+    if (box is! RenderBox) return null;
+    final origin = box.localToGlobal(Offset.zero);
+    return Rect.fromPoints(
+      origin + Offset(box.size.width - 20, box.size.height),
+      origin + Offset(box.size.width, box.size.height),
+    );
+  }
+
+  /// A click on [git]: with Cmd (Ctrl), seeds the pick with the repository
+  /// shown and adds or removes [git] (#76); else [git] becomes the one
+  /// shown ([IdeWorkspace.selectRepository]), and the pick is cleared.
+  void _select(IdeGitRepository git) {
+    final keyboard = HardwareKeyboard.instance;
+    final multi = ideUsesMacKeys
+        ? keyboard.isMetaPressed
+        : keyboard.isControlPressed;
+    final pick = workspace.scmSelectedRepositories;
+    if (multi) {
+      if (pick.isEmpty) {
+        // The pick starts from what is shown, so the first Cmd click adds
+        // to it rather than replacing it.
+        final active = workspace.git;
+        if (active != null) pick.add(active);
+      }
+      if (!pick.remove(git)) pick.add(git);
+      onChanged();
+      return;
+    }
+    pick.clear();
+    workspace.selectRepository(git);
+    onChanged();
   }
 }
 

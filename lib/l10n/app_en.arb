@@ -2558,6 +2558,12 @@
   "scmSyncChanges": "Sync Changes",
   "scmSynchronizeChanges": "Synchronize Changes",
   "scmSynchronizingChanges": "Synchronizing Changes...",
+  "scmFetch": "Fetch",
+  "scmFetchFromAllRemotes": "Fetch From All Remotes",
+  "scmPull": "Pull",
+  "scmPush": "Push",
+  "scmPickRepository": "Pick Repository",
+  "scmUnpickRepository": "Unpick Repository",
   "scmPullCommits": "Pull {count} commits from {upstream}",
   "@scmPullCommits": {
     "placeholders": {
