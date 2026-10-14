@@ -106,6 +106,8 @@
 - `LinkConnector.connect` 会先同时尝试所有直连地址；全部失败且有 `relay` 时抛 `LinkRelayUnavailableException`，手机提示“只能经中转连接，中转服务暂不可用”。
 - 桌面端设置页有一行「中转：暂不可用」。
 
+在那之前，想临时从外网连，可以用 Cloudflare Tunnel 把 47100 暴露成一个固定域名（靠 80 端口绕过 `ws://` 的限制），做法见 [`cloudflare-tunnel.md`](./cloudflare-tunnel.md)。
+
 以后实现时：
 
 1. 中转服务（`../relay`，Cloudflare）只转发 `LinkSocket` 的二进制消息：两端各连一条 WebSocket 到 `url`，按 `room`（建议用桌面端 id）配对，原样转发。它看不到内容，也看不到是哪台手机（手机公钥在 hello 里是加密的）。
