@@ -36,6 +36,8 @@ enum DataDirectorySource {
 /// <path>/pastes/                  pastes too long to send, which agents read
 /// <path>/logs/errors.log          the errors the app did not handle
 /// <path>/extensions/              theme extensions, as VS Code lays them out
+/// <path>/secrets/                 providers' keys, where the system has no
+///                                 keychain of its own (Windows, Linux)
 /// ```
 ///
 /// Other programs keep files there too (the web views' `Cookies`,
@@ -136,6 +138,12 @@ class DataDirectory {
     'workspaces',
     'logs',
     'extensions',
+    // Where the providers' keys are kept where the system has no keychain
+    // of its own (Windows' DPAPI files, Linux's fallback; see
+    // secret_store_io.dart). Moving the folder without it left the
+    // providers in place and their keys behind, and every task failed with
+    // "Invalid API key".
+    'secrets',
   ];
 
   /// Entries that show a folder holds the app's data.
