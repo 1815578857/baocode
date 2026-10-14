@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -8,17 +7,17 @@ import 'package:flutter/services.dart';
 import '../chat/chat_keys.dart';
 import '../chat/floating/floating_placement.dart';
 import '../chat/widgets/hover_builder.dart';
-import '../chat/widgets/hover_scrollbar.dart';
 import '../chat/widgets/inline_rename_field.dart';
 import '../chat/widgets/pixel_loader.dart';
-import '../chat/widgets/scroll_edge_fade.dart';
 import '../icons/project_icon_picker.dart';
 import '../icons/project_icon_view.dart';
 import '../ide/ide_button.dart' show IdeButtonColors;
 import '../ide/ide_commands.dart' show ideUsesMacKeys;
 import '../ide/ide_hover.dart';
+import '../ide/ide_list.dart';
 import '../l10n/l10n.dart';
 import '../keybindings/chat_keybindings.dart';
+import '../keybindings/keybinding_service.dart';
 import '../keybindings/default_keybindings.dart' show openSettingsCommandId;
 import '../remote/remote_location.dart';
 import '../remote/remote_status.dart' show sshErrorText;
@@ -252,7 +251,9 @@ class Sidebar extends StatefulWidget {
   State<Sidebar> createState() => _SidebarState();
 }
 
-class _SidebarState extends State<Sidebar> implements ChatDragList {
+class _SidebarState extends State<Sidebar>
+    with IdeKeyboardList<Sidebar>
+    implements ChatDragList {
   static const _rowHeight = 28.0;
 
   /// The agents a project shows until asked for more (pinned ones apart).
@@ -280,9 +281,7 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
 
   final ScrollController _listScroll = ScrollController();
   final FocusNode _listFocus = FocusNode();
-  final Set<AgentThread> _selection = {};
-  AgentThread? _focused;
-  AgentThread? _anchor;
+  final IdeListSelection<AgentThread> _listSelection = IdeListSelection();
 
   bool _rowsDirty = true;
   AgentThread? _listedCurrent;
@@ -331,11 +330,16 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
       setState(() {});
     });
     _workspace.addListener(_markRowsDirty);
+    _listFocus.addListener(_focusChanged);
     widget.link?._state = this;
     _attachDrag(widget.drag);
   }
 
   void _markRowsDirty() => _rowsDirty = true;
+
+  void _focusChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void didChangeDependencies() {
@@ -370,6 +374,7 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
     _workspace.removeListener(_markRowsDirty);
     _clock.cancel();
     _autoScroll?.cancel();
+    _listFocus.removeListener(_focusChanged);
     _listFocus.dispose();
     _listScroll.dispose();
     super.dispose();
@@ -421,43 +426,19 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
     widget.onOpened?.call();
   }
 
-  /// The last click on a row, to tell a double click.
-  ({AgentThread thread, DateTime at})? _lastTap;
-
-  /// A click opens the agent at once (not after waiting out a double
-  /// click); a second one on it soon after renames it.
+  /// A plain click opens immediately; modifier clicks only change selection.
   void _handleRowTap(AgentThread thread) {
     _listFocus.requestFocus();
     final keyboard = HardwareKeyboard.instance;
     if (keyboard.isShiftPressed) {
-      _lastTap = null;
       _selectRange(thread);
       return;
     }
     if (ideUsesMacKeys ? keyboard.isMetaPressed : keyboard.isControlPressed) {
-      _lastTap = null;
-      setState(() {
-        if (!_selection.remove(thread)) _selection.add(thread);
-        _focused = _anchor = thread;
-      });
+      setState(() => _listSelection.toggle(thread));
       return;
     }
-    setState(() {
-      _selection
-        ..clear()
-        ..add(thread);
-      _focused = _anchor = thread;
-    });
-    final now = DateTime.now();
-    final last = _lastTap;
-    if (last != null &&
-        identical(last.thread, thread) &&
-        now.difference(last.at) < kDoubleTapTimeout) {
-      _lastTap = null;
-      setState(() => _renaming = thread);
-      return;
-    }
-    _lastTap = (thread: thread, at: now);
+    setState(() => _listSelection.select(thread));
     _open(thread);
   }
 
@@ -465,112 +446,121 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
     for (final row in _listRows) ?row.thread,
   ];
 
-  void _selectRange(AgentThread thread) {
-    final visible = _selectable;
-    final to = visible.indexOf(thread);
-    if (to < 0) return;
-    var from = visible.indexOf(_anchor ?? thread);
-    if (from < 0) from = to;
-    setState(() {
-      _anchor ??= visible[from];
-      _focused = thread;
-      _selection
-        ..clear()
-        ..addAll(visible.sublist(math.min(from, to), math.max(from, to) + 1));
-    });
-  }
+  void _selectRange(AgentThread thread) =>
+      setState(() => _listSelection.range(thread, _selectable));
 
   List<AgentThread> _targetsFor(AgentThread thread) =>
-      _selection.length < 2 || !_selection.contains(thread)
+      _listSelection.values.length < 2 ||
+          !_listSelection.values.contains(thread)
       ? [thread]
       : [
           for (final row in _listRows)
-            if (row.thread case final t? when _selection.contains(t)) t,
+            if (row.thread case final t? when _listSelection.values.contains(t))
+              t,
         ];
 
   void _rowContext(AgentThread thread) {
     _listFocus.requestFocus();
-    _lastTap = null;
-    if (_selection.contains(thread)) return;
-    setState(() {
-      _selection
-        ..clear()
-        ..add(thread);
-      _focused = _anchor = thread;
-    });
+    if (_listSelection.values.contains(thread)) return;
+    setState(() => _listSelection.select(thread));
   }
 
+  @override
+  bool get listHasFocus => _listFocus.hasFocus;
+
+  @override
+  int get listLength => _selectable.length;
+
+  @override
+  int get listFocusedIndex => switch (_listSelection.focused) {
+    final thread? => _selectable.indexOf(thread),
+    null => -1,
+  };
+
+  @override
+  int get listPageSize => ideRowsPerPage(_listScroll, rowHeight: _rowHeight);
+
+  @override
+  bool get listSupportsMultiselect => true;
+
+  @override
+  bool get listHasSelection =>
+      _listSelection.focused != null || _listSelection.values.isNotEmpty;
+
+  @override
+  void listFocusAt(int index) {
+    final visible = _selectable;
+    if (visible.isEmpty) return;
+    final thread = visible[index.clamp(0, visible.length - 1)];
+    setState(() => _listSelection.select(thread));
+    _revealRow(thread);
+  }
+
+  @override
+  void listSelect() {
+    if (_listSelection.focused case final thread?) _open(thread);
+  }
+
+  @override
+  void listExpandSelection(int delta) {
+    final visible = _selectable;
+    if (visible.isEmpty) return;
+    final index = listFocusedIndex;
+    if (index < 0) return listFocusAt(0);
+    final next = visible[(index + delta).clamp(0, visible.length - 1)];
+    _selectRange(next);
+    _revealRow(next);
+  }
+
+  @override
+  void listSelectAll() => setState(() => _listSelection.selectAll(_selectable));
+
+  @override
+  void listClear() => setState(() => _listSelection.select(null));
+
   KeyEventResult _onListKey(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent || _renaming != null) {
+    if (event is KeyUpEvent || _renaming != null) {
       return KeyEventResult.ignored;
     }
-    final keyboard = HardwareKeyboard.instance;
-    final modifier = ideUsesMacKeys
-        ? keyboard.isMetaPressed
-        : keyboard.isControlPressed;
-    if (modifier && event.logicalKey == LogicalKeyboardKey.keyA) {
-      setState(() {
-        _selection
-          ..clear()
-          ..addAll(_selectable);
-        _focused ??= _selectable.firstOrNull;
-        _anchor ??= _focused;
-      });
-      return KeyEventResult.handled;
-    }
-    if (event.logicalKey == LogicalKeyboardKey.escape &&
-        _selection.isNotEmpty) {
-      setState(() {
-        _selection.clear();
-        _anchor = null;
-      });
-      return KeyEventResult.handled;
-    }
-    final direction = switch (event.logicalKey) {
-      LogicalKeyboardKey.arrowDown => 1,
-      LogicalKeyboardKey.arrowUp => -1,
-      _ => 0,
+    int rows(Object? args) => args is num ? args.toInt() : 1;
+    final commands = <String, void Function(Object?)>{
+      'list.focusDown': (args) => listFocusNext(rows(args)),
+      'list.focusUp': (args) => listFocusNext(-rows(args)),
+      'list.focusPageDown': (_) => listFocusPage(1),
+      'list.focusPageUp': (_) => listFocusPage(-1),
+      'list.focusFirst': (_) => listFocusFirst(),
+      'list.focusLast': (_) => listFocusLast(),
+      'list.expandSelectionDown': (_) => listExpandSelection(1),
+      'list.expandSelectionUp': (_) => listExpandSelection(-1),
+      'list.selectAll': (_) => listSelectAll(),
+      'list.clear': (_) => listClear(),
+      'list.select': (_) => listSelect(),
+      'list.toggleExpand': (_) => listToggleExpand(),
     };
-    if (direction != 0 && !modifier) {
-      final visible = _selectable;
-      if (visible.isEmpty) return KeyEventResult.handled;
-      final focused = _focused ?? _current;
-      final at = focused == null ? -1 : visible.indexOf(focused);
-      final next =
-          visible[(at < 0 ? 0 : at + direction).clamp(0, visible.length - 1)];
-      if (keyboard.isShiftPressed) {
-        _selectRange(next);
-      } else {
-        setState(() {
-          _focused = _anchor = next;
-          _selection
-            ..clear()
-            ..add(next);
-        });
-      }
-      _revealRow(next);
+    final resolution = KeybindingService.instance.resolveEvent(
+      event,
+      context: (key) => switch (key) {
+        'listFocus' || 'listSupportsKeyboardNavigation' => true,
+        'listSupportsMultiselect' => listSupportsMultiselect,
+        'listHasSelectionOrFocus' => listHasSelection,
+        'inputFocus' || 'textInputFocus' => false,
+        _ => null,
+      },
+      canRun: (item) => commands.containsKey(item.command),
+    );
+    if (resolution case KeybindingFound(:final command, :final item)) {
+      commands[command]!(item.entry.args);
       return KeyEventResult.handled;
     }
-    if (event.logicalKey == LogicalKeyboardKey.enter && !modifier) {
-      if (_focused case final thread?) _open(thread);
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
+    return ideListNavigationKeys.contains(event.logicalKey)
+        ? KeyEventResult.handled
+        : KeyEventResult.ignored;
   }
 
   void _revealRow(AgentThread thread) {
     final index = _threadIndices[thread];
-    if (index == null || !_listScroll.hasClients) return;
-    final position = _listScroll.position;
-    final start = _rowOffsets[index];
-    final end = _rowOffsets[index + 1];
-    if (start < position.pixels) {
-      _listScroll.jumpTo(start.clamp(0.0, position.maxScrollExtent));
-    } else if (end > position.pixels + position.viewportDimension) {
-      _listScroll.jumpTo(
-        (end - position.viewportDimension).clamp(0.0, position.maxScrollExtent),
-      );
-    }
+    if (index == null) return;
+    ideRevealRange(_listScroll, _rowOffsets[index], _rowOffsets[index + 1]);
   }
 
   void _create([Project? project]) {
@@ -1236,9 +1226,13 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
       _threadIndices = {
         for (final (index, row) in rows.indexed) ?row.thread: index,
       };
-      _selection.retainWhere(_threadIndices.containsKey);
-      if (!_threadIndices.containsKey(_focused)) _focused = null;
-      if (!_threadIndices.containsKey(_anchor)) _anchor = null;
+      _listSelection.values.retainWhere(_threadIndices.containsKey);
+      if (!_threadIndices.containsKey(_listSelection.focused)) {
+        _listSelection.focused = null;
+      }
+      if (!_threadIndices.containsKey(_listSelection.anchor)) {
+        _listSelection.anchor = null;
+      }
       _rowsDirty = false;
     }
     final rows = _listRows;
@@ -1259,94 +1253,79 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
     return Focus(
       focusNode: _listFocus,
       onKeyEvent: _onListKey,
-      child: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-        child: _Slot(
-          slot: _listSlot,
-          slots: _slots,
-          child: HoverScrollbar(
+      child: _Slot(
+        slot: _listSlot,
+        slots: _slots,
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () {
+            _listFocus.requestFocus();
+            listClear();
+          },
+          child: ListView.builder(
             controller: _listScroll,
-            child: ScrollEdgeFade(
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: () {
-                  _listFocus.requestFocus();
-                  setState(() {
-                    _selection.clear();
-                    _anchor = null;
-                  });
-                },
-                child: ListView.builder(
-                  controller: _listScroll,
-                  padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
-                  itemCount: rows.length,
-                  itemExtentBuilder: (index, _) =>
-                      index < rows.length ? rows[index].extent : null,
-                  findChildIndexCallback: (key) => _rowIndices[key],
-                  itemBuilder: (context, index) {
-                    final row = rows[index];
-                    final child = switch (row.kind) {
-                      _ListRowKind.header => _Slot(
-                        slot: row.group.id,
-                        slots: _slots,
-                        child: _buildHeader(row.group, projects),
-                      ),
-                      _ListRowKind.thread => _buildRow(row.thread!, row.group),
-                      _ListRowKind.pinZone => _PinZone(
-                        height: _rowHeight,
-                        active: _spot?.group.id == row.group.id,
-                      ),
-                      _ListRowKind.more => _MoreRow(
-                        label: row.more!.less
-                            ? context.l10n.sidebarShowLess
-                            : context.l10n.sidebarShowMore(row.more!.more),
-                        onTap: () => _workspace.toggleExpanded(row.group.id),
-                      ),
-                    };
-                    final spot = _spot;
-                    final before =
-                        (row.thread != null &&
-                            identical(spot?.before, row.thread)) ||
-                        (row.kind == _ListRowKind.header &&
-                            row.group.project != null &&
-                            _projectSpot ==
-                                projects.indexOf(row.group.project!));
-                    final after =
-                        (row.thread != null &&
-                            identical(spot?.after, row.thread)) ||
-                        (row.kind == _ListRowKind.header &&
-                            spot != null &&
-                            spot.group.id == row.group.id &&
-                            spot.before == null &&
-                            spot.after == null &&
-                            row.group.threads.isNotEmpty) ||
-                        (index == rows.length - 1 &&
-                            _projectSpot == projects.length);
-                    return Stack(
-                      key: row.key,
-                      clipBehavior: Clip.none,
-                      children: [
-                        Positioned.fill(child: child),
-                        if (before)
-                          const Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            child: _DropLine(),
-                          ),
-                        if (after)
-                          const Positioned(
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            child: _DropLine(),
-                          ),
-                      ],
-                    );
-                  },
+            padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
+            itemCount: rows.length,
+            itemExtentBuilder: (index, _) =>
+                index < rows.length ? rows[index].extent : null,
+            findChildIndexCallback: (key) => _rowIndices[key],
+            itemBuilder: (context, index) {
+              final row = rows[index];
+              final child = switch (row.kind) {
+                _ListRowKind.header => _Slot(
+                  slot: row.group.id,
+                  slots: _slots,
+                  child: _buildHeader(row.group, projects),
                 ),
-              ),
-            ),
+                _ListRowKind.thread => _buildRow(row.thread!, row.group),
+                _ListRowKind.pinZone => _PinZone(
+                  height: _rowHeight,
+                  active: _spot?.group.id == row.group.id,
+                ),
+                _ListRowKind.more => _MoreRow(
+                  label: row.more!.less
+                      ? context.l10n.sidebarShowLess
+                      : context.l10n.sidebarShowMore(row.more!.more),
+                  onTap: () => _workspace.toggleExpanded(row.group.id),
+                ),
+              };
+              final spot = _spot;
+              final before =
+                  (row.thread != null && identical(spot?.before, row.thread)) ||
+                  (row.kind == _ListRowKind.header &&
+                      row.group.project != null &&
+                      _projectSpot == projects.indexOf(row.group.project!));
+              final after =
+                  (row.thread != null && identical(spot?.after, row.thread)) ||
+                  (row.kind == _ListRowKind.header &&
+                      spot != null &&
+                      spot.group.id == row.group.id &&
+                      spot.before == null &&
+                      spot.after == null &&
+                      row.group.threads.isNotEmpty) ||
+                  (index == rows.length - 1 && _projectSpot == projects.length);
+              return Stack(
+                key: row.key,
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fill(child: child),
+                  if (before)
+                    const Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: _DropLine(),
+                    ),
+                  if (after)
+                    const Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: _DropLine(),
+                    ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -1395,9 +1374,13 @@ class _SidebarState extends State<Sidebar> implements ChatDragList {
       thread: thread,
       height: _rowHeight,
       selected:
-          _selection.contains(thread) ||
-          (_selection.isEmpty && identical(thread, _current)),
-      shown: _workspace.grid.contains(thread),
+          _listSelection.values.contains(thread) ||
+          (!_listFocus.hasFocus &&
+              _listSelection.values.isEmpty &&
+              identical(thread, _current)),
+      focusedItem: identical(_listSelection.focused, thread),
+      focused: _listFocus.hasFocus,
+      shown: _workspace.grid.contains(thread) || identical(thread, _current),
       menuTargets: () => _targetsFor(thread),
       onContextMenu: () => _rowContext(thread),
       onPinAll: (threads, pinned) => _workspace.setPinnedAll(threads, pinned),
@@ -2034,50 +2017,50 @@ class _NavRow extends StatelessWidget {
       button: true,
       selected: selected,
       label: label,
-      child: HoverBuilder(
+      child: MouseRegion(
         cursor: SystemMouseCursors.click,
-        builder: (context, hovered) => GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: Container(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: IdeListRow(
             height: 28,
-            margin: const EdgeInsets.symmetric(horizontal: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              color: selected
-                  ? themeColors['list.activeSelectionBackground']
+            selected: selected,
+            keepSelectionOutline: true,
+            onTap: onTap,
+            builder: (context, hovered) {
+              final foreground = selected
+                  ? IdeListColors.inactiveSelectionForeground
                   : hovered
-                  ? AppColors.hover
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(5),
-            ),
-            child: ExcludeSemantics(
-              child: Row(
-                children: [
-                  Icon(
-                    icon,
-                    size: 15,
-                    color: selected
-                        ? themeColors['list.activeSelectionForeground']
-                        : AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+                  ? IdeListColors.hoverForeground
+                  : IdeListColors.foreground;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: ExcludeSemantics(
+                  child: Row(
+                    children: [
+                      Icon(
+                        icon,
+                        size: 15,
                         color: selected
-                            ? themeColors['list.activeSelectionForeground']
-                            : AppColors.text,
-                        fontSize: 12.5,
+                            ? themeColors.get(
+                                    'list.inactiveSelectionIconForeground',
+                                  ) ??
+                                  foreground
+                            : AppColors.textMuted,
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: foreground, fontSize: 12.5),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -2669,6 +2652,8 @@ class _ThreadRow extends StatelessWidget {
     required this.thread,
     required this.height,
     required this.selected,
+    required this.focusedItem,
+    required this.focused,
     required this.shown,
     required this.drag,
     required this.showProject,
@@ -2692,6 +2677,8 @@ class _ThreadRow extends StatelessWidget {
   final AgentThread thread;
   final double height;
   final bool selected;
+  final bool focusedItem;
+  final bool focused;
 
   /// Open in a pane beside the selected one.
   final bool shown;
@@ -2774,69 +2761,71 @@ class _ThreadRow extends StatelessWidget {
     final row = SidebarMenu(
       items: () => _items(context.l10n),
       placement: (side: FloatingSide.bottom, align: FloatingAlign.end),
-      builder: (context, menu) => HoverBuilder(
-        cursor: SystemMouseCursors.click,
+      builder: (context, menu) => IdeListRow(
+        height: height,
+        selected: selected,
+        focusedItem: focusedItem,
+        focused: focused,
+        keepSelectionOutline: true,
+        onTap: renaming ? null : onTap,
+        onDoubleTap: renaming ? null : onRename,
+        onContextMenu: (position) {
+          onContextMenu();
+          menu.open(position);
+        },
         builder: (context, hovered) {
           final active = hovered || menu.isOpen;
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: renaming ? null : onTap,
-            onSecondaryTapUp: (details) {
-              onContextMenu();
-              menu.open(details.globalPosition);
-            },
-            child: Container(
-              height: height,
-              padding: const EdgeInsets.only(left: 8, right: 4),
-              decoration: BoxDecoration(
-                color: selected
-                    ? themeColors['list.activeSelectionBackground']
-                    : active
-                    ? AppColors.hover
-                    : shown
-                    ? themeColors['list.inactiveSelectionBackground']
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(5),
-              ),
-              // High contrast themes outline the selection and the hovered
-              // row, as the IDE's lists do (IdeListRow: dotted and dashed
-              // upstream).
-              foregroundDecoration: switch (selected || active
-                  ? themeColors.get('contrastActiveBorder')
-                  : null) {
-                final outline? => BoxDecoration(
-                  border: Border.all(color: outline),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                null => null,
-              },
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 14,
-                    child: Center(child: StatusIndicator(thread.shownStatus)),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: renaming
-                        ? InlineRenameField(
-                            initial: thread.localizedTitle(context.l10n),
-                            onDone: onRenamed,
-                          )
-                        // What the row has no room for, over the title
-                        // (not the buttons that come and go beside it).
-                        : _RowHover(
-                            content: (context) => _buildHover(context.l10n),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: _buildTitle(context.l10n),
+          final foreground = selected
+              ? (focused
+                    ? IdeListColors.activeSelectionForeground
+                    : IdeListColors.inactiveSelectionForeground)
+              : hovered
+              ? IdeListColors.hoverForeground
+              : IdeListColors.foreground;
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 8, right: 4),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 14,
+                      child: Center(child: StatusIndicator(thread.shownStatus)),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: renaming
+                          ? InlineRenameField(
+                              initial: thread.localizedTitle(context.l10n),
+                              onDone: onRenamed,
+                            )
+                          // What the row has no room for, over the title
+                          // (not the buttons that come and go beside it).
+                          : _RowHover(
+                              content: (context) => _buildHover(context.l10n),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: _buildTitle(context.l10n, foreground),
+                              ),
                             ),
-                          ),
-                  ),
-                  if (!renaming) ..._buildTrailing(active, context.l10n),
-                ],
+                    ),
+                    if (!renaming)
+                      ..._buildTrailing(active, context.l10n, foreground),
+                  ],
+                ),
               ),
-            ),
+              if (shown && !selected)
+                Positioned(
+                  left: 0,
+                  top: 6,
+                  bottom: 6,
+                  width: 2,
+                  child: ColoredBox(
+                    color: IdeListColors.inactiveSelectionForeground,
+                  ),
+                ),
+            ],
           );
         },
       ),
@@ -2886,9 +2875,8 @@ class _ThreadRow extends StatelessWidget {
     );
   }
 
-  Widget _buildTitle(AppLocalizations l10n) {
+  Widget _buildTitle(AppLocalizations l10n, Color foreground) {
     final status = thread.status;
-    final emphasized = selected || status == ThreadStatus.unread;
     return Text.rich(
       TextSpan(
         children: [
@@ -2902,7 +2890,7 @@ class _ThreadRow extends StatelessWidget {
             TextSpan(
               text: thread.project.name,
               style: TextStyle(
-                color: AppColors.textFaint,
+                color: selected ? foreground : AppColors.textFaint,
                 fontSize: 11.5,
                 fontWeight: FontWeight.normal,
               ),
@@ -2911,13 +2899,17 @@ class _ThreadRow extends StatelessWidget {
         ],
       ),
       maxLines: 1,
+      softWrap: false,
       overflow: TextOverflow.ellipsis,
+      // Hover actions change the available width. Keep the line metrics
+      // stable when truncation changes which fallback fonts remain visible.
+      strutStyle: const StrutStyle(
+        fontSize: 12.5,
+        height: 1.4,
+        forceStrutHeight: true,
+      ),
       style: TextStyle(
-        color: selected
-            ? themeColors['list.activeSelectionForeground']
-            : emphasized
-            ? AppColors.textPrimary
-            : AppColors.text,
+        color: foreground,
         fontSize: 12.5,
         fontWeight: status == ThreadStatus.unread
             ? FontWeight.w600
@@ -2926,7 +2918,11 @@ class _ThreadRow extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildTrailing(bool active, AppLocalizations l10n) {
+  List<Widget> _buildTrailing(
+    bool active,
+    AppLocalizations l10n,
+    Color foreground,
+  ) {
     final diff = thread.diff;
     return [
       if (diff != null && !active) ...[
@@ -2986,7 +2982,10 @@ class _ThreadRow extends StatelessWidget {
             textAlign: TextAlign.right,
             maxLines: 1,
             // The color of the buttons it gives way to on hover.
-            style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+            style: TextStyle(
+              color: selected ? foreground : AppColors.textMuted,
+              fontSize: 11,
+            ),
           ),
         ),
       const SizedBox(width: 2),

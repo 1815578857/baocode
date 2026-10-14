@@ -13,6 +13,9 @@ import 'package:baocode/kernel/claude_code/mock_claude_code_transport.dart';
 import 'package:baocode/kernel/kernel_types.dart';
 import 'package:baocode/ide/ide_hover.dart';
 import 'package:baocode/ide/ide_commands.dart' show ideUsesMacKeys;
+import 'package:baocode/ide/ide_list.dart';
+import 'package:baocode/keybindings/keybinding_service.dart';
+import 'package:bao_editor/monaco/flutter/keybinding_entry.dart';
 import 'package:baocode/main.dart';
 import 'package:baocode/search/search_palette.dart';
 import 'package:baocode/chat/widgets/user_message_bubble.dart';
@@ -561,6 +564,12 @@ void main() {
     }
 
     expect(inSidebar(find.text('55m')), findsOneWidget);
+    final titleTop = tester.getTopLeft(row()).dy;
+    await hover();
+    expect(tester.getTopLeft(row()).dy, titleTop);
+    await mouse.moveTo(Offset.zero);
+    await tester.pump();
+    expect(tester.getTopLeft(row()).dy, titleTop);
     await hover();
     expect(inSidebar(find.text('55m')), findsNothing);
     expect(inSidebar(find.byIcon(Icons.push_pin_outlined)), findsOneWidget);
@@ -580,6 +589,122 @@ void main() {
     await tester.pump();
     expect(thread.archived, isTrue);
     expect(thread.pinned, isFalse);
+  });
+
+  testWidgets('a clipped mixed-language title stays on its baseline when '
+      'hover actions appear', (tester) async {
+    final workspace = await pumpApp(tester);
+    const title = '修复侧边栏 hover 文字跳动 🧪 — a long conversation title';
+    workspace.rename(threadNamed(workspace, 'Rate limit per API key'), title);
+    final border = Offset(tester.getTopRight(find.byType(Sidebar)).dx + 2, 400);
+    await tester.dragFrom(border, const Offset(-100, 0));
+    await tester.pumpAndSettle();
+    final label = inSidebar(find.text(title));
+    double baseline() {
+      final paragraph = tester.renderObject<RenderParagraph>(label);
+      final glyph = paragraph
+          .getBoxesForSelection(
+            const TextSelection(baseOffset: 0, extentOffset: 1),
+          )
+          .first;
+      return paragraph.localToGlobal(Offset(0, glyph.bottom)).dy;
+    }
+
+    final before = baseline();
+    final height = tester.getSize(label).height;
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: Offset.zero);
+    for (var i = 0; i < 3; i++) {
+      await mouse.moveTo(tester.getCenter(label));
+      await tester.pump();
+      expect(
+        inSidebar(find.byIcon(Icons.inventory_2_outlined)),
+        findsOneWidget,
+      );
+      expect(baseline(), before);
+      expect(tester.getSize(label).height, height);
+      await mouse.moveTo(Offset.zero);
+      await tester.pump();
+      expect(baseline(), before);
+    }
+  });
+
+  testWidgets('the open chat keeps its selection outline after the list '
+      'loses focus', (tester) async {
+    await pumpKept(
+      tester,
+      KeptCatalog([kept('a1', '/tmp/a', 1), kept('a2', '/tmp/a', 2)]),
+    );
+    final title = inSidebar(find.text('Chat a1'));
+    final row = find.ancestor(of: title, matching: find.byType(IdeListRow));
+    await tester.tap(title);
+    await tester.pumpAndSettle();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump();
+    expect(tester.widget<IdeListRow>(row).focused, isFalse);
+    expect(tester.widget<IdeListRow>(row).selected, isTrue);
+    final container = tester
+        .widgetList<Container>(
+          find.descendant(of: row, matching: find.byType(Container)),
+        )
+        .firstWhere((widget) => widget.decoration != null);
+    final outline = container.foregroundDecoration as BoxDecoration?;
+    expect(outline?.border, isNotNull);
+  });
+
+  testWidgets('selected rows use the explorer colors as focus moves and '
+      'Escape clears the highlight', (tester) async {
+    final workspace = await pumpKept(
+      tester,
+      KeptCatalog([kept('a1', '/tmp/a', 1), kept('a2', '/tmp/a', 2)]),
+    );
+    workspace.sidebarGrouping = SidebarGrouping.time.name;
+    await tester.pump();
+    final title = inSidebar(find.textContaining(RegExp(r'^Chat a1\s')));
+    final row = find.ancestor(of: title, matching: find.byType(IdeListRow));
+    BoxDecoration decoration() =>
+        tester
+                .widgetList<Container>(
+                  find.descendant(of: row, matching: find.byType(Container)),
+                )
+                .firstWhere((widget) => widget.decoration != null)
+                .decoration!
+            as BoxDecoration;
+    void expectForeground(Color color) {
+      final text = tester.widget<Text>(title);
+      expect(text.style!.color, color);
+      final spans = (text.textSpan! as TextSpan).children!
+          .whereType<TextSpan>();
+      expect(spans.last.style!.color, color);
+    }
+
+    workspace.select(keptThread(workspace, 'a1'));
+    await tester.pumpAndSettle();
+    // Modifier clicks leave focus in the list.
+    await tester.sendKeyDownEvent(multiSelectKey);
+    await tester.tap(title);
+    await tester.sendKeyUpEvent(multiSelectKey);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.home);
+    await tester.pump();
+    expect(tester.widget<IdeListRow>(row).focused, isTrue);
+    expect(decoration().color, IdeListColors.activeSelection);
+    expectForeground(IdeListColors.activeSelectionForeground);
+
+    final listFocus = FocusManager.instance.primaryFocus!;
+    listFocus.unfocus();
+    await tester.pump();
+    expect(tester.widget<IdeListRow>(row).focused, isFalse);
+    expect(decoration().color, IdeListColors.inactiveSelection);
+    expectForeground(IdeListColors.inactiveSelectionForeground);
+
+    listFocus.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(tester.widget<IdeListRow>(row).selected, isFalse);
+    expect(decoration().color, isNull);
   });
 
   testWidgets('high contrast themes outline the hovered row, as the IDE '
@@ -1452,6 +1577,81 @@ void main() {
       inSidebar(find.byType(ChatDragSource)).evaluate().length,
       lessThan(90),
     );
+  });
+
+  testWidgets('the list wheel scrolls and keyboard navigation reveals virtual '
+      'rows without opening them', (tester) async {
+    final workspace = await pumpKept(
+      tester,
+      KeptCatalog([for (var i = 0; i < 120; i++) kept('t$i', '/tmp/a', i + 1)]),
+    );
+    workspace.sidebarGrouping = SidebarGrouping.time.name;
+    await tester.pump();
+    final first = inSidebar(find.textContaining(RegExp(r'^Chat t0\s')));
+    await tester.sendKeyDownEvent(multiSelectKey);
+    await tester.tap(first);
+    await tester.sendKeyUpEvent(multiSelectKey);
+    await tester.pump();
+    final open = workspace.selected;
+    final scrollable = inSidebar(find.byType(Scrollable)).last;
+    final list = tester.state<ScrollableState>(scrollable);
+
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: tester.getCenter(first),
+        scrollDelta: const Offset(0, 300),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(list.position.pixels, greaterThan(0));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.end);
+    await tester.pump();
+    final last = inSidebar(find.textContaining(RegExp(r'^Chat t119\s')));
+    expect(last, findsOneWidget);
+    expect(tester.getRect(scrollable).contains(tester.getCenter(last)), isTrue);
+    expect(workspace.selected, same(open));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.home);
+    await tester.pump();
+    expect(
+      tester.getRect(scrollable).contains(tester.getCenter(first)),
+      isTrue,
+    );
+    final atFirst = list.position.pixels;
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await tester.pump();
+    expect(list.position.pixels, greaterThan(atFirst));
+    expect(workspace.selected, same(open));
+  });
+
+  testWidgets('the sidebar honors custom list navigation keys', (tester) async {
+    final previous = KeybindingService.instance;
+    KeybindingService.instance = KeybindingService()
+      ..userEntries = const [
+        KeybindingEntry(
+          command: 'list.focusDown',
+          key: 'j',
+          when: 'listFocus && !inputFocus',
+        ),
+      ];
+    addTearDown(() => KeybindingService.instance = previous);
+    final workspace = await pumpKept(
+      tester,
+      KeptCatalog([kept('a1', '/tmp/a', 1), kept('a2', '/tmp/a', 2)]),
+    );
+    await clickChat(tester, 'Chat a1', holding: multiSelectKey);
+    final open = workspace.selected;
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyJ);
+    await tester.pump();
+    final next = find.ancestor(
+      of: inSidebar(find.text('Chat a2')),
+      matching: find.byType(IdeListRow),
+    );
+    expect(tester.widget<IdeListRow>(next).focusedItem, isTrue);
+    expect(workspace.selected, same(open));
   });
 
   testWidgets('dragging near the list edge scrolls and stops on release', (
