@@ -214,6 +214,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cmdChatAttachContext => 'Add Context…';
 
   @override
+  String get cmdChatPasteRaw => 'Paste as Plain Text';
+
+  @override
   String get cmdChatSelectNextSuggestion => 'Select Next Suggestion';
 
   @override
@@ -8202,6 +8205,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSectionStash => 'Stash';
+
+  @override
+  String get settingsSectionCustomize => 'Customize';
+
+  @override
+  String get settingsCustomizeKeywords =>
+      'skills subagents rules commands agents claude memory hooks mcp plugins';
 
   @override
   String get stashTitle => 'Stash';

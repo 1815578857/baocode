@@ -248,7 +248,9 @@ class ChatComposerState extends State<ChatComposer>
   /// copied from the history, from this editor or from elsewhere alike.
   /// Also keeps Quill from pasting HTML or Markdown as rich text into this
   /// plain-text input. Returns false (Quill's own handling) for nothing.
-  Future<bool> _paste() async {
+  /// With `raw` (⇧⌘V / Ctrl+Shift+V), its text goes in as it is, past the
+  /// long-paste tag; files and images still come in as such.
+  Future<bool> _paste({bool raw = false}) async {
     final files = await WindowControls.readPasteboardFiles();
     if (!mounted) return false;
     if (files.isNotEmpty) {
@@ -257,7 +259,7 @@ class ChatComposerState extends State<ChatComposer>
     }
     final text = (await Clipboard.getData(Clipboard.kTextPlain))?.text;
     if (!mounted) return false;
-    if (text != null) {
+    if (text != null && !raw) {
       if (CopiedCode.matching(text) case final code?) {
         _insertTags([
           ComposerCodeEmbed.of(
@@ -280,7 +282,10 @@ class ChatComposerState extends State<ChatComposer>
       plain = await _picturesIn(plain);
       if (!mounted) return false;
     }
-    if (PastedText.isLong(plain)) {
+    // Pasted raw, the text goes in as it is, whatever its length: no paste
+    // tag (the shortcut is for exactly that), and no attachment offload,
+    // which happens as the message is sent (see PasteStore.offload).
+    if (!raw && PastedText.isLong(plain)) {
       _insertTags([
         ComposerPastedTextEmbed.of(
           PastedText(number: _nextPastedNumber(), text: plain),
@@ -290,17 +295,22 @@ class ChatComposerState extends State<ChatComposer>
     }
     final selection = _controller.selection;
     final start = selection.start;
-    final content = composerDeltaFromPaste(
-      plain,
-      ComposerVocabulary.read(context),
-      atStart: start == 0,
-      images: _pool.keys.toSet(),
-    );
+    final Delta token;
+    if (raw) {
+      token = Delta()..insert(plain);
+    } else {
+      token = composerDeltaFromPaste(
+        plain,
+        ComposerVocabulary.read(context),
+        atStart: start == 0,
+        images: _pool.keys.toSet(),
+      );
+    }
     final delta =
         (Delta()
               ..retain(start)
               ..delete(selection.end - start))
-            .concat(content);
+            .concat(token);
     // `compose` keeps the caret where it was (before the insert), whatever
     // selection it is given: move it after the pasted text.
     _controller
@@ -309,7 +319,7 @@ class ChatComposerState extends State<ChatComposer>
         TextSelection.collapsed(
           // Delta.length counts operations, not characters.
           offset:
-              start + content.toList().fold(0, (sum, op) => sum + op.length!),
+              start + token.toList().fold(0, (sum, op) => sum + op.length!),
         ),
         ChangeSource.local,
       );
@@ -990,6 +1000,8 @@ class ChatComposerState extends State<ChatComposer>
     return {
       // Always: with nothing to send, Enter does nothing (no new line).
       ChatCommandIds.submit: _submit,
+      // Paste the clipboard as plain text, past the long-paste tag.
+      ChatCommandIds.pasteRaw: () => unawaited(_paste(raw: true)),
       ChatCommandIds.cancelEdit: ?widget.onCancel,
       if (history && (_historyAt ?? _sentPrompts().length) > 0)
         ChatCommandIds.showPreviousPrompt: () => _showPrompt(-1),
