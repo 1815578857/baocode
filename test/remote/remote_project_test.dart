@@ -13,6 +13,7 @@ import 'package:bao_remote/server.dart' show ServerClaude;
 import 'package:baocode/chat/panels/health_banner.dart';
 import 'package:baocode/ide/git/git_model.dart' show IdeGitGroup;
 import 'package:baocode/ide/ide_quick_input.dart';
+import 'package:baocode/ide/ide_status_bar.dart';
 import 'package:baocode/ide/lsp/lsp_manager.dart';
 import 'package:baocode/ide/lsp/language_features.dart';
 import 'package:baocode/ide/lsp/lsp_server_definition.dart';
@@ -22,6 +23,7 @@ import 'package:baocode/kernel/mock/mock_kernels.dart';
 import 'package:baocode/l10n/l10n.dart';
 import 'package:baocode/remote/open_remote.dart';
 import 'package:baocode/remote/project_host.dart';
+import 'package:baocode/remote/remote_files.dart';
 import 'package:baocode/remote/remote_claude.dart';
 import 'package:baocode/remote/remote_location.dart';
 import 'package:baocode/remote/remote_services.dart';
@@ -711,6 +713,168 @@ printf '%s\n' "$line"
       expect(failed.first.label, 'The host could not be reached.');
       expect(failed.first.detail, contains('nowhere'));
       expect(failed.last.label, englishLocalizations.remoteRetry);
+    });
+  });
+
+  group('Open Remote File', () {
+    test('a host, then a file there, then opened', () async {
+      Directory(p.join(root, 'lib')).createSync();
+      File(p.join(root, 'lib', 'a.dart')).writeAsStringSync('a');
+      File(p.join(root, 'lib', 'sub.dart')).writeAsStringSync('b');
+      final shown = <IdeQuickPick>[];
+      String? opened;
+      final flow = OpenRemoteFileFlow(
+        show: shown.add,
+        l10n: englishLocalizations,
+        onOpen: (location) => opened = location,
+        hosts: hosts,
+        configHosts: () async => ['dev', 'prod'],
+      );
+      await flow.start();
+      final hostsPick = shown.single;
+      final items = hostsPick.itemsFor!('').whereType<IdeQuickPickItem>();
+      expect(items.map((i) => i.label), ['dev', 'prod']);
+
+      items.first.onAccept!();
+      // Connecting, then the home folder there; a path typed goes to root.
+      Directory(p.join(root, 'app')).createSync();
+      await until(() => shown.length >= 3);
+      (shown.last.itemsFor!(root).first as IdeQuickPickItem).onAccept!();
+      await until(() => shown.length >= 4);
+      final inRoot = shown.last.itemsFor!('').whereType<IdeQuickPickItem>();
+      // Folders before files; a folder is walked into, a file opens.
+      expect(inRoot.first.label, '..');
+      expect(inRoot.map((i) => i.label), containsAll(['lib', 'app']));
+      inRoot.firstWhere((i) => i.label == 'lib').onAccept!();
+      await until(() => shown.length >= 5);
+      final inLib = shown.last.itemsFor!('').whereType<IdeQuickPickItem>();
+      expect(inLib.map((i) => i.label), containsAll(['a.dart', 'sub.dart']));
+      inLib.firstWhere((i) => i.label == 'a.dart').onAccept!();
+      expect(opened, RemoteLocation.of('dev', p.join(root, 'lib', 'a.dart')));
+    });
+
+    test('a path typed: a file opened, a folder walked into', () async {
+      Directory(p.join(root, 'lib')).createSync();
+      File(p.join(root, 'lib', 'a.dart')).writeAsStringSync('a');
+      final shown = <IdeQuickPick>[];
+      String? opened;
+      final flow = OpenRemoteFileFlow(
+        show: shown.add,
+        l10n: englishLocalizations,
+        onOpen: (location) => opened = location,
+        hosts: hosts,
+        configHosts: () async => const [],
+      );
+      await flow.open('dev');
+      await until(() => shown.length >= 2);
+      final file = p.join(root, 'lib', 'a.dart');
+      final typed = shown.last.itemsFor!(file);
+      (typed.first as IdeQuickPickItem).onAccept!();
+      await until(() => opened != null);
+      expect(opened, RemoteLocation.of('dev', file));
+
+      // A folder typed is browsed, not opened.
+      await flow.open('dev');
+      await until(() => shown.length >= 4);
+      final folder = shown.last.itemsFor!(p.join(root, 'lib'));
+      (folder.first as IdeQuickPickItem).onAccept!();
+      await until(
+        () => shown.last
+            .itemsFor!('')
+            .whereType<IdeQuickPickItem>()
+            .any((i) => i.label == 'a.dart'),
+      );
+      expect(opened, RemoteLocation.of('dev', file));
+    });
+
+    test('a host that cannot be reached: why, and Retry', () async {
+      connector.failure = const SshConnectException(
+        SshFailure.unreachable,
+        'The host could not be reached.',
+        detail: 'ssh: Could not resolve hostname nowhere',
+      );
+      final shown = <IdeQuickPick>[];
+      final flow = OpenRemoteFileFlow(
+        show: shown.add,
+        l10n: englishLocalizations,
+        onOpen: (_) {},
+        hosts: hosts,
+        configHosts: () async => const [],
+      );
+      await flow.start();
+      final items = shown.single.itemsFor!('nowhere');
+      (items.first as IdeQuickPickItem).onAccept!();
+      await until(
+        () => shown.last.items
+            .whereType<IdeQuickPickItem>()
+            .any((i) => i.label == 'The host could not be reached.'),
+      );
+      final failed = shown.last.items.whereType<IdeQuickPickItem>().toList();
+      expect(failed.first.label, 'The host could not be reached.');
+      expect(failed.first.detail, contains('nowhere'));
+      expect(failed.last.label, englishLocalizations.remoteRetry);
+    });
+  });
+
+  group('the status bar\'s remote entry', () {
+    testWidgets('shows the state, and opens the remote menu when clicked', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(body: SizedBox()),
+        ),
+      );
+      final context = tester.element(find.byType(SizedBox));
+      // Idle (never asked for): the state alone, not clickable.
+      final plain = SshStatusIndicator(hosts['dev']).item(context);
+      expect(plain.text, 'SSH: dev (disconnected)');
+      expect(plain.onTapRect, isNull);
+      expect(plain.tooltip, isNot(contains('Click for')));
+
+      // With the menu: the same state, clickable, its tooltip saying so.
+      Rect? chosen;
+      final host = hosts['dev'];
+      final item = SshStatusIndicator(
+        host,
+        onChoose: (rect) => chosen = rect,
+      ).item(context);
+      expect(item.text, plain.text);
+      expect(item.tooltip, contains('Click for the hosts'));
+      expect(item.onTapRect, isNotNull);
+      final rect = Rect.fromLTWH(1, 2, 3, 4);
+      item.onTapRect!(rect);
+      expect(chosen, rect);
+    });
+
+    testWidgets('the entry clicked hands its rect to onTapRect', (tester) async {
+      Rect? tapped;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.bottomLeft,
+              child: IdeStatusBar(
+                left: [
+                  IdeStatusBarItem(
+                    'SSH: dev',
+                    onTapRect: (rect) => tapped = rect,
+                  ),
+                ],
+                right: const [],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('SSH: dev'));
+      await tester.pump();
+      expect(tapped, isNotNull);
+      expect(tapped!.isEmpty, isFalse);
     });
   });
 }

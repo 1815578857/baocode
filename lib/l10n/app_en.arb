@@ -5062,6 +5062,7 @@
     }
   },
   "cmdOpenRemoteFolder": "Open Remote Project...",
+  "cmdOpenRemoteFile": "Open Remote File...",
   "remoteHostPlaceholder": "Select a host of ~/.ssh/config, or type user@host[:port]",
   "remoteConnectTo": "Connect to {host}",
   "@remoteConnectTo": {
@@ -5123,6 +5124,48 @@
   "@remoteListFailed": {
     "placeholders": {
       "path": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteFileHostPlaceholder": "Select a host, to browse its files",
+  "remoteFilePlaceholder": "A file on {host}: pick one, or type a path",
+  "@remoteFilePlaceholder": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteOpenFile": "Open {path}",
+  "@remoteOpenFile": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteOpenFailed": "Could not open {path}",
+  "@remoteOpenFailed": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteRecentFiles": "Recent Remote Files",
+  "remoteOpenFileOn": "Open File on {host}...",
+  "@remoteOpenFileOn": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteStatusActions": "Click for the hosts and {host}'s actions",
+  "@remoteStatusActions": {
+    "placeholders": {
+      "host": {
         "type": "String"
       }
     }

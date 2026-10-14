@@ -11721,6 +11721,12 @@ abstract class AppLocalizations {
   /// **'Open Remote Project...'**
   String get cmdOpenRemoteFolder;
 
+  /// No description provided for @cmdOpenRemoteFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Remote File...'**
+  String get cmdOpenRemoteFile;
+
   /// No description provided for @remoteHostPlaceholder.
   ///
   /// In en, this message translates to:
@@ -11816,6 +11822,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not list {path}'**
   String remoteListFailed(String path);
+
+  /// No description provided for @remoteFileHostPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a host, to browse its files'**
+  String get remoteFileHostPlaceholder;
+
+  /// No description provided for @remoteFilePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'A file on {host}: pick one, or type a path'**
+  String remoteFilePlaceholder(String host);
+
+  /// No description provided for @remoteOpenFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Open {path}'**
+  String remoteOpenFile(String path);
+
+  /// No description provided for @remoteOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open {path}'**
+  String remoteOpenFailed(String path);
+
+  /// No description provided for @remoteRecentFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent Remote Files'**
+  String get remoteRecentFiles;
+
+  /// No description provided for @remoteOpenFileOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Open File on {host}...'**
+  String remoteOpenFileOn(String host);
+
+  /// No description provided for @remoteStatusActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Click for the hosts and {host}\'s actions'**
+  String remoteStatusActions(String host);
 
   /// No description provided for @remoteStatus.
   ///

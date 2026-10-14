@@ -42,6 +42,7 @@ import 'ide/ide_chat_title.dart';
 import 'ide/ide_color_theme_picker.dart';
 import 'ide/ide_commands.dart';
 import 'ide/ide_dialog.dart';
+import 'ide/ide_menu.dart';
 import 'models/upstream_import.dart';
 import 'ide/ide_modern_ui.dart';
 import 'ide/ide_notifications.dart';
@@ -96,6 +97,7 @@ import 'window/window_settings.dart';
 import 'remote/open_remote.dart';
 import 'remote/project_host.dart';
 import 'remote/remote_customization_disk.dart';
+import 'remote/remote_files.dart';
 import 'remote/remote_location.dart';
 import 'remote/remote_status.dart';
 import 'remote/ssh_host.dart';
@@ -1656,7 +1658,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
           ..._settingsCommands,
           command(
             'workbench.action.files.openFile',
-            () => unawaited(_pickIdeFiles()),
+            // A remote project's Open File… browses its host's folders,
+            // not this machine's (VS Code's remote Open File…).
+            RemoteLocation.isRemote(folder)
+                ? _openRemoteFile
+                : () => unawaited(_pickIdeFiles()),
             enabled: WindowControls.canPickFiles,
           ),
           command(
@@ -1669,6 +1675,12 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
             category: 'Remote-SSH',
             label: 'Open Remote Project...',
             run: () => _openRemoteProject(inIde: true),
+          ),
+          IdeCommand(
+            id: openRemoteFileCommandId,
+            category: 'Remote-SSH',
+            label: 'Open Remote File...',
+            run: () => _openRemoteFile(),
           ),
           if (_workspace.workspaceDirectories.root != null)
             IdeCommand(
@@ -2285,7 +2297,16 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
               null => null,
             },
             remote: switch (ProjectHost.of(path)) {
-              final SshHost host => SshStatusIndicator(host),
+              final SshHost host => SshStatusIndicator(
+                host,
+                // The remote menu: switch host, reconnect, open a folder
+                // or a file there.
+                onChoose: (rect) {
+                  if (!mounted) return;
+                  _statusAnchor = rect;
+                  unawaited(_showRemoteMenu(host.host));
+                },
+              ),
               _ => null,
             },
             // Claude Haiku where the project is.
@@ -2771,16 +2792,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       l10n: context.l10n,
       added: _workspace.sshHosts,
       labelOf: _workspace.hostLabel,
-      iconOf: (host) =>
-          switch (_workspace.iconOf(_workspace.hostIconProject(host))) {
-            null => null,
-            final icon => ProjectIconView(
-              icon: icon,
-              library: _workspace.icons,
-              size: 16,
-              color: AppColors.textMuted,
-            ),
-          },
+      iconOf: _hostIcon,
       onConnected: (host) {
         if (!mounted) return;
         _workspace.addSshHost(host);
@@ -2803,6 +2815,108 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       unawaited(flow.start());
     }
   }
+
+  /// A host's icon, as the workspace kept it (the host switcher's).
+  Widget? _hostIcon(String host) =>
+      switch (_workspace.iconOf(_workspace.hostIconProject(host))) {
+        null => null,
+        final icon => ProjectIconView(
+          icon: icon,
+          library: _workspace.icons,
+          size: 16,
+          color: AppColors.textMuted,
+        ),
+      };
+
+  /// Open File… in a remote project (VS Code's, in a remote window): the
+  /// current project's host, its folders browsed, the file picked opened
+  /// where the IDE's files are (that host), by its path there. Nothing
+  /// without a remote project (a local Open File… is this machine's).
+  void _openRemoteFile() {
+    final folder = _ideFolder;
+    final host = RemoteLocation.hostOf(folder);
+    if (host == null || host.isEmpty) return;
+    final flow = OpenRemoteFileFlow(
+      show: showQuickPick,
+      l10n: context.l10n,
+      hosts: SshHosts.instance,
+      onOpen: (location) {
+        if (!mounted) return;
+        if (RemoteLocation.hostOf(location) != host) return;
+        // This IDE's files are that host's: it opens the path there
+        // (whatever folder it is in); the editor keeps it among its own
+        // recently used.
+        final path = RemoteLocation.pathOf(location);
+        _afterBuild(() => _ide?.openFile(path));
+      },
+    );
+    unawaited(flow.open(host, directory: RemoteLocation.pathOf(folder)));
+  }
+
+  /// The remote menu (the status bar's `SSH: <host>`, VS Code's remote
+  /// indicator): the SSH hosts to switch to (opening a folder on one), the
+  /// current host's connection, opening a folder or a file there, and
+  /// adding a host. In the IDE, so its folder opens here ([inIde]).
+  Future<void> _showRemoteMenu(String host) async {
+    final l10n = context.l10n;
+    final hosts = SshHosts.instance;
+    final ssh = hosts[host];
+    final others = [
+      for (final name in _workspace.sshHosts)
+        if (name != host) name,
+    ];
+    await showIdeMenu(
+      context,
+      anchor: _statusAnchor,
+      alignRight: false,
+      entries: [
+        if (others.isNotEmpty) ...[
+          for (final name in others)
+            IdeMenuAction(
+              _workspace.hostLabel(name),
+              icon: _hostIcon(name) ?? const SizedBox.shrink(),
+              onSelected: () =>
+                  _openRemoteProject(host: name, switchTo: true, inIde: true),
+            ),
+          const IdeMenuSeparator(),
+        ],
+        if (ssh.state == SshHostState.connected)
+          IdeMenuAction(
+            l10n.sidebarDisconnectHost,
+            icon: const Icon(Codicons.debugDisconnect),
+            onSelected: () => unawaited(ssh.close()),
+          )
+        else
+          IdeMenuAction(
+            l10n.remoteReconnect,
+            icon: const Icon(Codicons.refresh),
+            onSelected: () => ssh.reconnect().ignore(),
+          ),
+        const IdeMenuSeparator(),
+        IdeMenuAction(
+          l10n.sidebarOpenFolderOn(host),
+          icon: const Icon(Codicons.folderOpened),
+          onSelected: () =>
+              _openRemoteProject(host: host, switchTo: true, inIde: true),
+        ),
+        IdeMenuAction(
+          l10n.remoteOpenFileOn(host),
+          icon: const Icon(Codicons.file),
+          onSelected: () => _openRemoteFile(),
+        ),
+        const IdeMenuSeparator(),
+        IdeMenuAction(
+          l10n.sidebarAddSshHost,
+          icon: const Icon(Codicons.add),
+          onSelected: () => _openRemoteProject(switchTo: true, inIde: true),
+        ),
+      ],
+    );
+  }
+
+  /// Where the status bar's remote entry is, for the menu to drop from
+  /// (set as the item is built).
+  Rect _statusAnchor = Rect.zero;
 
   Future<void> _openFolder() async {
     final path = await WindowControls.pickDirectory();
