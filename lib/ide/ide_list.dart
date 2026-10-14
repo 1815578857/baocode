@@ -201,7 +201,7 @@ class IdeListRow extends StatefulWidget {
     this.selected = false,
     this.focusedItem,
     this.focused = false,
-    this.keepSelectionOutline = false,
+    this.keepSelectionActive = false,
     this.height = IdeListColors.rowHeight,
     this.tooltip,
   });
@@ -219,8 +219,9 @@ class IdeListRow extends StatefulWidget {
   /// Whether the list has focus: its selection is the active one.
   final bool focused;
 
-  /// Keeps selected rows outlined when opening them moves focus elsewhere.
-  final bool keepSelectionOutline;
+  /// Keeps the active selection colors and outline when opening a row
+  /// moves keyboard focus to its content.
+  final bool keepSelectionActive;
   final double height;
   final String? tooltip;
 
@@ -261,7 +262,8 @@ class _IdeListRowState extends State<IdeListRow> {
     final colors = themeColors;
     final contrast = colors.get('contrastActiveBorder');
     final focusedItem = widget.focusedItem ?? widget.selected;
-    if (widget.focused && focusedItem) {
+    if ((widget.focused && focusedItem) ||
+        (widget.selected && widget.keepSelectionActive)) {
       return widget.selected
           ? colors.get('list.focusAndSelectionOutline') ??
                 contrast ??
@@ -270,13 +272,7 @@ class _IdeListRowState extends State<IdeListRow> {
     }
     if (widget.selected) {
       return contrast ??
-          (focusedItem || widget.keepSelectionOutline
-              ? colors.get('list.inactiveFocusOutline')
-              : null) ??
-          (widget.keepSelectionOutline
-              ? colors.get('list.focusAndSelectionOutline') ??
-                    colors.get('list.focusOutline')
-              : null);
+          (focusedItem ? colors.get('list.inactiveFocusOutline') : null);
     }
     return _hover ? contrast : null;
   }
@@ -306,7 +302,7 @@ class _IdeListRowState extends State<IdeListRow> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(4),
               color: selected
-                  ? (widget.focused
+                  ? (widget.focused || widget.keepSelectionActive
                         ? IdeListColors.activeSelection
                         : IdeListColors.inactiveSelection)
                   : _hover

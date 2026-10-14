@@ -574,6 +574,18 @@ void main() {
     expect(inSidebar(find.text('55m')), findsNothing);
     expect(inSidebar(find.byIcon(Icons.push_pin_outlined)), findsOneWidget);
     expect(inSidebar(find.byIcon(Icons.inventory_2_outlined)), findsOneWidget);
+    final rowBounds = tester.getRect(
+      find.ancestor(of: row(), matching: find.byType(IdeListRow)),
+    );
+    for (final icon in [Icons.push_pin_outlined, Icons.inventory_2_outlined]) {
+      final button = find.ancestor(
+        of: inSidebar(find.byIcon(icon)),
+        matching: find.byType(SidebarIconButton),
+      );
+      final bounds = tester.getRect(button);
+      expect(bounds.top, greaterThanOrEqualTo(rowBounds.top));
+      expect(bounds.bottom, lessThanOrEqualTo(rowBounds.bottom));
+    }
 
     // Pinned, it looks the same: the pin shows only on hover, filled.
     await tester.tap(inSidebar(find.byIcon(Icons.push_pin_outlined)));
@@ -696,8 +708,10 @@ void main() {
     listFocus.unfocus();
     await tester.pump();
     expect(tester.widget<IdeListRow>(row).focused, isFalse);
-    expect(decoration().color, IdeListColors.inactiveSelection);
-    expectForeground(IdeListColors.inactiveSelectionForeground);
+    expect(decoration().color, IdeListColors.activeSelection);
+    expectForeground(IdeListColors.activeSelectionForeground);
+    expect(tester.getSize(row).height, IdeListColors.rowHeight);
+    expect(decoration().borderRadius, BorderRadius.circular(4));
 
     listFocus.requestFocus();
     await tester.pump();
@@ -1627,6 +1641,59 @@ void main() {
     expect(workspace.selected, same(open));
   });
 
+  for (final overHeader in [false, true]) {
+    testWidgets(
+      'trackpad pans over ${overHeader ? 'project headers' : 'chat rows'} '
+      'scroll without starting a reorder',
+      (tester) async {
+        final workspace = await pumpKept(
+          tester,
+          KeptCatalog([
+            for (var p = 0; p < 16; p++)
+              for (var i = 0; i < 5; i++)
+                kept('p${p}t$i', '/proj$p', p * 5 + i + 1),
+          ]),
+        );
+        final scrollable = inSidebar(find.byType(Scrollable)).last;
+        final position = tester.state<ScrollableState>(scrollable).position;
+        final drag = tester
+            .widget<ChatDragLayer>(find.byType(ChatDragLayer))
+            .drag;
+        final order = workspace.sidebarProjectsHere.toList();
+        final open = workspace.selected;
+        for (var attempt = 0; attempt < 3; attempt++) {
+          position.jumpTo(0);
+          await tester.pump();
+          final target = inSidebar(
+            find.text(overHeader ? 'proj1' : 'Chat p1t0'),
+          );
+          final at = tester.getCenter(target);
+          final pointer = TestPointer(20 + attempt, PointerDeviceKind.trackpad);
+          await tester.sendEventToBinding(pointer.panZoomStart(at));
+          for (var i = 1; i <= 8; i++) {
+            await tester.sendEventToBinding(
+              pointer.panZoomUpdate(
+                at,
+                pan: Offset(0, -20.0 * i),
+                timeStamp: Duration(milliseconds: i * 16),
+              ),
+            );
+            await tester.pump(const Duration(milliseconds: 16));
+            expect(drag.thread, isNull);
+          }
+          await tester.sendEventToBinding(
+            pointer.panZoomEnd(timeStamp: const Duration(milliseconds: 144)),
+          );
+          await tester.pumpAndSettle();
+          expect(position.pixels, greaterThan(50));
+          expect(workspace.sidebarProjectsHere, orderedEquals(order));
+          expect(workspace.selected, same(open));
+        }
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    );
+  }
+
   testWidgets('the sidebar honors custom list navigation keys', (tester) async {
     final previous = KeybindingService.instance;
     KeybindingService.instance = KeybindingService()
@@ -1883,7 +1950,7 @@ void main() {
     final list = tester.state<ScrollableState>(
       inSidebar(find.byType(Scrollable)).last,
     );
-    list.position.jumpTo(28 * 90);
+    list.position.jumpTo(IdeListColors.rowHeight * 90);
     await tester.pump();
     await clickChat(tester, 'Chat t100');
     await clickChat(tester, 'Chat t101', holding: multiSelectKey);

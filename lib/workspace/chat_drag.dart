@@ -290,6 +290,10 @@ class _ChatDragSourceState extends State<ChatDragSource> {
 /// [ChatDrag.threshold], not the mouse's 2 pixels: a click that slips a
 /// little still opens the agent.
 class _DragRecognizer extends PanGestureRecognizer {
+  // A two-finger pan scrolls the list; only a pressed pointer drags a chat.
+  @override
+  bool isPointerPanZoomAllowed(PointerPanZoomStartEvent event) => false;
+
   @override
   bool hasSufficientGlobalDistanceToAccept(
     PointerDeviceKind pointerDeviceKind,

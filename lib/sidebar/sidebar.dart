@@ -254,7 +254,7 @@ class Sidebar extends StatefulWidget {
 class _SidebarState extends State<Sidebar>
     with IdeKeyboardList<Sidebar>
     implements ChatDragList {
-  static const _rowHeight = 28.0;
+  static const _rowHeight = IdeListColors.rowHeight;
 
   /// The agents a project shows until asked for more (pinned ones apart).
   static const _recent = 5;
@@ -1264,7 +1264,7 @@ class _SidebarState extends State<Sidebar>
           },
           child: ListView.builder(
             controller: _listScroll,
-            padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
+            padding: const EdgeInsets.only(bottom: 12),
             itemCount: rows.length,
             itemExtentBuilder: (index, _) =>
                 index < rows.length ? rows[index].extent : null,
@@ -2022,13 +2022,13 @@ class _NavRow extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6),
           child: IdeListRow(
-            height: 28,
+            height: IdeListColors.rowHeight,
             selected: selected,
-            keepSelectionOutline: true,
+            keepSelectionActive: true,
             onTap: onTap,
             builder: (context, hovered) {
               final foreground = selected
-                  ? IdeListColors.inactiveSelectionForeground
+                  ? IdeListColors.activeSelectionForeground
                   : hovered
                   ? IdeListColors.hoverForeground
                   : IdeListColors.foreground;
@@ -2042,7 +2042,7 @@ class _NavRow extends StatelessWidget {
                         size: 15,
                         color: selected
                             ? themeColors.get(
-                                    'list.inactiveSelectionIconForeground',
+                                    'list.activeSelectionIconForeground',
                                   ) ??
                                   foreground
                             : AppColors.textMuted,
@@ -2519,6 +2519,10 @@ class _ProjectDragSourceState extends State<_ProjectDragSource>
 class _ProjectDragRecognizer extends VerticalDragGestureRecognizer {
   _ProjectDragRecognizer() : super(supportedDevices: null);
 
+  // Two-finger scrolling must not enter project reordering.
+  @override
+  bool isPointerPanZoomAllowed(PointerPanZoomStartEvent event) => false;
+
   @override
   bool hasSufficientGlobalDistanceToAccept(
     PointerDeviceKind pointerDeviceKind,
@@ -2766,7 +2770,7 @@ class _ThreadRow extends StatelessWidget {
         selected: selected,
         focusedItem: focusedItem,
         focused: focused,
-        keepSelectionOutline: true,
+        keepSelectionActive: true,
         onTap: renaming ? null : onTap,
         onDoubleTap: renaming ? null : onRename,
         onContextMenu: (position) {
@@ -2776,9 +2780,7 @@ class _ThreadRow extends StatelessWidget {
         builder: (context, hovered) {
           final active = hovered || menu.isOpen;
           final foreground = selected
-              ? (focused
-                    ? IdeListColors.activeSelectionForeground
-                    : IdeListColors.inactiveSelectionForeground)
+              ? IdeListColors.activeSelectionForeground
               : hovered
               ? IdeListColors.hoverForeground
               : IdeListColors.foreground;
