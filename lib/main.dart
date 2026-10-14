@@ -192,11 +192,14 @@ Future<void> main(List<String> arguments) async {
     l10n: () =>
         lookupAppLocalizations(locale.locale ?? AppLocale.systemLocale()),
   )..load();
+  // Claude Code's skills, agents, commands, rules, servers, hooks and
+  // plugins: the Customize view beside the chat, and Settings → Customize.
+  final customizations = CustomizationStore();
   // The phones paired with this computer (Settings → Mobile): listening
   // for them, if they are allowed to connect.
   final link = kIsWeb
       ? null
-      : LinkHost(workspace: workspace, customizations: CustomizationStore());
+      : LinkHost(workspace: workspace, customizations: customizations);
   unawaited(link?.load());
   // The first frame is in the kept theme, restored from storage as VS Code
   // does before the workbench shows; its file is read after. The setting
@@ -308,6 +311,7 @@ Future<void> main(List<String> arguments) async {
       workspace: workspace,
       claudeStatus: localClaudeStatus,
       link: link,
+      customizations: customizations,
     );
     _startTelemetry(files);
   }
@@ -353,7 +357,7 @@ Future<void> main(List<String> arguments) async {
     // What Claude Code keeps: its sessions to search, its skills, agents,
     // commands, rules, servers, hooks and plugins to customize.
     conversations: ClaudeConversationSearch(),
-    customizations: CustomizationStore(),
+    customizations: customizations,
   );
   // With windows, each is a view of its own (see [BaoCodeApp.build]).
   if (windows.started) {

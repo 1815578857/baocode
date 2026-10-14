@@ -476,6 +476,12 @@ abstract class AppLocalizations {
   /// **'Add Context…'**
   String get cmdChatAttachContext;
 
+  /// No description provided for @cmdChatPasteRaw.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste as Plain Text'**
+  String get cmdChatPasteRaw;
+
   /// No description provided for @cmdChatSelectNextSuggestion.
   ///
   /// In en, this message translates to:
@@ -13310,6 +13316,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stash'**
   String get settingsSectionStash;
+
+  /// No description provided for @settingsSectionCustomize.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize'**
+  String get settingsSectionCustomize;
+
+  /// No description provided for @settingsCustomizeKeywords.
+  ///
+  /// In en, this message translates to:
+  /// **'skills subagents rules commands agents claude memory hooks mcp plugins'**
+  String get settingsCustomizeKeywords;
 
   /// No description provided for @stashTitle.
   ///

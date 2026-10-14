@@ -76,6 +76,7 @@ class CustomizeView extends StatefulWidget {
     this.titleBarInset = 12,
     this.onOpenFile,
     this.host,
+    this.showTitleBar = true,
   });
 
   /// The customizations of the machine shown: this one's, or [host]'s.
@@ -104,6 +105,10 @@ class CustomizeView extends StatefulWidget {
 
   /// Opens a file in the IDE; none when null.
   final ValueChanged<String>? onOpenFile;
+
+  /// Whether its own title bar shows (a Close button and the like); false
+  /// where it is a settings page, under the dialog's own.
+  final bool showTitleBar;
 
   /// Opens a folder in Finder; replaceable under test.
   @visibleForTesting
@@ -329,7 +334,7 @@ class CustomizeViewState extends State<CustomizeView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildTitleBar(context.l10n),
+        if (widget.showTitleBar) _buildTitleBar(context.l10n),
         Expanded(
           child: open != null
               ? _CustomizationEditor(

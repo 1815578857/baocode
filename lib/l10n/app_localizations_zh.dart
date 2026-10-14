@@ -213,6 +213,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cmdChatAttachContext => '添加上下文…';
 
   @override
+  String get cmdChatPasteRaw => '粘贴为纯文本';
+
+  @override
   String get cmdChatSelectNextSuggestion => '选择下一个建议';
 
   @override
@@ -7635,6 +7638,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsSectionStash => 'Stash';
+
+  @override
+  String get settingsSectionCustomize => '自定义';
+
+  @override
+  String get settingsCustomizeKeywords => '技能 子智能体 规则 命令 记忆 钩子 插件 mcp';
 
   @override
   String get stashTitle => 'Stash';

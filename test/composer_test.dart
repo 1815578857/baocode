@@ -37,6 +37,7 @@ import 'package:baocode/chat/composer/suggestion_menu.dart';
 import 'package:baocode/chat/panels/activity_strip.dart';
 import 'package:baocode/chat/panels/interaction_panel.dart';
 import 'package:baocode/chat/panels/context_usage_panel.dart';
+import 'package:baocode/keybindings/keybinding_service.dart';
 import 'package:baocode/theme/app_theme.dart';
 
 Future<ChatSession> pumpScreen(
@@ -824,6 +825,65 @@ void main() {
       await tester.pump();
       expect(content(tester), '[@lib/main.dart] 你好\n');
     });
+
+    testWidgets('Shift+Cmd+V pastes the raw text, past the long-paste tag', (
+      tester,
+    ) async {
+      KeybindingService.instance = KeybindingService();
+      addTearDown(() => KeybindingService.instance = KeybindingService());
+      await pumpScreen(tester);
+      final long = List.generate(30, (i) => 'line $i').join('\n');
+      tester.binding.defaultBinaryMessenger
+        ..setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async =>
+              call.method == 'Clipboard.getData' ? {'text': long} : null,
+        )
+        // The pasteboard's own channel: no images, as the composer's paste
+        // asks it (else the ask never answers under the test binding).
+        ..setMockMethodCallHandler(
+          const MethodChannel('baocode/window'),
+          (call) async => null,
+        );
+      addTearDown(() {
+        tester.binding.defaultBinaryMessenger
+          ..setMockMethodCallHandler(SystemChannels.platform, null)
+          ..setMockMethodCallHandler(
+            const MethodChannel('baocode/window'),
+            null,
+          );
+      });
+
+      // The plain paste still tags it (too long for the text).
+      await composerController(tester).clipboardPaste();
+      await tester.pump();
+      expect(
+        composerController(tester).document.toDelta().toList().where(
+          (op) => op.data is Map,
+        ),
+        hasLength(1),
+      );
+
+      // The shortcut pastes the raw text in, with no tag.
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyV, character: 'V');
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(SuggestionMenu), findsNothing);
+      final delta = composerController(tester).document.toDelta().toList();
+      expect(
+        delta.where((op) => op.data is Map).map((op) => op.data),
+        hasLength(1),
+        reason: 'only the first (plain) paste is a tag',
+      );
+      expect(
+        composerController(tester).document.toPlainText(),
+        contains('line 29'),
+      );
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
   });
 
   testWidgets(
