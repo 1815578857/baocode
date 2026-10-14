@@ -12,12 +12,15 @@ import 'package:baocode/kernel/claude_code/claude_code_kernel.dart';
 import 'package:baocode/kernel/claude_code/mock_claude_code_transport.dart';
 import 'package:baocode/kernel/kernel_types.dart';
 import 'package:baocode/ide/ide_hover.dart';
+import 'package:baocode/ide/ide_commands.dart' show ideUsesMacKeys;
 import 'package:baocode/main.dart';
 import 'package:baocode/search/search_palette.dart';
 import 'package:baocode/chat/widgets/user_message_bubble.dart';
 import 'package:baocode/sidebar/sidebar.dart';
 import 'package:baocode/theme/codicons.dart';
 import 'package:baocode/theme/workbench_theme.dart';
+import 'package:baocode/workspace/chat_grid_view.dart';
+import 'package:baocode/workspace/chat_drag.dart';
 import 'package:baocode/workspace/editor_launcher.dart';
 import 'package:baocode/workspace/open_in_editor_button.dart';
 import 'package:baocode/workspace/pin_window_button.dart';
@@ -104,6 +107,21 @@ Future<Workspace> pumpKept(
 
 AgentThread keptThread(Workspace workspace, String id) =>
     workspace.threads.firstWhere((thread) => thread.record?.id == id);
+
+Future<void> clickChat(
+  WidgetTester tester,
+  String title, {
+  LogicalKeyboardKey? holding,
+}) async {
+  if (holding != null) await tester.sendKeyDownEvent(holding);
+  await tester.tap(inSidebar(find.text(title)));
+  if (holding != null) await tester.sendKeyUpEvent(holding);
+  await tester.pump();
+}
+
+LogicalKeyboardKey get multiSelectKey => ideUsesMacKeys
+    ? LogicalKeyboardKey.metaLeft
+    : LogicalKeyboardKey.controlLeft;
 
 double top(WidgetTester tester, String text) =>
     tester.getTopLeft(inSidebar(find.text(text))).dy;
@@ -500,8 +518,7 @@ void main() {
 
   testWidgets('shown from the top of a long list, the archived agents are '
       'scrolled to', (tester) async {
-    // Far more than shows: the list's extent is an estimate until its
-    // bottom rows are laid out, short of the archived ones.
+    // Far more than shows: the archived rows are not built until scrolled to.
     final records = [
       for (var p = 0; p < 12; p++)
         for (var i = 0; i < 8; i++)
@@ -1300,4 +1317,573 @@ void main() {
     expect(rowTop('Chat a2'), lessThan(rowTop('Chat a1')));
     expect(workspace.inPinnedOrder([a1, a2]), [a2, a1]);
   });
+
+  testWidgets(
+    'leaving the window during a chat drag removes its cursor layer',
+    (tester) async {
+      final workspace = await pumpKept(
+        tester,
+        KeptCatalog([kept('a1', '/tmp/a', 1), kept('a2', '/tmp/a', 2)]),
+      );
+      final drag = tester
+          .widget<ChatDragLayer>(find.byType(ChatDragLayer))
+          .drag;
+      final gesture = await tester.startGesture(
+        tester.getCenter(inSidebar(find.text('Chat a2'))),
+        kind: PointerDeviceKind.mouse,
+      );
+      await gesture.moveBy(const Offset(0, -10));
+      await tester.pump();
+      expect(drag.thread, keptThread(workspace, 'a2'));
+      Finder grabbingCursor() => find.descendant(
+        of: find.byType(ChatDragLayer),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is MouseRegion &&
+              widget.cursor == SystemMouseCursors.grabbing,
+        ),
+      );
+      expect(grabbingCursor(), findsOneWidget);
+
+      await gesture.removePointer();
+      await tester.pump();
+      expect(drag.thread, isNull);
+      expect(drag.drop, isNull);
+      expect(workspace.grid.length, 1);
+      expect(grabbingCursor(), findsNothing);
+    },
+  );
+
+  testWidgets('losing window focus cancels a chat drag', (tester) async {
+    final workspace = await pumpKept(
+      tester,
+      KeptCatalog([kept('a1', '/tmp/a', 1), kept('a2', '/tmp/a', 2)]),
+    );
+    final drag = tester.widget<ChatDragLayer>(find.byType(ChatDragLayer)).drag;
+    final gesture = await tester.startGesture(
+      tester.getCenter(inSidebar(find.text('Chat a2'))),
+      kind: PointerDeviceKind.mouse,
+    );
+    await gesture.moveBy(const Offset(0, -10));
+    await tester.pump();
+    expect(drag.thread, keptThread(workspace, 'a2'));
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump();
+    expect(drag.thread, isNull);
+    expect(workspace.grid.length, 1);
+    await gesture.up();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  });
+
+  testWidgets('a fresh press releases a drag whose original pointer was lost', (
+    tester,
+  ) async {
+    final workspace = await pumpKept(
+      tester,
+      KeptCatalog([kept('a1', '/tmp/a', 1), kept('a2', '/tmp/a', 2)]),
+    );
+    final a1 = keptThread(workspace, 'a1');
+    final a2 = keptThread(workspace, 'a2');
+    workspace.select(a1);
+    await tester.pump();
+    final drag = tester.widget<ChatDragLayer>(find.byType(ChatDragLayer)).drag;
+    final original = await tester.startGesture(
+      tester.getCenter(inSidebar(find.text('Chat a2'))),
+      kind: PointerDeviceKind.mouse,
+    );
+    await original.moveBy(const Offset(0, -10));
+    await tester.pump();
+    expect(drag.thread, a2);
+    // The original pointer never sends up, cancel or removed. Its topmost
+    // cursor layer currently intercepts the entire window.
+    final next = await tester.startGesture(
+      tester.getCenter(inSidebar(find.text('Chat a2'))),
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pump();
+    expect(drag.thread, isNull);
+    expect(drag.drop, isNull);
+    await next.up();
+    await tester.pump();
+    expect(workspace.selected, a1);
+    await original.up();
+    await tester.tap(inSidebar(find.text('Chat a2')));
+    await tester.pump();
+    expect(workspace.selected, a2);
+  });
+
+  testWidgets('a long sidebar builds only rows near its scroll position', (
+    tester,
+  ) async {
+    final workspace = await pumpKept(
+      tester,
+      KeptCatalog([
+        for (var i = 0; i < 1200; i++) kept('t$i', '/tmp/a', i + 1),
+      ]),
+    );
+    workspace.sidebarGrouping = SidebarGrouping.time.name;
+    await tester.pump();
+    expect(
+      inSidebar(find.byType(ChatDragSource)).evaluate().length,
+      lessThan(90),
+    );
+    expect(
+      inSidebar(find.textContaining(RegExp(r'^Chat t0\s'))),
+      findsOneWidget,
+    );
+    expect(
+      inSidebar(find.textContaining(RegExp(r'^Chat t1199\s'))),
+      findsNothing,
+    );
+
+    final list = tester.state<ScrollableState>(
+      inSidebar(find.byType(Scrollable)).last,
+    );
+    for (var i = 0; i < 4; i++) {
+      list.position.jumpTo(list.position.maxScrollExtent);
+      await tester.pump();
+    }
+    expect(
+      inSidebar(find.textContaining(RegExp(r'^Chat t1199\s'))),
+      findsOneWidget,
+    );
+    expect(
+      inSidebar(find.byType(ChatDragSource)).evaluate().length,
+      lessThan(90),
+    );
+  });
+
+  testWidgets('dragging near the list edge scrolls and stops on release', (
+    tester,
+  ) async {
+    final workspace = await pumpKept(
+      tester,
+      KeptCatalog([for (var i = 0; i < 120; i++) kept('t$i', '/tmp/a', i + 1)]),
+    );
+    workspace.sidebarGrouping = SidebarGrouping.time.name;
+    await tester.pump();
+    final scrollable = inSidebar(find.byType(Scrollable)).last;
+    final list = tester.state<ScrollableState>(scrollable);
+    final first = inSidebar(find.textContaining(RegExp(r'^Chat t0\s')));
+    final gesture = await tester.startGesture(
+      tester.getCenter(first),
+      kind: PointerDeviceKind.mouse,
+    );
+    await gesture.moveBy(const Offset(0, 8));
+    await tester.pump();
+    await gesture.moveTo(
+      tester.getRect(scrollable).bottomCenter - const Offset(25, 5),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(list.position.pixels, greaterThan(0));
+    await gesture.up();
+    await tester.pump();
+    final stopped = list.position.pixels;
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(list.position.pixels, stopped);
+  });
+
+  testWidgets(
+    'modifier clicks select without opening and drag a block in row order',
+    (tester) async {
+      final workspace = await pumpKept(
+        tester,
+        KeptCatalog([for (var i = 1; i <= 4; i++) kept('a$i', '/tmp/a', i)]),
+      );
+      final a1 = keptThread(workspace, 'a1');
+      final a2 = keptThread(workspace, 'a2');
+      final a3 = keptThread(workspace, 'a3');
+      final a4 = keptThread(workspace, 'a4');
+      await clickChat(tester, 'Chat a2');
+      await clickChat(tester, 'Chat a4', holding: multiSelectKey);
+      expect(workspace.selected, a2);
+
+      final drag = tester
+          .widget<ChatDragLayer>(find.byType(ChatDragLayer))
+          .drag;
+      final gesture = await tester.startGesture(
+        tester.getCenter(inSidebar(find.text('Chat a4'))),
+        kind: PointerDeviceKind.mouse,
+      );
+      await gesture.moveBy(const Offset(0, -8));
+      await tester.pump();
+      expect(drag.threads, [a2, a4]);
+      await gesture.moveTo(
+        tester.getTopLeft(inSidebar(find.text('Chat a1'))) +
+            const Offset(20, 2),
+      );
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
+      expect(workspace.inProjectOrder(a1.project, [a1, a2, a3, a4]), [
+        a2,
+        a4,
+        a1,
+        a3,
+      ]);
+      expect(workspace.grid.length, 1);
+    },
+    variant: TargetPlatformVariant({
+      TargetPlatform.macOS,
+      TargetPlatform.windows,
+    }),
+  );
+
+  testWidgets('a batch drag cannot open only its first chat in the grid', (
+    tester,
+  ) async {
+    final workspace = await pumpKept(
+      tester,
+      KeptCatalog([
+        kept('a1', '/tmp/a', 1),
+        kept('a2', '/tmp/a', 2),
+        kept('a3', '/tmp/a', 3),
+      ]),
+    );
+    await clickChat(tester, 'Chat a2');
+    await clickChat(tester, 'Chat a3', holding: multiSelectKey);
+    final drag = tester.widget<ChatDragLayer>(find.byType(ChatDragLayer)).drag;
+    final gesture = await tester.startGesture(
+      tester.getCenter(inSidebar(find.text('Chat a3'))),
+      kind: PointerDeviceKind.mouse,
+    );
+    await gesture.moveBy(const Offset(0, -8));
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(find.byType(ChatGridView)));
+    await tester.pump();
+    expect(drag.drop, isNull);
+    await gesture.up();
+    await tester.pump();
+    expect(workspace.grid.length, 1);
+  });
+
+  testWidgets(
+    'Shift clicks and arrows extend selection without opening chats',
+    (tester) async {
+      final workspace = await pumpKept(
+        tester,
+        KeptCatalog([for (var i = 1; i <= 4; i++) kept('a$i', '/tmp/a', i)]),
+      );
+      await clickChat(tester, 'Chat a1');
+      await clickChat(tester, 'Chat a3', holding: LogicalKeyboardKey.shiftLeft);
+      expect(workspace.selected, keptThread(workspace, 'a1'));
+      final drag = tester
+          .widget<ChatDragLayer>(find.byType(ChatDragLayer))
+          .drag;
+      final arrow = await tester.startGesture(
+        tester.getCenter(inSidebar(find.text('Chat a2'))),
+        kind: PointerDeviceKind.mouse,
+      );
+      await arrow.moveBy(const Offset(0, -8));
+      await tester.pump();
+      expect(drag.threads.map((thread) => thread.id), ['a1', 'a2', 'a3']);
+      await arrow.up();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.pump();
+      final extended = await tester.startGesture(
+        tester.getCenter(inSidebar(find.text('Chat a4'))),
+        kind: PointerDeviceKind.mouse,
+      );
+      await extended.moveBy(const Offset(0, -8));
+      await tester.pump();
+      expect(drag.threads.map((thread) => thread.id), ['a1', 'a2', 'a3', 'a4']);
+      await extended.up();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      final cleared = await tester.startGesture(
+        tester.getCenter(inSidebar(find.text('Chat a4'))),
+        kind: PointerDeviceKind.mouse,
+      );
+      await cleared.moveBy(const Offset(0, -8));
+      await tester.pump();
+      expect(drag.threads.map((thread) => thread.id), ['a4']);
+      await cleared.up();
+    },
+  );
+
+  testWidgets('select all is scoped to the focused sidebar and shown rows', (
+    tester,
+  ) async {
+    final workspace = await pumpKept(
+      tester,
+      KeptCatalog([for (var i = 1; i <= 8; i++) kept('a$i', '/tmp/a', i)]),
+    );
+    await clickChat(tester, 'Chat a1');
+    // Modifier selection keeps focus in the list; plain opening focuses chat.
+    await clickChat(tester, 'Chat a2', holding: multiSelectKey);
+    await tester.sendKeyDownEvent(multiSelectKey);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+    await tester.sendKeyUpEvent(multiSelectKey);
+    await tester.pump();
+    final shown = tester
+        .widget<Sidebar>(find.byType(Sidebar))
+        .link!
+        .visibleThreads!;
+    final drag = tester.widget<ChatDragLayer>(find.byType(ChatDragLayer)).drag;
+    final gesture = await tester.startGesture(
+      tester.getCenter(inSidebar(find.text('Chat a2'))),
+      kind: PointerDeviceKind.mouse,
+    );
+    await gesture.moveBy(const Offset(0, -8));
+    await tester.pump();
+    expect(drag.threads, shown);
+    expect(drag.threads, isNot(contains(keptThread(workspace, 'a8'))));
+    await gesture.up();
+    expect(workspace.selected, keptThread(workspace, 'a1'));
+  });
+
+  testWidgets('a pinned batch returns to its project in the same order', (
+    tester,
+  ) async {
+    final workspace = await pumpKept(
+      tester,
+      KeptCatalog([for (var i = 1; i <= 4; i++) kept('a$i', '/tmp/a', i)]),
+    );
+    await clickChat(tester, 'Chat a2');
+    await clickChat(tester, 'Chat a3', holding: multiSelectKey);
+    await tester.tap(
+      inSidebar(find.text('Chat a3')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pump();
+    await tester.tap(find.text('Pin'));
+    await tester.pump();
+    final pinned = workspace.inPinnedOrder([
+      keptThread(workspace, 'a2'),
+      keptThread(workspace, 'a3'),
+    ]);
+    await mouseDrag(
+      tester,
+      tester.getCenter(inSidebar(find.textContaining('Chat a2'))),
+      () =>
+          tester.getTopLeft(inSidebar(find.text('Chat a1'))) +
+          const Offset(20, 2),
+    );
+    expect(pinned.every((thread) => !thread.pinned), isTrue);
+    expect(
+      workspace.inProjectOrder(pinned.first.project, [
+        for (var i = 1; i <= 4; i++) keptThread(workspace, 'a$i'),
+      ]),
+      [...pinned, keptThread(workspace, 'a1'), keptThread(workspace, 'a4')],
+    );
+  });
+
+  testWidgets('scrolled rows use data coordinates for a batch reorder', (
+    tester,
+  ) async {
+    final workspace = await pumpKept(
+      tester,
+      KeptCatalog([for (var i = 0; i < 160; i++) kept('t$i', '/tmp/a', i + 1)]),
+    );
+    workspace.toggleExpanded(Workspace.projectGroup('/tmp/a'));
+    await tester.pump();
+    final list = tester.state<ScrollableState>(
+      inSidebar(find.byType(Scrollable)).last,
+    );
+    list.position.jumpTo(28 * 90);
+    await tester.pump();
+    await clickChat(tester, 'Chat t100');
+    await clickChat(tester, 'Chat t101', holding: multiSelectKey);
+    await mouseDrag(
+      tester,
+      tester.getCenter(inSidebar(find.text('Chat t100'))),
+      () =>
+          tester.getTopLeft(inSidebar(find.text('Chat t95'))) +
+          const Offset(20, 2),
+    );
+    final project = keptThread(workspace, 't0').project;
+    final ordered = workspace.inProjectOrder(project, [
+      for (var i = 0; i < 160; i++) keptThread(workspace, 't$i'),
+    ]);
+    expect(
+      ordered.indexOf(keptThread(workspace, 't101')),
+      ordered.indexOf(keptThread(workspace, 't100')) + 1,
+    );
+    expect(
+      ordered.indexOf(keptThread(workspace, 't95')),
+      ordered.indexOf(keptThread(workspace, 't101')) + 1,
+    );
+  });
+
+  testWidgets('a selected context menu pins and archives the whole selection', (
+    tester,
+  ) async {
+    final workspace = await pumpKept(
+      tester,
+      KeptCatalog([
+        kept('a1', '/tmp/a', 1),
+        kept('a2', '/tmp/a', 2),
+        kept('a3', '/tmp/a', 3),
+      ]),
+    );
+    await clickChat(tester, 'Chat a2');
+    await clickChat(tester, 'Chat a3', holding: multiSelectKey);
+    await tester.tap(
+      inSidebar(find.text('Chat a3')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pump();
+    await tester.tap(find.text('Pin'));
+    await tester.pump();
+    expect(keptThread(workspace, 'a2').pinned, isTrue);
+    expect(keptThread(workspace, 'a3').pinned, isTrue);
+
+    await tester.tap(
+      inSidebar(find.textContaining('Chat a3')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pump();
+    await tester.tap(find.text('Archive'));
+    await tester.pump();
+    expect(keptThread(workspace, 'a2').archived, isTrue);
+    expect(keptThread(workspace, 'a3').archived, isTrue);
+  });
+
+  testWidgets('the context menu can unpin and restore a selected batch', (
+    tester,
+  ) async {
+    final workspace = await pumpKept(
+      tester,
+      KeptCatalog([
+        kept('a1', '/tmp/a', 1),
+        kept('a2', '/tmp/a', 2),
+        kept('a3', '/tmp/a', 3),
+      ]),
+    );
+    await clickChat(tester, 'Chat a2');
+    await clickChat(tester, 'Chat a3', holding: multiSelectKey);
+    await tester.tap(
+      inSidebar(find.text('Chat a3')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pump();
+    await tester.tap(find.text('Pin'));
+    await tester.pump();
+    await tester.tap(
+      inSidebar(find.textContaining('Chat a3')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pump();
+    await tester.tap(find.text('Unpin'));
+    await tester.pump();
+    expect(keptThread(workspace, 'a2').pinned, isFalse);
+    expect(keptThread(workspace, 'a3').pinned, isFalse);
+
+    await tester.tap(
+      inSidebar(find.text('Chat a3')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pump();
+    await tester.tap(find.text('Archive'));
+    await tester.pump();
+    await tester.tap(inSidebar(find.text('Archived · 2')));
+    await tester.pumpAndSettle();
+    await tester.tap(inSidebar(find.textContaining('Chat a2')));
+    await tester.pump();
+    await tester.sendKeyDownEvent(multiSelectKey);
+    await tester.tap(inSidebar(find.textContaining('Chat a3')));
+    await tester.sendKeyUpEvent(multiSelectKey);
+    await tester.pump();
+    await tester.tap(
+      inSidebar(find.textContaining('Chat a3')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pump();
+    expect(keptThread(workspace, 'a2').archived, isTrue);
+    expect(keptThread(workspace, 'a3').archived, isTrue);
+    expect(find.text('Unarchive'), findsOneWidget);
+    await tester.tap(find.text('Unarchive'));
+    await tester.pump();
+    expect(keptThread(workspace, 'a2').archived, isFalse);
+    expect(keptThread(workspace, 'a3').archived, isFalse);
+  });
+
+  testWidgets(
+    'a mixed-project batch can pin but cannot move into one project',
+    (tester) async {
+      final workspace = await pumpKept(
+        tester,
+        KeptCatalog([
+          kept('a1', '/tmp/a', 1),
+          kept('a2', '/tmp/a', 2),
+          kept('b1', '/tmp/b', 3),
+        ]),
+      );
+      await clickChat(tester, 'Chat a1');
+      await clickChat(tester, 'Chat b1', holding: multiSelectKey);
+      final gesture = await tester.startGesture(
+        tester.getCenter(inSidebar(find.text('Chat b1'))),
+        kind: PointerDeviceKind.mouse,
+      );
+      await gesture.moveBy(const Offset(0, -8));
+      await tester.pump();
+      await gesture.moveTo(
+        tester.getCenter(inSidebar(find.text('Drop here to pin'))),
+      );
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
+      expect(keptThread(workspace, 'a1').pinned, isTrue);
+      expect(keptThread(workspace, 'b1').pinned, isTrue);
+
+      await mouseDrag(
+        tester,
+        tester.getCenter(inSidebar(find.textContaining('Chat b1'))),
+        () =>
+            tester.getTopLeft(inSidebar(find.text('Chat a2'))) +
+            const Offset(20, 2),
+      );
+      expect(keptThread(workspace, 'a1').pinned, isTrue);
+      expect(keptThread(workspace, 'b1').pinned, isTrue);
+      expect(
+        workspace.isManuallyOrdered(keptThread(workspace, 'a2').project),
+        isFalse,
+      );
+    },
+  );
+
+  testWidgets(
+    'a batch deletion confirms once and removes only selected chats',
+    (tester) async {
+      final workspace = await pumpKept(
+        tester,
+        KeptCatalog([
+          kept('a1', '/tmp/a', 1),
+          kept('a2', '/tmp/a', 2),
+          kept('a3', '/tmp/a', 3),
+        ]),
+      );
+      await clickChat(tester, 'Chat a2');
+      await clickChat(tester, 'Chat a3', holding: multiSelectKey);
+      await tester.tap(
+        inSidebar(find.text('Chat a3')),
+        buttons: kSecondaryButton,
+      );
+      await tester.pump();
+      await tester.tap(find.text('Delete').first);
+      await tester.pump();
+      expect(find.text('Delete agents?'), findsOneWidget);
+      expect(
+        find.textContaining('2 agents and their conversations'),
+        findsOneWidget,
+      );
+      await tester.tap(find.widgetWithText(GestureDetector, 'Delete').last);
+      await tester.pump();
+      expect(
+        workspace.threads.map((thread) => thread.record?.id),
+        contains('a1'),
+      );
+      expect(
+        workspace.threads.map((thread) => thread.record?.id),
+        isNot(contains('a2')),
+      );
+      expect(
+        workspace.threads.map((thread) => thread.record?.id),
+        isNot(contains('a3')),
+      );
+    },
+  );
 }
