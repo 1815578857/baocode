@@ -10650,13 +10650,13 @@ abstract class AppLocalizations {
   /// No description provided for @modelsHeadersDescription.
   ///
   /// In en, this message translates to:
-  /// **'One Name: Value a line, sent on every request to this upstream. Values may use {{CLAUDE_SESSION_ID}} (this conversation\'s session) and {{ANTHROPIC_MODEL}} (the model asked for). Auth headers (Authorization, x-api-key) are ignored here: the key is set above.'**
+  /// **'One Name: Value a line, sent on every request to this upstream. Values may use the CLAUDE_SESSION_ID variable (this conversation\'s session) and ANTHROPIC_MODEL (the model asked for), each between double braces; over the direct Anthropic protocol those two go as written, so only fixed values work there. Auth headers (Authorization, x-api-key) are ignored here: the key is set above.'**
   String get modelsHeadersDescription;
 
   /// No description provided for @modelsHeadersPlaceholder.
   ///
   /// In en, this message translates to:
-  /// **'x-session-id: {{CLAUDE_SESSION_ID}}'**
+  /// **'x-session-id: my-session'**
   String get modelsHeadersPlaceholder;
 
   /// No description provided for @modelsDelete.

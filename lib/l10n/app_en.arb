@@ -4579,7 +4579,7 @@
   "modelsEnv": "Extra Environment",
   "modelsEnvDescription": "One KEY=VALUE a line, given to Claude Code after the settings above.",
   "modelsHeaders": "Custom Headers",
-  "modelsHeadersDescription": "One Name: Value a line, sent on every request to this upstream. Values may use {{CLAUDE_SESSION_ID}} (this conversation's session) and {{ANTHROPIC_MODEL}} (the model asked for); over the direct Anthropic protocol those two go as written, so only fixed values work there. Auth headers (Authorization, x-api-key) are ignored here: the key is set above.",
+  "modelsHeadersDescription": "One Name: Value a line, sent on every request to this upstream. Values may use the CLAUDE_SESSION_ID variable (this conversation's session) and ANTHROPIC_MODEL (the model asked for), each between double braces; over the direct Anthropic protocol those two go as written, so only fixed values work there. Auth headers (Authorization, x-api-key) are ignored here: the key is set above.",
   "modelsHeadersPlaceholder": "x-session-id: my-session",
   "modelsDelete": "Delete Upstream",
   "modelsDeleteDescription": "Removes it, and its key from the keychain.",

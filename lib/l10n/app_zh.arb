@@ -1757,7 +1757,7 @@
   "modelsEnv": "额外环境变量",
   "modelsEnvDescription": "每行一个 KEY=VALUE，在以上设置之后传给 Claude Code。",
   "modelsHeaders": "自定义请求头",
-  "modelsHeadersDescription": "每行一个 Name: Value，对此上游的每次请求都会带上。值里可用 {{CLAUDE_SESSION_ID}}（本次对话的会话）与 {{ANTHROPIC_MODEL}}（所请求的模型）；走直连 Anthropic 协议时这两个变量原样发出，可用的只有固定值。鉴权头（Authorization、x-api-key）在此忽略：Key 在下方设置。",
+  "modelsHeadersDescription": "每行一个 Name: Value，对此上游的每次请求都会带上。值里可用双花括号变量 CLAUDE_SESSION_ID（本次对话的会话）与 ANTHROPIC_MODEL（所请求的模型）；走直连 Anthropic 协议时这两个变量原样发出，可用的只有固定值。鉴权头（Authorization、x-api-key）在此忽略：Key 在下方设置。",
   "modelsHeadersPlaceholder": "x-session-id: my-session",
   "modelsDelete": "删除上游",
   "modelsDeleteDescription": "删除此上游，以及钥匙串中的 Key。",
