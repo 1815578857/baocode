@@ -90,6 +90,24 @@ Future<void> _doubleClick(
 }
 
 void main() {
+  testWidgets('heading rules are as faint as horizontal rules', (tester) async {
+    await pumpPreview(
+      tester,
+      EditorDocumentModel('# Title\n\n## Section\n\n---'),
+    );
+    final separator = tester.widget<Divider>(find.byType(Divider)).color;
+    expect(separator!.a, lessThan(1));
+    for (final title in ['Title', 'Section']) {
+      final containers = tester.widgetList<Container>(
+        find.ancestor(of: _text(title), matching: find.byType(Container)),
+      );
+      final borders = containers
+          .map((container) => (container.decoration as BoxDecoration?)?.border)
+          .whereType<Border>();
+      expect(borders.first.bottom.color, separator);
+    }
+  });
+
   testWidgets('a double click opens the source at the text clicked', (
     tester,
   ) async {

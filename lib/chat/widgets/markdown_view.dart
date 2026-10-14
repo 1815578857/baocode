@@ -285,11 +285,14 @@ Widget? _block(md.Node node, TextStyle style, MarkdownOptions options) {
         ),
       );
       if (!options.headingRules || level > 2) return heading;
+      final separator = themeColors['textSeparator.foreground'];
       return Container(
         padding: const EdgeInsets.only(bottom: 6),
         decoration: BoxDecoration(
           border: Border(
-            bottom: BorderSide(color: themeColors['textSeparator.foreground']),
+            bottom: BorderSide(
+              color: separator.withValues(alpha: separator.a * 0.33),
+            ),
           ),
         ),
         child: heading,
