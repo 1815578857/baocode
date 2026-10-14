@@ -1,194 +1,270 @@
-# 公网访问：Cloudflare Tunnel
+# 公网访问：用 Cloudflare Tunnel 打通
 
-手机在外网连桌面端，本来是靠「公网地址」直连（路由器转发端口，或桌面端自己的公网 IPv6）。没公网 IP、又不想开路由器端口时，可以用 Cloudflare Tunnel 把本机的 47100 暴露出去，地址固定成 `link.baocode.dev`。
+手机在外网连桌面端，本来是靠「公网地址」直连（在路由器上转发端口，或桌面端有公网 IPv6）。如果你**没有公网 IP**、也不想在路由器上开端口，可以用 Cloudflare Tunnel：由 Cloudflare 给你一个固定域名，流量经它转发到本机的 47100。
 
-这份文档记录**为什么这么做**、**用 Cloudflare MCP 怎么做**，以及**本机常驻服务怎么装**。协议和配对见 [`mobile-link.md`](./mobile-link.md)。
+这份文档手把手走一遍。全程不用写代码，靠一个 MCP 工具完成。协议和配对原理见 [`mobile-link.md`](./mobile-link.md)。
 
-## 1. 为什么用 80 端口
+## 0. 前提
 
-关键约束：手机端的连接地址是写死 `ws://` 的（[`packages/bao_link/lib/src/io.dart`](../packages/bao_link/lib/src/io.dart) 的 `LinkConnector._race`），没有 `wss://` 分支。
+- 有一个**托管在 Cloudflare 的域名**（免费套餐就够）。
+- 桌面端 BaoCode 正在运行，设置 → 手机 → 打开「允许手机连接」（默认监听 **47100**）。
+- 装了 [Claude Code](https://claude.com/claude-code)，或者任何支持 MCP 的客户端。
 
-而 Cloudflare 的隧道入口**强制 HTTPS**：`443` 端口上的明文 `ws://` 请求会被 CF 直接拦掉（`400 Bad Request`，`CF-RAY: -`，根本没进隧道）。它只在 **80 端口**上接受明文 `ws` 升级再回源。
+文中用 `example.com` 代替你自己的域名，`link.example.com` 是要用的子域——**照着做的时候换成你自己的**。
 
-所以走法只有一个：
+## 1. 为什么必须用 80 端口
+
+先理解这个约束，不然后面会卡住。
+
+手机端的连接地址是写死的 `ws://`（[`packages/bao_link/lib/src/io.dart`](../packages/bao_link/lib/src/io.dart) 的 `LinkConnector._race`），**没有 `wss://` 分支**。而 Cloudflare 的隧道入口在 **443 端口强制 HTTPS**——明文 `ws://` 请求会被它直接挡掉：
 
 ```
-手机 → ws://link.baocode.dev:80/baocode-link
+$ ws://link.example.com:443/baocode-link
+HTTP/1.1 400 Bad Request          ← 没进隧道就被拒了
+```
+
+它只在 **80 端口**上接受明文 `ws` 升级，再回源到本机。所以走法只有一条：
+
+```
+手机 → ws://link.example.com:80/baocode-link
      → Cloudflare（80，接受明文 ws 升级）
      → 隧道 → http://localhost:47100（本机 LinkServer）
 ```
 
-`always_use_https` 必须为 **off**（`baocode.dev` 本来就是），否则 80 端口会 301 跳转到 HTTPS，明文 `ws` 升级就断了。`automatic_https_rewrites` 开着不影响 WebSocket 升级，可以不管。
-
-实测三种走法：
+三个实测结果：
 
 | 走法 | 结果 |
 | --- | --- |
-| `wss://link.baocode.dev:443/baocode-link` | ✅ 101（但客户端不会用） |
-| `ws://link.baocode.dev:80/baocode-link` | ✅ 101 ← **用这个** |
-| `ws://<任何域名>:443/baocode-link` | ❌ CF 400 |
+| `wss://link.example.com:443/baocode-link` | ✅ 101（但客户端不会用 wss） |
+| `ws://link.example.com:80/baocode-link` | ✅ 101 ← **用这个** |
+| `ws://<任何域名>:443/baocode-link` | ❌ Cloudflare 400 |
 
-手机上填的「公网地址」：
+另外，域名的 **`always_use_https` 必须是 off**，否则 80 端口会 301 跳去 HTTPS，明文 `ws` 升级就断了。Cloudflare 默认是 off，一般不用改（第 2 步会检查）。
 
+## 2. 装好 MCP 并登录
+
+Cloudflare 官方 MCP 服务器地址是 `https://mcp.cloudflare.com/mcp`，提供 `search()`、`execute()`、`docs()` 三个工具——`execute()` 能调 Cloudflare 全部 API，下面所有配置都靠它。
+
+**在 Claude Code 里加：**
+
+```bash
+claude mcp add --transport http cloudflare-api https://mcp.cloudflare.com/mcp
 ```
-link.baocode.dev:80
-```
 
-必须带 `:80`。不带端口会被当成默认端口 47100（[`lib/link/link_host.dart`](../lib/link/link_host.dart) 的 `_parse`），连到 CF 的 47100 上，不通。
+**登录 / 授权**，二选一：
 
-## 2. 资源清单
+- **OAuth（推荐）**：在 Claude Code 里执行 `/mcp`，选 `cloudflare-api`，浏览器会弹出 Cloudflare 授权页，登录并勾选权限即可。第一次连接就会触发。
+- **API Token（适合自动化）**：到 [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens) 建一个 token，需要 **Account → Cloudflare Tunnel: Edit** 和 **Zone → DNS: Edit** 权限，用 `Authorization: Bearer <token>` 传入。
 
-| 资源 | 值 |
-| --- | --- |
-| 账号 | `d65fe67428884b9d2b06125e3afe605a` |
-| 域名 | `baocode.dev`，zone `d1d792adc07895ac5b4d029107a6e1f5` |
-| 隧道 | `baocode-link-local`，id `c9a2003c-7cd6-425a-8ae8-b7d531b82815` |
-| 回源 | `http://localhost:47100` |
-| DNS | `link` CNAME → `c9a2003c-….cfargotunnel.com`，proxied |
+> **注意**：这一步**不需要** `cloudflared tunnel login`。下面用的是 token 方式（隧道自带凭据），不依赖 CLI 登录。
 
-## 3. 用 MCP 配置（可复现全过程）
-
-用 Cloudflare MCP：`search` 查 OpenAPI 端点，`execute` 写 JS 调 `cloudflare.request()`。JS 里能拿到 `accountId`。
-
-**a. 先看现状**（哪些域名、隧道、DNS、zone 设置）：
+装好后确认一下能通，让 MCP 跑这段：
 
 ```js
-async () => ({
-  accounts: (await cloudflare.request({ method: 'GET', path: '/accounts' })).result,
-  zones: (await cloudflare.request({ method: 'GET', path: '/zones' })).result
-    .map(z => ({ name: z.name, id: z.id })),
-})
+async () => (await cloudflare.request({ method: 'GET', path: '/accounts' })).result
 ```
 
-确认三个前提：`always_use_https` 是 `off`、目标子域没有占用、没有同名隧道。
+**看到你的账号名就说明登录成功了。**把返回里的账号 id 记下来，下面要用。
+
+## 3. 用 MCP 配置隧道
+
+下面每一步在 Claude Code 里直接说「用 cloudflare 的 execute 执行这段」即可。把 `ACCOUNT_ID`、`ZONE_ID`、`example.com` 换成你自己的。
+
+**a. 查你有哪些域名**（拿到 `ZONE_ID`）：
 
 ```js
-await cloudflare.request({
+async () => (await cloudflare.request({ method: 'GET', path: '/zones' })).result
+  .map(z => ({ name: z.name, id: z.id }))
+```
+
+顺便确认三件事：目标子域还没被占用、没有同名隧道、`always_use_https` 是 `off`：
+
+```js
+async () => (await cloudflare.request({
   method: 'GET',
-  path: `/zones/${zoneId}/settings/always_use_https`,
-})
+  path: `/zones/${ZONE_ID}/settings/always_use_https`,
+})).result.value                       // 期望 "off"
 ```
 
 **b. 建隧道**：
 
 ```js
-const t = (await cloudflare.request({
+async () => (await cloudflare.request({
   method: 'POST',
-  path: `/accounts/${accountId}/cfd_tunnel`,
-  body: { name: 'baocode-link-local', config: { ingress: [] } },
-})).result
+  path: `/accounts/${ACCOUNT_ID}/cfd_tunnel`,
+  body: { name: 'baocode-link', config: { ingress: [] } },
+})).result.id
 ```
 
-创建时传的 `config` 对**本地管理型**隧道（用 token 跑的）不生效，后面必须单独推 ingress，见 d。
+把返回的隧道 id 记作 `TUNNEL_ID`。
 
-**c. 拿 token**（这是秘密，别提交）：
+**c. 取隧道 token**（这是凭据，别外传、别提交进 git）：
 
 ```js
-const tok = (await cloudflare.request({
+async () => (await cloudflare.request({
   method: 'GET',
-  path: `/accounts/${accountId}/cfd_tunnel/${tunnelId}/token`,
+  path: `/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/token`,
 })).result
 ```
 
-**d. 推 ingress**：
+**d. 配置回源规则（ingress）**：
 
 ```js
-await cloudflare.request({
+async () => (await cloudflare.request({
   method: 'PUT',
-  path: `/accounts/${accountId}/cfd_tunnel/${tunnelId}/configurations`,
+  path: `/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/configurations`,
   body: {
     config: {
       ingress: [
-        { hostname: 'link.baocode.dev', service: 'http://localhost:47100' },
-        { service: 'http_status:404' },   // 兜底，必须有
+        { hostname: 'link.example.com', service: 'http://localhost:47100' },
+        { service: 'http_status:404' },     // 兜底，必须有，少了会报错
       ],
     },
   },
-})
+})).success
 ```
 
-最后一条兜底规则是必需项，少了 API 会报错。
+> 创建隧道时（b 步）传的 `config` 对 token 型隧道**不生效**，必须像这里单独推一次。
 
-**e. 加 DNS**：
+**e. 加 DNS，把子域指到隧道**：
 
 ```js
-await cloudflare.request({
+async () => (await cloudflare.request({
   method: 'POST',
-  path: `/zones/${zoneId}/dns_records`,
+  path: `/zones/${ZONE_ID}/dns_records`,
   body: {
-    type: 'CNAME', name: 'link',
-    content: `${tunnelId}.cfargotunnel.com`,
+    type: 'CNAME',
+    name: 'link',                                    // 即 link.example.com
+    content: `${TUNNEL_ID}.cfargotunnel.com`,
     proxied: true,
   },
-})
+})).success
 ```
 
-**f. 本机跑起来**（见下一节，然后确认日志里出现 `Updated to new configuration`）：
+## 4. 在本机跑起来
+
+> 如果你已经安装了 BaoCode 的桌面端，它自带的 cloudflared 会自动处理；否则，需要先安装：`brew install cloudflared`（macOS）。
+
+把 c 步拿到的 token 存成文件：
+
+```bash
+mkdir -p ~/.cloudflared && chmod 700 ~/.cloudflared
+# 把 token 内容写进去
+nano ~/.cloudflared/link-tunnel.token && chmod 600 ~/.cloudflared/link-tunnel.token
+```
+
+启动：
 
 ```bash
 cloudflared tunnel --no-autoupdate run --token-file ~/.cloudflared/link-tunnel.token
 ```
 
-坑：隧道进程**只有在启动时会去拉一次远程 ingress**。先起进程、后推配置的话，得重启进程才会生效——日志里会一直重复 `No ingress rules were defined`，此时请求经 CF 回来是 503。
+日志里要看到这两行才算成功：
 
-## 4. 常驻服务（launchd）
-
-token 存在 `~/.cloudflared/link-tunnel.token`（权限 600）。LaunchAgent 放在 `~/Library/LaunchAgents/dev.baocode.cftunnel-link.plist`：
-
-```xml
-<key>ProgramArguments</key>
-<array>
-  <string>/opt/homebrew/bin/cloudflared</string>
-  <string>tunnel</string>
-  <string>--no-autoupdate</string>
-  <string>run</string>
-  <string>--token-file</string>
-  <string>/Users/leokun/.cloudflared/link-tunnel.token</string>
-</array>
-<key>RunAtLoad</key><true/>
-<key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+```
+INF Registered tunnel connection connIndex=0 ...
+INF Updated to new configuration config="{\"ingress\":[{\"hostname\":\"link.example.com\",...}]}"
 ```
 
-`SuccessfulExit=false`：正常退出不重启，异常挂掉才拉起。日志在 `~/Library/Logs/cftunnel-link.log`。
+**坑**：隧道进程**只在启动时拉一次**远程 ingress。如果你是先起了进程、后推的配置（d 步），日志会一直重复 `No ingress rules were defined`，请求回来是 503——**重启进程**就好。
+
+## 5. 做成常驻服务（macOS）
+
+先按 `Ctrl+C` 停掉前台进程，再用 launchd 托管，开机自启、挂了自动拉回。
+
+`~/Library/LaunchAgents/dev.baocode.cftunnel-link.plist`：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>dev.baocode.cftunnel-link</string>
+
+	<key>ProgramArguments</key>
+	<array>
+		<string>/opt/homebrew/bin/cloudflared</string>
+		<string>tunnel</string>
+		<string>--no-autoupdate</string>
+		<string>run</string>
+		<string>--token-file</string>
+		<string>/Users/你的用户名/.cloudflared/link-tunnel.token</string>
+	</array>
+
+	<key>RunAtLoad</key>
+	<true/>
+
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+
+	<key>StandardOutPath</key>
+	<string>/Users/你的用户名/Library/Logs/cftunnel-link.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/你的用户名/Library/Logs/cftunnel-link.log</string>
+
+	<key>ProcessType</key>
+	<string>Background</string>
+</dict>
+</plist>
+```
+
+**把两处 `/Users/你的用户名` 换成你的家目录路径**（`echo $HOME` 查看）。
 
 ```bash
 # 装 / 更新
 launchctl bootout gui/$(id -u)/dev.baocode.cftunnel-link 2>/dev/null
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.baocode.cftunnel-link.plist
 
-# 看状态
+# 看状态（应有 state = running 和一个 pid）
 launchctl print gui/$(id -u)/dev.baocode.cftunnel-link | grep -E "state|pid"
 
-# 停掉（保留配置）
+# 停掉（保留配置，下次登录还会起）
 launchctl bootout gui/$(id -u)/dev.baocode.cftunnel-link
 ```
 
-不想用 launchd 的话，`brew services` 不行——它管的是 `~/.cloudflared/config.yml` 那套，和 token 方式对不上。
+> `brew services` 不行——它管的是 `~/.cloudflared/config.yml` 那套，和 token 方式对不上。
 
-## 5. 排错
+## 6. 填到手机里
+
+桌面端 → 设置 → 手机 → **公网地址**，填：
+
+```
+link.example.com:80
+```
+
+**必须带 `:80`。**不带端口的话会被当成默认端口 47100（[`lib/link/link_host.dart`](../lib/link/link_host.dart) 的 `_parse`），连到 Cloudflare 的 47100 上，不通。
+
+填好之后，桌面端会把它写进二维码的地址列表，手机连的时候就会走 `ws://link.example.com:80/baocode-link`。
+
+## 7. 排错
 
 ```bash
-# 域名有没有回源到本地：两边都应返回 404 + body "BaoCode"
-curl -s http://link.baocode.dev:80/
+# 域名有没有回源到本机：两条都应返回 404 + 正文 "BaoCode"
+curl -s http://link.example.com:80/
 curl -s http://localhost:47100/
 
-# WebSocket 升级（要看到 101）
+# WebSocket 升级（要看到 101 Switching Protocols）
 curl -i -H "Connection: Upgrade" -H "Upgrade: websocket" \
      -H "Sec-WebSocket-Version: 13" \
      -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
-     http://link.baocode.dev:80/baocode-link
+     http://link.example.com:80/baocode-link
 ```
 
 | 现象 | 原因 |
 | --- | --- |
-| 503 + 日志 `No ingress rules` | 进程没拉到配置，重启它 |
+| 503 + 日志 `No ingress rules` | 进程没拉到配置，重启它（第 4 节末尾的坑） |
 | 502 | ingress 生效了但回源失败：本机 47100 没在监听 |
-| `ws://…:443` 返回 400 | 正常，CF 在 443 上只收 TLS |
-| 浏览器能开但手机连不上 | 手机连的是 `ws`，不是 `https`；别用浏览器结果判断 |
+| `ws://…:443` 返回 400 | 正常，Cloudflare 在 443 上只收 TLS |
+| 浏览器能打开但手机连不上 | 手机走的是 `ws` 不是 `https`，别拿浏览器的结果判断 |
+| DNS 改了但解析没变 | 等几分钟；用 `dig link.example.com` 确认 |
 
-## 6. 注意
+## 8. 注意
 
-- **免费版 ToS 禁止用非 Web 端口代理服务**。这里是拿 80 端口跑 WebSocket 隧道，属于自己临时用的范畴；要正经给用户用，还是得实现 [`mobile-link.md`](./mobile-link.md) §5 预留的中转（`RelayEndpoint`）。
-- 隧道是**这台机器**的：换机器要重新装 token 和 plist。
-- 域名固定（`link.baocode.dev`），比 `trycloudflare.com` 的随机域名强——后者每次重启都变，二维码要重扫。
-- 根路径返回 404 + `BaoCode` 是正常的：`LinkServer` 只处理 `/baocode-link` 的 WebSocket 升级。
+- **Cloudflare 免费版的服务条款禁止用非 Web 端口代理服务**。这里是在 80 端口跑 WebSocket 隧道，属于个人临时使用的范畴。如果是要长期、规模化地给很多用户用，请改用 [`mobile-link.md`](./mobile-link.md) §5 里预留的中转方案（`RelayEndpoint`），也就是走 Cloudflare Workers 而不是隧道。
+- 隧道是**绑定这台机器**的。换机器要重新装 token 和 plist。
+- 隧道 token 是凭据，泄露了别人就能往你的隧道上挂服务。**别提交进 git**，别贴给别人。要作废就删掉隧道重新建一条。
+- 根路径返回 404、正文是 `BaoCode` 是**正常的**：`LinkServer` 只处理 `/baocode-link` 的 WebSocket 升级，别的路径一律 404。
