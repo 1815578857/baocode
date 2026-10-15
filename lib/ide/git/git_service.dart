@@ -109,6 +109,40 @@ class IdeGitService {
     return _repositoryRoot = pathContext.normalize(top);
   }
 
+  /// The folders of the submodules of the repository [root] is in, as its
+  /// `.gitmodules` names them (upstream's `git.detectSubmodules` reads the
+  /// same); none where it has none, or Git cannot say.
+  Future<List<String>> submodulePaths() async {
+    try {
+      // The top level from [root] as [root] is spelled (`--show-toplevel`
+      // resolves links, which [root] may go through).
+      final cdup = await _git(['rev-parse', '--show-cdup'], cwd: root);
+      if (cdup.exitCode != 0) return const [];
+      final up = cdup.stdout.trim();
+      final top = pathContext.normalize(pathContext.join(root, up));
+      final output = await _git([
+        'config',
+        '-z',
+        '--file',
+        up.isEmpty ? '.gitmodules' : '$up.gitmodules',
+        '--get-regexp',
+        r'^submodule\..*\.path$',
+      ], cwd: root);
+      if (output.exitCode != 0) return const [];
+      // `-z`: each `key` newline `value`, then a NUL.
+      return [
+        for (final entry in output.stdout.split('\x00'))
+          if (entry.indexOf('\n') case final newline when newline >= 0)
+            pathContext.joinAll([
+              top,
+              ...entry.substring(newline + 1).split('/'),
+            ]),
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
   /// Whether [root] is a working tree's top level, not a folder in one
   /// (nor a bare repository): what finds the repositories of a folder's
   /// subfolders. Asked by the path's prefix in the tree, which is empty

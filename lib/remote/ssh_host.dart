@@ -81,6 +81,8 @@ class SshHost extends ChangeNotifier implements ProjectHost {
         list: files(root).list,
         isRepositoryTop: (folder) =>
             remoteGitService(this, folder).isRepositoryTop(),
+        submodulesOf: (folder) =>
+            remoteGitService(this, folder).submodulePaths(),
         paths: paths,
       );
 
