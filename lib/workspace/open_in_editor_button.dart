@@ -4,18 +4,18 @@ import 'package:flutter/services.dart';
 import '../chat/chat_keys.dart';
 import '../chat/floating/floating_placement.dart';
 import '../chat/widgets/hover_builder.dart';
+import '../ide/ide_button.dart';
 import '../ide/ide_hover.dart';
 import '../keybindings/chat_keybindings.dart';
 import '../l10n/l10n.dart';
 import '../sidebar/sidebar_menu.dart';
-import '../theme/app_theme.dart';
-import '../theme/workbench_theme.dart' show themeColors;
 import 'editor_launcher.dart';
 import 'workspace.dart';
 
 /// Split button for the title bar: opens [project] in the preferred editor
 /// (the Fast Ide layout, or an app); its chevron switches which editor that
-/// is (without opening it, and remembered), or copies the path.
+/// is (without opening it, and remembered), or copies the path. In the
+/// colors of the IDE's Back to Chat button, its counterpart there.
 class OpenInEditorButton extends StatelessWidget {
   const OpenInEditorButton({
     super.key,
@@ -72,61 +72,74 @@ class OpenInEditorButton extends StatelessWidget {
               Clipboard.setData(ClipboardData(text: project.path)),
         ),
       ],
-      builder: (context, menu) => Container(
-        height: 22,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AppColors.partBorder),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _Segment(
-              semanticsLabel: open,
-              // The Fast Ide's with the keys of Open in Fast Ide, which
-              // does the same; an app's has none.
-              tooltip: editor == Editor.fastIde
-                  ? ChatKeys.titleWithKey(
-                      open,
-                      ChatCommandIds.openIde,
-                      ChatKeys.chatLayout,
-                    )
-                  : open,
-              onTap: () => _open(editor),
-              padding: const EdgeInsets.only(left: 7, right: 7),
-              borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(5),
+      builder: (context, menu) {
+        final foreground = IdeButtonColors.foreground;
+        return Container(
+          height: 22,
+          decoration: BoxDecoration(
+            color: IdeButtonColors.background,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: IdeButtonColors.border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _Segment(
+                semanticsLabel: open,
+                // The Fast Ide's with the keys of Open in Fast Ide, which
+                // does the same; an app's has none.
+                tooltip: editor == Editor.fastIde
+                    ? ChatKeys.titleWithKey(
+                        open,
+                        ChatCommandIds.openIde,
+                        ChatKeys.chatLayout,
+                      )
+                    : open,
+                onTap: () => _open(editor),
+                padding: const EdgeInsets.only(left: 8, right: 6),
+                borderRadius: const BorderRadius.horizontal(
+                  left: Radius.circular(3),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(editor.icon, size: 14, color: foreground),
+                    const SizedBox(width: 4),
+                    Text(
+                      editor.localizedPlatformLabel(context.l10n),
+                      style: TextStyle(
+                        color: foreground,
+                        fontSize: 12,
+                        height: 16 / 12,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(editor.icon, size: 13, color: AppColors.textMuted),
-                  const SizedBox(width: 5),
-                  Text(
-                    editor.localizedPlatformLabel(context.l10n),
-                    style: TextStyle(color: AppColors.text, fontSize: 12),
-                  ),
-                ],
+              // As IdeButton's split button has it.
+              Container(
+                width: 1,
+                height: 14,
+                color: foreground.withValues(alpha: 0.25),
               ),
-            ),
-            Container(width: 1, color: AppColors.partBorder),
-            _Segment(
-              semanticsLabel: context.l10n.workspaceChooseEditor,
-              active: menu.isOpen,
-              onTap: menu.open,
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              borderRadius: const BorderRadius.horizontal(
-                right: Radius.circular(5),
+              _Segment(
+                semanticsLabel: context.l10n.workspaceChooseEditor,
+                active: menu.isOpen,
+                onTap: menu.open,
+                padding: const EdgeInsets.only(left: 3, right: 4),
+                borderRadius: const BorderRadius.horizontal(
+                  right: Radius.circular(3),
+                ),
+                child: Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 15,
+                  color: foreground,
+                ),
               ),
-              child: Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 15,
-                color: AppColors.textMuted,
-              ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -169,10 +182,8 @@ class _Segment extends StatelessWidget {
               padding: padding,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: active
-                    ? themeColors['toolbar.activeBackground']
-                    : hovered
-                    ? themeColors['toolbar.hoverBackground']
+                color: active || hovered
+                    ? IdeButtonColors.hoverBackground
                     : Colors.transparent,
                 borderRadius: borderRadius,
               ),
