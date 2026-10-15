@@ -2546,6 +2546,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String healthFolderGone(String folder) {
+    return '项目文件夹不存在：$folder';
+  }
+
+  @override
   String get healthHideDetails => '隐藏详细信息';
 
   @override

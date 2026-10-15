@@ -4718,6 +4718,12 @@ abstract class AppLocalizations {
   /// **'{name} stopped'**
   String healthStopped(String name);
 
+  /// No description provided for @healthFolderGone.
+  ///
+  /// In en, this message translates to:
+  /// **'The project folder is gone: {folder}'**
+  String healthFolderGone(String folder);
+
   /// No description provided for @healthHideDetails.
   ///
   /// In en, this message translates to:

@@ -1724,6 +1724,14 @@
       }
     }
   },
+  "healthFolderGone": "The project folder is gone: {folder}",
+  "@healthFolderGone": {
+    "placeholders": {
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
   "healthHideDetails": "Hide details",
   "healthDetails": "Details",
   "healthRetry": "Retry",

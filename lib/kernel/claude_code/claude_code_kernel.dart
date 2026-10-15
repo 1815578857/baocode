@@ -486,7 +486,14 @@ class ClaudeCodeKernel
       }
       unawaited(_refreshContext());
     } on ClaudeUnavailable catch (error) {
-      _fail(error.message, error.detail);
+      _fail(
+        error.message,
+        error.detail,
+        missingFolder: switch (error) {
+          ClaudeFolderGone(:final folder) => folder,
+          _ => null,
+        },
+      );
       rethrow;
     } on ControlError catch (error) {
       // Too old: a newer one, if there is one, started in its place.
@@ -505,10 +512,15 @@ class ClaudeCodeKernel
     }
   }
 
-  void _fail(String message, String? detail) {
+  void _fail(String message, String? detail, {String? missingFolder}) {
     _teardown();
     _setHealth(
-      KernelHealth(KernelHealthStatus.failed, message: message, detail: detail),
+      KernelHealth(
+        KernelHealthStatus.failed,
+        message: message,
+        detail: detail,
+        missingFolder: missingFolder,
+      ),
     );
   }
 

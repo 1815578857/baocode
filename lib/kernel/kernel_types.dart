@@ -266,7 +266,12 @@ class McpServer {
 enum KernelHealthStatus { idle, starting, ready, failed }
 
 class KernelHealth {
-  const KernelHealth(this.status, {this.message, this.detail});
+  const KernelHealth(
+    this.status, {
+    this.message,
+    this.detail,
+    this.missingFolder,
+  });
 
   static const idle = KernelHealth(KernelHealthStatus.idle);
   static const ready = KernelHealth(KernelHealthStatus.ready);
@@ -278,6 +283,10 @@ class KernelHealth {
 
   /// More, e.g. the last lines the process printed.
   final String? detail;
+
+  /// The project folder it was to work in, when that is what is not there:
+  /// said in the user's language rather than [message].
+  final String? missingFolder;
 }
 
 /// A task the kernel runs beside the conversation: a background command, a

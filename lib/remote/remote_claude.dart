@@ -324,7 +324,7 @@ class RemoteClaudeTransport implements ClaudeCodeTransport {
         detail: error.detail,
       );
     } on IdeFileNotFoundException {
-      throw ClaudeUnavailable('The project folder is gone: $cwd');
+      throw ClaudeFolderGone(cwd);
     } on RpcClosed {
       throw ClaudeUnavailable('The connection to ${host.host} was lost');
     }

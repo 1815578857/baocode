@@ -2641,6 +2641,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String healthFolderGone(String folder) {
+    return 'The project folder is gone: $folder';
+  }
+
+  @override
   String get healthHideDetails => 'Hide details';
 
   @override

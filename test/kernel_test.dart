@@ -3625,6 +3625,19 @@ void main() {
       );
       kernel.dispose();
     });
+
+    test('a project folder that is gone is told as such', () async {
+      final kernel = ClaudeCodeKernel(
+        MockKernels.claudeCode,
+        const KernelContext(cwd: '/p'),
+        start: (_) async => throw const ClaudeFolderGone('/p'),
+      );
+      kernel.send(const KernelTurn(id: 'u1', text: 'hi'));
+      await pumpEventQueue();
+      expect(kernel.health.status, KernelHealthStatus.failed);
+      expect(kernel.health.missingFolder, '/p');
+      kernel.dispose();
+    });
   });
 
   test('full access is not the CLI\'s, which root cannot have', () async {

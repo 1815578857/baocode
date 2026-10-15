@@ -770,6 +770,7 @@
   "usageInDays": "{days}天后",
   "usageInDaysHours": "{days}天{hours}小时后",
   "healthStopped": "{name} 已停止",
+  "healthFolderGone": "项目文件夹不存在：{folder}",
   "healthHideDetails": "隐藏详细信息",
   "healthDetails": "详细信息",
   "healthRetry": "重试",
