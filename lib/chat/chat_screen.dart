@@ -250,11 +250,13 @@ class _ChatScreenState extends State<ChatScreen>
 
   void _setGoal(String condition) => _session.setGoal(condition);
 
-  void _openAgent(AgentItem agent) {
+  /// Opens [agent], a card in the conversation shown; or at [path] (see
+  /// [SubagentFeed.path]), wherever it is.
+  void _openAgent(AgentItem agent, {List<String>? path}) {
     final id = agent.id;
     if (id == null) return;
     final layer = _AgentLayer(
-      SubagentFeed(_session, [...?_agentShown?.feed.path, id]),
+      SubagentFeed(_session, path ?? [...?_agentShown?.feed.path, id]),
       AnimationController(vsync: this, duration: _layerDuration),
     );
     setState(() => _layers.add(layer));
@@ -516,17 +518,18 @@ class _ChatScreenState extends State<ChatScreen>
       onStopTask: _session.stopTask,
       canOpenTask: (task) => task.kind == KernelTaskKind.command
           ? widget.onOpenTerminalTask != null
-          : _session.agentOf(task.toolUseId) != null,
+          : _session.agentOf(task) != null,
       onOpenTask: (task) {
         if (task.kind == KernelTaskKind.command) {
           widget.onOpenTerminalTask?.call(task);
-        } else if (_session.agentOf(task.toolUseId) case final agent?) {
-          _openAgent(agent);
+        } else if (_session.agentOf(task) case (:final agent, :final path)) {
+          // One a subagent started opens where it is, within that one's.
+          _openAgent(agent, path: path);
         }
       },
       // A subagent's last step, as its card has it.
-      detailOf: (task) => switch (_session.agentOf(task.toolUseId)) {
-        final agent? => AgentStep.latest(agent, l10n: context.l10n),
+      detailOf: (task) => switch (_session.agentOf(task)) {
+        (:final agent, path: _) => AgentStep.latest(agent, l10n: context.l10n),
         null => null,
       },
     );

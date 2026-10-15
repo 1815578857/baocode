@@ -1431,6 +1431,66 @@ void main() {
     expect(_inBackground, findsNothing);
     expect(session.itemCount, greaterThan(0));
   });
+
+  // #94: a subagent's own subagent, or one the kernel named no tool call
+  // for, had its row there and none to open.
+  for (final nested in [true, false]) {
+    testWidgets(
+      nested
+          ? 'the row of a subagent a subagent started opens it, within that '
+                'one\'s'
+          : 'the row of a subagent whose tool call the kernel did not name '
+                'opens it all the same',
+      (tester) async {
+        final (:session, :cli) = await pumpScripted(tester);
+        if (nested) {
+          cli.push(
+            assistant(null, 'toolu_a', {
+              'name': 'Agent',
+              'input': {
+                'description': 'Look around',
+                'subagent_type': 'Explore',
+                'prompt': 'Look around.',
+              },
+            }),
+          );
+        }
+        cli
+          ..push(
+            assistant(nested ? 'toolu_a' : null, 'toolu_b', {
+              'name': 'Agent',
+              'input': {
+                'description': 'Analyze the app',
+                'subagent_type': 'Plan',
+                'prompt': 'Analyze /app.',
+                'run_in_background': true,
+              },
+            }),
+          )
+          ..push({
+            'type': 'system',
+            'subtype': 'task_started',
+            'task_id': 'a1',
+            if (nested) 'tool_use_id': 'toolu_b',
+            'description': 'Analyze the app',
+            'task_type': 'local_agent',
+            'is_backgrounded': true,
+          });
+        await tester.pump(const Duration(milliseconds: 100));
+        final row = find.descendant(
+          of: find.byType(ActivityStrip),
+          matching: find.text('Analyze the app'),
+        );
+        expect(row, findsOneWidget);
+
+        await tester.tap(row);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        // Its own conversation: what it was asked.
+        expect(find.text('Analyze /app.').hitTestable(), findsOneWidget);
+      },
+    );
+  }
 }
 
 const _frame = Duration(milliseconds: 16);

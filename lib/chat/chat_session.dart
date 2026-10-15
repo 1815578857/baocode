@@ -615,13 +615,39 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
     return null;
   }
 
-  /// The subagent the tool call [id] started, in the conversation itself.
-  AgentItem? agentOf(String? id) {
-    if (id == null) return null;
+  /// The subagent [task] runs, wherever it shows: in the conversation
+  /// itself or in another subagent's (one a subagent started). With the ids
+  /// of those leading to it, outermost first and its own last: the path a
+  /// [SubagentFeed] takes.
+  ///
+  /// Found by the tool call that started it; where the kernel did not say
+  /// which, by its description, among those still running.
+  ({AgentItem agent, List<String> path})? agentOf(KernelTask task) {
+    final id = task.toolUseId;
+    bool matches(AgentItem agent) => id != null
+        ? agent.id == id
+        : agent.status == CommandStatus.running &&
+              agent.description == task.description;
+    ({AgentItem agent, List<String> path})? within(
+      AgentItem agent,
+      List<String> path,
+    ) {
+      final own = agent.id;
+      if (own == null) return null;
+      final here = [...path, own];
+      if (matches(agent)) return (agent: agent, path: here);
+      for (final child in agent.children.reversed) {
+        if (child is AgentItem) {
+          if (within(child, here) case final found?) return found;
+        }
+      }
+      return null;
+    }
+
+    if (id == null && task.kind != KernelTaskKind.agent) return null;
     for (var index = _transcript.length - 1; index >= 0; index--) {
-      if (_transcript.itemAt(index) case final AgentItem agent
-          when agent.id == id) {
-        return agent;
+      if (_transcript.itemAt(index) case final AgentItem agent) {
+        if (within(agent, const []) case final found?) return found;
       }
     }
     return null;
