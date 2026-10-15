@@ -814,6 +814,44 @@ void main() {
       expect(content(tester), 'see [@README.md] \n');
     });
 
+    testWidgets('a composition in a URL stays where it is typed', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+      // #99: Quill's rule that finds links put the text replacing another
+      // before it, not in its place: the composition went in the URL ahead
+      // of the caret, and the candidate picked left it there.
+      const url = 'fetch("http://a.b/baf/attachment/download")';
+      await paste(tester, url);
+      final at = url.indexOf('/download');
+      String typed(String text) =>
+          url.substring(0, at) + text + url.substring(at);
+      // An inline emoji suggestion after the caret, as in the other test.
+      for (final (composition, caret) in [
+        ('ni', 2),
+        ('ni〔表情：👋〕', 2),
+        ('ni hc〔表情：👋〕', 5),
+      ]) {
+        tester.testTextInput.updateEditingValue(
+          TextEditingValue(
+            text: '${typed(composition)}\n',
+            selection: TextSelection.collapsed(offset: at + caret),
+            composing: TextRange(start: at, end: at + composition.length),
+          ),
+        );
+        await tester.pump();
+        expect(content(tester), '${typed(composition)}\n');
+      }
+      tester.testTextInput.updateEditingValue(
+        TextEditingValue(
+          text: '${typed('你好')}\n',
+          selection: TextSelection.collapsed(offset: at + 2),
+        ),
+      );
+      await tester.pump();
+      expect(content(tester), '${typed('你好')}\n');
+    });
+
     testWidgets('keeps a tag before a composition whose caret is not at its '
         'end', (tester) async {
       await pumpScreen(tester);

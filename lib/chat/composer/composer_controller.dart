@@ -4,7 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 
 /// The composer's [QuillController]: keeps an input method's edit from
-/// turning the tags and images before it into text.
+/// turning the tags and images before it into text, and a replacement in a
+/// URL from putting its text in the wrong place.
 ///
 /// Quill finds what the input method changed assuming the caret ends the
 /// text it put in. One that shows a suggestion after the caret while
@@ -58,6 +59,23 @@ class ComposerController extends QuillController {
       index += head;
       len -= head + tail;
       data = data.substring(head, data.length - tail);
+    }
+    // Quill puts the text in before it deletes what it replaces, by its
+    // rules after that; the one that finds links puts it at [index] all the
+    // same (typed into a URL), so the delete takes the head of what was
+    // put in and the text replaced stays, after it. Deleted first, there is
+    // nothing after it to put wrong.
+    if (data is String && data.isNotEmpty && len > 0) {
+      super.replaceText(
+        index,
+        len,
+        '',
+        null,
+        ignoreFocus: ignoreFocus,
+        // ignore: experimental_member_use
+        shouldNotifyListeners: false,
+      );
+      len = 0;
     }
     super.replaceText(
       index,
