@@ -52,15 +52,47 @@ class FileStashDisk implements StashDisk {
     }
   }
 
+  /// Each stash's write under way: the next waits for it, so the one asked
+  /// for last is the one left (a typed save and an AI rewrite at once).
+  final Map<int, Future<void>> _writing = {};
+
+  /// Counts the temporary files written, for their names.
+  int _written = 0;
+
   @override
-  Future<void> write(int id, String text) async {
+  Future<void> write(int id, String text) {
+    final previous = _writing[id] ?? Future<void>.value();
+    final next = previous
+        .catchError((Object _) {})
+        .then((_) => _write(id, text));
+    _writing[id] = next;
+    return next.whenComplete(() {
+      if (identical(_writing[id], next)) _writing.remove(id);
+    });
+  }
+
+  Future<void> _write(int id, String text) async {
     await _folder();
-    // Written whole, then moved in place: never half a file.
+    // Written whole, then moved in place: never half a file. A name of its
+    // own, so another window (its own isolate, its own disk) writing the
+    // same stash meanwhile does not write into it.
     final file = _file(id);
-    final temporary = File('${file.path}.tmp');
-    await temporary.writeAsString(text, flush: true);
-    _ownWrites.add(p.basename(file.path));
-    await temporary.rename(file.path);
+    final temporary = File(
+      '${file.path}.$pid-${_written++}-'
+      '${DateTime.now().microsecondsSinceEpoch}.tmp',
+    );
+    try {
+      await temporary.writeAsString(text, flush: true);
+      _ownWrites.add(p.basename(file.path));
+      await temporary.rename(file.path);
+    } on Object {
+      try {
+        await temporary.delete();
+      } on FileSystemException {
+        // Moved in place, or never made.
+      }
+      rethrow;
+    }
   }
 
   @override
