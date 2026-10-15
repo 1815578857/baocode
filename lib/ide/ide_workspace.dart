@@ -938,13 +938,45 @@ class IdeWorkspace extends ChangeNotifier implements IdeSearchReplaceBackend {
     LspRange? range,
     required int tabSize,
     required bool insertSpaces,
+  }) {
+    path = paths.normalize(paths.absolute(path));
+    // One of a file at a time: the servers have one text of it, lent by the
+    // one under way; the next lends its own once that is given back.
+    final previous = _formatting[path] ?? Future<void>.value();
+    final next = previous.then(
+      (_) => _formatOutside(
+        path,
+        text,
+        range: range,
+        tabSize: tabSize,
+        insertSpaces: insertSpaces,
+      ),
+    );
+    final done = next.then<void>((_) {}, onError: (Object _) {});
+    _formatting[path] = done;
+    unawaited(
+      done.whenComplete(() {
+        if (identical(_formatting[path], done)) _formatting.remove(path);
+      }),
+    );
+    return next;
+  }
+
+  /// Each file's [formatOutside] under way, the next waiting for it.
+  final Map<String, Future<void>> _formatting = {};
+
+  Future<IdeFormatOutcome> _formatOutside(
+    String path,
+    String text, {
+    LspRange? range,
+    required int tabSize,
+    required bool insertSpaces,
   }) async {
     final languages = this.languages;
     final sync = _sync;
     if (_disposed || languages == null || sync == null) {
       return const IdeFormatOutcome(null);
     }
-    path = paths.normalize(paths.absolute(path));
     final request = range == null
         ? LanguageRequest.format
         : LanguageRequest.rangeFormat;
