@@ -164,6 +164,20 @@ void main() {
     expect(app.callsTo('fetch'), isNotEmpty);
   });
 
+  testWidgets('a repository\'s ... Fetch From All Remotes fetches that '
+      'repository alone', (tester) async {
+    await pumpScm(tester);
+    await tester.tap(
+      find.byKey(ValueKey('repo-row:${inRoot('app')}')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Fetch From All Remotes'));
+    await tester.pumpAndSettle();
+    expect(app.callsTo('fetch'), isNotEmpty);
+    expect(own.callsTo('fetch'), isEmpty);
+  });
+
   testWidgets('Git: Pull and Git: Push run on the shown repository', (
     tester,
   ) async {

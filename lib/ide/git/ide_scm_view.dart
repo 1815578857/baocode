@@ -1740,9 +1740,10 @@ class IdeScmViewState extends State<IdeScmView>
             l10n.scmFetch,
             onSelected: () => unawaited(_run(git.fetch)),
           ),
+          // This repository's every remote, as its Fetch: not the others'.
           IdeMenuAction(
             l10n.scmFetchFromAllRemotes,
-            onSelected: () => unawaited(_fetchAll()),
+            onSelected: () => unawaited(_run(git.fetch)),
           ),
         ],
         [
