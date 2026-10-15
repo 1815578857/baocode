@@ -598,25 +598,29 @@ void main() {
     );
   }, variant: _windows);
 
-  testWidgets('on macOS the chat\'s own buttons keep to its column\'s right '
-      'edge', (tester) async {
+  testWidgets('on macOS the chat\'s own buttons are at the window\'s right, '
+      'in the IDE title bar\'s order', (tester) async {
     tester.view.physicalSize = const Size(1400, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(BaoCodeApp(workspace: Workspace.mock()));
     await tester.pump();
-    final button = tester.getRect(
-      find.descendant(
-        of: find.byType(ChatScreen),
-        matching: find.byType(SidePanelToggle),
-      ),
+    Rect rectOf(Type type) => tester.getRect(
+      find.descendant(of: find.byType(ChatScreen), matching: find.byType(type)),
     );
+    final sidePanel = rectOf(SidePanelToggle);
+    final pin = rectOf(PinWindowButton);
+    final open = rectOf(OpenInEditorButton);
+    // The side panel's toggle, the pin, then the editor's button last, as
+    // the IDE's panel and chat toggles, its pin and Back to Chat.
+    expect(sidePanel.right, lessThan(pin.left));
+    expect(pin.right, lessThan(open.left));
+    // At the window's end, not the conversation's column's.
+    expect(open.right, 1400 - 8);
     expect(
-      button.left,
-      greaterThan(tester.getRect(find.byType(OpenInEditorButton)).right),
+      open.right,
+      greaterThan(tester.getRect(find.byType(ChatComposer)).right),
     );
-    // Level with the composer's, as the title is with its left.
-    expect(button.right, tester.getRect(find.byType(ChatComposer)).right);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('About shows the app icon and the version this build is', (

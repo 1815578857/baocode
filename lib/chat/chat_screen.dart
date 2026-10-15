@@ -470,13 +470,14 @@ class _ChatScreenState extends State<ChatScreen>
                   // it: see window_header/).
                   child: Align(alignment: Alignment.centerLeft, child: title),
                 ),
-                if (widget.trailing case final trailing?) ...[
-                  const SizedBox(width: 8),
-                  TitleBarControls(child: trailing),
-                ],
               ],
             ),
           ),
+          if (widget.trailing case final trailing?)
+            LayoutId(
+              id: _TitleBarSlot.trailing,
+              child: TitleBarControls(child: trailing),
+            ),
         ],
       ),
     );
@@ -905,7 +906,7 @@ class _ChatScreenState extends State<ChatScreen>
   }
 }
 
-enum _TitleBarSlot { leading, title }
+enum _TitleBarSlot { leading, title, trailing }
 
 /// The width of the conversation's column (the history's text, the
 /// composer) in a screen [width] wide: [chatGutter] in from either side, and
@@ -926,8 +927,9 @@ double _columnWidth(double width, double maxWidth, {required bool minimap}) =>
     );
 
 /// The title bar's [_TitleBarSlot.leading] at [inset], clear of the traffic
-/// lights; the title and the buttons after it across the conversation's
-/// column, clear of the leading.
+/// lights; the title across the conversation's column, clear of the
+/// leading; the buttons ([_TitleBarSlot.trailing]) at the bar's right end,
+/// the window's as the IDE's title bar has them, not the column's.
 class _TitleBarLayout extends MultiChildLayoutDelegate {
   _TitleBarLayout({
     required this.inset,
@@ -963,13 +965,25 @@ class _TitleBarLayout extends MultiChildLayoutDelegate {
       );
       start += leading.width + _gap;
     }
+    var end = _endInset;
+    if (hasChild(_TitleBarSlot.trailing)) {
+      final trailing = layoutChild(
+        _TitleBarSlot.trailing,
+        BoxConstraints.loose(size),
+      );
+      positionChild(
+        _TitleBarSlot.trailing,
+        Offset(
+          size.width - _endInset - trailing.width,
+          (size.height - trailing.height) / 2,
+        ),
+      );
+      end += trailing.width + _gap;
+    }
     final column =
         (size.width - _columnWidth(size.width, maxWidth, minimap: minimap)) / 2;
     final left = math.max(start, column);
-    final width = math.max(
-      0.0,
-      size.width - left - math.max(_endInset, column),
-    );
+    final width = math.max(0.0, size.width - left - math.max(end, column));
     layoutChild(
       _TitleBarSlot.title,
       BoxConstraints.tightFor(width: width, height: size.height),

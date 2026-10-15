@@ -565,11 +565,11 @@ void main() {
     expect(tester.getRect(pane(first)).width, ChatGridView.minPane.width);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
-  testWidgets('the title and the buttons keep to the conversation\'s column, '
-      'alone or side by side', (tester) async {
+  testWidgets('the title keeps to the conversation\'s column and the buttons '
+      'to the pane\'s end, alone or side by side', (tester) async {
     await pumpApp(tester);
 
-    void expectInColumn(String title, Finder rightmost) {
+    void expectPlaced(String title, Finder rightmost) {
       final composer = tester.getRect(
         find.descendant(of: pane(title), matching: find.byType(ChatComposer)),
       );
@@ -585,21 +585,19 @@ void main() {
         tester
             .getTopRight(find.descendant(of: pane(title), matching: rightmost))
             .dx,
-        composer.right,
+        tester.getRect(pane(title)).right - 8,
       );
     }
 
     // A wide window: the column in the middle, well in from the sides.
     final composer = tester.getRect(find.byType(ChatComposer));
     expect(composer.left - gridRect(tester).left, greaterThan(100));
-    expectInColumn(first, find.byType(SidePanelToggle));
+    expectPlaced(first, find.byType(OpenInEditorButton));
 
     await dropAgent(tester, second, near(gridRect(tester), PaneSide.right));
-    expectInColumn(first, find.bySemanticsLabel('Close pane'));
-    // The window's tools at the right pane's end, after its close; the
-    // composer in the middle, though the side panel's rail is over the
-    // pane (at its top, never level with the composer).
-    expectInColumn(second, find.byType(SidePanelToggle));
+    expectPlaced(first, find.bySemanticsLabel('Close pane'));
+    // The window's tools at the right pane's end, after its close.
+    expectPlaced(second, find.byType(OpenInEditorButton));
   });
 
   testWidgets('dragging the sidebar\'s border or a line lays the chats out '

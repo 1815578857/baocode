@@ -3464,25 +3464,12 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     // agent's (Fast Ide opens it), and a click on them leaves the focus
     // where it is. So does closing another pane.
     final terminals = _terminals;
+    // In the order of the IDE's title bar ([panel][chat][pin][back]): the
+    // terminal and the side panel as its panel and chat, then the pin, then
+    // the way to the other layout at the end, so each is where it was after
+    // a switch.
     final tools = [
-      if (windowTools) ...[
-        if (terminals != null && terminals.root != null) ...[
-          ChatTerminalToggle(
-            shown: terminals.shown,
-            onTap: _toggleTerminal,
-            size: 22,
-          ),
-          const SizedBox(width: 6),
-        ],
-        PinWindowButton(pinned: _pinned, onChanged: _setPinned),
-        const SizedBox(width: 6),
-        OpenInEditorButton(
-          workspace: _workspace,
-          project: (_agentThread ?? _workspace.current ?? thread).project,
-        ),
-      ],
       if (!place.alone) ...[
-        if (windowTools) const SizedBox(width: 6),
         // With Close Pane's keys, which close the focused pane: as each of
         // upstream's tabs titles its close button with Close's.
         SidebarIconButton(
@@ -3491,13 +3478,32 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
           command: ChatCommandIds.closePane,
           onTap: () => _workspace.closePane(thread),
         ),
+        if (windowTools) const SizedBox(width: 8),
       ],
       if (windowTools) ...[
-        const SizedBox(width: 6),
-        SidePanelToggle(
-          shown: _sidePanel.shown && !_sidePanelHidden,
-          onTap: _toggleSidePanel,
-          size: 22,
+        if (terminals != null && terminals.root != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: ChatTerminalToggle(
+              shown: terminals.shown,
+              onTap: _toggleTerminal,
+              size: 22,
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: SidePanelToggle(
+            shown: _sidePanel.shown && !_sidePanelHidden,
+            onTap: _toggleSidePanel,
+            size: 22,
+          ),
+        ),
+        const SizedBox(width: 2),
+        PinWindowButton(pinned: _pinned, onChanged: _setPinned),
+        const SizedBox(width: 8),
+        OpenInEditorButton(
+          workspace: _workspace,
+          project: (_agentThread ?? _workspace.current ?? thread).project,
         ),
       ],
     ];

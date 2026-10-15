@@ -323,20 +323,35 @@ class _WindowHeaderState extends State<WindowHeader> {
               if (layout != null) ...[
                 KeyedSubtree(key: _panel, child: IdeLayoutToggle.panel(layout)),
                 KeyedSubtree(key: _chat, child: IdeLayoutToggle.chat(layout)),
-                const SizedBox(width: 2),
               ],
-              // The chat's; the IDE's panel is its own, above.
-              if (widget.onToggleTerminal case final toggle? when !ide) ...[
+              // The chat's terminal and side panel where the IDE has its
+              // panel and chat, the pin after them, and the way to the other
+              // layout last: each where it was after a switch.
+              if (widget.onToggleTerminal case final toggle? when !ide)
                 KeyedSubtree(
                   key: _terminal,
-                  child: ChatTerminalToggle(
-                    shown: widget.terminalShown,
-                    onTap: toggle,
-                    size: 22,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ChatTerminalToggle(
+                      shown: widget.terminalShown,
+                      onTap: toggle,
+                      size: 22,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 6),
-              ],
+              if (widget.onToggleSidePanel case final toggle? when !ide)
+                KeyedSubtree(
+                  key: _sidePanel,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: SidePanelToggle(
+                      shown: widget.sidePanelShown,
+                      onTap: toggle,
+                      size: 22,
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 2),
               KeyedSubtree(
                 key: _pin,
                 child: PinWindowButton(
@@ -346,7 +361,7 @@ class _WindowHeaderState extends State<WindowHeader> {
               ),
               // The chat's; the IDE is the editor there.
               if (widget.project case final project? when !ide) ...[
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 KeyedSubtree(
                   key: _open,
                   child: OpenInEditorButton(
@@ -374,17 +389,6 @@ class _WindowHeaderState extends State<WindowHeader> {
                           widget.onBack ??
                           () => widget.workspace.layout = WorkspaceLayout.chat,
                     ),
-                  ),
-                ),
-              ],
-              if (widget.onToggleSidePanel case final toggle? when !ide) ...[
-                const SizedBox(width: 6),
-                KeyedSubtree(
-                  key: _sidePanel,
-                  child: SidePanelToggle(
-                    shown: widget.sidePanelShown,
-                    onTap: toggle,
-                    size: 22,
                   ),
                 ),
               ],
