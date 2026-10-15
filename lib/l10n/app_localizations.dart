@@ -10611,18 +10611,6 @@ abstract class AppLocalizations {
   /// **'Sends each conversation\'s own prompt_cache_key, so the upstream (or a relay in front of several) routes its requests to where the earlier ones are cached. Turn off for an upstream that rejects the field.'**
   String get modelsPromptCacheKeyDescription;
 
-  /// No description provided for @modelsFastMode.
-  ///
-  /// In en, this message translates to:
-  /// **'Fast Mode'**
-  String get modelsFastMode;
-
-  /// No description provided for @modelsFastModeDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Requests the Fast service tier by default (service_tier: priority). Only works with supported models and upstreams; pricing may differ. An explicit request tier or speed takes precedence.'**
-  String get modelsFastModeDescription;
-
   /// No description provided for @modelsCodexVersion.
   ///
   /// In en, this message translates to:

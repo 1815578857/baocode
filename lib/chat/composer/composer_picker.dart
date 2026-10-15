@@ -893,6 +893,7 @@ class ComposerPickerState extends State<ComposerPicker> {
                 describes: submenu && widget.describes,
                 height: submenu ? _rowHeight : _settingRowHeight,
                 selected: option == setting.selected,
+                toggle: setting.kind == KernelChoiceKind.fast,
                 index: starts[i] + j,
                 highlight: _settingHighlight,
                 onHover: () => _setting = starts[i] + j,
@@ -1536,6 +1537,7 @@ class _SettingRow extends StatelessWidget {
     required this.describes,
     required this.height,
     required this.selected,
+    required this.toggle,
     required this.index,
     required this.highlight,
     required this.onHover,
@@ -1547,6 +1549,7 @@ class _SettingRow extends StatelessWidget {
   final bool describes;
   final double height;
   final bool selected;
+  final bool toggle;
 
   /// Highlighted while [highlight] is [index], counting across the
   /// settings.
@@ -1601,7 +1604,19 @@ class _SettingRow extends StatelessWidget {
                   ],
                 ),
               ),
-              if (selected)
+              if (toggle)
+                SizedBox(
+                  width: 44,
+                  height: 26,
+                  child: FittedBox(
+                    child: Switch(
+                      value: selected,
+                      onChanged: (_) => onTap(),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                )
+              else if (selected)
                 Icon(
                   Icons.check_rounded,
                   size: 15,

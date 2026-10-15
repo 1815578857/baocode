@@ -85,19 +85,26 @@ String customHeadersEnvironment(Map<String, String> headers) => [
     '$key: $value',
 ].join('\n');
 
+const fastModelSuffix = ';fast';
+
 /// The model [modelId] of [provider] as Claude Code is told to ask for it:
 /// for a proxied model, the effort after it in parentheses (`gpt-5(high)`,
 /// `gpt-5(none)` for no reasoning), which the proxy takes off and asks the
-/// upstream for.
+/// upstream for. Fast appends `;fast` inside those parentheses.
 String requestedModel(
   ModelProvider provider,
   ProviderModel model, {
   String? effort,
+  bool fast = false,
 }) {
-  if (!provider.protocol.proxied || effort == null) {
+  final useFast =
+      fast &&
+      (provider.protocol == ProviderProtocol.openaiResponses ||
+          provider.protocol == ProviderProtocol.codex);
+  if (!provider.protocol.proxied || (effort == null && !useFast)) {
     return model.id;
   }
-  return '${model.id}($effort)';
+  return '${model.id}(${effort ?? ''}${useFast ? fastModelSuffix : ''})';
 }
 
 /// The environment variables Claude Code takes its model setup from.

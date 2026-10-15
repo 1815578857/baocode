@@ -76,6 +76,7 @@ class ClaudeCodeKernel
         SelectsPermission,
         SelectsEffort,
         SelectsContextSize,
+        SelectsFast,
         ProvidesCommands,
         SuggestsFiles,
         ReportsContext,
@@ -131,6 +132,7 @@ class ClaudeCodeKernel
     };
     final efforts = '${KernelChoiceKind.effort.name}@';
     final contexts = '${KernelChoiceKind.context.name}@';
+    final speeds = '${KernelChoiceKind.fast.name}@';
     for (final MapEntry(:key, :value) in settings.entries) {
       if (key.startsWith(efforts)) {
         _pickedEfforts[key.substring(efforts.length)] = value;
@@ -138,7 +140,12 @@ class ClaudeCodeKernel
         if (parseTokens(value) case final tokens? when tokens > 0) {
           _pickedWindows[key.substring(contexts.length)] = tokens;
         }
+      } else if (key.startsWith(speeds)) {
+        _pickedFast[key.substring(speeds.length)] = value == 'fast';
       }
+    }
+    if (_model case final model? when !_pickedFast.containsKey(model)) {
+      _pickedFast[model] = settings[KernelChoiceKind.fast.name] == 'fast';
     }
     if ((_context.resume, readHistory) case (final session?, final read?)) {
       _history = _replay(read, session);
@@ -248,11 +255,10 @@ class ClaudeCodeKernel
   /// picked (the CLI's `autoCompactWindow`); null to leave the CLI's own.
   int? _window;
 
-  /// The effort and context each model (by option id) was last on: one
-  /// switched back to takes up its own, not the one before's. Kept with
-  /// the settings (see [modelSettingKey]).
+  /// Each model's last choices, restored when switching back to it.
   final Map<String, String> _pickedEfforts = {};
   final Map<String, int> _pickedWindows = {};
+  final Map<String, bool> _pickedFast = {};
 
   /// The [_window] the process was started with: the CLI takes it only
   /// at start, so another is taken up by a restart (see [_applyWindow]).
@@ -339,6 +345,7 @@ class ClaudeCodeKernel
           provider,
           info,
           effort: effort,
+          fast: _pickedFast[_model] ?? false,
         ),
         null when parseModelRef(_model) != null => null,
         null => _model,
@@ -2287,7 +2294,14 @@ class ClaudeCodeKernel
       _change([
         (
           'set_model',
-          {'model': requestedModel(provider, info, effort: effort)},
+          {
+            'model': requestedModel(
+              provider,
+              info,
+              effort: effort,
+              fast: _pickedFast[id] ?? false,
+            ),
+          },
         ),
         if (!provider.protocol.proxied) ?_thinkingSettings(effort),
       ]);
@@ -2330,6 +2344,12 @@ class ClaudeCodeKernel
         if (provider.protocol.proxied)
           for (final effort in info.effortLevels)
             requestedModel(provider, info, effort: effort),
+        if (provider.protocol == ProviderProtocol.openaiResponses ||
+            provider.protocol == ProviderProtocol.codex) ...[
+          requestedModel(provider, info, fast: true),
+          for (final effort in info.effortLevels)
+            requestedModel(provider, info, effort: effort, fast: true),
+        ],
       ],
   }.toList();
 
@@ -2759,7 +2779,17 @@ class ClaudeCodeKernel
         // to Anthropic's API, as Claude Code's own setting.
         _change([
           if (provider.protocol.proxied)
-            ('set_model', {'model': requestedModel(provider, info, effort: id)})
+            (
+              'set_model',
+              {
+                'model': requestedModel(
+                  provider,
+                  info,
+                  effort: id,
+                  fast: _pickedFast[model] ?? false,
+                ),
+              },
+            )
           else
             ?_thinkingSettings(id),
         ]);
@@ -2777,6 +2807,43 @@ class ClaudeCodeKernel
           },
         ),
       ]);
+    },
+  );
+
+  @override
+  late final ModelSetting fast = _ModelSetting(
+    optionsFor: (model) => switch (_providers.resolve(model)) {
+      (final provider, _)
+          when provider.protocol == ProviderProtocol.openaiResponses ||
+              provider.protocol == ProviderProtocol.codex =>
+        const [KernelOption('fast', 'Fast', Icons.bolt_rounded, '')],
+      _ => const [],
+    },
+    selected: () => _pickedFast[_model] == true ? 'fast' : 'standard',
+    selectedFor: (model) => _pickedFast[model] == true ? 'fast' : 'standard',
+    select: (model, id) {
+      if (id != 'fast' || fast.optionsFor(model).isEmpty) return;
+      if (model != this.model.selected) _keepModelSettings();
+      _pickedFast[model] = _pickedFast[model] != true;
+      if (_providers.resolve(model) case (final provider, final info)) {
+        if (model != _model || _providerKeyOf(model) != _launchedProvider) {
+          _selectModel(model, keep: false);
+        } else {
+          _change([
+            (
+              'set_model',
+              {
+                'model': requestedModel(
+                  provider,
+                  info,
+                  effort: _effortFor(info),
+                  fast: _pickedFast[model]!,
+                ),
+              },
+            ),
+          ]);
+        }
+      }
     },
   );
 

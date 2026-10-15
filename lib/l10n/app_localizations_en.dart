@@ -6447,13 +6447,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Sends each conversation\'s own prompt_cache_key, so the upstream (or a relay in front of several) routes its requests to where the earlier ones are cached. Turn off for an upstream that rejects the field.';
 
   @override
-  String get modelsFastMode => 'Fast Mode';
-
-  @override
-  String get modelsFastModeDescription =>
-      'Requests the Fast service tier by default (service_tier: priority). Only works with supported models and upstreams; pricing may differ. An explicit request tier or speed takes precedence.';
-
-  @override
   String get modelsCodexVersion => 'Codex Version';
 
   @override

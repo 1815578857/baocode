@@ -485,57 +485,26 @@ void main() {
     expect(cancelled, isTrue);
   });
 
-  testWidgets('Fast mode is configurable for Responses and Codex only', (
-    tester,
-  ) async {
-    await providers.save(
-      const ModelProvider(
-        id: 'gw',
-        name: 'Gateway',
-        protocol: ProviderProtocol.openaiResponses,
-      ),
-    );
-    await providers.save(
-      const ModelProvider(
-        id: 'cx',
-        name: 'ChatGPT',
-        protocol: ProviderProtocol.codex,
-      ),
-    );
-    await providers.save(
-      const ModelProvider(
-        id: 'chat',
-        name: 'Chat Gateway',
-        protocol: ProviderProtocol.openaiChat,
-      ),
-    );
+  testWidgets('Fast is not a provider-wide setting', (tester) async {
+    for (final (id, name, protocol) in [
+      ('gw', 'Gateway', ProviderProtocol.openaiResponses),
+      ('cx', 'ChatGPT', ProviderProtocol.codex),
+    ]) {
+      await providers.save(
+        ModelProvider(id: id, name: name, protocol: protocol),
+      );
+    }
     await pump(tester);
 
-    for (final (name, id) in [('Gateway', 'gw'), ('ChatGPT', 'cx')]) {
+    for (final name in ['Gateway', 'ChatGPT']) {
       await tester.tap(find.text(name).last);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Advanced'));
       await tester.pumpAndSettle();
-      final fast = find.bySemanticsLabel('Fast Mode');
-      expect(fast, findsOneWidget);
-      expect(providers.provider(id)!.fastMode, isFalse);
-      await tester.drag(find.byType(ListView).last, const Offset(0, -400));
-      await tester.pumpAndSettle();
-      await tester.tap(fast);
-      await tester.pumpAndSettle();
-      expect(providers.provider(id)!.fastMode, isTrue);
-      expect(providers.provider(id)!.toJson()['fastMode'], isTrue);
-      await tester.drag(find.byType(ListView).last, const Offset(0, 800));
-      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Fast Mode'), findsNothing);
       await tester.tap(find.byType(IdeBackButton).last);
       await tester.pumpAndSettle();
     }
-
-    await tester.tap(find.text('Chat Gateway').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Advanced'));
-    await tester.pumpAndSettle();
-    expect(find.bySemanticsLabel('Fast Mode'), findsNothing);
   });
 
   testWidgets('custom request headers are set, and a variable expression '
