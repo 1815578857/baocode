@@ -247,6 +247,14 @@ abstract interface class RenamesSession {
 /// Takes pictures with a message ([KernelTurn.images]).
 abstract interface class AcceptsImages {}
 
+/// Reads the conversation it continues ([KernelContext.resume]) before
+/// showing it.
+abstract interface class LoadsHistory {
+  /// Whether that conversation is still being read: it may take a while,
+  /// e.g. from a remote project's host.
+  bool get loadingHistory;
+}
+
 /// Offers what the user would likely send next, after a turn.
 abstract interface class SuggestsPrompts {
   /// Null while there is none, e.g. once the user sends something.

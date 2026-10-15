@@ -1906,6 +1906,68 @@ void main() {
       kernel.dispose();
     });
 
+    test('says it is loading the history until it is read', () async {
+      final read = Completer<List<Map<String, Object?>>>();
+      final kernel = ClaudeCodeKernel(
+        MockKernels.claudeCode,
+        KernelContext(
+          cwd: '/p',
+          resume: SessionRecord(
+            id: 's',
+            title: 't',
+            updatedAt: DateTime(2026),
+            cwd: '/p',
+          ),
+        ),
+        start: (_) async => FakeCli(),
+        readHistory: (_) => read.future,
+      );
+      var told = 0;
+      kernel.events.listen((event) {
+        if (event is KernelInfoChanged) told++;
+      });
+      expect(kernel.loadingHistory, isTrue);
+      await pumpEventQueue();
+      expect(kernel.loadingHistory, isTrue);
+
+      read.complete(const []);
+      await pumpEventQueue();
+      expect(kernel.loadingHistory, isFalse);
+      expect(told, greaterThan(0));
+      kernel.dispose();
+    });
+
+    test('is done loading the history when it could not be read', () async {
+      final kernel = ClaudeCodeKernel(
+        MockKernels.claudeCode,
+        KernelContext(
+          cwd: '/p',
+          resume: SessionRecord(
+            id: 's',
+            title: 't',
+            updatedAt: DateTime(2026),
+            cwd: '/p',
+          ),
+        ),
+        start: (_) async => FakeCli(),
+        readHistory: (_) async => throw StateError('host unreachable'),
+      );
+      await pumpEventQueue();
+      expect(kernel.loadingHistory, isFalse);
+      kernel.dispose();
+    });
+
+    test('loads no history for a new session', () {
+      final kernel = ClaudeCodeKernel(
+        MockKernels.claudeCode,
+        const KernelContext(cwd: '/p'),
+        start: (_) async => FakeCli(),
+        readHistory: (_) async => const [],
+      );
+      expect(kernel.loadingHistory, isFalse);
+      kernel.dispose();
+    });
+
     test('reports the prompt cache, from the session file then live', () async {
       Map<String, Object?> assistant(
         String id,

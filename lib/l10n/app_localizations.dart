@@ -4322,6 +4322,12 @@ abstract class AppLocalizations {
   /// **'Subagent'**
   String get chatSubagent;
 
+  /// Shown in an earlier conversation while it is read, e.g. from a remote project's host.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading conversation…'**
+  String get chatLoadingHistory;
+
   /// No description provided for @activityCompacting.
   ///
   /// In en, this message translates to:

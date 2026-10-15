@@ -39,6 +39,7 @@ import 'widgets/agent_step.dart';
 import 'widgets/chat_minimap.dart';
 import 'widgets/code_citation.dart';
 import 'widgets/inline_rename_field.dart';
+import 'widgets/pixel_loader.dart';
 
 /// Layout, top to bottom:
 /// - history + live turn: a virtual list that yields height;
@@ -712,6 +713,15 @@ class _ChatScreenState extends State<ChatScreen>
                           _ => const SizedBox.shrink(),
                         },
                       ),
+                      // An earlier conversation still being read (from a
+                      // remote host it may take a while).
+                      ListenableBuilder(
+                        listenable: _session,
+                        builder: (context, _) =>
+                            _session.loadingHistory && _session.itemCount == 0
+                            ? const _HistoryLoading()
+                            : const SizedBox.shrink(),
+                      ),
                     ],
                   ),
                 ),
@@ -1136,6 +1146,56 @@ class _FadeIn extends StatelessWidget {
         ),
       ),
       child: child,
+    );
+  }
+}
+
+/// The conversation being read, in the middle of where it will show. Only
+/// after [delay]: read at once (from this machine, most often), it would
+/// only flash.
+class _HistoryLoading extends StatefulWidget {
+  const _HistoryLoading();
+
+  static const delay = Duration(milliseconds: 300);
+
+  @override
+  State<_HistoryLoading> createState() => _HistoryLoadingState();
+}
+
+class _HistoryLoadingState extends State<_HistoryLoading> {
+  late final Timer _timer;
+  bool _shown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(_HistoryLoading.delay, () => setState(() => _shown = true));
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_shown) return const SizedBox.shrink();
+    return _FadeIn(
+      animate: true,
+      child: Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const PixelLoader.agent(),
+            const SizedBox(width: 8),
+            Text(
+              context.l10n.chatLoadingHistory,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

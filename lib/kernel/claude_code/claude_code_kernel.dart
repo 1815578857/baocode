@@ -90,7 +90,8 @@ class ClaudeCodeKernel
         AcceptsImages,
         SuggestsPrompts,
         ManagesMcpServers,
-        ConfirmsModelSwitch {
+        ConfirmsModelSwitch,
+        LoadsHistory {
   ClaudeCodeKernel(
     this.descriptor,
     this._context, {
@@ -185,6 +186,10 @@ class ClaudeCodeKernel
   /// another may be started in its place (see [_launch]).
   (String, String)? _tooOldExit;
   Future<void> _history = Future.value();
+
+  @override
+  bool get loadingHistory => _loadingHistory;
+  bool _loadingHistory = false;
 
   /// Writes wait on this: for the process to be ready, and for a rewind to
   /// land before the message that follows it.
@@ -2050,6 +2055,8 @@ class ClaudeCodeKernel
   // --- History ------------------------------------------------------------------------
 
   Future<void> _replay(ClaudeHistoryReader read, SessionRecord session) async {
+    // Read in the constructor, before anyone listens: seen when asked.
+    _loadingHistory = true;
     try {
       final lines = await read(session);
       _translator.replaying = true;
@@ -2070,6 +2077,8 @@ class ClaudeCodeKernel
       );
     } finally {
       _translator.replaying = false;
+      _loadingHistory = false;
+      if (!_disposed) emitInfoChanged();
     }
   }
 

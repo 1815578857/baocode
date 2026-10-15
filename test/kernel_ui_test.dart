@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' show Random;
 import 'dart:ui' as ui;
 
@@ -191,6 +192,65 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(panel, findsNothing);
     expect(find.textContaining('and lint', findRichText: true), findsOneWidget);
+  });
+
+  testWidgets('an earlier conversation says it is loading until it is read', (
+    tester,
+  ) async {
+    final read = Completer<List<Map<String, Object?>>>();
+    late final KernelDescriptor descriptor;
+    descriptor = KernelDescriptor(
+      id: 'claude-code',
+      label: 'Claude Code',
+      icon: Icons.auto_awesome_rounded,
+      description: '',
+      create: (context) => ClaudeCodeKernel(
+        descriptor,
+        context,
+        start: (_) async => FakeCli(),
+        readHistory: (_) => read.future,
+      ),
+    );
+    final session = ChatSession(
+      kernel: descriptor,
+      kernels: [descriptor],
+      kernelContext: KernelContext(
+        cwd: '/p',
+        resume: SessionRecord(
+          id: 's',
+          title: 't',
+          updatedAt: DateTime(2026),
+          cwd: '/p',
+        ),
+      ),
+      historyCount: 0,
+    );
+    addTearDown(session.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(),
+        localizationsDelegates: const [FlutterQuillLocalizations.delegate],
+        home: ChatScreen(session: session),
+      ),
+    );
+    // Not at once: read soon, it would only flash.
+    await tester.pump();
+    expect(find.text('Loading conversation…'), findsNothing);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Loading conversation…'), findsOneWidget);
+
+    read.complete([
+      {
+        'type': 'user',
+        'uuid': 'u1',
+        'parentUuid': null,
+        'message': {'role': 'user', 'content': 'hello again'},
+      },
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Loading conversation…'), findsNothing);
+    expect(find.textContaining('hello again'), findsWidgets);
   });
 
   testWidgets('a new agent picks its kernel until it starts', (tester) async {

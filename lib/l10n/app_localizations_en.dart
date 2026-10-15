@@ -2369,6 +2369,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatSubagent => 'Subagent';
 
   @override
+  String get chatLoadingHistory => 'Loading conversation…';
+
+  @override
   String get activityCompacting => 'Compacting conversation';
 
   @override

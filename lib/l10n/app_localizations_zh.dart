@@ -2288,6 +2288,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatSubagent => '子智能体';
 
   @override
+  String get chatLoadingHistory => '正在加载对话…';
+
+  @override
   String get activityCompacting => '正在压缩对话';
 
   @override

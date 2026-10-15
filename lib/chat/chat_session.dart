@@ -256,6 +256,12 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
 
   KernelHealth get health => _kernel.health;
 
+  /// Whether the conversation it continues is still being read.
+  bool get loadingHistory => switch (_kernel) {
+    LoadsHistory(:final loadingHistory) => loadingHistory,
+    _ => false,
+  };
+
   /// The id the kernel keeps this conversation under, once known.
   String? get sessionId => _kernel.sessionId;
 
