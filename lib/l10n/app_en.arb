@@ -545,6 +545,7 @@
     "description": "Quick Open group label."
   },
   "quickOpenLoadingFiles": "Loading files…",
+  "quickOpenSearchingFiles": "Searching files…",
   "quickOpenNoFiles": "No files in this project",
   "quickOpenNoMatchingResults": "No matching results",
   "quickOpenRecentlyUsed": "recently used",

@@ -1117,6 +1117,10 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     final languages = _languages = workspace.languages;
     _symbols = languages == null ? null : IdeDocumentSymbols(languages)
       ?..addListener(_symbolsChanged);
+    // A remote project's listed at once, for Quick Open not to wait on it.
+    if (workspace.hasFolder && workspace.files is IdeHostFiles) {
+      unawaited(_fileIndex.refresh());
+    }
     _quickRefresh = Listenable.merge([_fileIndex, ?_symbols]);
     languages?.addListener(_languagesChanged);
     _editRequests = languages?.workspaceEdits.listen(_applyEditRequest);
@@ -2353,13 +2357,22 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   /// a modifier of those chords accepts, and the input is hidden unless a
   /// quick input shows already; [itemActivation] is the row active first
   /// (the second by default with [quickNavigate]).
+  /// How old a remote project's listing is before Quick Open lists it again.
+  static const _remoteListingAge = Duration(seconds: 30);
+
   void _showQuickInput(
     String prefix, {
     IdeQuickPickFocus? itemActivation,
     List<KeyChord>? quickNavigate,
   }) {
     if (_quickAccessOf(prefix).$1 == _QuickAccess.files) {
-      unawaited(_fileIndex.refresh());
+      // A remote project's files come over the connection, all of them:
+      // listed again once a while old, not each time.
+      unawaited(
+        _local
+            ? _fileIndex.refresh()
+            : _fileIndex.refreshIfOlder(_remoteListingAge),
+      );
     }
     final shown = _quickInput != null || _quickModel != null;
     if (_quickInput != null &&

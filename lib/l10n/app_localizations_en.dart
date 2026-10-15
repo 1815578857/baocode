@@ -1331,6 +1331,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quickOpenLoadingFiles => 'Loading files…';
 
   @override
+  String get quickOpenSearchingFiles => 'Searching files…';
+
+  @override
   String get quickOpenNoFiles => 'No files in this project';
 
   @override

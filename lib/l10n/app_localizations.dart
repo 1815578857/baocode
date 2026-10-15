@@ -2624,6 +2624,12 @@ abstract class AppLocalizations {
   /// **'Loading files…'**
   String get quickOpenLoadingFiles;
 
+  /// No description provided for @quickOpenSearchingFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching files…'**
+  String get quickOpenSearchingFiles;
+
   /// No description provided for @quickOpenNoFiles.
   ///
   /// In en, this message translates to:

@@ -1294,6 +1294,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get quickOpenLoadingFiles => '正在加载文件…';
 
   @override
+  String get quickOpenSearchingFiles => '正在搜索文件…';
+
+  @override
   String get quickOpenNoFiles => '此项目中没有文件';
 
   @override
