@@ -9,6 +9,7 @@ import '../ide/ide_hover.dart';
 import '../keybindings/chat_keybindings.dart';
 import '../l10n/l10n.dart';
 import '../sidebar/sidebar_menu.dart';
+import '../theme/codicons.dart';
 import 'back_to_chat_button.dart';
 import 'editor_launcher.dart';
 import 'workspace.dart';
@@ -69,7 +70,7 @@ class OpenInEditorButton extends StatelessWidget {
           ),
         SidebarMenuItem(
           context.l10n.workspaceCopyPath,
-          icon: Icons.content_copy_rounded,
+          icon: Codicons.copy,
           onSelected: () =>
               Clipboard.setData(ClipboardData(text: project.path)),
         ),
@@ -140,11 +141,8 @@ class OpenInEditorButton extends StatelessWidget {
                 borderRadius: const BorderRadius.horizontal(
                   right: Radius.circular(3),
                 ),
-                child: Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: 15,
-                  color: foreground,
-                ),
+                // As IdeButton's split button has it.
+                child: Icon(Codicons.chevronDown, size: 14, color: foreground),
               ),
             ],
           ),

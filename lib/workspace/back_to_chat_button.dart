@@ -37,7 +37,7 @@ class BackToChatButton extends StatelessWidget {
 
 /// The chat's Open in Fast Ide button's chevron, with the line before it:
 /// the room it takes beside the label.
-const openInEditorChevronWidth = 1.0 + 3 + 15 + 4;
+const openInEditorChevronWidth = 1.0 + 3 + 14 + 4;
 
 /// The least width of Back to Chat and of the chat's Open in Fast Ide, the
 /// one in the other's place as the layout switches: room for either, so

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/l10n.dart';
 import '../platform/app_platform.dart';
+import '../theme/codicons.dart';
 
 import 'editor_launcher_stub.dart'
     if (dart.library.io) 'editor_launcher_io.dart'
@@ -10,39 +11,28 @@ import 'editor_launcher_stub.dart'
 /// An app a project can be opened in, named as each platform has it.
 enum Editor {
   /// BaoCode's own editor: the IDE layout, not an app to launch.
-  fastIde(
-    'Fast Ide',
-    null,
-    icon: Icons.space_dashboard_outlined,
-    builtIn: true,
-  ),
+  fastIde('Fast Ide', null, icon: Codicons.layout, builtIn: true),
   vscode(
     'VS Code',
     'code',
     macApp: 'Visual Studio Code',
-    icon: Icons.code_rounded,
+    icon: Codicons.vscode,
   ),
-  cursor('Cursor', 'cursor', macApp: 'Cursor', icon: Icons.near_me_outlined),
-  zed('Zed', 'zed', macApp: 'Zed', icon: Icons.bolt_rounded),
-  xcode(
-    'Xcode',
-    null,
-    macApp: 'Xcode',
-    icon: Icons.build_outlined,
-    macOSOnly: true,
-  ),
+  cursor('Cursor', 'cursor', macApp: 'Cursor', icon: Codicons.cursor),
+  zed('Zed', 'zed', macApp: 'Zed', icon: Codicons.zap),
+  xcode('Xcode', null, macApp: 'Xcode', icon: Codicons.tools, macOSOnly: true),
   folder(
     'Finder',
     null,
     windowsLabel: 'File Explorer',
-    icon: Icons.folder_open_outlined,
+    icon: Codicons.folderOpened,
   ),
   terminal(
     'Terminal',
     'wt',
     macApp: 'Terminal',
     windowsLabel: 'Windows Terminal',
-    icon: Icons.terminal_rounded,
+    icon: Codicons.terminal,
   );
 
   const Editor(
@@ -76,6 +66,7 @@ enum Editor {
   /// Whether it is BaoCode's own ([fastIde]), shown instead of launched.
   final bool builtIn;
 
+  /// Its codicon, as the IDE's own buttons have theirs.
   final IconData icon;
 
   /// What the platform calls it.
