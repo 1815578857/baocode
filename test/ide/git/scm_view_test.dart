@@ -398,13 +398,17 @@ void main() {
     git.refs['HEAD'] = 'c2';
     git.log =
         '${gitLogRecord('c2', ['c1'], 'Second', refs: 'HEAD -> refs/heads/main, tag: refs/tags/v1')}\n'
-        '${gitLogRecord('c1', [], 'First', author: 'Grace')}';
+        '${gitLogRecord('c1', [], 'First', author: 'Grace', refs: 'refs/heads/topic, tag: refs/tags/v0')}';
     git.show['c2'] = 'M\x00lib/a.dart\x00A\x00lib/b.dart\x00';
     await pumpScm(tester, files: const {'lib/a.dart': 'a', 'lib/b.dart': 'b'});
     expect(find.textContaining('Second', findRichText: true), findsOneWidget);
     expect(find.textContaining('Grace', findRichText: true), findsOneWidget);
-    // HEAD's badge carries the branch name.
+    // Every reference's badge carries its name: HEAD's branch, the other
+    // branches and the tags.
     expect(find.text('main'), findsWidgets);
+    for (final name in ['v1', 'topic', 'v0']) {
+      expect(find.text(name), findsOneWidget, reason: name);
+    }
 
     await tester.tap(find.textContaining('Second', findRichText: true));
     await tester.pumpAndSettle();

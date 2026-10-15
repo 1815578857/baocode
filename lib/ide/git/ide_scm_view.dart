@@ -306,9 +306,8 @@ final class _GroupRow implements _ScmRow {
   final List<IdeGitResource> resources;
 
   @override
-  String get key => repo == null
-      ? group.name
-      : '${repo!.service.root}\x00${group.name}';
+  String get key =>
+      repo == null ? group.name : '${repo!.service.root}\x00${group.name}';
 
   @override
   String? get parent => repo == null ? null : 'repo:${repo!.service.root}';
@@ -518,9 +517,8 @@ class IdeScmViewState extends State<IdeScmView>
               session: _session,
               onChanged: _rebuild,
               onCommit: (git) => unawaited(_commit(repo: git)),
-              onMenu: (git, position, anchor) => unawaited(
-                _repositoryMenu(git, position, anchor),
-              ),
+              onMenu: (git, position, anchor) =>
+                  unawaited(_repositoryMenu(git, position, anchor)),
             ),
           Expanded(
             child: ListenableBuilder(
@@ -824,9 +822,7 @@ class IdeScmViewState extends State<IdeScmView>
   /// A group of a repository, keyed so a multi-repository list folds each
   /// on its own.
   static String _groupKey(IdeGitRepository? repo, IdeGitGroup group) =>
-      repo == null
-      ? group.name
-      : '${repo.service.root}\x00${group.name}';
+      repo == null ? group.name : '${repo.service.root}\x00${group.name}';
 
   bool _isCollapsed(_ScmRow row) => switch (row) {
     _RepositoryRow(:final repo) =>
@@ -1322,8 +1318,7 @@ class IdeScmViewState extends State<IdeScmView>
                 if (group == IdeGitGroup.workingTree)
                   IdeMenuAction(
                     context.l10n.scmAddToGitignore,
-                    onSelected: () =>
-                        unawaited(_ignore(state, [folder.path])),
+                    onSelected: () => unawaited(_ignore(state, [folder.path])),
                   ),
               ],
               ..._pathMenu(state, folder.path, folder: true),
@@ -1419,9 +1414,8 @@ class IdeScmViewState extends State<IdeScmView>
       _Action(
         context.l10n.scmDiscardChanges,
         Codicons.discard,
-        () => unawaited(
-          _discard(targets(), repo: _reposShown > 1 ? git : null),
-        ),
+        () =>
+            unawaited(_discard(targets(), repo: _reposShown > 1 ? git : null)),
       ),
       _Action(
         context.l10n.scmStageChanges,
@@ -1696,9 +1690,7 @@ class IdeScmViewState extends State<IdeScmView>
       _report(const IdeGitException('No Git repositories to fetch from.'));
       return;
     }
-    await Future.wait([
-      for (final (_, git) in repositories) _run(git.fetch),
-    ]);
+    await Future.wait([for (final (_, git) in repositories) _run(git.fetch)]);
   }
 
   /// Refresh (the CHANGES pane's): reads the status of every shown
@@ -1863,7 +1855,11 @@ class IdeScmViewState extends State<IdeScmView>
                 ),
               ),
             ),
-            Icon(Codicons.repo, size: 16, color: themeColors['icon.foreground']),
+            Icon(
+              Codicons.repo,
+              size: 16,
+              color: themeColors['icon.foreground'],
+            ),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
@@ -2103,9 +2099,8 @@ class IdeScmViewState extends State<IdeScmView>
       _Action(
         context.l10n.scmDiscardAll,
         Codicons.discard,
-        () => unawaited(
-          _discard(resources, repo: _reposShown > 1 ? git : null),
-        ),
+        () =>
+            unawaited(_discard(resources, repo: _reposShown > 1 ? git : null)),
       ),
       _Action(
         context.l10n.scmStageAll,
@@ -2199,12 +2194,9 @@ class IdeScmViewState extends State<IdeScmView>
     final paths = state.pathContext;
     final relative = paths.relative(resource.path, from: state.root);
     final folder = paths.dirname(relative);
-    List<IdeGitResource> targets() => _targets(
-      key,
-      resource.group,
-      [resource],
-      repo: _reposShown > 1 ? git : null,
-    );
+    List<IdeGitResource> targets() => _targets(key, resource.group, [
+      resource,
+    ], repo: _reposShown > 1 ? git : null);
     final actions = _resourceActions(git, resource, targets);
     void open({bool focus = false}) =>
         unawaited(widget.onOpenChange(resource, focusEditor: focus));
@@ -2432,14 +2424,8 @@ class IdeScmViewState extends State<IdeScmView>
         l10n.scmFetchFromAllRemotes,
         onSelected: () => unawaited(_fetchAll()),
       ),
-      IdeMenuAction(
-        l10n.scmPull,
-        onSelected: () => unawaited(_pullAll()),
-      ),
-      IdeMenuAction(
-        l10n.scmPush,
-        onSelected: () => unawaited(_pushAll()),
-      ),
+      IdeMenuAction(l10n.scmPull, onSelected: () => unawaited(_pullAll())),
+      IdeMenuAction(l10n.scmPush, onSelected: () => unawaited(_pushAll())),
     ];
   }
 
@@ -2449,7 +2435,11 @@ class IdeScmViewState extends State<IdeScmView>
   /// or everything when none are (the smart commit, asked first); false
   /// only the staged ones; true everything. On [repo] (the repository the
   /// row's Commit is in), or the one Source Control is on.
-  Future<void> _commit({bool? all, bool amend = false, IdeGitRepository? repo}) async {
+  Future<void> _commit({
+    bool? all,
+    bool amend = false,
+    IdeGitRepository? repo,
+  }) async {
     final git = repo ?? _git;
     final state = git?.state;
     if (git == null || state == null) {
@@ -2831,49 +2821,60 @@ class IdeGitGraph extends StatelessWidget {
           );
           return Padding(
             padding: const EdgeInsets.only(left: 4, right: 12),
-            child: Row(
-              children: [
-                CustomPaint(
-                  size: Size(ideGraphWidth(row), IdeListColors.rowHeight),
-                  painter: IdeGraphPainter(
-                    row,
-                    background: background,
-                    hovered: hovered,
-                    expanded: expanded,
+            child: LayoutBuilder(
+              builder: (context, constraints) => Row(
+                children: [
+                  CustomPaint(
+                    size: Size(ideGraphWidth(row), IdeListColors.rowHeight),
+                    painter: IdeGraphPainter(
+                      row,
+                      background: background,
+                      hovered: hovered,
+                      expanded: expanded,
+                    ),
                   ),
-                ),
-                Flexible(
-                  child: Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: _subject(commit, context.l10n),
-                          style: TextStyle(
-                            fontWeight: current ? FontWeight.w600 : null,
-                          ),
-                        ),
-                        if (!synthetic)
+                  Flexible(
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
                           TextSpan(
-                            text: '  ${commit.author}',
+                            text: _subject(commit, context.l10n),
                             style: TextStyle(
-                              fontSize: 13 * .9,
-                              color: colors['descriptionForeground'],
                               fontWeight: current ? FontWeight.w600 : null,
                             ),
                           ),
-                      ],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: colors['sideBar.foreground'],
+                          if (!synthetic)
+                            TextSpan(
+                              text: '  ${commit.author}',
+                              style: TextStyle(
+                                fontSize: 13 * .9,
+                                color: colors['descriptionForeground'],
+                                fontWeight: current ? FontWeight.w600 : null,
+                              ),
+                            ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colors['sideBar.foreground'],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                ..._badges(row),
-              ],
+                  const SizedBox(width: 4),
+                  // At most half the row, the message keeping the rest.
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: constraints.maxWidth / 2,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: _badges(row),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -2881,34 +2882,19 @@ class IdeGitGraph extends StatelessWidget {
     );
   }
 
-  /// The references' badges: the first colored one with its name, then the
-  /// others grouped by color and icon, counted (`scm.graph.badges: filter`
-  /// leaves uncolored ones out).
+  /// The references' badges, each with its name (`scm.graph.badges: all`):
+  /// the colored ones first, in their colors, then the other branches and
+  /// the tags in the default label's. Short of room, the names are cut.
   List<Widget> _badges(IdeGraphRow row) {
-    final refs = [...row.commit.references];
-    final badges = <Widget>[];
     String? color(IdeGitRef ref) => row.referenceColors[ref.id];
-    if (refs.isNotEmpty && color(refs.first) != null) {
-      badges.add(_RefBadge([refs.first], color(refs.first), named: true));
-      refs.removeAt(0);
-    }
-    final byColor = <String, List<IdeGitRef>>{};
-    for (final ref in refs) {
-      if (color(ref) case final c?) (byColor[c] ??= []).add(ref);
-    }
-    for (final MapEntry(key: c, value: colored) in byColor.entries) {
-      final byKind = <IdeGitRefKind, List<IdeGitRef>>{};
-      for (final ref in colored) {
-        (byKind[ref.kind] ??= []).add(ref);
-      }
-      for (final group in byKind.values) {
-        badges.add(_RefBadge(group, c));
-      }
-    }
+    final refs = [
+      ...row.commit.references.where((ref) => color(ref) != null),
+      ...row.commit.references.where((ref) => color(ref) == null),
+    ];
     return [
-      for (final (index, badge) in badges.indexed) ...[
+      for (final (index, ref) in refs.indexed) ...[
         if (index > 0) const SizedBox(width: 4),
-        badge,
+        Flexible(child: _RefBadge(ref, color(ref))),
       ],
     ];
   }
@@ -3230,16 +3216,14 @@ class _SplitButtonState extends State<_SplitButton> {
 }
 
 /// A reference badge: 18px high and round, in the reference's color, with
-/// its count when it stands for more than one, its icon, and for the first
-/// its name.
+/// its icon and name (cut short of room).
 class _RefBadge extends StatelessWidget {
-  const _RefBadge(this.refs, this.color, {this.named = false});
+  const _RefBadge(this.ref, this.color);
 
-  final List<IdeGitRef> refs;
+  final IdeGitRef ref;
 
-  /// The reference's color id; none for the hover's default label.
+  /// The reference's color id; none for the default label.
   final String? color;
-  final bool named;
 
   static IconData icon(IdeGitRefKind kind) => switch (kind) {
     IdeGitRefKind.head => Codicons.target,
@@ -3250,8 +3234,7 @@ class _RefBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final kind = refs.first.kind;
-    final branch = kind == IdeGitRefKind.branch;
+    final branch = ref.kind == IdeGitRefKind.branch;
     final colors = themeColors;
     final color = this.color;
     final foreground =
@@ -3259,7 +3242,7 @@ class _RefBadge extends StatelessWidget {
             ? 'scmGraph.historyItemHoverDefaultLabelForeground'
             : 'scmGraph.historyItemHoverLabelForeground'];
     return IdeHover(
-      message: refs.map((r) => r.name).join(', '),
+      message: ref.name,
       child: Container(
         height: 18,
         decoration: BoxDecoration(
@@ -3271,35 +3254,28 @@ class _RefBadge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (refs.length > 1)
-              Padding(
-                padding: const EdgeInsets.only(left: 4),
-                child: Text(
-                  '${refs.length}',
-                  style: TextStyle(fontSize: 12, color: foreground),
-                ),
-              ),
             Padding(
               padding: EdgeInsets.all(branch ? 3 : 1),
               child: Icon(
-                icon(kind),
+                icon(ref.kind),
                 size: branch ? 12 : 16,
                 color: foreground,
               ),
             ),
-            if (named)
-              ConstrainedBox(
+            Flexible(
+              child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 100),
                 child: Padding(
                   padding: const EdgeInsets.only(right: 4),
                   child: Text(
-                    refs.first.name,
+                    ref.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 12, color: foreground),
                   ),
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -3311,17 +3287,14 @@ class _RefBadge extends StatelessWidget {
 /// A commit's hover, as the graph and the timeline show it: the author,
 /// when, the message, its references and its id.
 class IdeCommitHover extends StatelessWidget {
-  const IdeCommitHover(
-    this.commit, {
-    super.key,
-    this.referenceColors = const {},
-  });
+  const IdeCommitHover(this.commit, {super.key, this.referenceColors});
 
   final IdeGitCommit commit;
 
-  /// The graph's color ids of [commit]'s references, by id; without any,
-  /// the references are not shown.
-  final Map<String, String> referenceColors;
+  /// The graph's color ids of [commit]'s references, by id (the others in
+  /// the default label's); without them (the timeline's), the references
+  /// are not shown.
+  final Map<String, String>? referenceColors;
 
   @override
   Widget build(BuildContext context) {
@@ -3369,14 +3342,15 @@ class IdeCommitHover extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(commit.message, style: text),
-          if (commit.references.isNotEmpty && referenceColors.isNotEmpty) ...[
+          if (referenceColors case final referenceColors?
+              when commit.references.isNotEmpty) ...[
             const SizedBox(height: 8),
             Wrap(
               spacing: 4,
               runSpacing: 4,
               children: [
                 for (final ref in commit.references)
-                  _RefBadge([ref], referenceColors[ref.id], named: true),
+                  _RefBadge(ref, referenceColors[ref.id]),
               ],
             ),
           ],
@@ -3594,8 +3568,7 @@ class _Repositories extends StatelessWidget {
                   focused: true,
                   tooltip: root,
                   onTap: () => _select(git),
-                  onContextMenu: (position) =>
-                      onMenu(git, position, null),
+                  onContextMenu: (position) => onMenu(git, position, null),
                   // Upstream's `.scm-provider`: the icon (`repo-selected` on
                   // the one shown), the name in bold, then the branch at the
                   // right end (`flex: 1 10000 auto`, at least 24px), the
