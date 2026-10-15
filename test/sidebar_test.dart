@@ -427,6 +427,47 @@ void main() {
     expect(inSidebar(find.textContaining('Archived')), findsNothing);
   });
 
+  testWidgets('shown, the archived agents\' heading has the same menu, on a '
+      'right click or its … button (#90)', (tester) async {
+    final workspace = await pumpApp(tester);
+    final archived = workspace.threads.skip(1).take(2).toList();
+    final heading = inSidebar(find.text('Archived'));
+    Future<void> archiveAndShow() async {
+      for (final thread in archived) {
+        workspace.setArchived(thread, true);
+      }
+      await tester.pump();
+      await tester.tap(inSidebar(find.text('Archived · 2')));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(heading, findsOneWidget);
+    }
+
+    await archiveAndShow();
+    await tester.tap(heading, buttons: kSecondaryButton);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('Delete All Archived…'), findsOneWidget);
+    await tester.tap(find.text('Unarchive All'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(archived.where((thread) => thread.archived), isEmpty);
+
+    // Hovered, its … button opens it too.
+    await archiveAndShow();
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.moveTo(tester.getCenter(heading));
+    await tester.pump();
+    await tester.tap(inSidebar(find.byIcon(Icons.more_horiz_rounded)));
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.text('Delete All Archived…'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Delete archived agents?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(GestureDetector, 'Delete').last);
+    await tester.pump(const Duration(milliseconds: 300));
+    for (final thread in archived) {
+      expect(workspace.threads, isNot(contains(thread)));
+    }
+  });
+
   testWidgets('an agent\'s menu copies its session id, once it has one', (
     tester,
   ) async {

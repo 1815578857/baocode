@@ -88,6 +88,9 @@ class _Group {
 
 const _pinnedGroup = 'pinned';
 
+/// The group of the archived agents, while they show.
+const _archivedGroup = 'archived';
+
 /// Where an agent dragged within the list would go: in [group], before or
 /// after an agent there, or on top (neither).
 @immutable
@@ -672,7 +675,7 @@ class _SidebarState extends State<Sidebar>
         ],
       },
       if (_showArchived)
-        _Group('archived', l10n.sidebarArchived, [
+        _Group(_archivedGroup, l10n.sidebarArchived, [
           for (final thread in threads)
             if (thread.archived) thread,
         ]),
@@ -1341,7 +1344,13 @@ class _SidebarState extends State<Sidebar>
       light: !collapsible,
       onToggle: collapsible ? () => _workspace.toggleCollapsed(group.id) : null,
       onCreate: project == null ? null : () => _create(project),
-      menu: project == null ? null : () => _projectItems(project),
+      // The archived agents' as the footer's toggle has it: unarchive or
+      // delete them all.
+      menu: project != null
+          ? () => _projectItems(project)
+          : group.id == _archivedGroup
+          ? () => _archivedItems(context.l10n)
+          : null,
       folders: project == null
           ? null
           : _workspace.workspaceOf(project)?.folders,
@@ -2098,7 +2107,8 @@ class _GroupHeader extends StatelessWidget {
   final bool light;
   final VoidCallback? onCreate;
 
-  /// The project's menu, on a right click or its "…" button.
+  /// The project's menu (or the archived agents'), on a right click or its
+  /// "…" button.
   final List<SidebarMenuItem> Function()? menu;
 
   /// Being dragged to another place among the projects.
