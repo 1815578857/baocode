@@ -1315,7 +1315,7 @@ class AppWindows extends ChangeNotifier implements WindowHostEvents {
     _declined = separate;
     _updateSetting?.call(
       WindowSettings.ideWindowsKey,
-      _separate ? null : IdeWindows.mainWindow.name,
+      _separate ? IdeWindows.separate.name : null,
     );
   }
 

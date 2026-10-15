@@ -4118,7 +4118,7 @@
   },
   "claudePathMissing": "None found yet: Claude Code is downloaded as the first conversation starts.",
   "generalSettingsIdeWindows": "Fast Ide Windows",
-  "generalSettingsIdeWindowsDescription": "Where the Fast Ide opens: in windows of its own, one per folder (New Window, ⇧⌘N / Ctrl+Shift+N, opens an empty one), or in the main window in place of the chat, one folder at a time. Applies at once. (window.ideWindows)",
+  "generalSettingsIdeWindowsDescription": "Where the Fast Ide opens: in the main window in place of the chat, one folder at a time, or in windows of its own, one per folder (New Window, ⇧⌘N / Ctrl+Shift+N, opens an empty one). Applies at once. (window.ideWindows)",
   "generalSettingsIdeWindowsSeparate": "Separate windows",
   "generalSettingsIdeWindowsMain": "In the main window",
   "generalSettingsWindowLabel": "{setting}: {name}",

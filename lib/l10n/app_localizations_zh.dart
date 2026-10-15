@@ -5218,7 +5218,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get generalSettingsIdeWindowsDescription =>
-      'Fast Ide 在哪里打开：独立窗口，每个文件夹一个（新建窗口 ⇧⌘N / Ctrl+Shift+N 打开一个空窗口）；或在主窗口中替换对话，一次一个文件夹。立即生效。（window.ideWindows）';
+      'Fast Ide 在哪里打开：在主窗口中替换对话，一次一个文件夹；或独立窗口，每个文件夹一个（新建窗口 ⇧⌘N / Ctrl+Shift+N 打开一个空窗口）。立即生效。（window.ideWindows）';
 
   @override
   String get generalSettingsIdeWindowsSeparate => '独立窗口';

@@ -107,8 +107,8 @@ class GeneralSettingsPage extends StatelessWidget {
         label: l10n.generalSettingsIdeWindows,
         description: l10n.generalSettingsIdeWindowsDescription,
         values: {
-          IdeWindows.separate.name: l10n.generalSettingsIdeWindowsSeparate,
           IdeWindows.mainWindow.name: l10n.generalSettingsIdeWindowsMain,
+          IdeWindows.separate.name: l10n.generalSettingsIdeWindowsSeparate,
         },
       ),
       _choiceRow(

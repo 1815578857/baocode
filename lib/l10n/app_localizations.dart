@@ -9150,7 +9150,7 @@ abstract class AppLocalizations {
   /// No description provided for @generalSettingsIdeWindowsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Where the Fast Ide opens: in windows of its own, one per folder (New Window, ⇧⌘N / Ctrl+Shift+N, opens an empty one), or in the main window in place of the chat, one folder at a time. Applies at once. (window.ideWindows)'**
+  /// **'Where the Fast Ide opens: in the main window in place of the chat, one folder at a time, or in windows of its own, one per folder (New Window, ⇧⌘N / Ctrl+Shift+N, opens an empty one). Applies at once. (window.ideWindows)'**
   String get generalSettingsIdeWindowsDescription;
 
   /// No description provided for @generalSettingsIdeWindowsSeparate.

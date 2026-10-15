@@ -5587,7 +5587,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get generalSettingsIdeWindowsDescription =>
-      'Where the Fast Ide opens: in windows of its own, one per folder (New Window, ⇧⌘N / Ctrl+Shift+N, opens an empty one), or in the main window in place of the chat, one folder at a time. Applies at once. (window.ideWindows)';
+      'Where the Fast Ide opens: in the main window in place of the chat, one folder at a time, or in windows of its own, one per folder (New Window, ⇧⌘N / Ctrl+Shift+N, opens an empty one). Applies at once. (window.ideWindows)';
 
   @override
   String get generalSettingsIdeWindowsSeparate => 'Separate windows';
