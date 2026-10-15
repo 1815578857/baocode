@@ -2324,6 +2324,7 @@
   "stashExpand": "说清楚",
   "stashExpandHint": "AI 把原话说清楚：结合图片和附件补全意思，不加结构；直接替换原文，可以撤销",
   "stashClarifying": "正在说清楚…",
+  "stashCancelClarify": "停止说清楚",
   "stashClarifyFailedShort": "没说清楚",
   "stashClarifyChanged": "说清楚期间便签被改动了，没有替换，可以再试一次。",
   "stashRetry": "重试",

@@ -8051,6 +8051,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get stashClarifying => '正在说清楚…';
 
   @override
+  String get stashCancelClarify => '停止说清楚';
+
+  @override
   String get stashClarifyFailedShort => '没说清楚';
 
   @override

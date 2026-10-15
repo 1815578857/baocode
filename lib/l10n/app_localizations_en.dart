@@ -8541,6 +8541,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stashClarifying => 'Clarifying…';
 
   @override
+  String get stashCancelClarify => 'Stop Clarifying';
+
+  @override
   String get stashClarifyFailedShort => 'Not clarified';
 
   @override

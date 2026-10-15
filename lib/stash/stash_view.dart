@@ -1285,14 +1285,17 @@ class _StashDetailState extends State<StashDetail> with _StashActions {
             children: [
               Builder(
                 builder: (context) => IdeHover(
-                  message: l10n.stashExpandHint,
+                  message: clarifying
+                      ? l10n.stashCancelClarify
+                      : l10n.stashExpandHint,
                   child: IdeButton(
-                    label: clarifying ? l10n.stashClarifying : l10n.stashExpand,
-                    icon: Codicons.sparkle,
-                    spinning: clarifying,
+                    label: clarifying
+                        ? l10n.stashCancelClarify
+                        : l10n.stashExpand,
+                    icon: clarifying ? Codicons.stop : Codicons.sparkle,
                     secondary: true,
                     onPressed: clarifying
-                        ? null
+                        ? () => _controller.cancelClarify(note.id)
                         : () => _withModel(context, () => _clarify(note)),
                     onDropdown: (anchor) =>
                         unawaited(pickActionsModel(context, anchor)),

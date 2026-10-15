@@ -48,7 +48,7 @@ void main() {
       final note = await store.create(body: 'btn hidden\n\n## 需求\n\nold');
       final answer = Completer<String>();
       String? asked;
-      controller.clarifier = (controller, id, text) {
+      controller.clarifier = (controller, id, text, {cancellation}) {
         asked = text;
         return answer.future;
       };
@@ -67,7 +67,7 @@ void main() {
 
     test('a failure is kept with its message, until dismissed', () async {
       final note = await store.create(body: 'btn hidden');
-      controller.clarifier = (controller, id, text) async =>
+      controller.clarifier = (controller, id, text, {cancellation}) async =>
           throw const StashAiException('Not signed in');
       await controller.clarify(note.id);
       expect(controller.clarifyFailure(note.id), (
@@ -81,13 +81,79 @@ void main() {
 
     test('a text changed meanwhile is not replaced', () async {
       final note = await store.create(body: 'btn hidden');
-      controller.clarifier = (controller, id, text) async {
+      controller.clarifier = (controller, id, text, {cancellation}) async {
         await store.update(id, (note) => note.body = 'btn hidden, and more');
         return 'The button is hidden.';
       };
       await controller.clarify(note.id);
       expect(controller.clarifyFailure(note.id)?.changed, isTrue);
       expect(store.byId(note.id)!.body, 'btn hidden, and more');
+    });
+
+    test(
+      'cancelling stops the request without replacing text or failing',
+      () async {
+        final note = await store.create(body: 'btn hidden');
+        final answer = Completer<String>();
+        StashClarifyCancellation? signal;
+        controller.clarifier = (controller, id, text, {cancellation}) {
+          signal = cancellation;
+          return answer.future;
+        };
+        final pending = controller.clarify(note.id);
+        expect(controller.clarifying(note.id), isTrue);
+        controller.cancelClarify(note.id);
+        expect(signal?.cancelled, isTrue);
+        expect(controller.clarifying(note.id), isFalse);
+        expect(controller.clarifyFailure(note.id), isNull);
+        answer.complete('The button is hidden.');
+        await pending;
+        expect(store.byId(note.id)!.body, 'btn hidden');
+        expect(store.byId(note.id)!.status, StashStatus.collected);
+        expect(controller.clarifyFailure(note.id), isNull);
+      },
+    );
+
+    test('an old answer cannot overwrite an immediate retry', () async {
+      final note = await store.create(body: 'btn hidden');
+      final old = Completer<String>();
+      final latest = Completer<String>();
+      var asks = 0;
+      controller.clarifier = (controller, id, text, {cancellation}) =>
+          ++asks == 1 ? old.future : latest.future;
+      final first = controller.clarify(note.id);
+      controller.cancelClarify(note.id);
+      final second = controller.clarify(note.id);
+      expect(asks, 2);
+      old.complete('Old reply');
+      await first;
+      expect(controller.clarifying(note.id), isTrue);
+      expect(controller.clarifyFailure(note.id), isNull);
+      expect(store.byId(note.id)!.body, 'btn hidden');
+      latest.complete('Latest reply');
+      await second;
+      expect(store.byId(note.id)!.body, 'Latest reply');
+      expect(store.byId(note.id)!.status, StashStatus.requirement);
+    });
+
+    test('an old error cannot mark a retry as failed', () async {
+      final note = await store.create(body: 'btn hidden');
+      final old = Completer<String>();
+      final latest = Completer<String>();
+      var asks = 0;
+      controller.clarifier = (controller, id, text, {cancellation}) =>
+          ++asks == 1 ? old.future : latest.future;
+      final first = controller.clarify(note.id);
+      controller.cancelClarify(note.id);
+      final second = controller.clarify(note.id);
+      old.completeError(const StashAiException('Old error'));
+      await first;
+      expect(controller.clarifying(note.id), isTrue);
+      expect(controller.clarifyFailure(note.id), isNull);
+      latest.complete('Latest reply');
+      await second;
+      expect(controller.clarifyFailure(note.id), isNull);
+      expect(store.byId(note.id)!.body, 'Latest reply');
     });
   });
 
@@ -124,7 +190,8 @@ void main() {
       'it back; there is no Split', (tester) async {
     final note = await tester.runAsync(() => store.create(body: 'btn hidden'));
     final answer = Completer<String>();
-    controller.clarifier = (controller, id, text) => answer.future;
+    controller.clarifier = (controller, id, text, {cancellation}) =>
+        answer.future;
     await pumpView(tester, open: note!.id);
     expect(find.text('Split'), findsNothing);
 
@@ -152,7 +219,7 @@ void main() {
 
     // Picked: the next one asks no more, and the arrow beside it changes
     // the model.
-    controller.clarifier = (controller, id, text) async =>
+    controller.clarifier = (controller, id, text, {cancellation}) async =>
         throw const StashAiException('Not signed in');
     await tester.tap(find.text('Clarify'));
     await tester.pumpAndSettle();
@@ -170,6 +237,31 @@ void main() {
       find.text(englishLocalizations.stashExpandFailed('Not signed in')),
       findsNothing,
     );
+    await unmount(tester);
+  });
+
+  testWidgets('the detail can stop a clarification in progress', (
+    tester,
+  ) async {
+    final note = await tester.runAsync(() => store.create(body: 'btn hidden'));
+    await models.setActionsModel(ModelProviders.followAuxiliary);
+    final answer = Completer<String>();
+    controller.clarifier = (controller, id, text, {cancellation}) =>
+        answer.future;
+    await pumpView(tester, open: note!.id);
+    await tester.tap(find.text(englishLocalizations.stashExpand));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(controller.clarifying(note.id), isTrue);
+    expect(find.text(englishLocalizations.stashCancelClarify), findsOneWidget);
+
+    await tester.tap(find.text(englishLocalizations.stashCancelClarify));
+    await tester.pumpAndSettle();
+    expect(controller.clarifying(note.id), isFalse);
+    expect(find.text(englishLocalizations.stashExpand), findsOneWidget);
+    answer.complete('Old reply');
+    await tester.pumpAndSettle();
+    expect(StashNoteEditorState.showing(note.id)!.markdown, 'btn hidden');
+    expect(controller.clarifyFailure(note.id), isNull);
     await unmount(tester);
   });
 

@@ -6145,6 +6145,7 @@
   "stashExpand": "Clarify",
   "stashExpandHint": "AI says your note clearly, filling in what its pictures and files show, adding no structure; it replaces the text, and Undo takes it back",
   "stashClarifying": "Clarifying…",
+  "stashCancelClarify": "Stop Clarifying",
   "stashClarifyFailedShort": "Not clarified",
   "stashClarifyChanged": "The note changed while it was being clarified, so nothing was replaced. Try again.",
   "stashRetry": "Retry",
