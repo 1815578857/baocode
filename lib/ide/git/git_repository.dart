@@ -381,6 +381,19 @@ class IdeGitRepository extends ChangeNotifier {
   /// Whether older commits can be loaded ([loadMoreGraph]).
   bool get graphHasMore => _graphHasMore;
 
+  /// Whether the graph has every branch's commits, local and remote, not
+  /// only the current branch's and its upstream's.
+  bool get graphAllBranches => _graphAllBranches;
+  bool _graphAllBranches = false;
+  set graphAllBranches(bool value) {
+    if (value == _graphAllBranches) return;
+    _graphAllBranches = value;
+    // After a load that started with the other refs, another.
+    _graphStale = true;
+    unawaited(_graphLoad ?? _reloadGraph());
+    _notify();
+  }
+
   Future<void> loadMoreGraph() {
     _graphLimit += 50;
     // After a load that started with the smaller limit, another.
@@ -415,7 +428,9 @@ class IdeGitRepository extends ChangeNotifier {
           ? await service.mergeBase(headRevision, remoteRevision)
           : null;
       final commits = await service.log(
-        refs: ['HEAD', ?remoteRef],
+        refs: _graphAllBranches
+            ? const ['HEAD', '--branches', '--remotes']
+            : ['HEAD', ?remoteRef],
         limit: _graphLimit + 1,
       );
       if (_disposed) return;

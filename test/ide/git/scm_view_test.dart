@@ -459,6 +459,36 @@ void main() {
     expect(height('commit:c3'), IdeListColors.rowHeight);
   });
 
+  testWidgets('the graph shows all branches when asked, the current one '
+      'again after', (tester) async {
+    git.status = '## main\x00';
+    git.refs['HEAD'] = 'c2';
+    git.log =
+        '${gitLogRecord('c2', ['c1'], 'On main', refs: 'HEAD -> refs/heads/main')}\n'
+        '${gitLogRecord('c1', [], 'First')}';
+    await pumpScm(tester);
+    List<String> lastLog() => git.callsTo('log').last;
+    expect(lastLog(), isNot(contains('--branches')));
+
+    git.log =
+        '${gitLogRecord('f1', ['c1'], 'On feature', refs: 'refs/heads/feature')}\n'
+        '${gitLogRecord('c2', ['c1'], 'On main', refs: 'HEAD -> refs/heads/main')}\n'
+        '${gitLogRecord('c1', [], 'First')}';
+    await hover(tester, find.text('Graph'));
+    await tester.tap(find.byTooltip('Branches Shown'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('All Branches'));
+    await tester.pumpAndSettle();
+    expect(lastLog(), containsAllInOrder(['HEAD', '--branches', '--remotes']));
+    expect(find.byKey(const ValueKey('commit:f1')), findsWidgets);
+
+    await tester.tap(find.byTooltip('Branches Shown'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Current Branch'));
+    await tester.pumpAndSettle();
+    expect(lastLog(), isNot(contains('--branches')));
+  });
+
   testWidgets('Undo Last Commit restores its message to the input', (
     tester,
   ) async {

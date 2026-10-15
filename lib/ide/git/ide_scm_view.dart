@@ -596,6 +596,22 @@ class IdeScmViewState extends State<IdeScmView>
                 tooltip: l10n.scmGoToCurrent,
                 onPressed: () => _graph.goToCurrent(git),
               ),
+              IdeMenuButton(
+                icon: Codicons.gitBranch,
+                tooltip: l10n.scmGraphBranches,
+                entries: () => [
+                  IdeMenuAction(
+                    l10n.scmGraphCurrentBranch,
+                    checked: !git.graphAllBranches,
+                    onSelected: () => git.graphAllBranches = false,
+                  ),
+                  IdeMenuAction(
+                    l10n.scmGraphAllBranches,
+                    checked: git.graphAllBranches,
+                    onSelected: () => git.graphAllBranches = true,
+                  ),
+                ],
+              ),
               IdePaneAction(
                 icon: Codicons.refresh,
                 tooltip: l10n.commonRefresh,

@@ -3767,6 +3767,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scmUndoLastCommit => 'Undo Last Commit';
 
   @override
+  String get scmGraphBranches => 'Branches Shown';
+
+  @override
+  String get scmGraphCurrentBranch => 'Current Branch';
+
+  @override
+  String get scmGraphAllBranches => 'All Branches';
+
+  @override
   String get scmGoToCurrent => 'Go to Current History Item';
 
   @override

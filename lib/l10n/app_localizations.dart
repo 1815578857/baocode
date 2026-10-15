@@ -6374,6 +6374,24 @@ abstract class AppLocalizations {
   /// **'Undo Last Commit'**
   String get scmUndoLastCommit;
 
+  /// No description provided for @scmGraphBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'Branches Shown'**
+  String get scmGraphBranches;
+
+  /// No description provided for @scmGraphCurrentBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Branch'**
+  String get scmGraphCurrentBranch;
+
+  /// No description provided for @scmGraphAllBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'All Branches'**
+  String get scmGraphAllBranches;
+
   /// No description provided for @scmGoToCurrent.
   ///
   /// In en, this message translates to:

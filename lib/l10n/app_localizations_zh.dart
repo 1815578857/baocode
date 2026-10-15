@@ -3522,6 +3522,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scmUndoLastCommit => '撤消上次提交';
 
   @override
+  String get scmGraphBranches => '显示的分支';
+
+  @override
+  String get scmGraphCurrentBranch => '当前分支';
+
+  @override
+  String get scmGraphAllBranches => '所有分支';
+
+  @override
   String get scmGoToCurrent => '转到当前历史记录项';
 
   @override
