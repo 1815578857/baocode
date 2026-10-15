@@ -2864,6 +2864,7 @@ class ClaudeCodeKernel
 
   @override
   late final ModelSetting fast = _ModelSetting(
+    toggle: true,
     optionsFor: (model) => switch (_providers.resolve(model)) {
       (final provider, _)
           when provider.protocol == ProviderProtocol.openaiResponses ||
@@ -3023,12 +3024,16 @@ class _ModelSetting implements ModelSetting {
     required this._selected,
     required this._selectedFor,
     required this._select,
+    this.toggle = false,
   });
 
   final List<KernelOption> Function(String model) _optionsFor;
   final String? Function() _selected;
   final String? Function(String model) _selectedFor;
   final void Function(String model, String id) _select;
+
+  @override
+  final bool toggle;
 
   @override
   List<KernelOption> optionsFor(String model) => _optionsFor(model);

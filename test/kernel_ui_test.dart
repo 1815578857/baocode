@@ -22,6 +22,7 @@ import 'package:baocode/chat/widgets/thinking_spark.dart';
 import 'package:baocode/chat/widgets/command_step.dart';
 import 'package:baocode/chat/widgets/pixel_loader.dart';
 import 'package:baocode/ide/ide_hover.dart';
+import 'package:baocode/ide/ide_switch.dart';
 import 'package:baocode/chat/chat_models.dart';
 import 'package:baocode/chat/composer/composer_images.dart';
 import 'package:baocode/kernel/agent_kernel.dart';
@@ -682,11 +683,12 @@ void main() {
     await tester.pump();
     expect(find.text('2 of 3 connected'), findsOneWidget);
 
-    // Turning one off.
-    await tester.tap(find.byType(Switch).first);
+    // Turning one off, with the app's own switch.
+    await tester.tap(find.byType(IdeSwitch).first);
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pump();
     expect(find.text('Disabled'), findsOneWidget);
+    expect(find.byType(Switch), findsNothing);
     expect(session.mcpServers!.first.status, McpServerStatus.disabled);
   });
 

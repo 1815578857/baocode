@@ -62,6 +62,7 @@ class ModelSettingChoice {
     required this.options,
     required this.selected,
     required this.onSelected,
+    this.toggle = false,
   });
 
   final KernelChoiceKind kind;
@@ -70,6 +71,11 @@ class ModelSettingChoice {
   /// What is in effect, or would stay so with the model picked; null
   /// while not known.
   final KernelOption? selected;
+
+  /// Whether this setting is on or off, shown and picked as a switch: what
+  /// it shows under an option is not a check but a switch, and picking it
+  /// leaves the menu open (see [ComposerPicker]).
+  final bool toggle;
 
   /// Picks the option, and the model with it.
   final ValueChanged<KernelOption> onSelected;
@@ -356,6 +362,7 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
           selected: options
               .where((o) => o.id == setting.selectedFor(model))
               .firstOrNull,
+          toggle: setting.toggle,
           onSelected: (option) => setting.select(model, option.id),
         ),
   ];
