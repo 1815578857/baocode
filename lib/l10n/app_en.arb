@@ -950,6 +950,46 @@
   "sidebarUnpin": "Unpin",
   "sidebarArchive": "Archive",
   "sidebarUnarchive": "Unarchive",
+  "sidebarPinCount": "Pin {count} Agents",
+  "@sidebarPinCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sidebarUnpinCount": "Unpin {count} Agents",
+  "@sidebarUnpinCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sidebarArchiveCount": "Archive {count} Agents",
+  "@sidebarArchiveCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sidebarUnarchiveCount": "Unarchive {count} Agents",
+  "@sidebarUnarchiveCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sidebarDeleteCount": "Delete {count} Agents…",
+  "@sidebarDeleteCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "sidebarCopySessionId": "Copy session ID",
   "@sidebarCopySessionId": {
     "description": "An agent's menu in the sidebar: copies the id of its session, which Claude Code finds the conversation by."

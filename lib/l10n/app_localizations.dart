@@ -3362,6 +3362,36 @@ abstract class AppLocalizations {
   /// **'Unarchive'**
   String get sidebarUnarchive;
 
+  /// No description provided for @sidebarPinCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin {count} Agents'**
+  String sidebarPinCount(int count);
+
+  /// No description provided for @sidebarUnpinCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin {count} Agents'**
+  String sidebarUnpinCount(int count);
+
+  /// No description provided for @sidebarArchiveCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive {count} Agents'**
+  String sidebarArchiveCount(int count);
+
+  /// No description provided for @sidebarUnarchiveCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Unarchive {count} Agents'**
+  String sidebarUnarchiveCount(int count);
+
+  /// No description provided for @sidebarDeleteCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {count} Agents…'**
+  String sidebarDeleteCount(int count);
+
   /// An agent's menu in the sidebar: copies the id of its session, which Claude Code finds the conversation by.
   ///
   /// In en, this message translates to:

@@ -1951,7 +1951,7 @@ void main() {
       buttons: kSecondaryButton,
     );
     await tester.pump();
-    await tester.tap(find.text('Pin'));
+    await tester.tap(find.text('Pin 2 Agents'));
     await tester.pump();
     final pinned = workspace.inPinnedOrder([
       keptThread(workspace, 'a2'),
@@ -2028,7 +2028,7 @@ void main() {
       buttons: kSecondaryButton,
     );
     await tester.pump();
-    await tester.tap(find.text('Pin'));
+    await tester.tap(find.text('Pin 2 Agents'));
     await tester.pump();
     expect(keptThread(workspace, 'a2').pinned, isTrue);
     expect(keptThread(workspace, 'a3').pinned, isTrue);
@@ -2038,7 +2038,7 @@ void main() {
       buttons: kSecondaryButton,
     );
     await tester.pump();
-    await tester.tap(find.text('Archive'));
+    await tester.tap(find.text('Archive 2 Agents'));
     await tester.pump();
     expect(keptThread(workspace, 'a2').archived, isTrue);
     expect(keptThread(workspace, 'a3').archived, isTrue);
@@ -2062,14 +2062,17 @@ void main() {
       buttons: kSecondaryButton,
     );
     await tester.pump();
-    await tester.tap(find.text('Pin'));
+    // Only what is done to them all, saying how many.
+    expect(find.text('Rename'), findsNothing);
+    expect(find.text('Fork'), findsNothing);
+    await tester.tap(find.text('Pin 2 Agents'));
     await tester.pump();
     await tester.tap(
       inSidebar(find.textContaining('Chat a3')),
       buttons: kSecondaryButton,
     );
     await tester.pump();
-    await tester.tap(find.text('Unpin'));
+    await tester.tap(find.text('Unpin 2 Agents'));
     await tester.pump();
     expect(keptThread(workspace, 'a2').pinned, isFalse);
     expect(keptThread(workspace, 'a3').pinned, isFalse);
@@ -2079,7 +2082,7 @@ void main() {
       buttons: kSecondaryButton,
     );
     await tester.pump();
-    await tester.tap(find.text('Archive'));
+    await tester.tap(find.text('Archive 2 Agents'));
     await tester.pump();
     await tester.tap(inSidebar(find.text('Archived · 2')));
     await tester.pumpAndSettle();
@@ -2096,8 +2099,8 @@ void main() {
     await tester.pump();
     expect(keptThread(workspace, 'a2').archived, isTrue);
     expect(keptThread(workspace, 'a3').archived, isTrue);
-    expect(find.text('Unarchive'), findsOneWidget);
-    await tester.tap(find.text('Unarchive'));
+    expect(find.text('Unarchive 2 Agents'), findsOneWidget);
+    await tester.tap(find.text('Unarchive 2 Agents'));
     await tester.pump();
     expect(keptThread(workspace, 'a2').archived, isFalse);
     expect(keptThread(workspace, 'a3').archived, isFalse);
@@ -2165,7 +2168,7 @@ void main() {
         buttons: kSecondaryButton,
       );
       await tester.pump();
-      await tester.tap(find.text('Delete').first);
+      await tester.tap(find.text('Delete 2 Agents…'));
       await tester.pump();
       expect(find.text('Delete agents?'), findsOneWidget);
       expect(

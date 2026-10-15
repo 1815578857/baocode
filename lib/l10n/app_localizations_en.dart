@@ -1756,6 +1756,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sidebarUnarchive => 'Unarchive';
 
   @override
+  String sidebarPinCount(int count) {
+    return 'Pin $count Agents';
+  }
+
+  @override
+  String sidebarUnpinCount(int count) {
+    return 'Unpin $count Agents';
+  }
+
+  @override
+  String sidebarArchiveCount(int count) {
+    return 'Archive $count Agents';
+  }
+
+  @override
+  String sidebarUnarchiveCount(int count) {
+    return 'Unarchive $count Agents';
+  }
+
+  @override
+  String sidebarDeleteCount(int count) {
+    return 'Delete $count Agents…';
+  }
+
+  @override
   String get sidebarCopySessionId => 'Copy session ID';
 
   @override

@@ -2710,26 +2710,47 @@ class _ThreadRow extends StatelessWidget {
     final targets = menuTargets();
     final pinned = targets.every((thread) => thread.pinned);
     final archived = targets.every((thread) => thread.archived);
+    final count = targets.length;
+    // Several: only what is done to them all, saying how many.
+    if (count > 1) {
+      return [
+        if (targets.every((thread) => !thread.archived))
+          SidebarMenuItem(
+            pinned ? l10n.sidebarUnpinCount(count) : l10n.sidebarPinCount(count),
+            icon: pinned ? Icons.push_pin : Icons.push_pin_outlined,
+            onSelected: () => onPinAll(targets, !pinned),
+          ),
+        SidebarMenuItem(
+          archived
+              ? l10n.sidebarUnarchiveCount(count)
+              : l10n.sidebarArchiveCount(count),
+          icon: Icons.inventory_2_outlined,
+          onSelected: () => onArchiveAll(targets, !archived),
+        ),
+        SidebarMenuItem(
+          l10n.sidebarDeleteCount(count),
+          icon: Icons.delete_outline_rounded,
+          destructive: true,
+          onSelected: () => onDeleteAll(targets),
+        ),
+      ];
+    }
     return [
       SidebarMenuItem(
         l10n.commonRename,
         icon: Icons.edit_outlined,
         onSelected: onRename,
       ),
-      if (targets.every((thread) => !thread.archived))
+      if (!thread.archived)
         SidebarMenuItem(
           pinned ? l10n.sidebarUnpin : l10n.sidebarPin,
           icon: pinned ? Icons.push_pin : Icons.push_pin_outlined,
-          onSelected: targets.length == 1
-              ? onPin
-              : () => onPinAll(targets, !pinned),
+          onSelected: onPin,
         ),
       SidebarMenuItem(
         archived ? l10n.sidebarUnarchive : l10n.sidebarArchive,
         icon: Icons.inventory_2_outlined,
-        onSelected: targets.length == 1
-            ? onArchive
-            : () => onArchiveAll(targets, !archived),
+        onSelected: onArchive,
       ),
       // A conversation to copy: none before the first message.
       if (thread.id != null && (!thread.isOpen || thread.session.canFork))
@@ -2751,7 +2772,7 @@ class _ThreadRow extends StatelessWidget {
         l10n.commonDelete,
         icon: Icons.delete_outline_rounded,
         destructive: true,
-        onSelected: targets.length == 1 ? onDelete : () => onDeleteAll(targets),
+        onSelected: onDelete,
       ),
     ];
   }

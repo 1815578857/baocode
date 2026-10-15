@@ -1694,6 +1694,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sidebarUnarchive => '取消归档';
 
   @override
+  String sidebarPinCount(int count) {
+    return '置顶 $count 个智能体';
+  }
+
+  @override
+  String sidebarUnpinCount(int count) {
+    return '取消置顶 $count 个智能体';
+  }
+
+  @override
+  String sidebarArchiveCount(int count) {
+    return '归档 $count 个智能体';
+  }
+
+  @override
+  String sidebarUnarchiveCount(int count) {
+    return '取消归档 $count 个智能体';
+  }
+
+  @override
+  String sidebarDeleteCount(int count) {
+    return '删除 $count 个智能体…';
+  }
+
+  @override
   String get sidebarCopySessionId => '复制会话 ID';
 
   @override
