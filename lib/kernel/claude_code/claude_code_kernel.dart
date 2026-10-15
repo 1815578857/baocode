@@ -13,6 +13,7 @@ import '../../models/model_provider.dart';
 import '../../models/model_providers.dart';
 import '../../models/model_runtime.dart';
 import '../../remote/remote_location.dart';
+import '../../settings/user_settings.dart';
 import '../../workspace/editor_launcher.dart' show openExternal;
 import '../agent_kernel.dart';
 import '../commit_attribution.dart';
@@ -221,9 +222,48 @@ class ClaudeCodeKernel
   String? _pendingTitle;
 
   // What the CLI offers and has in effect. The catalog of the last session
-  // to start stands in until this one's arrives.
-  static _Catalog _lastCatalog = const _Catalog();
+  // to start stands in until this one's arrives; before any has this run,
+  // Claude Code's own models as [modelCache] kept them.
+  static _Catalog? _last;
+  static _Catalog get _lastCatalog => _last ??= _Catalog(models: _keptModels());
+  static set _lastCatalog(_Catalog catalog) => _last = catalog;
   _Catalog _catalog = _lastCatalog;
+
+  /// Where Claude Code's own models are kept between runs (main.dart sets
+  /// it), so the picker lists them while every session is on a provider's:
+  /// as it last listed them, set up as the user has it.
+  static GlobalStorage? get modelCache => _modelCache;
+  static set modelCache(GlobalStorage? storage) {
+    _modelCache = storage;
+    _last = null;
+  }
+
+  static GlobalStorage? _modelCache;
+  static const modelCacheKey = 'claudeCode.models';
+
+  /// The models [modelCache] kept, as the CLI listed them.
+  static List<_ModelInfo> _keptModels() => [
+    for (final raw
+        in _modelCache?.get<List<Object?>>(modelCacheKey) ?? const [])
+      if (raw is Map && raw['value'] is String)
+        _ModelInfo.from(raw.cast<String, Object?>()),
+  ];
+
+  /// Keeps [models] (the CLI's own, as listed) in [modelCache], when they
+  /// changed.
+  static void _keepModels(List<Map<Object?, Object?>> models) {
+    final storage = _modelCache;
+    if (storage == null) return;
+    final kept = storage.get<List<Object?>>(modelCacheKey);
+    if (kept != null && jsonEncode(kept) == jsonEncode(models)) return;
+    unawaited(
+      storage
+          .set(modelCacheKey, models)
+          .catchError(
+            (Object error) => debugPrint('$modelCacheKey not kept: $error'),
+          ),
+    );
+  }
 
   /// The model asked for, as the CLI names it (e.g. `opus[1m]`), or a
   /// provider's ([modelRef]).
@@ -2088,12 +2128,17 @@ class ClaudeCodeKernel
     // Claude Code's own models are those it lists set up as the user has
     // it: one on a provider lists what the provider's names stand in for.
     final own = _launchedProvider.isEmpty;
+    final listed = [
+      for (final raw in response['models'] as List? ?? const [])
+        if (raw is Map) raw.cast<Object?, Object?>(),
+    ];
+    if (own) _keepModels(listed);
     _catalog = _lastCatalog = _catalog.copyWith(
       commands: _commandsFrom(response['commands']),
       models: own
           ? [
-              for (final raw in response['models'] as List? ?? const [])
-                if (raw is Map) _ModelInfo.from(raw.cast<String, Object?>()),
+              for (final raw in listed)
+                _ModelInfo.from(raw.cast<String, Object?>()),
             ]
           : _lastCatalog.models,
     );
@@ -2407,24 +2452,22 @@ class ClaudeCodeKernel
   @override
   late final KernelChoiceSource model = _Choice(
     options: () {
-      final current = _custom;
       final providers = _providers.enabled;
       return [
-        // Hidden only with a provider's models to pick instead.
-        if (!_providers.builtinHidden || providers.isEmpty || current == null)
-          if (_models.isEmpty) ...[
-            // Its models not known (it is not logged in, or has not
-            // started): left out for a provider's, unless in use.
-            if (providers.isEmpty || current == null)
-              KernelOption(
-                'default',
-                'Default',
-                Icons.bolt_rounded,
-                '',
-                group: _builtinGroup,
-                iconBuilder: _modelIcon(builtinProviderId, 'default'),
-              ),
-          ] else
+        // Shown unless turned off in Settings → Models.
+        if (!_providers.builtinHidden)
+          if (_models.isEmpty)
+            // Its models not known (it is not logged in, or no session has
+            // started on it yet): picking this starts one, which lists them.
+            KernelOption(
+              'default',
+              'Default',
+              Icons.bolt_rounded,
+              '',
+              group: _builtinGroup,
+              iconBuilder: _modelIcon(builtinProviderId, 'default'),
+            )
+          else
             for (final MapEntry(key: id, value: variants) in _models.entries)
               KernelOption(
                 id,
