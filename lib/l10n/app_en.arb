@@ -745,6 +745,18 @@
   "@sidePanelNoFolder": {
     "description": "The side panel's files page for a conversation without a folder."
   },
+  "sidePanelSearchFiles": "Search the project's files",
+  "@sidePanelSearchFiles": {
+    "description": "The files page's header button that shows the text search in place of the tree."
+  },
+  "sidePanelSearchResults": "Search Results",
+  "@sidePanelSearchResults": {
+    "description": "The files page's header title while the text search shows."
+  },
+  "sidePanelCloseSearch": "Close the search",
+  "@sidePanelCloseSearch": {
+    "description": "The files page's header button that brings the tree back."
+  },
   "sidePanelShowList": "Show List",
   "@sidePanelShowList": {
     "description": "Shows the list at the left of the side panel's pages."

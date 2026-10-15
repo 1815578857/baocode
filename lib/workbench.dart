@@ -52,6 +52,7 @@ import 'ide/ide_quick_input.dart';
 import 'ide/ide_quick_open.dart';
 import 'ide/ide_welcome.dart' show IdeRecentWorkspace;
 import 'ide/ide_workbench.dart';
+import 'ide/search/text_search.dart' show ideSearchText;
 import 'ide/ide_workspace.dart';
 import 'ide/lsp/language_features.dart';
 import 'ide/lsp/lsp_protocol.dart';
@@ -3081,6 +3082,17 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       readBytes: files is IdeHostFiles ? files.readBytes : readFileBytes,
       paths: paths,
       colorize: _colorizeCode,
+      // The files page's search runs where the IDE's does: a workspace's
+      // folders each, a remote project's there, a local one here.
+      searchEngine: (root, query) => switch (files) {
+        final IdeHostFiles host => host.searchText(root, query),
+        _ when multi != null => IdeWorkbench.searchRoots(
+          multi.folders,
+          query,
+          ideSearchText,
+        ),
+        _ => ideSearchText(root, query),
+      },
       onOpenInIde: (request) => _openRequestInIde(thread, request),
       // With its IDE's language servers.
       formatter:

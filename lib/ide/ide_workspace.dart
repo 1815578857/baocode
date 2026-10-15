@@ -13,6 +13,7 @@ import 'ide_layout.dart';
 import 'ide_notifications.dart';
 import 'lsp/language_features.dart';
 import 'lsp/lsp_protocol.dart';
+import 'search/ide_search_view.dart' show IdeSearchReplaceBackend;
 
 /// The original side of a diff tab: text at a revision, read again when
 /// the repository changes (VS Code's `git:` documents).
@@ -205,7 +206,7 @@ class IdeDocument {
 }
 
 /// Open files belong to the IDE pane, not to any one agent conversation.
-class IdeWorkspace extends ChangeNotifier {
+class IdeWorkspace extends ChangeNotifier implements IdeSearchReplaceBackend {
   IdeWorkspace(
     this.root, {
     IdeFileService? files,
@@ -417,6 +418,8 @@ class IdeWorkspace extends ChangeNotifier {
   /// empty window, [root] then the home folder), there is no explorer
   /// tree, and Search and Quick Open cover the open files alone.
   final bool hasFolder;
+
+  @override
   final IdeFileService files;
 
   /// Language servers for this workspace's documents; null for none.
@@ -435,6 +438,11 @@ class IdeWorkspace extends ChangeNotifier {
       ? _activeRepository ?? repositories.firstOrNull?.$2
       : _git;
   final IdeGitRepository? _git;
+
+  /// Tells the project's Git its files changed, after a search replaced
+  /// some ([IdeSearchReplaceBackend.refreshGit]).
+  @override
+  void refreshGit() => git?.scheduleRefresh();
 
   LanguageDocumentSync? get _sync => switch (languages) {
     final LanguageDocumentSync sync => sync,
@@ -469,6 +477,7 @@ class IdeWorkspace extends ChangeNotifier {
   int _selection = 0;
   bool _disposed = false;
 
+  @override
   List<IdeDocument> get documents => List.unmodifiable(_documents);
   IdeDocument? get active =>
       _documents.where((d) => d.key == _activeKey).firstOrNull;
@@ -850,6 +859,7 @@ class IdeWorkspace extends ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void edit(String path, String text) {
     if (_disposed) return;
     final doc = _fileDocument(path);
@@ -1083,6 +1093,7 @@ class IdeWorkspace extends ChangeNotifier {
     return saved;
   }
 
+  @override
   Future<void> save(IdeDocument doc) {
     if (doc.isUntitled) return saveAs(doc);
     final text = doc.text;

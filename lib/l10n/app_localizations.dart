@@ -2996,6 +2996,24 @@ abstract class AppLocalizations {
   /// **'This conversation has no project folder'**
   String get sidePanelNoFolder;
 
+  /// The files page's header button that shows the text search in place of the tree.
+  ///
+  /// In en, this message translates to:
+  /// **'Search the project\'s files'**
+  String get sidePanelSearchFiles;
+
+  /// The files page's header title while the text search shows.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Results'**
+  String get sidePanelSearchResults;
+
+  /// The files page's header button that brings the tree back.
+  ///
+  /// In en, this message translates to:
+  /// **'Close the search'**
+  String get sidePanelCloseSearch;
+
   /// Shows the list at the left of the side panel's pages.
   ///
   /// In en, this message translates to:
