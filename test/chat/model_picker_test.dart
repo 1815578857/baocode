@@ -214,6 +214,51 @@ void main() {
     expect(asked.toSet().length, asked.length);
   });
 
+  testWidgets('Fast appears as a toggle at the end of model settings', (
+    tester,
+  ) async {
+    const fastOption = KernelOption('fast', 'Fast', Icons.bolt, '');
+    const effort = KernelOption('high', 'High', Icons.speed, '');
+    var enabled = false;
+    await pump(
+      tester,
+      [_option('@gw/gpt-5', 'GPT-5', _gateway)],
+      settingsOf: (_) => [
+        ModelSettingChoice(
+          kind: KernelChoiceKind.effort,
+          options: const [effort],
+          selected: effort,
+          onSelected: (_) {},
+        ),
+        ModelSettingChoice(
+          kind: KernelChoiceKind.fast,
+          options: const [fastOption],
+          selected: enabled ? fastOption : null,
+          onSelected: (_) => enabled = !enabled,
+        ),
+      ],
+    );
+    await open(tester, 'GPT-5');
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.moveTo(tester.getCenter(find.text('GPT-5').last));
+    await tester.pumpAndSettle();
+    expect(find.text('Fast'), findsOneWidget);
+    expect(find.byType(Switch), findsOneWidget);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+    await tester.tap(find.text('Fast'));
+    await tester.pumpAndSettle();
+    expect(enabled, isTrue);
+
+    await open(tester, 'GPT-5');
+    await mouse.moveTo(tester.getCenter(find.text('GPT-5').last));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+    expect(enabled, isFalse);
+  });
+
   testWidgets(
     'short viewport keeps the scrollable list and footer in the menu',
     (tester) async {

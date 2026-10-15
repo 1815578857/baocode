@@ -29,6 +29,23 @@ const _other = ModelProvider(
   models: [ProviderModel(id: 'm')],
 );
 
+const _fastGateway = ModelProvider(
+  id: 'fast',
+  name: 'Fast Gateway',
+  protocol: ProviderProtocol.openaiResponses,
+  models: [
+    ProviderModel(id: 'gpt-5', efforts: ['low', 'high']),
+    ProviderModel(id: 'gpt-5-mini', efforts: ['low', 'high']),
+  ],
+);
+
+const _codex = ModelProvider(
+  id: 'codex',
+  name: 'Codex',
+  protocol: ProviderProtocol.codex,
+  models: [ProviderModel(id: 'gpt-5')],
+);
+
 /// A Claude Code kernel over [providers], each start a CLI of its own,
 /// its launches kept; the environment of a provider's session made up.
 ({
@@ -367,6 +384,81 @@ void main() {
     expect(contextSize.selected, '1000000');
     expect(effort.selectedFor('@gw/plain'), 'low');
     expect(launches, hasLength(1));
+    kernel.dispose();
+  });
+
+  test('Fast appears only on supported providers and stays with this chat '
+      'and model', () async {
+    await providers.save(_fastGateway);
+    await providers.save(_codex);
+    final (:kernel, :launches, :clis, environments: _) = start(providers, {
+      'model': '@fast/gpt-5',
+      'effort': 'high',
+    });
+    kernel.prepare();
+    await pumpEventQueue();
+    final fast = (kernel as SelectsFast).fast;
+    expect(fast.optionsFor('@fast/gpt-5').single.label, 'Fast');
+    expect(fast.optionsFor('@codex/gpt-5'), hasLength(1));
+    expect(fast.optionsFor('@gw/gpt-5'), isEmpty);
+    expect(fast.optionsFor('@other/m'), isEmpty);
+    expect(fast.optionsFor('default'), isEmpty);
+    expect(fast.selected, 'standard');
+    expect(launches.single.model, 'gpt-5(high)');
+    final picker = launches.single.settings['modelPicker'] as Map;
+    final options = [
+      for (final row in picker['options']! as List) (row as Map)['model'],
+    ];
+    expect(options, containsAll(['gpt-5(high;fast)', 'gpt-5(;fast)']));
+
+    fast.select('@fast/gpt-5', 'fast');
+    await pumpEventQueue();
+    expect(fast.selected, 'fast');
+    expect(clis.single.requests('set_model').last['model'], 'gpt-5(high;fast)');
+    (kernel as SelectsEffort).effort.select('@fast/gpt-5', 'low');
+    await pumpEventQueue();
+    expect(clis.single.requests('set_model').last['model'], 'gpt-5(low;fast)');
+
+    kernel.model.select('@fast/gpt-5-mini');
+    await pumpEventQueue();
+    expect(fast.selected, 'standard');
+    expect(clis.single.requests('set_model').last['model'], 'gpt-5-mini(low)');
+    kernel.model.select('@fast/gpt-5');
+    await pumpEventQueue();
+    expect(fast.selected, 'fast');
+    expect(clis.single.requests('set_model').last['model'], 'gpt-5(low;fast)');
+
+    fast.select('@fast/gpt-5', 'fast');
+    await pumpEventQueue();
+    expect(fast.selected, 'standard');
+    expect(clis.single.requests('set_model').last['model'], 'gpt-5(low)');
+    kernel.dispose();
+
+    final fresh = start(providers, {'model': '@fast/gpt-5', 'effort': 'low'});
+    fresh.kernel.prepare();
+    await pumpEventQueue();
+    expect((fresh.kernel as SelectsFast).fast.selected, 'standard');
+    expect(fresh.launches.single.model, 'gpt-5(low)');
+    fresh.kernel.dispose();
+  });
+
+  test('Fast restores for this chat and its model only', () async {
+    await providers.save(_fastGateway);
+    final (:kernel, :launches, :clis, environments: _) = start(providers, {
+      'model': '@fast/gpt-5',
+      'effort': 'high',
+      'fast': 'fast',
+      modelSettingKey(KernelChoiceKind.fast, '@fast/gpt-5'): 'fast',
+      modelSettingKey(KernelChoiceKind.fast, '@fast/gpt-5-mini'): 'standard',
+    });
+    kernel.prepare();
+    await pumpEventQueue();
+    expect(launches.single.model, 'gpt-5(high;fast)');
+    final fast = (kernel as SelectsFast).fast;
+    expect(fast.selectedFor('@fast/gpt-5-mini'), 'standard');
+    kernel.model.select('@fast/gpt-5-mini');
+    await pumpEventQueue();
+    expect(fast.selected, 'standard');
     kernel.dispose();
   });
 

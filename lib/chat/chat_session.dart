@@ -359,6 +359,8 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
       (KernelChoiceKind.context, kernel.contextSize),
     if (_kernel case final SelectsEffort kernel)
       (KernelChoiceKind.effort, kernel.effort),
+    if (_kernel case final SelectsFast kernel)
+      (KernelChoiceKind.fast, kernel.fast),
   ];
 
   /// The choice [kind] as it stands, e.g. for a new agent to start with.
@@ -366,7 +368,9 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
     KernelChoiceKind.model => models?.selected.id,
     KernelChoiceKind.mode => modes?.selected.id,
     KernelChoiceKind.permission => permissions?.selected.id,
-    KernelChoiceKind.effort || KernelChoiceKind.context =>
+    KernelChoiceKind.effort ||
+    KernelChoiceKind.context ||
+    KernelChoiceKind.fast =>
       _modelSettings
           .where((setting) => setting.$1 == kind)
           .firstOrNull

@@ -179,9 +179,15 @@ class ModelProxy {
     final session = sessionId(body);
     final requested = parseSuffix('${body['model'] ?? ''}');
     final modelId = requested.modelName.trim();
+    final suffix = requested.hasSuffix ? requested.rawSuffix.trim() : '';
+    final fast = suffix.endsWith(fastModelSuffix);
     // The effort picked goes with the model's name: none, or `none`, and
     // reasoning is not asked for.
-    final effort = requested.hasSuffix ? requested.rawSuffix.trim() : '';
+    final effort =
+        (fast
+                ? suffix.substring(0, suffix.length - fastModelSuffix.length)
+                : suffix)
+            .trim();
     final thinking = effort.isNotEmpty && effort != ThinkingLevel.none;
     final stream = body['stream'] == true;
     final Map<String, Object?> outgoing;
@@ -207,7 +213,7 @@ class ModelProxy {
       if (thinking) {
         outgoing['reasoning'] = {'effort': effort, 'summary': reasoningSummary};
       }
-      if (provider.fastMode &&
+      if (fast &&
           (provider.protocol == ProviderProtocol.openaiResponses ||
               provider.protocol == ProviderProtocol.codex) &&
           !body.containsKey('service_tier') &&

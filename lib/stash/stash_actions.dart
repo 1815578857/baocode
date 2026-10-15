@@ -67,16 +67,21 @@ List<Suggestion> stashSuggestions(StashStore store, String heading) => [
 Future<String> clarifyStash(
   StashController controller,
   int id,
-  String text,
-) async {
+  String text, {
+  StashClarifyCancellation? cancellation,
+}) async {
+  cancellation?.check();
   final note = controller.store.byId(id);
   if (note == null || text.trim().isEmpty) throw const StashAiException();
   final project = note.project;
+  final pictures = await _pictures(controller.store, note);
+  cancellation?.check();
   return clarifyStashText(
     text,
     project: project == null ? null : p.basename(project),
-    pictures: await _pictures(controller.store, note),
+    pictures: pictures,
     folder: controller.store.absolute(''),
+    cancellation: cancellation,
   );
 }
 

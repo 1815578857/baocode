@@ -74,20 +74,9 @@ void main() {
       );
     });
 
-    test('Fast mode defaults off and survives settings round trips', () {
-      const provider = ModelProvider(id: 'p', name: 'P');
-      expect(provider.fastMode, isFalse);
+    test('a legacy provider Fast setting is ignored', () {
+      final provider = ModelProvider.fromJson({'id': 'p', 'fastMode': true})!;
       expect(provider.toJson(), isNot(contains('fastMode')));
-      expect(ModelProvider.fromJson({'id': 'p'})!.fastMode, isFalse);
-      expect(
-        ModelProvider.fromJson({'id': 'p', 'fastMode': 'true'})!.fastMode,
-        isFalse,
-      );
-
-      final fast = provider.copyWith(fastMode: true);
-      expect(fast.toJson()['fastMode'], isTrue);
-      expect(ModelProvider.fromJson(fast.toJson())!.fastMode, isTrue);
-      expect(fast.copyWith(fastMode: false).fastMode, isFalse);
     });
 
     test('custom headers survive settings round trips, names that may not '
@@ -97,10 +86,7 @@ void main() {
       expect(provider.toJson(), isNot(contains('headers')));
 
       final set = provider.copyWith(
-        headers: {
-          'x-session-id': '{{CLAUDE_SESSION_ID}}',
-          'X-Tenant': 'acme',
-        },
+        headers: {'x-session-id': '{{CLAUDE_SESSION_ID}}', 'X-Tenant': 'acme'},
       );
       expect(set.toJson()['headers'], {
         'x-session-id': '{{CLAUDE_SESSION_ID}}',
@@ -477,10 +463,10 @@ void main() {
           'authorization': 'Bearer nope',
         },
       );
-      expect(
-        customUpstreamHeaders(provider, session: 's-1', model: 'gpt-5'),
-        {'x-session-id': 's-1', 'x-tenant': 'acme'},
-      );
+      expect(customUpstreamHeaders(provider, session: 's-1', model: 'gpt-5'), {
+        'x-session-id': 's-1',
+        'x-tenant': 'acme',
+      });
       // Without a session, the variable stands as written.
       expect(customUpstreamHeaders(provider, model: 'gpt-5'), {
         'x-session-id': '{{CLAUDE_SESSION_ID}}',
@@ -699,11 +685,23 @@ void main() {
       expect(requestedModel(_gateway, thinking, effort: 'high'), 'o3(high)');
       expect(requestedModel(_gateway, thinking, effort: 'none'), 'o3(none)');
       expect(requestedModel(_gateway, thinking), 'o3');
+      expect(requestedModel(_gateway, thinking, fast: true), 'o3');
+      const responses = ModelProvider(
+        id: 'rsp',
+        name: 'Responses',
+        protocol: ProviderProtocol.openaiResponses,
+      );
+      expect(
+        requestedModel(responses, thinking, effort: 'high', fast: true),
+        'o3(high;fast)',
+      );
+      expect(requestedModel(responses, thinking, fast: true), 'o3(;fast)');
       expect(
         requestedModel(
           const ModelProvider(id: 'a', name: 'A'),
           thinking,
           effort: 'high',
+          fast: true,
         ),
         'o3',
       );

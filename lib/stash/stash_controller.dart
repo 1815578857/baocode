@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_quill/flutter_quill.dart' show ChangeSource;
 import 'package:path/path.dart' as p;
 
+import '../kernel/claude_code/claude_haiku.dart' show ClaudeHaikuCancelled;
 import '../kernel/claude_code/claude_sdk_tools.dart';
 import '../remote/remote_location.dart';
 import '../settings/user_settings.dart' show GlobalStorage;
@@ -131,6 +132,10 @@ class StashController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    for (final cancellation in _clarifying.values) {
+      cancellation.cancel();
+    }
+    _clarifying.clear();
     for (final name in const ['stash_create', 'stash_complete', 'stash_read']) {
       ClaudeSdkTools.unregister(name);
     }
@@ -466,14 +471,19 @@ class StashController extends ChangeNotifier {
 
   /// What says a stash's text clearly: [clarifyStash], but in tests.
   @visibleForTesting
-  Future<String> Function(StashController controller, int id, String text)
+  Future<String> Function(
+    StashController controller,
+    int id,
+    String text, {
+    StashClarifyCancellation? cancellation,
+  })
   clarifier = clarifyStash;
 
-  final Set<int> _clarifying = {};
+  final Map<int, StashClarifyCancellation> _clarifying = {};
   final Map<int, StashClarifyFailure> _clarifyFailures = {};
 
   /// Whether [id]'s stash is being said clearly ([clarify]).
-  bool clarifying(int id) => _clarifying.contains(id);
+  bool clarifying(int id) => _clarifying.containsKey(id);
 
   /// Why [id]'s stash could not be said clearly, the last time it was
   /// asked to be; null when it was, or was not asked.
@@ -483,6 +493,14 @@ class StashController extends ChangeNotifier {
     if (_clarifyFailures.remove(id) != null) notifyListeners();
   }
 
+  /// Stops [id]'s current clarification; a new one may start at once.
+  void cancelClarify(int id) {
+    final cancellation = _clarifying.remove(id);
+    if (cancellation == null) return;
+    cancellation.cancel();
+    if (!_disposed) notifyListeners();
+  }
+
   /// Says [id]'s stash clearly (see [clarifyStash]), in the background,
   /// whatever shows meanwhile: its text replaced once the answer comes, in
   /// the editor showing it if one does (Undo takes it back), else in its
@@ -490,7 +508,7 @@ class StashController extends ChangeNotifier {
   /// goes on; [clarifyFailure] after, where it failed (no answer, or the
   /// text changed meanwhile).
   Future<void> clarify(int id) async {
-    if (_clarifying.contains(id)) return;
+    if (_disposed || _clarifying.containsKey(id)) return;
     final note = store.byId(id);
     if (note == null) return;
     final asked = switch (StashNoteEditorState.showing(id)?.editor) {
@@ -498,14 +516,24 @@ class StashController extends ChangeNotifier {
       null => stashTextPart(stashDocument(note.body), store.absolute),
     };
     if (asked == null) return;
-    _clarifying.add(id);
+    final cancellation = StashClarifyCancellation();
+    bool current() => identical(_clarifying[id], cancellation);
+    _clarifying[id] = cancellation;
     _clarifyFailures.remove(id);
     notifyListeners();
     try {
-      final reply = await clarifier(this, id, asked.text);
+      final reply = await clarifier(
+        this,
+        id,
+        asked.text,
+        cancellation: cancellation,
+      );
+      if (!current()) return;
       if (!await _rewrite(id, asked.text, reply)) {
-        _clarifyFailures[id] = (changed: true, message: null);
-      } else {
+        if (current()) {
+          _clarifyFailures[id] = (changed: true, message: null);
+        }
+      } else if (current()) {
         await store.update(id, (note) {
           if (note.status == StashStatus.collected) {
             note.status = StashStatus.requirement;
@@ -513,10 +541,16 @@ class StashController extends ChangeNotifier {
         });
       }
     } on StashAiException catch (error) {
-      _clarifyFailures[id] = (changed: false, message: error.message);
+      if (current()) {
+        _clarifyFailures[id] = (changed: false, message: error.message);
+      }
+    } on ClaudeHaikuCancelled {
+      // Cancelled requests do not leave a failure to dismiss.
     } finally {
-      _clarifying.remove(id);
-      if (!_disposed) notifyListeners();
+      if (current()) {
+        _clarifying.remove(id);
+        if (!_disposed) notifyListeners();
+      }
     }
   }
 

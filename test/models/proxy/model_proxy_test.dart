@@ -448,26 +448,30 @@ void main() {
 
   group('Fast mode', () {
     for (final fast in [false, true]) {
-      test('Responses uses the provider default ($fast)', () async {
-        provider = provider.copyWith(
-          protocol: ProviderProtocol.openaiResponses,
-          fastMode: fast,
-        );
-        upstream.reply = (_) => (200, const []);
-        await post(
-          await messages(),
-          {
-            'model': 'gpt-5',
-            'stream': true,
-            'messages': [
-              {'role': 'user', 'content': 'hi'},
-            ],
-          },
-          headers: {'authorization': 'Bearer tok'},
-        );
-        final sent = upstream.requests.single.body! as Map;
-        expect(sent['service_tier'], fast ? 'priority' : isNull);
-      });
+      test(
+        'Responses uses Fast only when the model requests it ($fast)',
+        () async {
+          provider = provider.copyWith(
+            protocol: ProviderProtocol.openaiResponses,
+          );
+          upstream.reply = (_) => (200, const []);
+          await post(
+            await messages(),
+            {
+              'model': fast ? 'gpt-5(high;fast)' : 'gpt-5(high)',
+              'stream': true,
+              'messages': [
+                {'role': 'user', 'content': 'hi'},
+              ],
+            },
+            headers: {'authorization': 'Bearer tok'},
+          );
+          final sent = upstream.requests.single.body! as Map;
+          expect(sent['model'], 'gpt-5');
+          expect(sent['reasoning'], containsPair('effort', 'high'));
+          expect(sent['service_tier'], fast ? 'priority' : isNull);
+        },
+      );
     }
 
     for (final explicit in <Map<String, Object?>>[
@@ -479,15 +483,19 @@ void main() {
       {'service_tier': 'default'},
     ]) {
       for (final fast in [false, true]) {
-        test('Responses respects $explicit with provider Fast $fast', () async {
+        test('Responses respects $explicit with Fast $fast', () async {
           provider = provider.copyWith(
             protocol: ProviderProtocol.openaiResponses,
-            fastMode: fast,
           );
           upstream.reply = (_) => (200, const []);
           await post(
             await messages(),
-            {'model': 'gpt-5', 'stream': true, 'messages': [], ...explicit},
+            {
+              'model': fast ? 'gpt-5(high;fast)' : 'gpt-5(high)',
+              'stream': true,
+              'messages': [],
+              ...explicit,
+            },
             headers: {'authorization': 'Bearer tok'},
           );
           final sent = upstream.requests.single.body! as Map;
@@ -501,12 +509,11 @@ void main() {
       }
     }
 
-    test('Chat Completions ignores the provider Fast setting', () async {
-      provider = provider.copyWith(fastMode: true);
+    test('Chat Completions ignores the Fast model suffix', () async {
       upstream.reply = (_) => (200, const []);
       await post(
         await messages(),
-        {'model': 'gpt-5', 'stream': true, 'messages': []},
+        {'model': 'gpt-5(high;fast)', 'stream': true, 'messages': []},
         headers: {'authorization': 'Bearer tok'},
       );
       expect(
