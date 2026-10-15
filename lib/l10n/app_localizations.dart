@@ -13959,6 +13959,12 @@ abstract class AppLocalizations {
   /// **'Nothing stashed yet.\nPress {hotkey} in any app to jot something down.'**
   String stashEmpty(String hotkey);
 
+  /// No description provided for @stashEmptyNoHotkey.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing stashed yet.\nClick + to write one; set a shortcut in Settings to jot one down from any app.'**
+  String get stashEmptyNoHotkey;
+
   /// No description provided for @stashNoMatch.
   ///
   /// In en, this message translates to:
@@ -14283,11 +14289,11 @@ abstract class AppLocalizations {
   /// **'Clear'**
   String get stashHotkeyClear;
 
-  /// No description provided for @stashHotkeyDefault.
+  /// No description provided for @stashHotkeySuggested.
   ///
   /// In en, this message translates to:
-  /// **'Default'**
-  String get stashHotkeyDefault;
+  /// **'Use {hotkey}'**
+  String stashHotkeySuggested(String hotkey);
 
   /// No description provided for @stashHotkeyGlobal.
   ///

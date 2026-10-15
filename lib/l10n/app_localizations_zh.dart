@@ -8006,6 +8006,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get stashEmptyNoHotkey => '还没有便签。\n点 + 新建一条；在设置里设个快捷键，就能在任何应用里随手记。';
+
+  @override
   String get stashNoMatch => '没有匹配的便签。';
 
   @override
@@ -8195,7 +8198,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get stashHotkeyClear => '清除';
 
   @override
-  String get stashHotkeyDefault => '恢复默认';
+  String stashHotkeySuggested(String hotkey) {
+    return '使用 $hotkey';
+  }
 
   @override
   String get stashHotkeyGlobal => '呼出 Stash 快捷窗口';

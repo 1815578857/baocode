@@ -6142,6 +6142,7 @@
       }
     }
   },
+  "stashEmptyNoHotkey": "Nothing stashed yet.\nClick + to write one; set a shortcut in Settings to jot one down from any app.",
   "stashNoMatch": "No stash matches.",
   "stashPin": "Pin",
   "stashUnpin": "Unpin",
@@ -6280,7 +6281,14 @@
   "stashHotkeyRefused": "Needs a modifier with a letter, digit or common key",
   "stashHotkeyNone": "None",
   "stashHotkeyClear": "Clear",
-  "stashHotkeyDefault": "Default",
+  "stashHotkeySuggested": "Use {hotkey}",
+  "@stashHotkeySuggested": {
+    "placeholders": {
+      "hotkey": {
+        "type": "String"
+      }
+    }
+  },
   "stashHotkeyGlobal": "Show the Stash panel",
   "stashHotkeyGlobalHint": "A global shortcut: works from any app.",
   "stashHotkeyTooltip": "The panel's shortcut; click to change",

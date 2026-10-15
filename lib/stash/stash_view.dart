@@ -608,7 +608,10 @@ class StashViewState extends State<StashView> with _StashActions {
             child: Center(
               child: Text(
                 _controller.store.notes.isEmpty
-                    ? l10n.stashEmpty(_hotkeyLabel())
+                    ? switch (_hotkeyLabel()) {
+                        '' => l10n.stashEmptyNoHotkey,
+                        final hotkey => l10n.stashEmpty(hotkey),
+                      }
                     : l10n.stashNoMatch,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textFaint, fontSize: 13),

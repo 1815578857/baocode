@@ -398,8 +398,9 @@ void main() {
   testWidgets('agents write stashes down and mark them done', (tester) async {
     await setUpFlow(tester);
     await controller.start();
-    expect(hotkeys, [StashSettings.defaultHotkey]);
-    expect(controller.hotkeyTaken, isTrue);
+    // No shortcut taken unasked.
+    expect(hotkeys, ['']);
+    expect(controller.hotkeyTaken, isNull);
     const call = ClaudeSdkCall(cwd: '/work/app', sessionId: 'session-1');
     Future<Map<String, Object?>> tool(
       String name,

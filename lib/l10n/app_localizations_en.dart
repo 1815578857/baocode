@@ -8494,6 +8494,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get stashEmptyNoHotkey =>
+      'Nothing stashed yet.\nClick + to write one; set a shortcut in Settings to jot one down from any app.';
+
+  @override
   String get stashNoMatch => 'No stash matches.';
 
   @override
@@ -8692,7 +8696,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stashHotkeyClear => 'Clear';
 
   @override
-  String get stashHotkeyDefault => 'Default';
+  String stashHotkeySuggested(String hotkey) {
+    return 'Use $hotkey';
+  }
 
   @override
   String get stashHotkeyGlobal => 'Show the Stash panel';

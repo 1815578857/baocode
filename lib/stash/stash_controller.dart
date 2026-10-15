@@ -111,7 +111,9 @@ class StashController extends ChangeNotifier {
     final hotkey = settings.hotkey;
     if (hotkey == _hotkey) return;
     _hotkey = hotkey;
-    _hotkeyTaken = await host.setHotkey(hotkey);
+    // None: the one held let go, nothing to have been given.
+    final taken = await host.setHotkey(hotkey);
+    _hotkeyTaken = hotkey.isEmpty ? null : taken;
     notifyListeners();
   }
 
