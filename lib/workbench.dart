@@ -35,6 +35,7 @@ import 'ide/file_service.dart'
     show
         IdeFileService,
         IdeHostFiles,
+        byteSizeThrough,
         ideIsImagePath,
         readBytesThrough,
         readFileBytes;
@@ -3226,6 +3227,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
 
   /// Where the files [thread]'s conversation names open: the side panel,
   /// or the IDE for its chat ([embedded]).
+  final Map<String, Future<Uint8List> Function(String)> _projectByteReaders =
+      {};
   FileLinkTarget _fileLinks(AgentThread thread, {required bool embedded}) {
     final (:files, :paths) = _projectFiles(thread);
     return FileLinkTarget(
@@ -3242,7 +3245,10 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         files,
         paths: paths,
       ),
-      readBytes: (path) => readBytesThrough(files, path),
+      // The same each build: the chat's images are kept by it.
+      readBytes: _projectByteReaders[thread.project.path] ??= (path) =>
+          readBytesThrough(files, path),
+      sizeOf: (path) async => await byteSizeThrough(files, path) ?? 0,
       paths: paths,
       roots: () =>
           _workspace.workspaceAt(thread.project.path)?.folders ?? const [],

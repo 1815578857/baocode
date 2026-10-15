@@ -62,6 +62,7 @@ void main() {
     bool inPanel = false,
   }) async {
     opened.clear();
+    Map<String, int> sizes = const {},
     requests.clear();
     read.clear();
     inIde.clear();
@@ -89,6 +90,7 @@ void main() {
             },
             child: ChatHistoryView(feed: _Feed(items)),
           ),
+            sizeOf: (path) async => sizes[path] ?? _png.length,
         ),
       ),
     );
@@ -132,6 +134,13 @@ void main() {
 
   testWidgets('its right click has the file\'s menu, with the image\'s '
       'own', (tester) async {
+  testWidgets('an image too big to show small is not read for its tag', (
+    tester,
+  ) async {
+    await pump(tester, screenshots, sizes: {'/p/shots/old.png': 1 << 30});
+    expect(read, ['/p/shots/new.png']);
+  }, variant: _desktop);
+
     await pump(tester, screenshots);
     await rightClick(tester, tester.getCenter(find.text('新版截图')));
 

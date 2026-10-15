@@ -96,6 +96,7 @@ class FileLinkTarget {
     required this.open,
     this.exists,
     this.readBytes,
+    this.sizeOf,
     this.paths,
     this.roots,
     this.inPanel = false,
@@ -113,6 +114,10 @@ class FileLinkTarget {
   /// Reads the file at an absolute path (on the project's host): an image
   /// the chat names, to show; none, and images open as other files.
   final Future<Uint8List> Function(String path)? readBytes;
+
+  /// How many bytes the file at an absolute path takes (on the project's
+  /// host): an image too big to show small is not read for it.
+  final Future<int> Function(String path)? sizeOf;
 
   /// A multi-folder workspace's folders as they are now: its files are
   /// theirs (see [FileOpenScope.roots]).
@@ -219,6 +224,7 @@ class FileOpenScope extends InheritedWidget {
     this.seen = const [],
     this.local = true,
     this.readBytes,
+    this.sizeOf,
     this.inPanel = false,
     this.onOpenInIde,
     required super.child,
@@ -232,6 +238,9 @@ class FileOpenScope extends InheritedWidget {
 
   /// See [FileLinkTarget.readBytes].
   final Future<Uint8List> Function(String path)? readBytes;
+
+  /// See [FileLinkTarget.sizeOf].
+  final Future<int> Function(String path)? sizeOf;
 
   final String root;
 
@@ -423,9 +432,14 @@ class FileOpenScope extends InheritedWidget {
     return true;
   }
 
-  /// The image at [path], read; null when it cannot be.
-  Future<ImageAttachment?> image(String path) async {
+  /// The image at [path], read; null when it cannot be, or (where its
+  /// size can be known) takes more than [maxBytes].
+  Future<ImageAttachment?> image(String path, {int? maxBytes}) async {
     final read = readBytes;
+      if ((maxBytes, sizeOf) case (final most?, final sizeOf?)
+          when await sizeOf(path) > most) {
+        return null;
+      }
     if (read == null) return null;
     try {
       return ImageAttachment(

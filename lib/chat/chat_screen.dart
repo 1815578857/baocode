@@ -635,6 +635,7 @@ class _ChatScreenState extends State<ChatScreen>
             onOpen: _openFile,
             existence: _files,
             readBytes: links.readBytes,
+            sizeOf: links.sizeOf,
             inPanel: links.inPanel,
             onOpenInIde: links.openInIde,
             roots: links.roots?.call() ?? const [],

@@ -1276,16 +1276,21 @@ class FileImageChip extends StatefulWidget {
 }
 
 class _FileImageChipState extends State<FileImageChip> {
-  /// The images read lately, by path: the history builds its rows anew as
-  /// they scroll into view.
-  static final _read = <String, Future<ImageAttachment?>>{};
+  /// The images read lately, by where they are read from (a project's
+  /// host) and path: the history builds its rows anew as they scroll into
+  /// view.
+  static final _read = <(Object?, String), Future<ImageAttachment?>>{};
+
+  /// Past this an image is not read to be shown this small.
+  static const _maxBytes = 20 << 20;
 
   late Future<ImageAttachment?> _image = _imageOf(widget.path);
 
   Future<ImageAttachment?> _imageOf(String path) {
-    if (_read.remove(path) case final read?) return _read[path] = read;
+    final key = (widget.files.readBytes, path);
+    if (_read.remove(key) case final read?) return _read[key] = read;
     if (_read.length >= 24) _read.remove(_read.keys.first);
-    return _read[path] = widget.files.image(path);
+    return _read[key] = widget.files.image(path, maxBytes: _maxBytes);
   }
 
   @override
