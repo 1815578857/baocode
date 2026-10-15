@@ -901,6 +901,32 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
   });
 
+  testWidgets('a click on another agent between two makes no double click', (
+    tester,
+  ) async {
+    final workspace = await pumpApp(tester);
+    final first = threadNamed(workspace, 'Rate limit per API key');
+    final firstRow = inSidebar(find.textContaining('Rate limit per API key'));
+    final other = workspace.threads.firstWhere(
+      (thread) =>
+          thread != first &&
+          !thread.archived &&
+          inSidebar(find.text(thread.title)).evaluate().isNotEmpty,
+    );
+
+    await tester.tap(firstRow);
+    await tester.pump();
+    await tester.tap(inSidebar(find.text(other.title)));
+    await tester.pump();
+    expect(workspace.selected, other);
+    // Back at once: it opens, no rename.
+    await tester.tap(firstRow);
+    await tester.pump();
+    expect(workspace.selected, first);
+    expect(inSidebar(find.byType(TextField)), findsNothing);
+    await tester.pump(const Duration(milliseconds: 500));
+  });
+
   testWidgets('the chevron switches the editor; the button opens it', (
     tester,
   ) async {
