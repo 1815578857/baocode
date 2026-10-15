@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:baocode/ide/git/repository_scan.dart';
 import 'package:baocode/ide/ide_workbench.dart';
@@ -78,6 +79,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('new.dart'), findsOneWidget);
     expect(find.text('README.md'), findsNothing);
+  });
+
+  testWidgets('a repository\'s header in CHANGES folds and unfolds it', (
+    tester,
+  ) async {
+    await pumpScm(tester);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.tap(find.text('app').first);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pumpAndSettle();
+    expect(find.text('new.dart'), findsOneWidget);
+
+    final header = find.byKey(ValueKey('repo:${inRoot('app')}')).first;
+    await tester.tap(header);
+    await tester.pumpAndSettle();
+    expect(find.text('new.dart'), findsNothing);
+    expect(find.text('main.dart'), findsNothing);
+    // The other repository's changes stay.
+    expect(find.text('README.md'), findsWidgets);
+
+    await tester.tap(header);
+    await tester.pumpAndSettle();
+    expect(find.text('new.dart'), findsOneWidget);
   });
 
   test('#68 the workspace knows each file\'s repository', () async {

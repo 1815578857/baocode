@@ -356,11 +356,16 @@ final class _ResourceRow implements _ScmRow {
 /// for the list's builds and its keyboard asking for them many times
 /// between.
 final class _ScmRows {
-  _ScmRows(this.repos, IdeScmSession session, this.rows)
-    : treeView = session.treeView,
+  _ScmRows(
+    this.repos,
+    IdeScmSession session,
+    Set<String> collapsedRepositories,
+    this.rows,
+  ) : treeView = session.treeView,
       sort = session.sort,
       collapsedGroups = {...session.collapsedGroups},
-      collapsedFolders = {...session.collapsedFolders};
+      collapsedFolders = {...session.collapsedFolders},
+      collapsedRepositories = {...collapsedRepositories};
 
   /// The repositories shown (their statuses), in the order they list.
   final List<(IdeGitRepository, IdeGitState)> repos;
@@ -368,14 +373,23 @@ final class _ScmRows {
   final IdeScmSort sort;
   final Set<String> collapsedGroups;
   final Set<String> collapsedFolders;
+
+  /// The repositories folded under their headers (by root), when more than
+  /// one shows.
+  final Set<String> collapsedRepositories;
   final List<_ScmRow> rows;
 
-  bool isFor(List<(IdeGitRepository, IdeGitState)> repos, IdeScmSession session) =>
+  bool isFor(
+    List<(IdeGitRepository, IdeGitState)> repos,
+    IdeScmSession session,
+    Set<String> collapsedRepositories,
+  ) =>
       _sameRepos(repos, this.repos) &&
       session.treeView == treeView &&
       session.sort == sort &&
       setEquals(session.collapsedGroups, collapsedGroups) &&
-      setEquals(session.collapsedFolders, collapsedFolders);
+      setEquals(session.collapsedFolders, collapsedFolders) &&
+      setEquals(collapsedRepositories, this.collapsedRepositories);
 
   static bool _sameRepos(
     List<(IdeGitRepository, IdeGitState)> a,
@@ -679,10 +693,17 @@ class IdeScmViewState extends State<IdeScmView>
   /// The rows of [states] ([_changeRows]), made again only when they or the
   /// view's settings changed.
   _ScmRows _rowsOf(List<(IdeGitRepository, IdeGitState)> states) {
-    if (_rowCache case final cache? when cache.isFor(states, _session)) {
+    final collapsed = widget.workspace.scmCollapsedRepositories;
+    if (_rowCache case final cache?
+        when cache.isFor(states, _session, collapsed)) {
       return cache;
     }
-    return _rowCache = _ScmRows(states, _session, _changeRows(states));
+    return _rowCache = _ScmRows(
+      states,
+      _session,
+      collapsed,
+      _changeRows(states),
+    );
   }
 
   /// The index of the row of [key] among [_rows]; -1 for none.
@@ -1149,7 +1170,11 @@ class IdeScmViewState extends State<IdeScmView>
       if (grouped) {
         rows.add(_RepositoryRow(git, state.count));
         // A folded repository shows its header alone.
-        if (widget.workspace.scmCollapsedRepositories.contains(state.root)) continue;
+        if (widget.workspace.scmCollapsedRepositories.contains(
+          git.service.root,
+        )) {
+          continue;
+        }
       }
       _repoRows(rows, grouped ? git : null, state);
     }
@@ -1791,7 +1816,7 @@ class IdeScmViewState extends State<IdeScmView>
   /// bold, its branch and how many changes it has, folding every group
   /// under it.
   Widget _repositoryRow(IdeGitRepository git) {
-    final root = git.state?.root ?? git.service.root;
+    final root = git.service.root;
     final branch = git.state?.head.branch;
     final collapsed = widget.workspace.scmCollapsedRepositories.contains(root);
     return IdeListRow(
