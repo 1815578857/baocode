@@ -51,21 +51,25 @@ Future<List<RemoteModel>> listUpstreamModels(
   try {
     // The first that lists any; else none, when one answered (the others,
     // guesses at where the list is, may refuse a key that is right: their
-    // errors are not the user's to see); else the first error that is not
+    // errors are not the user's to see) and the first, where the list is
+    // most likely, did not refuse the key; else the first error that is not
     // a missing path (a wrong key shows past it), or the first.
     UpstreamException? error;
+    _Refused? refusedFirst;
     var answered = false;
-    for (final url in urls) {
+    for (final (i, url) in urls.indexed) {
       try {
         final models = await _listModels(client, url, provider, key);
         if (models.isNotEmpty) return models;
         answered = true;
       } on UpstreamException catch (failed) {
+        if (i == 0 && failed is _Refused) refusedFirst = failed;
         if (error == null || error is _NotFound && failed is! _NotFound) {
           error = failed;
         }
       }
     }
+    if (refusedFirst != null) throw refusedFirst;
     if (error != null && !answered) throw error;
     return const [];
   } on SocketException catch (error) {
@@ -108,9 +112,11 @@ Future<List<RemoteModel>> _listModels(
       // Where it was asked: a wrong base URL shows in it.
       final message =
           '${upstreamErrorMessage(response.statusCode, text)} (GET $pageUrl)';
-      throw response.statusCode == 404 || response.statusCode == 405
-          ? _NotFound(message)
-          : UpstreamException(message);
+      throw switch (response.statusCode) {
+        404 || 405 => _NotFound(message),
+        401 || 403 => _Refused(message),
+        _ => UpstreamException(message),
+      };
     }
     final Object? json;
     try {
@@ -133,6 +139,11 @@ Future<List<RemoteModel>> _listModels(
 /// An upstream without the path asked.
 class _NotFound extends UpstreamException {
   const _NotFound(super.message);
+}
+
+/// The key refused (401, 403).
+class _Refused extends UpstreamException {
+  const _Refused(super.message);
 }
 
 Future<Map<String, String>> providerLaunchEnvironment(

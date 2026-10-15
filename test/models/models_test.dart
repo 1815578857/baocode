@@ -847,7 +847,21 @@ void main() {
       server.listen((request) async {
         asked.add(request.uri.path);
         final response = request.response;
-        if (request.uri.path != '/v1/models') {
+        if (relayUnder) {
+          if (request.uri.path == '/anthropic/v1/models') {
+            response.statusCode = 401;
+            response.write(
+              jsonEncode({
+                'error': {'message': 'bad key'},
+              }),
+            );
+          } else {
+            response.write(jsonEncode({'data': <Object>[]}));
+          }
+        } else if (request.uri.path != '/v1/models') {
+    // The relay under /anthropic refuses the key; the host's /v1/models,
+    // another service, lists nothing.
+    var relayUnder = false;
           response.statusCode = 404;
         } else if (request.headers.value('authorization') != 'Bearer $key') {
           response.statusCode = 401;
@@ -855,6 +869,7 @@ void main() {
             jsonEncode({
               'error': {'message': 'bad key'},
             }),
+      relayUnder = false;
           );
         } else {
           response.write(
@@ -907,3 +922,19 @@ void main() {
     });
   });
 }
+
+    test('a key the base URL refuses is not hidden by another list that '
+        'is empty', () async {
+      relayUnder = true;
+      await expectLater(
+        listUpstreamModels(at('/anthropic'), 'k'),
+        throwsA(
+          isA<UpstreamException>().having(
+            (error) => error.message,
+            'message',
+            contains('bad key'),
+          ),
+        ),
+      );
+      expect(asked, ['/anthropic/v1/models', '/v1/models']);
+    });
