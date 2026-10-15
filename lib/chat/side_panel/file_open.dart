@@ -7,7 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:path/path.dart' as p;
 
 import '../../ide/file_service.dart';
-import '../../workspace/editor_launcher.dart';
+import '../../ide/file_views.dart';
 import '../../workspace/window_controls.dart';
 import '../chat_models.dart';
 import 'file_link.dart';
@@ -371,14 +371,15 @@ class FileOpenScope extends InheritedWidget {
     )..onTap = () => activate(link, path, context);
   }
 
-  /// A click on [link], to the file at [path]: a web page here opens in
-  /// the browser ([opensInBrowser]); an image shows enlarged over
-  /// [context]'s window ([preview]); anything else opens (see [openLink]).
+  /// A click on [link], to the file at [path]: one opened outside the app
+  /// opens there ([openerOf], a web page here in the browser); an image
+  /// shows enlarged over [context]'s window ([preview]); anything else
+  /// opens (see [openLink]).
   void activate(FileLink link, String path, BuildContext? context) {
     if (context != null && link.range == null && showsImage(path)) {
       unawaited(preview(context, path, orElse: () => openLink(link)));
-    } else if (link.range == null && opensInBrowser(path)) {
-      unawaited(openExternal(path));
+    } else if (link.range == null ? openerOf(path) : null case final opener?) {
+      unawaited(opener.open(path));
     } else {
       openLink(link);
     }
@@ -392,14 +393,11 @@ class FileOpenScope extends InheritedWidget {
         (paths ?? p.context).extension(path).toLowerCase(),
       );
 
-  /// Whether a click on [path] opens it in the browser: a web page on this
-  /// machine.
-  bool opensInBrowser(String path) =>
-      local &&
-      const {
-        '.html',
-        '.htm',
-      }.contains((paths ?? p.context).extension(path).toLowerCase());
+  /// What a click on [path] opens it with outside the app (see
+  /// [FileViews.openerOf]): only a file on this machine; null to open it in
+  /// the app.
+  FileOpener? openerOf(String path) =>
+      local ? FileViews.openerOf(path) : null;
 
   static const _imageTypes = {
     '.png': 'image/png',
@@ -436,12 +434,12 @@ class FileOpenScope extends InheritedWidget {
   /// size can be known) takes more than [maxBytes].
   Future<ImageAttachment?> image(String path, {int? maxBytes}) async {
     final read = readBytes;
+    if (read == null) return null;
+    try {
       if ((maxBytes, sizeOf) case (final most?, final sizeOf?)
           when await sizeOf(path) > most) {
         return null;
       }
-    if (read == null) return null;
-    try {
       return ImageAttachment(
         bytes: await read(path),
         mediaType:
@@ -509,7 +507,7 @@ class FileOpenScope extends InheritedWidget {
               }
             }())
           : null,
-      browser: opensInBrowser(path),
+      opener: openerOf(path),
     );
   }
 

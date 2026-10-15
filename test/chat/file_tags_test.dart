@@ -11,6 +11,8 @@ import 'package:baocode/chat/chat_session.dart';
 import 'package:baocode/chat/composer/composer_draft.dart';
 import 'package:baocode/chat/composer/composer_embeds.dart';
 import 'package:baocode/chat/side_panel/file_open.dart';
+import 'package:baocode/chat/side_panel/web_page_opener.dart';
+import 'package:baocode/ide/file_views.dart';
 import 'package:baocode/theme/app_theme.dart';
 import 'package:baocode/theme/material_file_icons.dart';
 
@@ -60,9 +62,9 @@ void main() {
     List<ChatItem> items, {
     bool local = true,
     bool inPanel = false,
+    Map<String, int> sizes = const {},
   }) async {
     opened.clear();
-    Map<String, int> sizes = const {},
     requests.clear();
     read.clear();
     inIde.clear();
@@ -88,9 +90,9 @@ void main() {
               read.add(path);
               return Uint8List.fromList(_png);
             },
+            sizeOf: (path) async => sizes[path] ?? _png.length,
             child: ChatHistoryView(feed: _Feed(items)),
           ),
-            sizeOf: (path) async => sizes[path] ?? _png.length,
         ),
       ),
     );
@@ -132,8 +134,6 @@ void main() {
     expect(opened, isEmpty);
   }, variant: _desktop);
 
-  testWidgets('its right click has the file\'s menu, with the image\'s '
-      'own', (tester) async {
   testWidgets('an image too big to show small is not read for its tag', (
     tester,
   ) async {
@@ -141,6 +141,8 @@ void main() {
     expect(read, ['/p/shots/new.png']);
   }, variant: _desktop);
 
+  testWidgets('its right click has the file\'s menu, with the image\'s '
+      'own', (tester) async {
     await pump(tester, screenshots);
     await rightClick(tester, tester.getCenter(find.text('新版截图')));
 
@@ -169,9 +171,26 @@ void main() {
       UserMessageItem(text: 'Where is it?'),
       AssistantTextItem('See [the report](out/report.html).'),
     ];
+    // As the app registers it, the browser told of instead.
+    final browsed = <String>[];
+    FileViews.registerOpener(
+      FileOpener(
+        id: webPageOpener.id,
+        matches: webPageOpener.matches,
+        label: webPageOpener.label,
+        open: (path) async => browsed.add(path),
+      ),
+    );
+    addTearDown(() => FileViews.unregisterOpener(webPageOpener.id));
     await pump(tester, report);
     final scope = tester.widget<FileOpenScope>(find.byType(FileOpenScope));
-    expect(scope.opensInBrowser('/p/out/report.html'), isTrue);
+    expect(scope.openerOf('/p/out/report.html')?.id, webPageOpener.id);
+    await tester.tapAt(
+      tester.getCenter(find.byType(FileIcon)) + const Offset(30, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(browsed, ['/p/out/report.html']);
+    expect(opened, isEmpty);
     await rightClick(
       tester,
       tester.getCenter(find.byType(FileIcon)) + const Offset(30, 0),
@@ -200,7 +219,16 @@ void main() {
     // A remote project's opens as other files.
     await pump(tester, report, local: false);
     final remote = tester.widget<FileOpenScope>(find.byType(FileOpenScope));
-    expect(remote.opensInBrowser('/p/out/report.html'), isFalse);
+    expect(remote.openerOf('/p/out/report.html'), isNull);
+
+    // Nothing registered for it: it opens as other files.
+    FileViews.unregisterOpener(webPageOpener.id);
+    await pump(tester, report);
+    await tester.tapAt(
+      tester.getCenter(find.byType(FileIcon)) + const Offset(30, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(opened, ['/p/out/report.html']);
   }, variant: _desktop);
 
   testWidgets('an attached image\'s right click offers to show and copy '

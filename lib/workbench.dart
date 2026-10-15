@@ -24,6 +24,7 @@ import 'chat/panels/interaction_panel.dart';
 import 'chat/side_panel/file_open.dart';
 import 'chat/side_panel/side_panel_controller.dart';
 import 'chat/side_panel/side_panel_view.dart';
+import 'chat/side_panel/web_page_opener.dart';
 import 'customize/customization_store.dart';
 import 'customize/customizations.dart';
 import 'customize/customize_view.dart';
@@ -34,8 +35,8 @@ import 'ide/file_views.dart';
 import 'ide/file_service.dart'
     show
         IdeFileService,
-        IdeHostFiles,
         byteSizeThrough,
+        IdeHostFiles,
         ideIsImagePath,
         readBytesThrough,
         readFileBytes;
@@ -496,6 +497,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       if (StashController.current case final stash?) {
         FileViews.register(stashFileView(stash, onOpenAgent: _openAgent));
       }
+      // A web page a chat links to opens in the browser.
+      FileViews.registerOpener(webPageOpener);
       OpenRequests.listen((paths) => unawaited(_openPaths(paths)));
       _workspace.addListener(_syncRecentMenu);
       _syncRecentMenu();
@@ -3224,11 +3227,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
 
   final Map<String, IdeGitRepository> _sidePanelGits = {};
   final Map<String, Future<bool> Function(String)> _projectFileChecks = {};
+  final Map<String, Future<Uint8List> Function(String)> _projectByteReaders =
+      {};
 
   /// Where the files [thread]'s conversation names open: the side panel,
   /// or the IDE for its chat ([embedded]).
-  final Map<String, Future<Uint8List> Function(String)> _projectByteReaders =
-      {};
   FileLinkTarget _fileLinks(AgentThread thread, {required bool embedded}) {
     final (:files, :paths) = _projectFiles(thread);
     return FileLinkTarget(
