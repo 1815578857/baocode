@@ -14,6 +14,7 @@ import '../ide/file_views.dart';
 import '../ide/ide_button.dart';
 import '../ide/ide_dialog.dart';
 import '../ide/ide_hover.dart';
+import '../ide/ide_list.dart' show IdeListColors;
 import '../ide/ide_menu.dart';
 import '../ide/ide_modern_ui.dart';
 import '../ide/ide_quick_input.dart' show IdeKeycap;
@@ -92,8 +93,15 @@ class StashViewState extends State<StashView> with _StashActions {
   @override
   StashController get _controller => widget.controller;
 
-  /// The one shown beside the cards.
-  int? _open;
+  /// The one shown beside the cards. Another for the one shown is told
+  /// those that show it, not the whole page: the cards stay as they are,
+  /// but for whether they are the one ([_tap]).
+  final _shown = ValueNotifier<int?>(null);
+
+  /// The cards' list's.
+  final _list = GlobalKey();
+  int? get _open => _shown.value;
+  set _open(int? id) => _shown.value = id;
 
   /// Those picked with ⌘ (Ctrl), for what is done to several at once.
   final Set<int> _picked = {};
@@ -135,6 +143,7 @@ class StashViewState extends State<StashView> with _StashActions {
     _controller.removeListener(_changed);
     _controller.store.removeListener(_changed);
     _query.dispose();
+    _shown.dispose();
     super.dispose();
   }
 
@@ -260,11 +269,19 @@ class StashViewState extends State<StashView> with _StashActions {
     });
   }
 
+  /// A click on [note]: picked with ⌘ (Ctrl), else shown, or no longer
+  /// shown if it was.
   void _tap(StashNote note) {
     final keyboard = HardwareKeyboard.instance;
     final toggle = AppPlatform.isMacOS
         ? keyboard.isMetaPressed
         : keyboard.isControlPressed;
+    // One shown for another, none picked: what shows it changes, and the
+    // two cards' selection, not the page.
+    if (!toggle && _picked.isEmpty && _open != null && _open != note.id) {
+      _open = note.id;
+      return;
+    }
     setState(() {
       if (toggle) {
         // The one open is among those picked.
@@ -334,14 +351,20 @@ class StashViewState extends State<StashView> with _StashActions {
             builder: (context, constraints) {
               final room = constraints.maxWidth;
               final wide = room >= 760;
-              final list = _buildList(l10n);
+              // Kept as the stash beside it comes and goes: not built anew,
+              // where it was scrolled to.
+              final list = KeyedSubtree(key: _list, child: _buildList(l10n));
               if (open == null) return list;
-              final detail = StashDetail(
-                controller: _controller,
-                id: open.id,
-                onOpenAgent: widget.onOpenAgent,
-                onOpenLink: _openLink,
-                onClose: () => setState(() => _open = null),
+              // The one shown as [_tap] changes it.
+              final detail = ValueListenableBuilder(
+                valueListenable: _shown,
+                builder: (context, id, _) => StashDetail(
+                  controller: _controller,
+                  id: id ?? open.id,
+                  onOpenAgent: widget.onOpenAgent,
+                  onOpenLink: _openLink,
+                  onClose: () => setState(() => _open = null),
+                ),
               );
               if (!wide) return detail;
               final width = _widthOfDetail(room);
@@ -660,7 +683,8 @@ class StashViewState extends State<StashView> with _StashActions {
           return _StashCard(
             note: note,
             store: _controller,
-            selected: _open == note.id || _picked.contains(note.id),
+            selection: _shown,
+            selected: () => _open == note.id || _picked.contains(note.id),
             projectName: _projectName(note.project),
             onTap: () => _tap(note),
             onMenu: (position) => unawaited(_cardMenu(note, position)),
@@ -1398,6 +1422,7 @@ class _StashCard extends StatelessWidget {
   const _StashCard({
     required this.note,
     required this.store,
+    required this.selection,
     required this.selected,
     required this.projectName,
     required this.onTap,
@@ -1406,7 +1431,11 @@ class _StashCard extends StatelessWidget {
 
   final StashNote note;
   final StashController store;
-  final bool selected;
+
+  /// Whether it is selected, as [selection] says it may have changed: the
+  /// card's frame drawn anew, not what is in it.
+  final Listenable selection;
+  final ValueGetter<bool> selected;
   final String? projectName;
   final VoidCallback onTap;
   final ValueChanged<Offset> onMenu;
@@ -1416,145 +1445,153 @@ class _StashCard extends StatelessWidget {
     final l10n = context.l10n;
     final picture = note.images.firstOrNull;
     final done = note.status == StashStatus.done;
+    // Built once: a hover or a selection draws its frame anew alone.
+    final content = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (note.pinned) ...[
+                    Icon(Codicons.pinned, size: 12, color: AppColors.textMuted),
+                    const SizedBox(width: 4),
+                  ],
+                  Expanded(
+                    child: Text(
+                      note.displayTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        decoration: done ? TextDecoration.lineThrough : null,
+                        decorationColor: AppColors.textFaint,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Expanded(
+                child: Text(
+                  note.summary,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                    height: 1.45,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Text(
+                    note.tag,
+                    style: TextStyle(color: AppColors.textFaint, fontSize: 11),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _dateText(note.updated),
+                    style: TextStyle(color: AppColors.textFaint, fontSize: 11),
+                  ),
+                  const SizedBox(width: 6),
+                  if (projectName case final name?)
+                    Flexible(
+                      child: _Badge(icon: Codicons.folder, label: name),
+                    ),
+                  if (store.clarifying(note.id)) ...[
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: _Badge(
+                        icon: Codicons.sync,
+                        label: l10n.stashClarifying,
+                        spinning: true,
+                      ),
+                    ),
+                  ] else if (store.clarifyFailure(note.id) != null) ...[
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: _Badge(
+                        icon: Codicons.error,
+                        label: l10n.stashClarifyFailedShort,
+                        color: themeColors['errorForeground'],
+                      ),
+                    ),
+                  ],
+                  if (note.status != StashStatus.collected) ...[
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: _Badge(
+                        icon: _statusIcon(note.status),
+                        label: stashStatusLabel(l10n, note.status),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (picture != null) ...[
+          const SizedBox(width: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(5),
+            child: Image(
+              // Decoded no bigger than it shows (covering its square): a
+              // screenshot in full is tens of megabytes a card.
+              image: ResizeImage(
+                isRemoteStashPicture(picture)
+                    ? NetworkImage(picture)
+                    : io.stashImageProvider(store.store.absolute(picture)),
+                width: _thumbnailPixels(context),
+                height: _thumbnailPixels(context),
+                policy: ResizeImagePolicy.fit,
+              ),
+              width: 64,
+              height: 64,
+              fit: BoxFit.cover,
+              errorBuilder: (context, _, _) => const SizedBox(width: 64),
+            ),
+          ),
+        ],
+      ],
+    );
     final card = HoverBuilder(
       cursor: SystemMouseCursors.click,
       builder: (context, hovered) => GestureDetector(
         onTap: onTap,
         onSecondaryTapUp: (details) => onMenu(details.globalPosition),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: selected
-                ? themeColors['list.inactiveSelectionBackground']
-                : hovered
-                ? AppColors.hover
-                : AppColors.surface,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: selected ? themeColors['focusBorder'] : AppColors.border,
-            ),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        if (note.pinned) ...[
-                          Icon(
-                            Codicons.pinned,
-                            size: 12,
-                            color: AppColors.textMuted,
-                          ),
-                          const SizedBox(width: 4),
-                        ],
-                        Expanded(
-                          child: Text(
-                            note.displayTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              decoration: done
-                                  ? TextDecoration.lineThrough
-                                  : null,
-                              decorationColor: AppColors.textFaint,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: Text(
-                        note.summary,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 12,
-                          height: 1.45,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Text(
-                          note.tag,
-                          style: TextStyle(
-                            color: AppColors.textFaint,
-                            fontSize: 11,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          _dateText(note.updated),
-                          style: TextStyle(
-                            color: AppColors.textFaint,
-                            fontSize: 11,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        if (projectName case final name?)
-                          Flexible(
-                            child: _Badge(icon: Codicons.folder, label: name),
-                          ),
-                        if (store.clarifying(note.id)) ...[
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: _Badge(
-                              icon: Codicons.sync,
-                              label: l10n.stashClarifying,
-                              spinning: true,
-                            ),
-                          ),
-                        ] else if (store.clarifyFailure(note.id) != null) ...[
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: _Badge(
-                              icon: Codicons.error,
-                              label: l10n.stashClarifyFailedShort,
-                              color: themeColors['errorForeground'],
-                            ),
-                          ),
-                        ],
-                        if (note.status != StashStatus.collected) ...[
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: _Badge(
-                              icon: _statusIcon(note.status),
-                              label: stashStatusLabel(l10n, note.status),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
+        child: ListenableBuilder(
+          listenable: selection,
+          builder: (context, content) {
+            // As the explorer's selected file.
+            final on = selected();
+            return Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: on
+                    ? IdeListColors.activeSelection
+                    : hovered
+                    ? AppColors.hover
+                    : AppColors.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: on
+                      ? themeColors.get('list.focusAndSelectionOutline') ??
+                            IdeListColors.focusOutline
+                      : AppColors.border,
                 ),
               ),
-              if (picture != null) ...[
-                const SizedBox(width: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(5),
-                  child: Image(
-                    image: isRemoteStashPicture(picture)
-                        ? NetworkImage(picture)
-                        : io.stashImageProvider(store.store.absolute(picture)),
-                    width: 64,
-                    height: 64,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, _, _) => const SizedBox(width: 64),
-                  ),
-                ),
-              ],
-            ],
-          ),
+              child: content,
+            );
+          },
+          child: content,
         ),
       ),
     );
@@ -1569,6 +1606,11 @@ class _StashCard extends StatelessWidget {
       ),
     );
   }
+
+  /// The box a thumbnail is decoded within: twice its side, so that a
+  /// picture up to twice as wide as high still covers it.
+  static int _thumbnailPixels(BuildContext context) =>
+      (64 * 2 * MediaQuery.devicePixelRatioOf(context)).round();
 }
 
 class _DragFeedback extends StatelessWidget {

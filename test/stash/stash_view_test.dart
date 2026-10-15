@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:baocode/ide/ide_list.dart' show IdeListColors;
 import 'package:baocode/l10n/l10n.dart';
 import 'package:baocode/models/model_providers.dart';
 import 'package:baocode/stash/stash_ai.dart';
@@ -288,6 +289,56 @@ void main() {
     await tester.pumpAndSettle();
     expect(controller.detailWidth, isNull);
     expect(tester.getTopLeft(sash).dx, closeTo(before, 1));
+    await unmount(tester);
+  });
+
+  testWidgets('the card shown is drawn as the explorer\'s selected file; '
+      'another shown, the other cards are left as they were', (tester) async {
+    final ids = await tester.runAsync(
+      () async => [
+        for (final title in ['First', 'Second', 'Third'])
+          (await store.create(body: '$title\n\nmore')).id,
+      ],
+    );
+    // Not collected: none to be merged, which would ask the AI.
+    await tester.runAsync(() async {
+      for (final id in ids!) {
+        await store.update(id, (note) => note.status = StashStatus.requirement);
+      }
+    });
+    await pumpView(tester, open: ids![0]);
+    Finder card(String title) => find.descendant(
+      of: find.byWidgetPredicate((widget) => widget is Draggable),
+      matching: find.text(title),
+    );
+    Color? fill(String title) =>
+        (tester
+                    .widget<Container>(
+                      find
+                          .ancestor(
+                            of: card(title),
+                            matching: find.byWidgetPredicate(
+                              (widget) =>
+                                  widget is Container &&
+                                  widget.decoration is BoxDecoration,
+                            ),
+                          )
+                          .last,
+                    )
+                    .decoration!
+                as BoxDecoration)
+            .color;
+    expect(fill('First'), IdeListColors.activeSelection);
+    expect(fill('Second'), isNot(IdeListColors.activeSelection));
+    final third = tester.element(card('Third')).widget;
+
+    await tester.tap(card('Second'));
+    await tester.pumpAndSettle();
+    expect(fill('Second'), IdeListColors.activeSelection);
+    expect(fill('First'), isNot(IdeListColors.activeSelection));
+    expect(StashNoteEditorState.showing(ids[1]), isNotNull);
+    // Not built anew.
+    expect(identical(tester.element(card('Third')).widget, third), isTrue);
     await unmount(tester);
   });
 
