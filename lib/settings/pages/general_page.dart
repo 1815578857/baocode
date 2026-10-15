@@ -377,7 +377,7 @@ class GeneralSettingsPage extends StatelessWidget {
                       ),
                       onChanged: (on) => _write(
                         IdeAgentChanges.enabledSetting,
-                        on ? null : false,
+                        on ? true : null,
                       ),
                     ),
                     SettingsRow(

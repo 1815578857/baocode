@@ -136,8 +136,8 @@ void main() {
     expect(opened, isEmpty);
   });
 
-  test('the setting is on unless it is false', () {
-    expect(IdeAgentChanges.enabledBy(null), isTrue);
+  test('the setting is off unless it is true', () {
+    expect(IdeAgentChanges.enabledBy(null), isFalse);
     expect(IdeAgentChanges.enabledBy(true), isTrue);
     expect(IdeAgentChanges.enabledBy(false), isFalse);
   });

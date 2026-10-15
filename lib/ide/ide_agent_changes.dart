@@ -33,11 +33,12 @@ class IdeAgentChanges extends StatefulWidget {
   open;
 
   /// The setting that turns this on and off, in settings.json
-  /// (`chat.autoOpenAgentChanges`); on unless it is set to false.
+  /// (`chat.autoOpenAgentChanges`); off unless it is set to true: each
+  /// change would take the editor's tab from what is being looked at.
   static const enabledSetting = 'chat.autoOpenAgentChanges';
 
-  /// Whether the setting's value leaves it on.
-  static bool enabledBy(Object? value) => value != false;
+  /// Whether the setting's value turns it on.
+  static bool enabledBy(Object? value) => value == true;
 
   @override
   State<IdeAgentChanges> createState() => _IdeAgentChangesState();
