@@ -18,6 +18,7 @@ import 'package:baocode/kernel/agent_kernel.dart';
 import 'package:baocode/theme/app_theme.dart';
 import 'package:flutter/gestures.dart' show kSecondaryButton;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart'
     show FlutterQuillLocalizations;
 import 'package:flutter_test/flutter_test.dart';
@@ -260,6 +261,60 @@ void main() {
     expect(panel.repositoryOf(session.root!), _api);
     expect(_inList('new.go'), findsOneWidget);
     expect(_inList('index.html'), findsNothing);
+  });
+
+  testWidgets('a repository on the changes page has its menu on a right '
+      'click', (tester) async {
+    final site = FakeGit(_site)..status = '## main\x00 M index.html\x00';
+    final api = FakeGit(_api)..status = '## dev\x00 M main.go\x00';
+    final repositories = [(_site, site.repository()), (_api, api.repository())];
+    for (final (_, git) in repositories) {
+      addTearDown(git.dispose);
+    }
+    final (:panel, :session) = await _pump(
+      tester,
+      section: SidePanelSection.changes,
+      repositories: repositories,
+    );
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map)['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    Future<void> menuOf(String name) async {
+      await tester.tap(_inList(name), buttons: kSecondaryButton);
+      await tester.pumpAndSettle();
+    }
+
+    await menuOf('api');
+    expect(find.text('Reveal in Files'), findsOneWidget);
+    expect(find.text('Pull'), findsOneWidget);
+    expect(find.text('Push'), findsOneWidget);
+    await tester.tap(find.text('Copy Path'));
+    await tester.pumpAndSettle();
+    expect(copied, _api);
+
+    await menuOf('api');
+    await tester.tap(find.text('Fetch'));
+    await tester.pumpAndSettle();
+    expect(api.callsTo('fetch'), isNotEmpty);
+    expect(site.callsTo('fetch'), isEmpty);
+
+    await menuOf('api');
+    await tester.tap(find.text('Reveal in Files'));
+    await tester.pumpAndSettle();
+    expect(panel.tabsOf(session).section, SidePanelSection.files);
   });
 
   testWidgets('a folder\'s project lists the repositories found in its '

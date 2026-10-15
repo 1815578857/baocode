@@ -643,6 +643,7 @@ class AgentSidePanelView extends StatelessWidget {
                   panel.selectRepository(root, folder);
                 }
               },
+              menu: (root, git) => _repositoryMenu(context, root, git),
             ),
           // As the Source Control view's input, over the list.
           GitCommitBox(
@@ -797,6 +798,74 @@ class AgentSidePanelView extends StatelessWidget {
     context.l10n.cmdSaveAs,
     onSelected: () => _saveAs(context, path, tab),
   );
+
+  /// A repository's menu on the changes page, its folder [root]: a
+  /// terminal there, the folder in the files page or the file manager, its
+  /// path; then Source Control's Fetch, Pull and Push.
+  List<IdeMenuEntry> _repositoryMenu(
+    BuildContext context,
+    String root,
+    IdeGitRepository git,
+  ) {
+    final l10n = context.l10n;
+    final local = files is! IdeHostFiles;
+    final terminals = this.terminals;
+    Future<void> run(Future<void> Function() operation) async {
+      try {
+        await operation();
+      } catch (error) {
+        if (!context.mounted) return;
+        await showIdeDialog(
+          context,
+          type: IdeDialogType.error,
+          message: '$error',
+          buttons: const [],
+          cancel: l10n.commonOk,
+        );
+      }
+    }
+
+    return ideMenuGroups([
+      [
+        if (terminals != null)
+          IdeMenuAction(
+            l10n.explorerOpenInTerminal,
+            onSelected: () {
+              final shell = terminals.create(cwd: root);
+              panel.openTerminal(session, shell);
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => shell.focus(),
+              );
+            },
+          ),
+        IdeMenuAction(
+          l10n.sidePanelRevealInFiles,
+          onSelected: () => _revealInFiles(root),
+        ),
+        if (local && WindowControls.canRevealInFileManager)
+          IdeMenuAction(
+            l10n.revealInFileManager,
+            onSelected: () =>
+                unawaited(WindowControls.revealInFileManager(root)),
+          ),
+      ],
+      [
+        IdeMenuAction(
+          l10n.tabCopyPath,
+          onSelected: () =>
+              unawaited(Clipboard.setData(ClipboardData(text: root))),
+        ),
+      ],
+      [
+        IdeMenuAction(
+          l10n.scmFetch,
+          onSelected: () => unawaited(run(git.fetch)),
+        ),
+        IdeMenuAction(l10n.scmPull, onSelected: () => unawaited(run(git.pull))),
+        IdeMenuAction(l10n.scmPush, onSelected: () => unawaited(run(git.push))),
+      ],
+    ]);
+  }
 
   /// Shows [path] in the files page's tree.
   void _revealInFiles(String path) {
@@ -1953,18 +2022,20 @@ class _EmptyWorkspace extends StatelessWidget {
 }
 
 /// A workspace's repositories over its changes, as the IDE's Source Control
-/// Repositories: each with its branch and how many changes; the one picked
-/// is the one whose changes show.
+/// Repositories: each with its branch and how many changes, and its [menu]
+/// on a right click; the one picked is the one whose changes show.
 class _RepositoryList extends StatelessWidget {
   const _RepositoryList({
     required this.repositories,
     required this.selected,
     required this.onSelect,
+    required this.menu,
   });
 
   final List<(String root, IdeGitRepository git)> repositories;
   final IdeGitRepository? selected;
   final ValueChanged<String> onSelect;
+  final List<IdeMenuEntry> Function(String root, IdeGitRepository git) menu;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1984,6 +2055,13 @@ class _RepositoryList extends StatelessWidget {
             focused: true,
             tooltip: root,
             onTap: () => onSelect(root),
+            onContextMenu: (position) => unawaited(
+              showIdeMenu(
+                context,
+                position: position,
+                entries: menu(root, git),
+              ),
+            ),
             builder: (context, hovered) => Padding(
               padding: const EdgeInsets.only(left: 12, right: 8),
               child: Row(
