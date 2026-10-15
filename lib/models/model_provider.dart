@@ -738,16 +738,34 @@ const reservedHeaderNames = {
   'anthropic-version',
 };
 
-/// Whether a [ModelProvider.headers] may set [name]: a valid name that is
-/// not [reservedHeaderNames].
-bool isSettableHeader(String name) =>
-    isHeaderName(name) && !reservedHeaderNames.contains(name.toLowerCase());
+/// Beside [reservedHeaderNames], on a ChatGPT (Codex) upstream: the
+/// headers the app sets for each account and conversation, as the Codex
+/// CLI does.
+const codexReservedHeaderNames = {
+  'chatgpt-account-id',
+  'originator',
+  'session-id',
+};
 
-/// [headers] with the names that may not be set left out: how they go to
-/// an upstream ([upstreamHeaders]).
-Map<String, String> sanitizeHeaders(Map<String, String> headers) => {
+/// Whether a [ModelProvider.headers] may set [name]: a valid name that is
+/// not [reservedHeaderNames] (nor, to an upstream of [protocol] Codex,
+/// [codexReservedHeaderNames]).
+bool isSettableHeader(String name, [ProviderProtocol? protocol]) {
+  final lower = name.toLowerCase();
+  return isHeaderName(name) &&
+      !reservedHeaderNames.contains(lower) &&
+      !(protocol == ProviderProtocol.codex &&
+          codexReservedHeaderNames.contains(lower));
+}
+
+/// [headers] with the names that may not be set (to an upstream of
+/// [protocol]) left out: how they go to an upstream ([upstreamHeaders]).
+Map<String, String> sanitizeHeaders(
+  Map<String, String> headers, [
+  ProviderProtocol? protocol,
+]) => {
   for (final MapEntry(:key, :value) in headers.entries)
-    if (isSettableHeader(key)) key: value,
+    if (isSettableHeader(key, protocol)) key: value,
 };
 
 /// What a `{{…}}` in a custom header's value may stand for: a whitelisted
@@ -773,7 +791,9 @@ String substituteVariables(
   return value.replaceAllMapped(RegExp(r'\{\{([^}]*)\}\}'), (match) {
     final name = match.group(1)!.trim();
     final replacement = known[name];
-    return replacement == null || replacement.isEmpty ? match.group(0)! : replacement;
+    return replacement == null || replacement.isEmpty
+        ? match.group(0)!
+        : replacement;
   });
 }
 

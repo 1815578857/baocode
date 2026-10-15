@@ -115,6 +115,18 @@ void main() {
         }),
         {'x-session-id': 's'},
       );
+      // The Codex CLI's own, set by the app for each account and
+      // conversation: kept from a Codex upstream only.
+      const codexOwn = {
+        'chatgpt-account-id': 'other',
+        'Originator': 'nope',
+        'session-id': 'nope',
+        'x-tenant': 't',
+      };
+      expect(sanitizeHeaders(codexOwn, ProviderProtocol.codex), {
+        'x-tenant': 't',
+      });
+      expect(sanitizeHeaders(codexOwn, ProviderProtocol.anthropic), codexOwn);
       expect(
         substituteVariables(
           '{{CLAUDE_SESSION_ID}}/{{ANTHROPIC_MODEL}}/{{UNKNOWN}}/{{}}',
@@ -836,6 +848,9 @@ void main() {
     late HttpServer server;
     final asked = <String>[];
     var key = 'k';
+    // The relay under /anthropic refuses the key; the host's /v1/models,
+    // another service, lists nothing.
+    var relayUnder = false;
 
     setUp(() async {
       // Real sockets, on this machine: not the test binding's 400s.
@@ -843,6 +858,7 @@ void main() {
       ClaudeEnvironment.use(const {});
       asked.clear();
       key = 'k';
+      relayUnder = false;
       server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       server.listen((request) async {
         asked.add(request.uri.path);
@@ -859,9 +875,6 @@ void main() {
             response.write(jsonEncode({'data': <Object>[]}));
           }
         } else if (request.uri.path != '/v1/models') {
-    // The relay under /anthropic refuses the key; the host's /v1/models,
-    // another service, lists nothing.
-    var relayUnder = false;
           response.statusCode = 404;
         } else if (request.headers.value('authorization') != 'Bearer $key') {
           response.statusCode = 401;
@@ -869,7 +882,6 @@ void main() {
             jsonEncode({
               'error': {'message': 'bad key'},
             }),
-      relayUnder = false;
           );
         } else {
           response.write(
@@ -920,8 +932,6 @@ void main() {
       await listUpstreamModels(at(''), 'k');
       expect(asked, ['/v1/models']);
     });
-  });
-}
 
     test('a key the base URL refuses is not hidden by another list that '
         'is empty', () async {
@@ -938,3 +948,5 @@ void main() {
       );
       expect(asked, ['/anthropic/v1/models', '/v1/models']);
     });
+  });
+}

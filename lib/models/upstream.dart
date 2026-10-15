@@ -174,7 +174,10 @@ Map<String, String> customUpstreamHeaders(
   String? model,
   Map<String, String> request = const {},
 }) => {
-  for (final MapEntry(:key, :value) in sanitizeHeaders(provider.headers).entries)
+  for (final MapEntry(:key, :value) in sanitizeHeaders(
+    provider.headers,
+    provider.protocol,
+  ).entries)
     key: substituteVariables(value, request, session: session, model: model),
 };
 
