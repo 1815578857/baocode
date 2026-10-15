@@ -772,6 +772,7 @@
   "healthStopped": "{name} 已停止",
   "healthFolderGone": "项目文件夹不存在：{folder}",
   "healthHideDetails": "隐藏详细信息",
+  "markdownDetails": "详细信息",
   "healthDetails": "详细信息",
   "healthRetry": "重试",
   "interactionOther": "其他",

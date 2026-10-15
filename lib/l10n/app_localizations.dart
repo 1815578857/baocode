@@ -4730,6 +4730,12 @@ abstract class AppLocalizations {
   /// **'Hide details'**
   String get healthHideDetails;
 
+  /// The title of a folding section in a chat's markdown (HTML's <details>) that gives none.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get markdownDetails;
+
   /// No description provided for @healthDetails.
   ///
   /// In en, this message translates to:

@@ -2554,6 +2554,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get healthHideDetails => '隐藏详细信息';
 
   @override
+  String get markdownDetails => '详细信息';
+
+  @override
   String get healthDetails => '详细信息';
 
   @override

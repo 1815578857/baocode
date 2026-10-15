@@ -2649,6 +2649,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get healthHideDetails => 'Hide details';
 
   @override
+  String get markdownDetails => 'Details';
+
+  @override
   String get healthDetails => 'Details';
 
   @override

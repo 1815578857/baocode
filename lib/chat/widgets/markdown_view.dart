@@ -16,6 +16,7 @@ import 'hover_scrollbar.dart';
 import 'inline_code.dart';
 import 'markdown_cjk.dart';
 import 'markdown_math.dart';
+import 'markdown_tags.dart';
 import 'mermaid_code_block.dart';
 
 /// GitHub-flavored markdown as plain widgets (so a surrounding
@@ -48,15 +49,16 @@ class MarkdownView extends StatefulWidget {
   ];
 
   /// A document parsing as it does; one keeps the link definitions it
-  /// read (see the IDE's markdown preview).
-  static md.Document document() => md.Document(
+  /// read (see the IDE's markdown preview). The chat's has [tags] too: a
+  /// block between tags as a section that folds ([TagBlockSyntax]).
+  static md.Document document({bool tags = false}) => md.Document(
     extensionSet: md.ExtensionSet.gitHubFlavored,
-    blockSyntaxes: blockSyntaxes,
+    blockSyntaxes: [...blockSyntaxes, if (tags) const TagBlockSyntax()],
     inlineSyntaxes: inlineSyntaxes,
     encodeHtml: false,
   );
 
-  static final _document = document();
+  static final _document = document(tags: true);
 
   @override
   State<MarkdownView> createState() => _MarkdownViewState();
@@ -345,6 +347,8 @@ Widget? _block(md.Node node, TextStyle style, MarkdownOptions options) {
       );
     case 'table':
       return _Table(node: node, style: style, options: options);
+    case TagBlockSyntax.tag:
+      return TagSection(node: node, style: style, options: options);
     default:
       return InlineCodeText(_inlines([node], style, options));
   }

@@ -1733,6 +1733,10 @@
     }
   },
   "healthHideDetails": "Hide details",
+  "markdownDetails": "Details",
+  "@markdownDetails": {
+    "description": "The title of a folding section in a chat's markdown (HTML's <details>) that gives none."
+  },
   "healthDetails": "Details",
   "healthRetry": "Retry",
   "interactionOther": "Other",
