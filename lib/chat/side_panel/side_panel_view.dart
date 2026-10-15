@@ -17,6 +17,8 @@ import '../../ide/ide_explorer.dart';
 import '../../ide/ide_code_editor.dart' show IdeTextFormatter;
 import '../../ide/ide_hover.dart';
 import '../../ide/file_views.dart';
+import '../../ide/search/ide_search_view.dart';
+import '../../ide/search/text_search.dart' show IdeTextSearch, ideSearchText;
 import '../../ide/ide_list.dart';
 import '../../ide/ide_menu.dart';
 import '../../ide/ide_modern_ui.dart';
@@ -357,6 +359,7 @@ class AgentSidePanelView extends StatelessWidget {
     this.onOpenInIde,
     this.formatter,
     this.watchDirectory,
+    this.searchEngine = ideSearchText,
     this.git,
     this.terminals,
     this.terminalSkipShell = const [],
@@ -434,6 +437,10 @@ class AgentSidePanelView extends StatelessWidget {
   /// the explorer's own watch when null.
   final Stream<void> Function(String directory)? watchDirectory;
 
+  /// The files page's text search: the same engine the IDE searches with
+  /// (Git's file list, off the UI isolate), so its feel and speed match.
+  final IdeTextSearch searchEngine;
+
   /// The project's repository, whose changes the changes page lists; none
   /// where Git is not at hand.
   final IdeGitRepository? git;
@@ -498,6 +505,9 @@ class AgentSidePanelView extends StatelessWidget {
             paths: _paths,
           );
     final local = files is! IdeHostFiles;
+    // Whether this project's files page shows the text search in place of
+    // the tree (the header's magnifier).
+    final searching = root != null && panel.searchShown(root);
     return _Page(
       key: const ValueKey(('page', SidePanelSection.files)),
       panel: panel,
@@ -507,10 +517,12 @@ class AgentSidePanelView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _ListHeader(
-                  title: switch (workspaceName) {
-                    final name? => l10n.ideWorkspaceTitle(name),
-                    null => _paths.basename(explorer.root),
-                  },
+                  title: searching
+                      ? l10n.sidePanelSearchResults
+                      : switch (workspaceName) {
+                          final name? => l10n.ideWorkspaceTitle(name),
+                          null => _paths.basename(explorer.root),
+                        },
                   actions: [
                     if (onAddFolder case final add? when _isWorkspace)
                       IdeActionButton(
@@ -519,19 +531,51 @@ class AgentSidePanelView extends StatelessWidget {
                         onPressed: add,
                       ),
                     IdeActionButton(
-                      icon: Codicons.refresh,
-                      tooltip: l10n.cmdRefreshExplorer,
-                      onPressed: () => unawaited(explorer.refresh()),
+                      icon: searching ? Codicons.close : Codicons.search,
+                      tooltip: searching
+                          ? l10n.sidePanelCloseSearch
+                          : l10n.sidePanelSearchFiles,
+                      onPressed: () =>
+                          panel.setSearchShown(explorer.root, !searching),
                     ),
-                    IdeActionButton(
-                      icon: Codicons.collapseAll,
-                      tooltip: l10n.cmdCollapseExplorerFolders,
-                      onPressed: explorer.collapseAll,
-                    ),
+                    if (!searching) ...[
+                      IdeActionButton(
+                        icon: Codicons.refresh,
+                        tooltip: l10n.cmdRefreshExplorer,
+                        onPressed: () => unawaited(explorer.refresh()),
+                      ),
+                      IdeActionButton(
+                        icon: Codicons.collapseAll,
+                        tooltip: l10n.cmdCollapseExplorerFolders,
+                        onPressed: explorer.collapseAll,
+                      ),
+                    ],
                   ],
                 ),
                 Expanded(
-                  child: _isWorkspace && roots.isEmpty
+                  child: searching
+                      ? IdeSearchView(
+                          session: panel.searchOf(explorer.root, searchEngine),
+                          root: explorer.root,
+                          // Escape closes the search, the tree back.
+                          onEscape: () =>
+                              panel.setSearchShown(explorer.root, false),
+                          // Searching alone: a replace would write into a
+                          // project this panel only looks at.
+                          onOpen: (path, range, {required focusEditor}) async =>
+                              panel.open(
+                                session,
+                                FileOpenRequest(
+                                  path,
+                                  range: FileLineRange(
+                                    range.start.line + 1,
+                                    range.end.line + 1,
+                                  ),
+                                ),
+                              ),
+                          onError: (error) => _showFileError(context, error),
+                        )
+                      : _isWorkspace && roots.isEmpty
                       ? _EmptyWorkspace(onAddFolder: onAddFolder)
                       : IdeExplorer(
                           key: ObjectKey(explorer),

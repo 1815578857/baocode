@@ -3575,7 +3575,9 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     IdeSideView.search => IdeSearchView(
       key: _searchKey,
       session: _search,
-      workspace: widget.workspace,
+      root: widget.workspace.root,
+      // The workspace's own: replacing writes into its documents.
+      replaceBackend: widget.workspace,
       onOpen: (path, range, {required focusEditor}) =>
           _open(path, range: range, select: true, focusEditor: focusEditor),
       onError: _report,
@@ -3919,9 +3921,8 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                               FileViews.byId(active.view!) != null
                         ? KeyedSubtree(
                             key: ValueKey(active),
-                            child: FileViews.byId(
-                              active.view!,
-                            )!.build(context, active.path),
+                            child: FileViews.byId(active.view!)!
+                                .build(context, active.path),
                           )
                         : active.isMedia
                         ? IdeImagePreview(

@@ -8,6 +8,8 @@ import '../../ide/git/git_repository.dart';
 import '../../ide/git/ide_scm_view.dart' show IdeScmSession;
 import '../../ide/ide_code_editor.dart' show IdeCodeHighlights;
 import '../../ide/ide_explorer.dart';
+import '../../ide/search/ide_search_view.dart';
+import '../../ide/search/text_search.dart';
 import '../../settings/user_settings.dart';
 import 'file_edit.dart';
 import 'file_open.dart';
@@ -216,6 +218,27 @@ class AgentSidePanel extends ChangeNotifier {
       roots: roots,
       paths: paths ?? p.context,
     );
+  }
+
+  /// The files page's text search of each project (by its folder), kept
+  /// while the panel is: its query and results stay as they were when
+  /// another page or project shows.
+  final Map<String, IdeSearchSession> _searches = {};
+
+  /// The search of the project in [root], run by [engine]; made once per
+  /// project (its results then still there on coming back).
+  IdeSearchSession searchOf(String root, IdeTextSearch engine) =>
+      _searches[root] ??= IdeSearchSession(engine: engine);
+
+  /// The projects whose files page shows the search rather than the tree.
+  final Set<String> _searching = {};
+
+  /// Whether the project in [root] shows its files page's search.
+  bool searchShown(String root) => _searching.contains(root);
+
+  void setSearchShown(String root, bool shown) {
+    final changed = shown ? _searching.add(root) : _searching.remove(root);
+    if (changed) notifyListeners();
   }
 
   /// Has the tree of the workspace in [root] show [roots], its folders
@@ -520,6 +543,10 @@ class AgentSidePanel extends ChangeNotifier {
       explorer.dispose();
     }
     _explorers.clear();
+    for (final search in _searches.values) {
+      search.dispose();
+    }
+    _searches.clear();
     super.dispose();
   }
 }

@@ -1527,6 +1527,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sidePanelNoFolder => 'This conversation has no project folder';
 
   @override
+  String get sidePanelSearchFiles => 'Search the project\'s files';
+
+  @override
+  String get sidePanelSearchResults => 'Search Results';
+
+  @override
+  String get sidePanelCloseSearch => 'Close the search';
+
+  @override
   String get sidePanelShowList => 'Show List';
 
   @override

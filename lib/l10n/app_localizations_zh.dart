@@ -1486,6 +1486,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sidePanelNoFolder => '这个对话没有项目文件夹';
 
   @override
+  String get sidePanelSearchFiles => '搜索项目文本';
+
+  @override
+  String get sidePanelSearchResults => '搜索结果';
+
+  @override
+  String get sidePanelCloseSearch => '关闭搜索';
+
+  @override
   String get sidePanelShowList => '显示列表';
 
   @override
