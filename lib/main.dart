@@ -32,6 +32,7 @@ import 'icons/emoji_sheet.dart';
 import 'icons/icon_library.dart';
 import 'icons/icon_storage.dart';
 import 'icons/site_icons.dart';
+import 'kernel/claude_code/claude_code_kernel.dart';
 import 'kernel/claude_code/claude_onboarding.dart';
 import 'kernel/claude_code/claude_path_setting.dart';
 import 'kernel/claude_code/process_transport.dart';
@@ -141,6 +142,9 @@ Future<void> main(List<String> arguments) async {
         ClaudePathSetting.parse(files.settings[ClaudePathSetting.settingKey]);
     // Settings → Models: the upstreams, kept in settings.json.
     ModelProviders.current = ModelProviders.settings(files.settings);
+    // Claude Code's own models as it last listed them: in the picker
+    // before a session on them starts.
+    ClaudeCodeKernel.modelCache = files.storage;
     // The upstreams' sites' icons, for those that show no other: in the
     // cache, fetched as soon as one is added.
     SiteIcons.current = SiteIcons(

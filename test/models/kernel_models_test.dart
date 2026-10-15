@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:baocode/kernel/agent_kernel.dart';
 import 'package:baocode/kernel/claude_code/claude_code_kernel.dart';
 import 'package:baocode/kernel/claude_code/claude_code_transport.dart';
@@ -6,6 +8,7 @@ import 'package:baocode/kernel/transcript.dart';
 import 'package:baocode/kernel/mock/mock_kernels.dart';
 import 'package:baocode/models/model_provider.dart';
 import 'package:baocode/models/model_providers.dart';
+import 'package:baocode/settings/user_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../kernel_test.dart' show FakeCli;
@@ -152,11 +155,11 @@ void main() {
       'HTTP 401: bad key',
     );
 
-    // Hidden, Claude Code's own are offered only while in use.
+    // Turned off, Claude Code's own are left out, in use or not.
     await providers.setBuiltinHidden(true);
     expect(
       kernel.model.options.map((o) => o.group?.id),
-      contains(builtinProviderId),
+      isNot(contains(builtinProviderId)),
     );
     kernel.model.select('@gw/gpt-5');
     await pumpEventQueue();
@@ -167,9 +170,9 @@ void main() {
     kernel.dispose();
   });
 
-  test('Claude Code with no models of its own (not logged in) is left out '
-      'for a provider\'s, unless in use; each heading and model has an '
-      'icon', () async {
+  test('Claude Code with no models known yet (not logged in, or on a '
+      'provider since the app started) still offers its "Default"; each '
+      'heading and model has an icon', () async {
     final clis = <FakeCli>[];
     final kernel = ClaudeCodeKernel(
       MockKernels.claudeCode,
@@ -188,19 +191,79 @@ void main() {
     );
     kernel.prepare();
     await pumpEventQueue();
-    // In use: its "Default" stays, to show what is.
     expect(kernel.model.options.first.id, 'default');
     expect(kernel.model.options.first.group!.iconBuilder, isNotNull);
+    // On a provider's model, it stays: picking it is how its models come.
     kernel.model.select('@gw/gpt-5');
     await pumpEventQueue();
     final options = kernel.model.options;
-    expect(options.map((o) => o.id), isNot(contains('default')));
-    expect(options.map((o) => o.group?.id), isNot(contains(builtinProviderId)));
+    expect(options.first.id, 'default');
+    expect(options.first.group!.id, builtinProviderId);
     for (final option in options) {
       expect(option.iconBuilder, isNotNull, reason: option.id);
       expect(option.group!.iconBuilder, isNotNull, reason: option.id);
     }
     kernel.dispose();
+  });
+
+  test('Claude Code\'s own models are kept as it lists them, and listed '
+      'from there in a run whose sessions are all on a provider', () async {
+    final folder = await Directory.systemTemp.createTemp('model_cache');
+    final storage = GlobalStorage(
+      '${folder.path}/storage.json',
+      debounce: Duration.zero,
+    );
+    await storage.load();
+    ClaudeCodeKernel.modelCache = storage;
+    addTearDown(() async {
+      ClaudeCodeKernel.modelCache = null;
+      await folder.delete(recursive: true);
+    });
+    const opus = {'value': 'opus', 'displayName': 'Opus'};
+    ClaudeCodeKernel kernelOn(String? model, List<Object?> listed) =>
+        ClaudeCodeKernel(
+          MockKernels.claudeCode,
+          KernelContext(cwd: '/p', settings: {'model': ?model}),
+          start: (launch) async => FakeCli(
+            answers: {
+              'initialize': {'commands': const [], 'models': listed},
+            },
+          ),
+          providers: providers,
+          providerEnvironment: (provider, model) async => const {},
+        );
+
+    // On its own: what it lists is kept.
+    final own = kernelOn(null, [opus]);
+    own.prepare();
+    await pumpEventQueue();
+    own.dispose();
+    for (var i = 0; i < 100; i++) {
+      if (storage.get<List<Object?>>(ClaudeCodeKernel.modelCacheKey) != null) {
+        break;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+    await storage.load();
+    expect(storage.get<List<Object?>>(ClaudeCodeKernel.modelCacheKey), [opus]);
+
+    // The next run, on a provider: its models listed from the cache, and
+    // what the CLI lists on the provider not kept over them.
+    ClaudeCodeKernel.modelCache = storage;
+    final onProvider = kernelOn('@gw/gpt-5', [
+      {'value': 'gpt-5'},
+    ]);
+    onProvider.prepare();
+    await pumpEventQueue();
+    final opusOption = onProvider.model.options.firstWhere(
+      (o) => o.id == 'opus',
+    );
+    expect(opusOption.label, 'Opus');
+    expect(opusOption.group!.id, builtinProviderId);
+    expect(onProvider.model.options.map((o) => o.id), isNot(contains('gpt-5')));
+    await storage.load();
+    expect(storage.get<List<Object?>>(ClaudeCodeKernel.modelCacheKey), [opus]);
+    onProvider.dispose();
   });
 
   test('a provider\'s model offers every effort and context, unless it has '
