@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show TextSelection;
 import 'package:path/path.dart' as p;
 
 import 'package:bao_editor/monaco/flutter/editor_document_model.dart';
@@ -178,6 +179,11 @@ class IdeDocument {
   /// Whether its file was deleted while open: the tab says so, and saving
   /// makes the file again (VS Code's orphaned editors).
   bool deleted = false;
+
+  /// Where its carets were when its editor was last let go (a preview, an
+  /// image or a placeholder shown in its place): given back when it is
+  /// shown again, as upstream keeps an editor's view state.
+  List<TextSelection>? selections;
 
   /// Tells the tab apart from [path]'s others.
   String get key => label == null ? path : '$path\u0000$label';

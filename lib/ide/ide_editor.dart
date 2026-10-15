@@ -356,6 +356,13 @@ class IdeEditorState extends State<IdeEditor> {
     _nativeController = _nativeControllers.putIfAbsent(doc, () {
       final controller = EditorSurfaceController(document: doc.model)
         ..detectIndentation();
+      // Where it was left, while it still fits the text.
+      final length = doc.model.text.length;
+      if (doc.selections case final kept?
+          when kept.isNotEmpty &&
+              kept.every((s) => s.isValid && s.start >= 0 && s.end <= length)) {
+        controller.setSelections(kept);
+      }
       // Its lines pasted into the chat go in as a reference to them; not
       // so a revision's, whose lines are not the file's.
       if (doc.readRevision == null) {
@@ -1133,7 +1140,9 @@ class IdeEditorState extends State<IdeEditor> {
       document.dispose();
     }
     _textMateDocuments.clear();
-    for (final controller in _nativeControllers.values) {
+    for (final MapEntry(key: doc, value: controller)
+        in _nativeControllers.entries) {
+      doc.selections = controller.selections;
       controller.dispose();
     }
     _nativeControllers.clear();
