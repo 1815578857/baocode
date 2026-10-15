@@ -1847,6 +1847,7 @@ class ChatComposerState extends State<ChatComposer>
                             kind: setting.kind,
                             options: setting.options,
                             selected: setting.selected,
+                            toggle: setting.toggle,
                             onSelected: (choice) => unawaited(
                               _switchModel(
                                 option,

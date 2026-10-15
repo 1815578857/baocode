@@ -140,6 +140,10 @@ abstract interface class ModelSetting {
 
   /// Picks [id], with [model] in use: switched to first, if another is.
   void select(String model, String id);
+
+  /// Whether this setting is on or off rather than one of several: shown
+  /// and picked as a switch, and picked without the menu closing.
+  bool get toggle => false;
 }
 
 /// The key a setting of [kind] picked with [model] is kept under, beside

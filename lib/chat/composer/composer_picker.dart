@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import '../../ide/ide_fuzzy.dart';
 import '../../ide/ide_hover.dart';
 import '../../ide/ide_menu.dart' show IdeMenuColors;
+import '../../ide/ide_switch.dart';
 import '../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
@@ -466,7 +467,12 @@ class ComposerPickerState extends State<ComposerPicker> {
       for (final option in setting.options) (setting, option),
   ];
 
+  /// Picks [option] in [setting]. One that is a switch ([setting] is on or
+  /// off) leaves the menu, and its settings, where they are: what it turns
+  /// on is looked at with them still open, more than once. Any other is a
+  /// choice made and done with, and closes them.
   void _selectSetting(ModelSettingChoice setting, KernelOption option) {
+    if (setting.toggle) return setting.onSelected(option);
     _setOpen(false);
     setting.onSelected(option);
   }
@@ -893,7 +899,7 @@ class ComposerPickerState extends State<ComposerPicker> {
                 describes: submenu && widget.describes,
                 height: submenu ? _rowHeight : _settingRowHeight,
                 selected: option == setting.selected,
-                toggle: setting.kind == KernelChoiceKind.fast,
+                toggle: setting.toggle,
                 index: starts[i] + j,
                 highlight: _settingHighlight,
                 onHover: () => _setting = starts[i] + j,
@@ -1605,16 +1611,10 @@ class _SettingRow extends StatelessWidget {
                 ),
               ),
               if (toggle)
-                SizedBox(
-                  width: 44,
-                  height: 26,
-                  child: FittedBox(
-                    child: Switch(
-                      value: selected,
-                      onChanged: (_) => onTap(),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
+                IdeSwitch(
+                  value: selected,
+                  semanticLabel: option.label,
+                  onChanged: (_) => onTap(),
                 )
               else if (selected)
                 Icon(
