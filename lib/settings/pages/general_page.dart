@@ -212,12 +212,42 @@ class GeneralSettingsPage extends StatelessWidget {
   /// The explorer's exclusions as a list for
   /// [IdeExplorerExcludes.settingKey]: the comma-separated patterns typed
   /// in the field, trimmed; null (the setting removed) when there are none.
-  static List<String>? _excludePatterns(String value) {
+  @visibleForTesting
+  static List<String>? excludePatterns(String value) {
     final patterns = [
-      for (final part in value.split(','))
+      for (final part in splitPatterns(value))
         if (part.trim().isNotEmpty) part.trim(),
     ];
     return patterns.isEmpty ? null : patterns;
+  }
+
+  /// [value] split at its commas, but not those in a glob's `{a,b}` or
+  /// `[…]`: `*.{log,tmp}` is one pattern.
+  @visibleForTesting
+  static List<String> splitPatterns(String value) {
+    final parts = <String>[];
+    final part = StringBuffer();
+    var braces = 0;
+    var brackets = false;
+    for (final char in value.split('')) {
+      switch (char) {
+        case '[' when !brackets:
+          brackets = true;
+        case ']' when brackets:
+          brackets = false;
+        case '{' when !brackets:
+          braces++;
+        case '}' when !brackets && braces > 0:
+          braces--;
+        case ',' when braces == 0 && !brackets:
+          parts.add('$part');
+          part.clear();
+          continue;
+      }
+      part.write(char);
+    }
+    parts.add('$part');
+    return parts;
   }
 
   @override
@@ -362,7 +392,7 @@ class GeneralSettingsPage extends StatelessWidget {
                         semanticLabel: l10n.explorerExcludeSetting,
                         onSubmitted: (value) => _write(
                           IdeExplorerExcludes.settingKey,
-                          _excludePatterns(value),
+                          excludePatterns(value),
                         ),
                       ),
                     ),
