@@ -176,8 +176,10 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen>
     with TickerProviderStateMixin, ChatKeyTarget {
-  /// As wide as the setting lets the column grow (see [ChatWidth]).
-  double get _maxContentWidth => ChatWidth.current.value;
+  /// As wide as the setting lets the column grow (see [ChatWidth]); in the
+  /// IDE ([ChatScreen.embedded]) across its pane, not in its middle.
+  double get _maxContentWidth =>
+      widget.embedded ? double.infinity : ChatWidth.current.value;
 
   /// Whether the conversation has a minimap: in the agents' window, not a
   /// pane of the IDE's, unless turned off (see [ChatMinimap.enabled]).

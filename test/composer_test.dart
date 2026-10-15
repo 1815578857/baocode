@@ -107,6 +107,21 @@ void main() {
     expect(width(false), width(true) - 2 * UserMessageBubble.radius);
   });
 
+  testWidgets('in the IDE the conversation spans its pane, not centered in '
+      'it', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    Rect composer() => tester.getRect(find.byType(ChatComposer).last);
+
+    await pumpScreen(tester);
+    expect(composer().left, greaterThan(300));
+
+    await pumpScreen(tester, embedded: true);
+    expect(composer().left, lessThanOrEqualTo(24));
+    expect(composer().width, greaterThanOrEqualTo(1400 - 2 * 24));
+  });
+
   testWidgets('@ opens the files of the project, narrowed by what follows', (
     tester,
   ) async {
