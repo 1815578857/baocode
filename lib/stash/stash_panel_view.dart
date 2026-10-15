@@ -14,7 +14,6 @@ import '../ide/ide_input.dart';
 import '../ide/ide_list.dart';
 import '../ide/ide_menu.dart';
 import '../ide/ide_motion.dart';
-import '../ide/ide_spinning.dart';
 import '../keybindings/keybinding_service.dart';
 import '../l10n/l10n.dart';
 import '../models/auxiliary_model_menu.dart';
@@ -265,6 +264,7 @@ class _StashPanelViewState extends State<StashPanelView> {
                         clarifying: _controller.clarifying(note.id),
                         failure: _controller.clarifyFailure(note.id),
                         onClarify: () => _clarify(note.id),
+                        onCancel: () => _controller.cancelClarify(note.id),
                       ),
                       _ => null,
                     },
@@ -1557,18 +1557,20 @@ class _PillButton extends StatelessWidget {
 
 /// Say Clearly in the bar, as in the Stash page's detail: the model it
 /// asks picked by its arrow (one for every AI action, picked the first
-/// time it is used); turning while it goes on, in the background; where it
-/// failed, why in its tooltip, and a click tries again.
+/// time it is used); a click cancels while it goes on; where it failed,
+/// why in its tooltip, and a click tries again.
 class _ClarifyPill extends StatelessWidget {
   const _ClarifyPill({
     required this.clarifying,
     required this.failure,
     required this.onClarify,
+    required this.onCancel,
   });
 
   final bool clarifying;
   final StashClarifyFailure? failure;
   final Future<void> Function() onClarify;
+  final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -1576,25 +1578,26 @@ class _ClarifyPill extends StatelessWidget {
     final failure = this.failure;
     final error = themeColors['errorForeground'];
     return HoverBuilder(
-      cursor: clarifying ? MouseCursor.defer : SystemMouseCursors.click,
+      cursor: SystemMouseCursors.click,
       builder: (context, hovered) {
-        final lit = hovered && !clarifying;
         final color = failure != null
             ? error
-            : lit
+            : hovered
             ? AppColors.text
             : AppColors.textMuted;
-        final icon = clarifying
-            ? IdeSpinning(Icon(Codicons.sync, size: 13, color: color))
-            : Icon(
-                failure == null ? Codicons.sparkle : Codicons.error,
-                size: 13,
-                color: color,
-              );
+        final icon = Icon(
+          clarifying
+              ? Codicons.stop
+              : failure == null
+              ? Codicons.sparkle
+              : Codicons.error,
+          size: 13,
+          color: color,
+        );
         return Container(
           height: 24,
           decoration: BoxDecoration(
-            color: lit ? AppColors.hover : Colors.transparent,
+            color: hovered ? AppColors.hover : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.partBorder),
           ),
@@ -1603,17 +1606,21 @@ class _ClarifyPill extends StatelessWidget {
             children: [
               Builder(
                 builder: (context) => IdeHover(
-                  message: switch (failure) {
-                    null => l10n.stashExpandHint,
-                    (changed: true, message: _) => l10n.stashClarifyChanged,
-                    (changed: false, :final message) => l10n.stashExpandFailed(
-                      message ?? l10n.stashAiNoAnswer,
-                    ),
-                  },
+                  message: clarifying
+                      ? l10n.stashCancelClarify
+                      : switch (failure) {
+                          null => l10n.stashExpandHint,
+                          (changed: true, message: _) =>
+                            l10n.stashClarifyChanged,
+                          (changed: false, :final message) =>
+                            l10n.stashExpandFailed(
+                              message ?? l10n.stashAiNoAnswer,
+                            ),
+                        },
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: clarifying
-                        ? null
+                        ? onCancel
                         : () {
                             final anchor = anchorOf(context);
                             if (anchor == null) return;
@@ -1630,7 +1637,7 @@ class _ClarifyPill extends StatelessWidget {
                           const SizedBox(width: 5),
                           Text(
                             clarifying
-                                ? l10n.stashClarifying
+                                ? l10n.stashCancelClarify
                                 : failure != null
                                 ? l10n.stashClarifyFailedShort
                                 : l10n.stashExpand,

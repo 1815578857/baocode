@@ -184,7 +184,8 @@ void main() {
     final note = await store.create(body: 'btn hidden');
     await controller.edit(note.id);
     final answer = Completer<String>();
-    controller.clarifier = (controller, id, text) => answer.future;
+    controller.clarifier = (controller, id, text, {cancellation}) =>
+        answer.future;
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: const [
@@ -204,8 +205,23 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     }
     expect(controller.clarifying(note.id), isTrue);
-    expect(find.text(l10n.stashClarifying), findsOneWidget);
-    answer.complete('The button is hidden.');
+    expect(find.text(l10n.stashCancelClarify), findsOneWidget);
+    await tester.tap(find.text(l10n.stashCancelClarify));
+    await tester.pumpAndSettle();
+    expect(controller.clarifying(note.id), isFalse);
+    expect(find.text(l10n.stashExpand), findsOneWidget);
+    answer.complete('Old reply');
+    await tester.pumpAndSettle();
+    expect(StashNoteEditorState.showing(note.id)!.markdown, 'btn hidden');
+    expect(controller.clarifyFailure(note.id), isNull);
+
+    final retry = Completer<String>();
+    controller.clarifier = (controller, id, text, {cancellation}) =>
+        retry.future;
+    await tester.tap(find.text(l10n.stashExpand));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(controller.clarifying(note.id), isTrue);
+    retry.complete('The button is hidden.');
     await tester.pumpAndSettle();
     expect(controller.clarifying(note.id), isFalse);
     expect(
@@ -214,7 +230,7 @@ void main() {
     );
 
     var asked = 0;
-    controller.clarifier = (controller, id, text) async {
+    controller.clarifier = (controller, id, text, {cancellation}) async {
       asked++;
       throw const StashAiException('Not signed in');
     };

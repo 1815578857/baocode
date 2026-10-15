@@ -14049,6 +14049,12 @@ abstract class AppLocalizations {
   /// **'Clarifying…'**
   String get stashClarifying;
 
+  /// No description provided for @stashCancelClarify.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop Clarifying'**
+  String get stashCancelClarify;
+
   /// No description provided for @stashClarifyFailedShort.
   ///
   /// In en, this message translates to:
