@@ -1197,11 +1197,14 @@ void main() {
     final second = find.textContaining('Second', findRichText: true);
     expect(second, findsOneWidget);
     expect(find.textContaining('First', findRichText: true), findsOneWidget);
-    expect(find.byKey(const ValueKey('changes:c2')), findsNothing);
+    const file = ValueKey('file:c2:/p/lib/main.dart');
+    expect(find.byKey(file), findsNothing);
 
     await tester.tap(second);
     await tester.pumpAndSettle();
-    final changes = find.byKey(const ValueKey('changes:c2')).first;
+    // Under its folder, lib.
+    expect(find.byKey(const ValueKey('folder:c2:/p/lib')), findsOneWidget);
+    final changes = find.byKey(file).first;
     expect(tester.getSize(changes).height, IdeListColors.rowHeight);
     await tester.tap(
       find

@@ -421,10 +421,24 @@ void main() {
       ),
     );
     expect(label.letter, 'A');
+    // As a tree: the files under their folder, one level in; the folder
+    // closes and opens.
+    expect(
+      tester.getTopLeft(text('b.dart')).dx,
+      greaterThan(tester.getTopLeft(text('lib')).dx),
+    );
+    await tester.tap(rowOf('lib'));
+    await tester.pumpAndSettle();
+    expect(text('a.dart'), findsNothing);
+    expect(text('b.dart'), findsNothing);
+    await tester.tap(rowOf('lib'));
+    await tester.pumpAndSettle();
+    expect(text('b.dart'), findsOneWidget);
 
     await tester.tap(find.textContaining('Second', findRichText: true));
     await tester.pumpAndSettle();
     expect(text('b.dart'), findsNothing);
+    expect(text('lib'), findsNothing);
   });
 
   testWidgets('a commit\'s files grow in, and so does a refresh\'s new '
@@ -441,11 +455,13 @@ void main() {
 
     await tester.tap(find.textContaining('Second', findRichText: true));
     await tester.pump();
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 60));
-    expect(height('changes:c2'), greaterThan(0));
-    expect(height('changes:c2'), lessThan(2 * IdeListColors.rowHeight));
+    final file = 'file:c2:${inRoot('lib/b.dart')}';
+    expect(height(file), greaterThan(0));
+    expect(height(file), lessThan(IdeListColors.rowHeight));
     await tester.pumpAndSettle();
-    expect(height('changes:c2'), 2 * IdeListColors.rowHeight);
+    expect(height(file), IdeListColors.rowHeight);
 
     git.refs['HEAD'] = 'c3';
     git.log =

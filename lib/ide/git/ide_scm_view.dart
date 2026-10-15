@@ -144,14 +144,52 @@ class IdeScmSession {
 }
 
 /// What the Graph pane keeps: the commit selected, which are open (the
-/// session's), their changes once asked for, the list's scroll and focus.
+/// session's), their changes as trees once they came and the folders of
+/// them closed, the list's scroll and focus.
 class IdeGitGraphController extends ChangeNotifier {
   IdeGitGraphController(this.expanded);
 
   final Set<String> expanded;
   final FocusNode focusNode = FocusNode(debugLabel: 'scm graph');
   final ScrollController scroll = ScrollController();
-  final Map<String, Future<List<IdeGitCommitChange>>> _changes = {};
+
+  /// The commits whose changes were asked for, and those that came.
+  final Set<String> _asked = {};
+  final Map<String, _CommitTree> _trees = {};
+  bool _disposed = false;
+
+  /// [id]'s changes as a tree once they came (under [root], spelled as
+  /// [paths]); asked for once, the graph built again when they come.
+  _CommitTree? _treeOf(
+    IdeGitRepository git,
+    String id,
+    String root,
+    p.Context paths,
+  ) {
+    if (_trees[id] case final tree?) return tree;
+    if (_asked.add(id)) {
+      unawaited(
+        git
+            .commitChanges(id)
+            .then(
+              (changes) => changes,
+              onError: (Object _) => const <IdeGitCommitChange>[],
+            )
+            .then((changes) {
+              if (_disposed) return;
+              _trees[id] = _CommitTree(id, root, changes, paths);
+              notifyListeners();
+            }),
+      );
+    }
+    return null;
+  }
+
+  /// Closes [folder] of [tree], or opens it.
+  void _toggleFolder(_CommitTree tree, IdeScmTreeFolder folder) {
+    tree.toggle(folder);
+    notifyListeners();
+  }
 
   String? _selected;
   String? get selected => _selected;
@@ -162,11 +200,6 @@ class IdeGitGraphController extends ChangeNotifier {
   }
 
   bool get hasFocus => focusNode.hasPrimaryFocus;
-
-  Future<List<IdeGitCommitChange>> _changesOf(
-    IdeGitRepository git,
-    String id,
-  ) => _changes.putIfAbsent(id, () => git.commitChanges(id));
 
   /// Opens [row]'s commit, or closes it; the incoming and outgoing changes
   /// do not open.
@@ -206,10 +239,78 @@ class IdeGitGraphController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     focusNode.dispose();
     scroll.dispose();
     super.dispose();
   }
+}
+
+/// A commit's changed files as the Source Control view's tree shows a
+/// group's (see scm_tree.dart), built once; its rows, the closed folders'
+/// files left out, laid out again only when a folder opens or closes.
+class _CommitTree {
+  _CommitTree(this.id, this.root, List<IdeGitCommitChange> changes, this.paths)
+    : _changes = {for (final change in changes) change.path: change},
+      _nodes = ideScmTree(root, [
+        for (final change in changes)
+          IdeGitResource(
+            path: change.path,
+            originalPath: change.originalPath,
+            status: _CommitTreeRow.statusOf(change.status),
+            group: IdeGitGroup.staged,
+          ),
+      ], paths: paths);
+
+  final String id;
+  final String root;
+  final p.Context paths;
+  final Map<String, IdeGitCommitChange> _changes;
+  final List<IdeScmTreeNode> _nodes;
+
+  /// The folders closed, by path.
+  final Set<String> _collapsed = {};
+  List<_TreeEntry>? _rows;
+
+  bool isCollapsed(IdeScmTreeFolder folder) => _collapsed.contains(folder.path);
+
+  void toggle(IdeScmTreeFolder folder) {
+    if (!_collapsed.remove(folder.path)) _collapsed.add(folder.path);
+    _rows = null;
+  }
+
+  /// The rows shown: each folder, and what is in it unless it is closed.
+  List<_TreeEntry> get rows => _rows ??= () {
+    final rows = <_TreeEntry>[];
+    void add(List<IdeScmTreeNode> nodes, int depth) {
+      for (final node in nodes) {
+        switch (node) {
+          case IdeScmTreeFolder(:final path):
+            rows.add(_TreeEntry(ValueKey('folder:$id:$path'), node, depth));
+            if (!_collapsed.contains(path)) add(node.children, depth + 1);
+          case IdeScmTreeFile(:final resource):
+            rows.add(
+              _TreeEntry(ValueKey('file:$id:${resource.path}'), node, depth),
+            );
+        }
+      }
+    }
+
+    add(_nodes, 0);
+    return rows;
+  }();
+
+  IdeGitCommitChange changeOf(IdeGitResource resource) =>
+      _changes[resource.path]!;
+}
+
+/// A row of a [_CommitTree]: a folder or a file, [depth] folders in.
+class _TreeEntry {
+  const _TreeEntry(this.key, this.node, this.depth);
+
+  final Key key;
+  final IdeScmTreeNode node;
+  final int depth;
 }
 
 class IdeScmView extends StatefulWidget {
@@ -2733,19 +2834,40 @@ class IdeGitGraph extends StatelessWidget {
     builder: (context, _) {
       final rows = git.graph;
       if (rows == null) return const SizedBox.shrink();
-      final items = <Widget>[];
+      // Every row's key, and what builds it when it scrolls into view: an
+      // open commit's thousands of files cost their keys alone.
+      final keys = <Key>[];
+      final builders = <WidgetBuilder>[];
+      void add(Key key, WidgetBuilder builder) {
+        keys.add(key);
+        builders.add(builder);
+      }
+
+      final paths = git.service.pathContext;
       for (final row in rows) {
-        final expanded = controller.expanded.contains(row.commit.id);
-        items.add(_graphRow(context, row, expanded));
-        if (expanded) items.addAll(_commitChangeRows(row));
+        final id = row.commit.id;
+        final expanded = controller.expanded.contains(id);
+        add(
+          ValueKey('commit:$id'),
+          (context) => _graphRow(context, row, expanded),
+        );
+        if (!expanded) continue;
+        final tree = controller._treeOf(git, id, root, paths);
+        if (tree == null) {
+          add(ValueKey('changes:$id'), (_) => _loadingRow(row));
+          continue;
+        }
+        for (final entry in tree.rows) {
+          add(entry.key, (_) => _treeRow(row, tree, entry));
+        }
       }
       if (git.graphHasMore) {
         final lanes = rows.isEmpty
             ? const <IdeGraphLane>[]
             : rows.last.outputLanes;
-        items.add(
-          _LoadMoreRow(
-            key: const ValueKey('more'),
+        add(
+          const ValueKey('more'),
+          (_) => _LoadMoreRow(
             lanes: lanes,
             onShown: () => unawaited(git.loadMoreGraph()),
           ),
@@ -2753,7 +2875,12 @@ class IdeGitGraph extends StatelessWidget {
       }
       return Focus(
         focusNode: controller.focusNode,
-        child: IdeAnimatedList(controller: controller.scroll, children: items),
+        child: IdeAnimatedList.builder(
+          controller: controller.scroll,
+          itemExtent: IdeListColors.rowHeight,
+          keys: keys,
+          itemBuilder: (context, index) => builders[index](context),
+        ),
       );
     },
   );
@@ -2899,60 +3026,49 @@ class IdeGitGraph extends StatelessWidget {
     ];
   }
 
-  List<Widget> _commitChangeRows(IdeGraphRow row) {
-    final id = row.commit.id;
-    final future = controller._changesOf(git, id);
-    final lanes = row.outputLanes;
-    return [
-      // Grows from the loading row to the files as they arrive.
-      AnimatedSize(
-        key: ValueKey('changes:$id'),
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
-        alignment: Alignment.topCenter,
-        child: FutureBuilder<List<IdeGitCommitChange>>(
-          future: future,
-          builder: (context, snapshot) {
-            final changes = snapshot.data;
-            if (changes == null) {
-              return SizedBox(
-                height: IdeListColors.rowHeight,
-                child: Row(
-                  children: [
-                    const SizedBox(width: 4),
-                    CustomPaint(
-                      size: Size(
-                        ideGraphPlaceholderWidth(lanes),
-                        IdeListColors.rowHeight,
-                      ),
-                      painter: IdeGraphPlaceholderPainter(
-                        lanes,
-                        highlight: row.circleIndex,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-            return Column(
-              children: [
-                for (final change in changes)
-                  _CommitChangeRow(
-                    change: change,
-                    root: root,
-                    lanes: lanes,
-                    highlight: row.circleIndex,
-                    onOpen: change.status == 'D'
-                        ? null
-                        : () => onOpen(change.path),
-                  ),
-              ],
-            );
-          },
+  /// The row under an open commit while its changes load: its lanes.
+  Widget _loadingRow(IdeGraphRow row) => SizedBox(
+    height: IdeListColors.rowHeight,
+    child: Row(
+      children: [
+        const SizedBox(width: 4),
+        CustomPaint(
+          size: Size(
+            ideGraphPlaceholderWidth(row.outputLanes),
+            IdeListColors.rowHeight,
+          ),
+          painter: IdeGraphPlaceholderPainter(
+            row.outputLanes,
+            highlight: row.circleIndex,
+          ),
         ),
-      ),
-    ];
-  }
+      ],
+    ),
+  );
+
+  /// A folder or file of [row]'s commit's [tree]: a folder opens or closes,
+  /// a file (but a deleted one) opens.
+  Widget _treeRow(IdeGraphRow row, _CommitTree tree, _TreeEntry entry) =>
+      switch (entry.node) {
+        final IdeScmTreeFolder folder => _CommitTreeRow(
+          lanes: row.outputLanes,
+          highlight: row.circleIndex,
+          depth: entry.depth,
+          tree: tree,
+          folder: folder,
+          onTap: () => controller._toggleFolder(tree, folder),
+        ),
+        IdeScmTreeFile(:final resource) => _CommitTreeRow(
+          lanes: row.outputLanes,
+          highlight: row.circleIndex,
+          depth: entry.depth,
+          tree: tree,
+          resource: resource,
+          onTap: resource.status == IdeGitStatus.indexDeleted
+              ? null
+              : () => onOpen(resource.path),
+        ),
+      };
 }
 
 class _Action {
@@ -3215,14 +3331,16 @@ class _SplitButtonState extends State<_SplitButton> {
   }
 }
 
-/// A reference badge: 18px high and round, in the reference's color, with
-/// its icon and name (cut short of room).
+/// A reference badge: 18px high and round, with its icon and name (cut
+/// short of room); filled with the reference's color, else outlined in the
+/// description's, quiet on any row (a selected one's color is often the
+/// badges' default).
 class _RefBadge extends StatelessWidget {
   const _RefBadge(this.ref, this.color);
 
   final IdeGitRef ref;
 
-  /// The reference's color id; none for the default label.
+  /// The reference's color id; none for an outlined badge.
   final String? color;
 
   static IconData icon(IdeGitRefKind kind) => switch (kind) {
@@ -3237,20 +3355,27 @@ class _RefBadge extends StatelessWidget {
     final branch = ref.kind == IdeGitRefKind.branch;
     final colors = themeColors;
     final color = this.color;
-    final foreground =
-        colors[color == null
-            ? 'scmGraph.historyItemHoverDefaultLabelForeground'
-            : 'scmGraph.historyItemHoverLabelForeground'];
+    final foreground = color == null
+        ? colors['descriptionForeground']
+        : colors['scmGraph.historyItemHoverLabelForeground'];
+    final shape = BorderRadius.circular(10);
     return IdeHover(
       message: ref.name,
       child: Container(
         height: 18,
         decoration: BoxDecoration(
-          color:
-              colors[color ??
-                  'scmGraph.historyItemHoverDefaultLabelBackground'],
-          borderRadius: BorderRadius.circular(10),
+          color: color == null ? null : colors[color],
+          borderRadius: shape,
         ),
+        // Drawn over, so the icon and name sit as in a filled one.
+        foregroundDecoration: color == null
+            ? BoxDecoration(
+                border: Border.all(
+                  color: foreground.withValues(alpha: foreground.a * .6),
+                ),
+                borderRadius: shape,
+              )
+            : null,
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -3394,23 +3519,30 @@ class IdeCommitHover extends StatelessWidget {
   }
 }
 
-/// A file an expanded commit changed, beside the commit's lanes.
-class _CommitChangeRow extends StatelessWidget {
-  const _CommitChangeRow({
-    required this.change,
-    required this.root,
+/// A folder or file of an open commit's changes, beside the commit's
+/// lanes, [depth] folders in: a folder with its twistie, a file with its
+/// status letter.
+class _CommitTreeRow extends StatelessWidget {
+  const _CommitTreeRow({
     required this.lanes,
     required this.highlight,
-    required this.onOpen,
+    required this.depth,
+    required this.tree,
+    this.folder,
+    this.resource,
+    required this.onTap,
   });
 
-  final IdeGitCommitChange change;
-  final String root;
   final List<IdeGraphLane> lanes;
   final int highlight;
-  final VoidCallback? onOpen;
+  final int depth;
+  final _CommitTree tree;
+  final IdeScmTreeFolder? folder;
+  final IdeGitResource? resource;
+  final VoidCallback? onTap;
 
-  static IdeGitStatus _status(String letter) => switch (letter) {
+  /// The status of a change's letter (`git show --name-status`).
+  static IdeGitStatus statusOf(String letter) => switch (letter) {
     'A' => IdeGitStatus.indexAdded,
     'D' => IdeGitStatus.indexDeleted,
     'R' => IdeGitStatus.indexRenamed,
@@ -3421,13 +3553,17 @@ class _CommitChangeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = _status(change.status);
-    final folder = p.dirname(p.relative(change.path, from: root));
+    final paths = tree.paths;
+    final folder = this.folder;
+    final resource = this.resource;
+    final path = folder?.path ?? resource!.path;
+    final relative = paths.relative(path, from: tree.root);
+    final collapsed = folder != null && tree.isCollapsed(folder);
     return IdeListRow(
-      onTap: onOpen,
-      tooltip:
-          '${p.relative(change.path, from: root)} • '
-          '${status.localizedLabel(context.l10n)}',
+      onTap: onTap,
+      tooltip: resource == null
+          ? relative
+          : '$relative • ${resource.status.localizedLabel(context.l10n)}',
       builder: (context, _) => Row(
         children: [
           const SizedBox(width: 4),
@@ -3438,18 +3574,33 @@ class _CommitChangeRow extends StatelessWidget {
             ),
             painter: IdeGraphPlaceholderPainter(lanes, highlight: highlight),
           ),
-          FileIcon(change.path),
+          SizedBox(width: depth * IdeListColors.indent),
+          SizedBox(
+            width: 22,
+            child: folder == null
+                ? null
+                : Icon(
+                    collapsed ? Codicons.chevronRight : Codicons.chevronDown,
+                    size: 16,
+                    color: IdeListColors.foreground,
+                  ),
+          ),
+          if (folder != null)
+            FolderIcon(path, expanded: !collapsed)
+          else
+            FileIcon(path),
           const SizedBox(width: 6),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(right: 12),
-              child: IdeResourceLabel(
-                name: p.basename(change.path),
-                description: folder == '.' ? null : folder,
-                strikeThrough: status.strikeThrough,
-                letter: change.status,
-                letterColor: status.color,
-              ),
+              child: resource == null
+                  ? IdeResourceLabel(name: folder!.label)
+                  : IdeResourceLabel(
+                      name: paths.basename(path),
+                      strikeThrough: resource.status.strikeThrough,
+                      letter: tree.changeOf(resource).status,
+                      letterColor: resource.status.color,
+                    ),
             ),
           ),
         ],
@@ -3460,7 +3611,7 @@ class _CommitChangeRow extends StatelessWidget {
 
 /// The last row while older commits load: the lanes going on.
 class _LoadMoreRow extends StatefulWidget {
-  const _LoadMoreRow({super.key, required this.lanes, required this.onShown});
+  const _LoadMoreRow({required this.lanes, required this.onShown});
 
   final List<IdeGraphLane> lanes;
   final VoidCallback onShown;
