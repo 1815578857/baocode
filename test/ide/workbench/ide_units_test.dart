@@ -297,6 +297,50 @@ void main() {
     expect(await readGitBranch(p.join(root, 'lib')), 'topic');
   });
 
+  test('a repository inside the project is listed by its own Git, unless '
+      'the project ignores it (#68)', () async {
+    final dir = await Directory.systemTemp.createTemp('baocode-ide-nested-');
+    addTearDown(() => dir.delete(recursive: true));
+    final root = dir.path;
+    Future<void> write(String relative, String text) async {
+      final file = File(p.joinAll([root, ...relative.split('/')]));
+      await file.parent.create(recursive: true);
+      await file.writeAsString(text);
+    }
+
+    Future<void> git(String relative, List<String> arguments) async {
+      final result = await Process.run('git', [
+        '-c',
+        'init.defaultBranch=main',
+        ...arguments,
+      ], workingDirectory: p.joinAll([root, ...relative.split('/')]));
+      expect(result.exitCode, 0, reason: '${result.stderr}');
+    }
+
+    await write('README.md', '');
+    await write('.gitignore', 'ignored/\n');
+    await write('assets/framework/common/a.ts', '');
+    await write('assets/framework/.gitignore', 'out/\n');
+    await write('assets/framework/out/b.js', '');
+    await write('ignored/c.ts', '');
+    await git('', ['init', '-q']);
+    await git('assets/framework', ['init', '-q']);
+    await git('ignored', ['init', '-q']);
+    final listing = await listProjectFiles(IdeFileService(root), root);
+    expect(
+      [
+        for (final path in listing.paths)
+          p.relative(path, from: root).replaceAll(r'\', '/'),
+      ],
+      [
+        '.gitignore',
+        'README.md',
+        'assets/framework/.gitignore',
+        'assets/framework/common/a.ts',
+      ],
+    );
+  });
+
   test('generic listing walks any file service', () async {
     final files = TreeFiles({
       inRoot('a.txt'): '',
