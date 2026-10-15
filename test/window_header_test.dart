@@ -101,6 +101,25 @@ void main() {
     expect(controls(reports().last), isNot(controls(reports().first)));
   }, variant: _windows);
 
+  testWidgets('Back to Chat takes Open in Fast Ide\'s place as it is, so '
+      'the switch does not jump', (tester) async {
+    final (workspace, _) = await pumpWindowsApp(tester);
+    workspace.preferredEditor = Editor.fastIde;
+    await tester.pump();
+    final header = find.byType(WindowHeader);
+    final open = tester.getRect(
+      find.descendant(of: header, matching: find.byType(OpenInEditorButton)),
+    );
+
+    workspace.layout = WorkspaceLayout.ide;
+    await tester.pump();
+    await tester.pump();
+    final back = tester.getRect(
+      find.descendant(of: header, matching: find.byType(BackToChatButton)),
+    );
+    expect(back, open);
+  }, variant: _windows);
+
   testWidgets('over the IDE it is the IDE\'s title bar: no line under it, '
       'and the way back to the chat on the right', (tester) async {
     final (workspace, calls) = await pumpWindowsApp(tester);

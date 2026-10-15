@@ -9,13 +9,15 @@ import '../ide/ide_hover.dart';
 import '../keybindings/chat_keybindings.dart';
 import '../l10n/l10n.dart';
 import '../sidebar/sidebar_menu.dart';
+import 'back_to_chat_button.dart';
 import 'editor_launcher.dart';
 import 'workspace.dart';
 
 /// Split button for the title bar: opens [project] in the preferred editor
 /// (the Fast Ide layout, or an app); its chevron switches which editor that
 /// is (without opening it, and remembered), or copies the path. In the
-/// colors of the IDE's Back to Chat button, its counterpart there.
+/// colors of the IDE's [BackToChatButton], its counterpart there, and as
+/// wide: the layout switches between them without a jump.
 class OpenInEditorButton extends StatelessWidget {
   const OpenInEditorButton({
     super.key,
@@ -74,8 +76,10 @@ class OpenInEditorButton extends StatelessWidget {
       ],
       builder: (context, menu) {
         final foreground = IdeButtonColors.foreground;
+        final width = titleBarSwitchWidth(context);
         return Container(
           height: 22,
+          constraints: BoxConstraints(minWidth: width),
           decoration: BoxDecoration(
             color: IdeButtonColors.background,
             borderRadius: BorderRadius.circular(4),
@@ -84,36 +88,42 @@ class OpenInEditorButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _Segment(
-                semanticsLabel: open,
-                // The Fast Ide's with the keys of Open in Fast Ide, which
-                // does the same; an app's has none.
-                tooltip: editor == Editor.fastIde
-                    ? ChatKeys.titleWithKey(
-                        open,
-                        ChatCommandIds.openIde,
-                        ChatKeys.chatLayout,
-                      )
-                    : open,
-                onTap: () => _open(editor),
-                padding: const EdgeInsets.only(left: 8, right: 6),
-                borderRadius: const BorderRadius.horizontal(
-                  left: Radius.circular(3),
+              ConstrainedBox(
+                // The label's part fills what the chevron leaves.
+                constraints: BoxConstraints(
+                  minWidth: width - 2 - openInEditorChevronWidth,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(editor.icon, size: 14, color: foreground),
-                    const SizedBox(width: 4),
-                    Text(
-                      editor.localizedPlatformLabel(context.l10n),
-                      style: TextStyle(
-                        color: foreground,
-                        fontSize: 12,
-                        height: 16 / 12,
+                child: _Segment(
+                  semanticsLabel: open,
+                  // The Fast Ide's with the keys of Open in Fast Ide, which
+                  // does the same; an app's has none.
+                  tooltip: editor == Editor.fastIde
+                      ? ChatKeys.titleWithKey(
+                          open,
+                          ChatCommandIds.openIde,
+                          ChatKeys.chatLayout,
+                        )
+                      : open,
+                  onTap: () => _open(editor),
+                  padding: const EdgeInsets.only(left: 8, right: 6),
+                  borderRadius: const BorderRadius.horizontal(
+                    left: Radius.circular(3),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(editor.icon, size: 16, color: foreground),
+                      const SizedBox(width: 4),
+                      Text(
+                        editor.localizedPlatformLabel(context.l10n),
+                        style: TextStyle(
+                          color: foreground,
+                          fontSize: 12,
+                          height: 16 / 12,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               // As IdeButton's split button has it.
