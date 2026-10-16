@@ -62,17 +62,23 @@ class LocalFiles {
   Future<List<IdeFile>> _list(String directory) async {
     final resolved = await _resolved(directory);
     final entries = await Directory(resolved).list(followLinks: false).toList();
-    final files = <IdeFile>[
-      for (final entry in entries)
-        if (entry is Directory || entry is File)
-          if (!(entry is Directory ? _hiddenDirectories : _hiddenFiles)
-              .contains(p.basename(entry.path)))
-            IdeFile(
-              entry.path,
-              p.basename(entry.path),
-              isDirectory: entry is Directory,
-            ),
-    ];
+    final files = <IdeFile>[];
+    for (final entry in entries) {
+      // A link is what it leads to, as VS Code's explorer shows it; one
+      // leading nowhere, a file.
+      final isDirectory = switch (entry) {
+        Directory() => true,
+        File() => false,
+        Link() => await FileSystemEntity.isDirectory(entry.path),
+        _ => null,
+      };
+      if (isDirectory == null) continue;
+      final name = p.basename(entry.path);
+      if ((isDirectory ? _hiddenDirectories : _hiddenFiles).contains(name)) {
+        continue;
+      }
+      files.add(IdeFile(entry.path, name, isDirectory: isDirectory));
+    }
     files.sort((a, b) {
       if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
       return a.name.toLowerCase().compareTo(b.name.toLowerCase());
