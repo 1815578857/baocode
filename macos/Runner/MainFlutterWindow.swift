@@ -513,9 +513,17 @@ class BaoWindow: NSWindow {
 /// It also answers for the app what is the app's, not a window's: the color
 /// theme's appearance, the File menu.
 class MainFlutterWindow: BaoWindow {
+  /// Where its place and size are kept (the user defaults'), for the next
+  /// launch.
+  private static let frameName = "BaoCodeMainWindow"
+
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
     setUp(flutter: flutterViewController, suffix: "", size: Self.defaultSize)
+    // Where the user left it, as big as they made it (kept in the user
+    // defaults as it changes); centered, as above, the first time.
+    setFrameUsingName(Self.frameName)
+    setFrameAutosaveName(Self.frameName)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
