@@ -92,6 +92,11 @@ class ClaudeTranslator {
 
   final Map<String, _Tool> _tools = {};
   final Map<String, _Agent> _agents = {};
+
+  /// The call that started each subagent, by the CLI's id of it (its
+  /// task's): one continued (`SendMessage`) runs again on a call of its
+  /// own, and goes on in the card of the first.
+  final Map<String, String> _agentCalls = {};
   final Set<String> _denied = {};
 
   /// Calls made and not answered yet: those of a stopped turn never are.
@@ -1057,6 +1062,9 @@ class ClaudeTranslator {
       case 'Agent' || 'Task':
         final agent = _agents[id];
         if (agent == null) return;
+        if (_string(structured?['agentId']) case final agentId?) {
+          _agentCalls[agentId] = id;
+        }
         if (structured?['status'] == 'async_launched') {
           // Launched in the background: what it says is for the agent (its
           // id, where its output goes). It reports in a notification.
@@ -1413,6 +1421,10 @@ class ClaudeTranslator {
       case 'task_started' when !replaying:
         final taskId = message['task_id'] as String;
         final agent = message['task_type'] == 'local_agent';
+        final call = message['tool_use_id'] as String?;
+        // A subagent's task is its card's, continued or not.
+        final card = agent ? _agentCard(taskId, call) : null;
+        if (card != null) _agentCalls[taskId] = card;
         _tasks[taskId] = KernelTask(
           id: taskId,
           description: _string(message['description']) ?? '',
@@ -1423,13 +1435,20 @@ class ClaudeTranslator {
               : KernelTaskKind.other,
           status: CommandStatus.running,
           startedAt: DateTime.now(),
-          toolUseId: message['tool_use_id'] as String?,
+          toolUseId: card ?? call,
           background: message['is_backgrounded'] == true,
           outputFile: _string(message['output_file']) ?? _taskOutputs[taskId],
         );
         _reportTasks();
+        // Continued: at work again, in its card.
+        if (_agents[card] case final continued? when card != call) {
+          continued.item = continued.item.copyWith(
+            status: CommandStatus.running,
+          );
+          _putAgent(card!);
+        }
         if (message['is_backgrounded'] == true) {
-          _agentToBackground(message['tool_use_id'] as String?);
+          _agentToBackground(card ?? call);
         }
       case 'task_progress' when !replaying:
         final taskId = message['task_id'] as String;
@@ -1440,7 +1459,10 @@ class ClaudeTranslator {
           _tasks[taskId] = task.copyWith(summary: summary);
           _reportTasks();
         }
-        final toolUseId = message['tool_use_id'] as String?;
+        final toolUseId = _agentCard(
+          taskId,
+          message['tool_use_id'] as String?,
+        );
         final agent = toolUseId == null ? null : _agents[toolUseId];
         if (agent != null) {
           agent.item = agent.item.copyWith(
@@ -1493,6 +1515,11 @@ class ClaudeTranslator {
     }
   }
 
+  /// The card of the subagent the task [taskId] runs, started or continued
+  /// by the call [toolUseId]; null when it runs none we know of.
+  String? _agentCard(String? taskId, String? toolUseId) =>
+      _agents.containsKey(toolUseId) ? toolUseId : _agentCalls[taskId];
+
   /// The subagent [toolUseId] started, if one did, now runs on its own.
   void _agentToBackground(String? toolUseId) {
     final agent = toolUseId == null ? null : _agents[toolUseId];
@@ -1540,7 +1567,8 @@ class ClaudeTranslator {
     // subagent's card (its report comes in the notification to the agent,
     // see _agentNotified).
     final tool = toolUseId == null ? null : _tools[toolUseId];
-    if (_agents[toolUseId] case final agent?) {
+    final card = _agentCard(taskId, toolUseId);
+    if (_agents[card] case final agent?) {
       agent.item = agent.item.copyWith(
         status: status,
         tokens: usage['total_tokens'] as int?,
@@ -1550,7 +1578,7 @@ class ClaudeTranslator {
           _ => null,
         },
       );
-      _putAgent(toolUseId!);
+      _putAgent(card!);
     }
     if (tool != null && tool.name == 'Bash') {
       _put(
@@ -1585,7 +1613,10 @@ class ClaudeTranslator {
   /// A background subagent stopped, as the CLI tells its agent: how, and
   /// its report.
   void _agentNotified(String notification) {
-    final id = _tag(notification, 'tool-use-id');
+    final id = _agentCard(
+      _tag(notification, 'task-id'),
+      _tag(notification, 'tool-use-id'),
+    );
     final agent = id == null ? null : _agents[id];
     if (agent == null) return;
     final status = _taskStatus(_tag(notification, 'status'));

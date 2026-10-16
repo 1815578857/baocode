@@ -1489,6 +1489,92 @@ void main() {
       },
     );
   }
+
+  // Stash #58: one continued (SendMessage) runs again as a task of that
+  // call, and had a row with nothing to open.
+  testWidgets('a subagent continued goes on in its card, and its row opens '
+      'it', (tester) async {
+    final (:session, :cli) = await pumpScripted(tester);
+    cli
+      ..push(
+        assistant(null, 'toolu_a', {
+          'name': 'Agent',
+          'input': {
+            'description': 'Analyze the app',
+            'subagent_type': 'Plan',
+            'prompt': 'Analyze /app.',
+          },
+        }),
+      )
+      ..push(
+        result(null, 'toolu_a', 'An Elysia server.', {
+          'status': 'completed',
+          'agentId': 'a1',
+          'prompt': 'Analyze /app.',
+        }),
+      )
+      ..push(
+        assistant(null, 'toolu_s', {
+          'name': 'SendMessage',
+          'input': {'to': 'a1', 'message': 'Now its tests.'},
+        }),
+      )
+      ..push({
+        'type': 'system',
+        'subtype': 'task_started',
+        'task_id': 'a1',
+        'tool_use_id': 'toolu_s',
+        'description': 'Analyze the app',
+        'task_type': 'local_agent',
+        'is_backgrounded': true,
+      })
+      ..push({
+        'type': 'system',
+        'subtype': 'task_progress',
+        'task_id': 'a1',
+        'tool_use_id': 'toolu_s',
+        'description': 'Reading test/app_test.ts',
+        'usage': {'total_tokens': 100, 'tool_uses': 1},
+      });
+    await tester.pump(const Duration(milliseconds: 100));
+    final strip = find.byType(ActivityStrip);
+    expect(
+      find.descendant(
+        of: strip,
+        matching: find.text('· Reading test/app_test.ts'),
+      ),
+      findsOneWidget,
+    );
+    // At work again: its card says so.
+    expect(_inBackground, findsOneWidget);
+
+    await tester.tap(
+      find.descendant(of: strip, matching: find.text('Analyze the app')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Analyze /app.').hitTestable(), findsOneWidget);
+    expect(subagentStatusRow(), findsOneWidget);
+
+    cli.push({
+      'type': 'user',
+      'uuid': 'n1',
+      'message': {
+        'role': 'user',
+        'content':
+            '<task-notification>\n<task-id>a1</task-id>\n'
+            '<tool-use-id>toolu_s</tool-use-id>\n<status>completed</status>\n'
+            '<result>Its tests pass.</result>\n'
+            '</task-notification>',
+      },
+    });
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      find.text('Its tests pass.', findRichText: true).hitTestable(),
+      findsOne,
+    );
+    expect(subagentStatusRow(), findsNothing);
+  });
 }
 
 const _frame = Duration(milliseconds: 16);

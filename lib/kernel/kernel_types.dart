@@ -310,7 +310,8 @@ class KernelTask {
   final CommandStatus status;
   final DateTime startedAt;
 
-  /// The tool call that started it.
+  /// The tool call that started it; a subagent's, even when continued (on a
+  /// call of its own): where its card is.
   final String? toolUseId;
   final bool background;
 
