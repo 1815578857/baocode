@@ -229,6 +229,20 @@ class ClaudeCodeKernel
   String? _earlier;
   Future<void>? _earlierLoad;
 
+  /// Whether what was read begins within a turn (a long one is cut so):
+  /// the turn the page before it ends with goes on past it, so is not
+  /// timed.
+  bool _readInTurn = false;
+
+  /// Whether [page] begins within a turn: with a message of the agent's,
+  /// not the user's prompt.
+  static bool _beginsInTurn(ClaudeHistoryPage page) {
+    for (final line in page.entries) {
+      if (line['type'] != 'attachment') return line['type'] == 'assistant';
+    }
+    return false;
+  }
+
   /// Writes wait on this: for the process to be ready, and for a rewind to
   /// land before the message that follows it.
   Future<void> _writes = Future.value();
@@ -2146,6 +2160,7 @@ class ClaudeCodeKernel
     try {
       final page = await read(session, turns: _firstTurns);
       _earlier = page.earlier;
+      _readInTurn = _beginsInTurn(page);
       _translator.replaying = true;
       var counted = false;
       for (final line in page.entries) {
@@ -2200,9 +2215,10 @@ class ClaudeCodeKernel
         if (line['type'] == 'assistant') counted |= _countRequest(line);
         translator.translate(line);
       }
-      translator.endPage();
+      if (!_readInTurn) translator.endPage();
       if (counted) _reportStats();
       _earlier = page.earlier;
+      _readInTurn = _beginsInTurn(page);
       emit(HistoryPrepended(nextSeq, [...items.liveItems]));
     } on Object catch (error) {
       if (_disposed) return;

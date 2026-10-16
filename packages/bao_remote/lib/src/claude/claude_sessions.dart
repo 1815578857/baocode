@@ -130,11 +130,20 @@ class ClaudeSessions {
   /// ended on; or the [turns] before the line [before] (see
   /// [ClaudeHistoryPage.earlier]). A long one is shown sooner so, from a
   /// remote project's host above all.
+  ///
+  /// Fewer once they come to some [bytes]: a turn the agent worked long
+  /// at may be most of the session.
   static Future<ClaudeHistoryPage> readPage(
     String path, {
     required int turns,
     String? before,
-  }) => Isolate.run(() => _page(_branch(path), turns: turns, before: before));
+    int bytes = pageBytes,
+  }) => Isolate.run(
+    () => _page(_branch(path), turns: turns, before: before, bytes: bytes),
+  );
+
+  /// How much a page of [readPage] comes to, about.
+  static const pageBytes = 512 * 1024;
 
   /// What the session [id] kept of its goal (`/goal`): its `goal_status`
   /// lines, as they are, in the order written. Empty with none, or no such
@@ -608,11 +617,14 @@ List<Map<String, Object?>> _branch(String path) {
 
 /// [turns] of [branch], ending before the line [before] (its end when
 /// null), cut where the user began one: a turn's calls and their results
-/// stay together. The first page has how the goal stood all along: it is
-/// worked out from every record, which no other page has then.
+/// stay together. Past some [bytes], it is cut within a turn, where the
+/// agent began a message with no call before it unanswered. The first
+/// page has how the goal stood all along: it is worked out from every
+/// record, which no other page has then.
 ClaudeHistoryPage _page(
   List<Map<String, Object?>> branch, {
   required int turns,
+  required int bytes,
   String? before,
 }) {
   var end = branch.length;
@@ -623,22 +635,34 @@ ClaudeHistoryPage _page(
   }
   var start = 0;
   var seen = 0;
-  for (var i = end - 1; i >= 0 && seen < turns; i--) {
-    if (_isPrompt(branch[i])) {
-      seen++;
+  var size = 0;
+  // Calls answered after the line at hand, made at or before it.
+  final answered = <String>{};
+  for (var i = end - 1; i >= 0; i--) {
+    final entry = branch[i];
+    size += jsonEncode(entry).length;
+    for (final block in _blocks(entry)) {
+      switch (block) {
+        case {'type': 'tool_result', 'tool_use_id': final String id}:
+          answered.add(id);
+        case {'type': 'tool_use', 'id': final String id}:
+          answered.remove(id);
+      }
+    }
+    final cut = _isPrompt(entry)
+        ? ++seen >= turns || size >= bytes
+        : size >= bytes && answered.isEmpty && _beginsMessage(branch, i);
+    if (cut) {
       start = i;
+      break;
     }
   }
-  if (seen < turns) start = 0;
   bool isGoal(Map<String, Object?> entry) => entry['type'] == 'attachment';
-  return ClaudeHistoryPage(
-    [
-      if (before == null) ...branch.take(start).where(isGoal),
-      for (final entry in branch.sublist(start, end))
-        if (before == null || !isGoal(entry)) entry,
-    ],
-    earlier: start > 0 ? branch[start]['uuid'] as String? : null,
-  );
+  return ClaudeHistoryPage([
+    if (before == null) ...branch.take(start).where(isGoal),
+    for (final entry in branch.sublist(start, end))
+      if (before == null || !isGoal(entry)) entry,
+  ], earlier: start > 0 ? branch[start]['uuid'] as String? : null);
 }
 
 /// Whether [entry] is the user beginning a turn.
@@ -649,6 +673,37 @@ bool _isPrompt(Map<String, Object?> entry) =>
     entry['isCompactSummary'] != true &&
     entry['uuid'] is String &&
     _promptText(entry) != null;
+
+/// The content blocks of [entry]'s message.
+Iterable<Map<Object?, Object?>> _blocks(Map<String, Object?> entry) =>
+    switch (entry['message']) {
+      {'content': final List<Object?> content} =>
+        content.whereType<Map<Object?, Object?>>(),
+      _ => const [],
+    };
+
+/// Whether line [index] of [branch] is the first of a message of the
+/// agent's: the lines before it have a message whole (the CLI keeps one a
+/// line per block).
+bool _beginsMessage(List<Map<String, Object?>> branch, int index) {
+  final entry = branch[index];
+  if (entry['type'] != 'assistant' ||
+      entry['isSidechain'] == true ||
+      entry['uuid'] is! String) {
+    return false;
+  }
+  String? messageId(Map<String, Object?> entry) => switch (entry['message']) {
+    {'id': final String id} => id,
+    _ => null,
+  };
+  final id = messageId(entry);
+  for (var i = index - 1; i >= 0; i--) {
+    if (branch[i]['type'] == 'assistant') {
+      return id == null || messageId(branch[i]) != id;
+    }
+  }
+  return true;
+}
 
 /// Whether [entry] is read back: a message, or how the session's goal
 /// stood (set, checked, met), which may follow the last message.

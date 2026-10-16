@@ -357,6 +357,7 @@ class RemoteServer {
           path,
           turns: turns,
           before: args['before'] as String?,
+          bytes: args['bytes'] as int? ?? ClaudeSessions.pageBytes,
         );
         return page.toJson();
       }

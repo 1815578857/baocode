@@ -172,10 +172,7 @@ void main() {
 
       expect(await client().sizeOf([at('big.bin'), at('sub')]), 13);
       // Counting stops once over the limit.
-      expect(
-        await client().sizeOf([at('big.bin'), at('sub')], limit: 5),
-        10,
-      );
+      expect(await client().sizeOf([at('big.bin'), at('sub')], limit: 5), 10);
     });
 
     test('bytes, walks, stats, entries and real paths', () async {
@@ -527,7 +524,136 @@ printf '%s\n' "$line"
       expect(await client().claudeProjects(), isEmpty);
     });
 
-    test('a long session is read from its end, a page of turns at a time', () async {
+    test(
+      'a long session is read from its end, a page of turns at a time',
+      () async {
+        final sessions = Directory(
+          p.join(home.path, '.claude', 'projects', '-x'),
+        )..createSync(recursive: true);
+        final lines = <Map<String, Object?>>[];
+        String? last;
+        void add(String uuid, Map<String, Object?> entry) {
+          lines.add({'uuid': uuid, 'parentUuid': ?last, ...entry});
+          last = uuid;
+        }
+
+        void goal(String uuid) => add(uuid, {
+          'type': 'attachment',
+          'attachment': {
+            'type': 'goal_status',
+            'condition': 'tests pass',
+            'met': false,
+            'sentinel': true,
+          },
+        });
+
+        for (var turn = 1; turn <= 5; turn++) {
+          add('u$turn', {
+            'type': 'user',
+            'cwd': root,
+            'timestamp': '2026-10-01T10:0$turn:00Z',
+            'message': {'role': 'user', 'content': 'Turn $turn'},
+          });
+          // A call and its result belong to the turn, not begin another.
+          add('c$turn', {
+            'type': 'assistant',
+            'message': {
+              'role': 'assistant',
+              'content': [
+                {
+                  'type': 'tool_use',
+                  'id': 't$turn',
+                  'name': 'Bash',
+                  'input': {},
+                },
+              ],
+            },
+          });
+          add('r$turn', {
+            'type': 'user',
+            'message': {
+              'role': 'user',
+              'content': [
+                {
+                  'type': 'tool_result',
+                  'tool_use_id': 't$turn',
+                  'content': 'ok',
+                },
+              ],
+            },
+          });
+          add('a$turn', {
+            'type': 'assistant',
+            'message': {'role': 'assistant', 'content': 'Done $turn'},
+          });
+          if (turn == 1) goal('g1');
+          if (turn == 3) goal('g2');
+        }
+        File(p.join(sessions.path, 'long.jsonl'))
+            .writeAsStringSync(lines.map(jsonEncode).join('\n'));
+        final projects = await client().claudeProjects();
+        final path = projects.single.sessions.single.path;
+        List<Object?> ids(ClaudeHistoryPage page) => [
+          for (final entry in page.entries) entry['uuid'],
+        ];
+
+        // The last turns, cut at the user's prompts; the goal as it stood all
+        // along comes with the first page.
+        final last2 = await client().claudeHistoryPage(path, turns: 2);
+        expect(ids(last2), [
+          'g1', 'g2', //
+          for (final turn in [4, 5]) ...[
+            'u$turn',
+            'c$turn',
+            'r$turn',
+            'a$turn',
+          ],
+        ]);
+        expect(last2.earlier, 'u4');
+
+        // Those before: goal records are not sent again.
+        final before = await client().claudeHistoryPage(
+          path,
+          turns: 2,
+          before: last2.earlier,
+        );
+        expect(ids(before), [
+          for (final turn in [2, 3]) ...[
+            'u$turn',
+            'c$turn',
+            'r$turn',
+            'a$turn',
+          ],
+        ]);
+        expect(before.earlier, 'u2');
+
+        // The start of it: nothing more before.
+        final start = await client().claudeHistoryPage(
+          path,
+          turns: 2,
+          before: before.earlier,
+        );
+        expect(ids(start), ['u1', 'c1', 'r1', 'a1']);
+        expect(start.earlier, isNull);
+
+        // Shorter than a page: all of it.
+        final whole = await client().claudeHistoryPage(path, turns: 10);
+        expect(whole.entries, await client().claudeHistory(path));
+        expect(whole.earlier, isNull);
+
+        // A line that is gone (rewound meanwhile): nothing before it.
+        final gone = await client().claudeHistoryPage(
+          path,
+          turns: 2,
+          before: 'nope',
+        );
+        expect(gone.entries, isEmpty);
+        expect(gone.earlier, isNull);
+      },
+    );
+
+    test('a turn the agent worked long at is cut within it, its calls '
+        'with their results', () async {
       final sessions = Directory(p.join(home.path, '.claude', 'projects', '-x'))
         ..createSync(recursive: true);
       final lines = <Map<String, Object?>>[];
@@ -537,100 +663,88 @@ printf '%s\n' "$line"
         last = uuid;
       }
 
-      void goal(String uuid) => add(uuid, {
-        'type': 'attachment',
-        'attachment': {
-          'type': 'goal_status',
-          'condition': 'tests pass',
-          'met': false,
-          'sentinel': true,
+      Map<String, Object?> said(String message, Map<String, Object?> block) => {
+        'type': 'assistant',
+        'message': {
+          'id': message,
+          'role': 'assistant',
+          'content': [block],
         },
-      });
+      };
+      Map<String, Object?> result(String call) => {
+        'type': 'user',
+        'message': {
+          'role': 'user',
+          'content': [
+            {'type': 'tool_result', 'tool_use_id': call, 'content': 'x' * 400},
+          ],
+        },
+      };
 
-      for (var turn = 1; turn <= 5; turn++) {
-        add('u$turn', {
-          'type': 'user',
-          'cwd': root,
-          'timestamp': '2026-10-01T10:0$turn:00Z',
-          'message': {'role': 'user', 'content': 'Turn $turn'},
-        });
-        // A call and its result belong to the turn, not begin another.
-        add('c$turn', {
-          'type': 'assistant',
-          'message': {
-            'role': 'assistant',
-            'content': [
-              {'type': 'tool_use', 'id': 't$turn', 'name': 'Bash', 'input': {}},
-            ],
-          },
-        });
-        add('r$turn', {
-          'type': 'user',
-          'message': {
-            'role': 'user',
-            'content': [
-              {'type': 'tool_result', 'tool_use_id': 't$turn', 'content': 'ok'},
-            ],
-          },
-        });
-        add('a$turn', {
-          'type': 'assistant',
-          'message': {'role': 'assistant', 'content': 'Done $turn'},
-        });
-        if (turn == 1) goal('g1');
-        if (turn == 3) goal('g2');
+      add('u1', {
+        'type': 'user',
+        'cwd': root,
+        'message': {'role': 'user', 'content': 'Go'},
+      });
+      for (var step = 1; step <= 4; step++) {
+        // Two calls at once, a line each, the first answered before the
+        // second is kept.
+        add(
+          'a${step}a',
+          said('m$step', {'type': 'tool_use', 'id': 't${step}a'}),
+        );
+        add('r${step}a', result('t${step}a'));
+        add(
+          'a${step}b',
+          said('m$step', {'type': 'tool_use', 'id': 't${step}b'}),
+        );
+        add('r${step}b', result('t${step}b'));
       }
-      File(
-        p.join(sessions.path, 'long.jsonl'),
-      ).writeAsStringSync(lines.map(jsonEncode).join('\n'));
+      File(p.join(sessions.path, 'long.jsonl'))
+          .writeAsStringSync(lines.map(jsonEncode).join('\n'));
       final projects = await client().claudeProjects();
       final path = projects.single.sessions.single.path;
       List<Object?> ids(ClaudeHistoryPage page) => [
         for (final entry in page.entries) entry['uuid'],
       ];
 
-      // The last turns, cut at the user's prompts; the goal as it stood all
-      // along comes with the first page.
-      final last2 = await client().claudeHistoryPage(path, turns: 2);
+      // Past the size, at the first line of a message: not between a
+      // message's lines.
+      final last2 = await client().claudeHistoryPage(
+        path,
+        turns: 10,
+        bytes: 2000,
+      );
       expect(ids(last2), [
-        'g1', 'g2', //
-        for (final turn in [4, 5]) ...['u$turn', 'c$turn', 'r$turn', 'a$turn'],
+        'a3a',
+        'r3a',
+        'a3b',
+        'r3b',
+        'a4a',
+        'r4a',
+        'a4b',
+        'r4b',
       ]);
-      expect(last2.earlier, 'u4');
+      expect(last2.earlier, 'a3a');
 
-      // Those before: goal records are not sent again.
-      final before = await client().claudeHistoryPage(
+      final rest = await client().claudeHistoryPage(
         path,
-        turns: 2,
+        turns: 10,
         before: last2.earlier,
+        bytes: 1 << 20,
       );
-      expect(ids(before), [
-        for (final turn in [2, 3]) ...['u$turn', 'c$turn', 'r$turn', 'a$turn'],
+      expect(ids(rest), [
+        'u1',
+        'a1a',
+        'r1a',
+        'a1b',
+        'r1b',
+        'a2a',
+        'r2a',
+        'a2b',
+        'r2b',
       ]);
-      expect(before.earlier, 'u2');
-
-      // The start of it: nothing more before.
-      final start = await client().claudeHistoryPage(
-        path,
-        turns: 2,
-        before: before.earlier,
-      );
-      expect(ids(start), ['u1', 'c1', 'r1', 'a1']);
-      expect(start.earlier, isNull);
-
-      // Shorter than a page: all of it.
-      final whole = await client().claudeHistoryPage(path, turns: 10);
-      expect(whole.entries, await client().claudeHistory(path));
-      expect(whole.earlier, isNull);
-
-      // A line that is gone (rewound meanwhile): nothing before it.
-      final gone = await client().claudeHistoryPage(
-        path,
-        turns: 2,
-        before: 'nope',
-      );
-      expect(gone.entries, isEmpty);
-      expect(gone.earlier, isNull);
+      expect(rest.earlier, isNull);
     });
   });
 

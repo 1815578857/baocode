@@ -703,11 +703,13 @@ class RemoteClient {
     String path, {
     required int turns,
     String? before,
+    int? bytes,
   }) async {
     final read = await _call<Object?>(RemoteProtocol.claudeRead, {
       'path': path,
       'turns': turns,
       'before': ?before,
+      'bytes': ?bytes,
     });
     if (read is List) {
       // Asked for the turns before some: it sent them all already.
