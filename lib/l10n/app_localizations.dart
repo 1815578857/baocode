@@ -5636,6 +5636,30 @@ abstract class AppLocalizations {
   /// **'Who the commits and pull requests an agent writes credit. Applies to agents started after a change; Claude Code only for now.'**
   String get generalSettingsCommitAttributionDescription;
 
+  /// No description provided for @generalSettingsQueuedMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages Sent While Working'**
+  String get generalSettingsQueuedMessages;
+
+  /// No description provided for @generalSettingsQueuedMessagesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'When a message sent while the agent is still working is taken up. Applies to messages sent after a change; Claude Code only for now.'**
+  String get generalSettingsQueuedMessagesDescription;
+
+  /// Queued messages choice: each waits for the turn running to end, then they run one after another.
+  ///
+  /// In en, this message translates to:
+  /// **'After the Current Task'**
+  String get generalSettingsQueuedAfterTurn;
+
+  /// Queued messages choice: the agent reads it in the turn running, between its tool calls, as Claude Code does in its own terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Join the Current Task'**
+  String get generalSettingsQueuedDuringTurn;
+
   /// No description provided for @generalSettingsTelemetry.
   ///
   /// In en, this message translates to:

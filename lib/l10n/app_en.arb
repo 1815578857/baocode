@@ -2202,6 +2202,16 @@
   "generalSettingsTitle": "General",
   "generalSettingsCommitAttribution": "Commit Attribution",
   "generalSettingsCommitAttributionDescription": "Who the commits and pull requests an agent writes credit. Applies to agents started after a change; Claude Code only for now.",
+  "generalSettingsQueuedMessages": "Messages Sent While Working",
+  "generalSettingsQueuedMessagesDescription": "When a message sent while the agent is still working is taken up. Applies to messages sent after a change; Claude Code only for now.",
+  "generalSettingsQueuedAfterTurn": "After the Current Task",
+  "@generalSettingsQueuedAfterTurn": {
+    "description": "Queued messages choice: each waits for the turn running to end, then they run one after another."
+  },
+  "generalSettingsQueuedDuringTurn": "Join the Current Task",
+  "@generalSettingsQueuedDuringTurn": {
+    "description": "Queued messages choice: the agent reads it in the turn running, between its tool calls, as Claude Code does in its own terminal."
+  },
   "generalSettingsTelemetry": "Send Usage Data",
   "generalSettingsTelemetryDescription": "Once a day BaoCode is used, it sends a random install ID, its version, and your system and processor type, so we can tell how many people use it and come back. Nothing about you, your code, or what you do in BaoCode (telemetry.telemetryLevel).",
   "generalSettingsCommitAttributionLabel": "Commit Attribution: {name}",

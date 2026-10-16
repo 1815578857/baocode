@@ -3092,6 +3092,19 @@ class AppLocalizationsZh extends AppLocalizations {
       'Agent 在它写的提交和 Pull Request 中添加的署名。更改对之后启动的 Agent 生效；目前仅支持 Claude Code。';
 
   @override
+  String get generalSettingsQueuedMessages => '工作中发送的消息';
+
+  @override
+  String get generalSettingsQueuedMessagesDescription =>
+      'Agent 还在工作时发出的消息何时被处理。更改对之后发送的消息生效；目前仅支持 Claude Code。';
+
+  @override
+  String get generalSettingsQueuedAfterTurn => '当前任务完成后依次执行';
+
+  @override
+  String get generalSettingsQueuedDuringTurn => '插入当前任务';
+
+  @override
   String get generalSettingsTelemetry => '发送使用数据';
 
   @override

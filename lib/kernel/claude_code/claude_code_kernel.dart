@@ -19,6 +19,7 @@ import '../agent_kernel.dart';
 import '../commit_attribution.dart';
 import '../kernel_event.dart';
 import '../kernel_types.dart';
+import '../queued_messages.dart';
 import 'claude_code_transport.dart';
 import 'claude_code_translator.dart';
 import 'claude_elicitation.dart';
@@ -710,6 +711,13 @@ class ClaudeCodeKernel
         'uuid': turn.id,
         'session_id': _sessionId ?? '',
         'parent_tool_use_id': null,
+        // Taken up once the turn before it ends, unless the user would have
+        // it folded into the turn running, between its tool calls (the
+        // CLI's own default).
+        'priority': switch (QueuedMessages.current()) {
+          QueuedMessages.afterTurn => 'later',
+          QueuedMessages.duringTurn => 'next',
+        },
         'message': {
           'role': 'user',
           'content': [

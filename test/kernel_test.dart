@@ -24,6 +24,7 @@ import 'package:baocode/kernel/commit_attribution.dart';
 import 'package:baocode/kernel/kernel_event.dart';
 import 'package:baocode/kernel/kernel_types.dart';
 import 'package:baocode/kernel/mock/mock_kernels.dart';
+import 'package:baocode/kernel/queued_messages.dart';
 import 'package:baocode/kernel/transcript.dart';
 
 /// Lines Claude Code 2.1.281 printed (recorded, with paths and account
@@ -1454,6 +1455,8 @@ void main() {
         ..send(const KernelTurn(id: 'u3', text: 'third'));
       await pumpEventQueue();
       expect(cli.users.map((m) => m['uuid']), ['u1', 'u2', 'u3']);
+      // Each after the turn before it, not folded into it.
+      expect(cli.users.map((m) => m['priority']), everyElement('later'));
       List<String> queued() => [for (final (id, _) in transcript.queued) id];
       // Waiting apart, not in the conversation yet.
       expect(queued(), ['u2', 'u3']);
@@ -1496,6 +1499,24 @@ void main() {
       expect(transcript.activeTurn, isNull);
       kernel.dispose();
     });
+
+    test(
+      'messages sent while busy join the turn running when set to',
+      () async {
+        QueuedMessages.current = () => QueuedMessages.duringTurn;
+        addTearDown(
+          () => QueuedMessages.current = () => QueuedMessages.fallback,
+        );
+        final cli = FakeCli();
+        final (:kernel, transcript: _, events: _) = claude(cli);
+        kernel
+          ..send(const KernelTurn(id: 'u1', text: 'first'))
+          ..send(const KernelTurn(id: 'u2', text: 'second'));
+        await pumpEventQueue();
+        expect(cli.users.map((m) => m['priority']), ['next', 'next']);
+        kernel.dispose();
+      },
+    );
 
     test('a queued message sent now goes before those queued ahead of it, '
         'the turn running stopped for it', () async {

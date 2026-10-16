@@ -3223,6 +3223,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'Who the commits and pull requests an agent writes credit. Applies to agents started after a change; Claude Code only for now.';
 
   @override
+  String get generalSettingsQueuedMessages => 'Messages Sent While Working';
+
+  @override
+  String get generalSettingsQueuedMessagesDescription =>
+      'When a message sent while the agent is still working is taken up. Applies to messages sent after a change; Claude Code only for now.';
+
+  @override
+  String get generalSettingsQueuedAfterTurn => 'After the Current Task';
+
+  @override
+  String get generalSettingsQueuedDuringTurn => 'Join the Current Task';
+
+  @override
   String get generalSettingsTelemetry => 'Send Usage Data';
 
   @override
