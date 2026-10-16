@@ -7,6 +7,7 @@ import 'package:flutter_quill/flutter_quill.dart' show ChangeSource;
 import 'package:path/path.dart' as p;
 
 import '../forge/forge_accounts.dart';
+import '../platform/event_log.dart';
 import '../kernel/claude_code/claude_haiku.dart' show ClaudeHaikuCancelled;
 import '../remote/remote_location.dart';
 import '../settings/user_settings.dart' show GlobalStorage;
@@ -214,6 +215,11 @@ class StashController extends ChangeNotifier {
   /// what the keyboard is in, or gives it the keyboard back (another app
   /// clicked meanwhile), as it was.
   void pressed(StashCapture capture) {
+    appEvent(
+      'stash',
+      'shortcut, ${shown ? 'shown' : 'hidden'}, '
+          'from ${capture.inApp ? 'BaoCode' : 'another app'}',
+    );
     if (!shown) {
       unawaited(present(capture));
     } else if (capture.panelInFront ?? true) {

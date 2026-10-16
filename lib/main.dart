@@ -17,6 +17,7 @@ import 'chat/user_message_style.dart';
 import 'chat/widgets/chat_minimap.dart';
 import 'chat/widgets/pixel_loader.dart';
 import 'customize/customization_store.dart';
+import 'diagnostics/app_event_watch.dart';
 import 'diagnostics/diagnostics_upload.dart';
 import 'extensions/theme_extensions.dart';
 import 'ide/git/git_repository.dart';
@@ -53,6 +54,7 @@ import 'notifications/attention_settings.dart';
 import 'platform/app_platform.dart';
 import 'platform/data_dir.dart';
 import 'platform/error_log.dart';
+import 'platform/event_log.dart';
 import 'platform/open_requests.dart';
 import 'platform/shell_command.dart';
 import 'remote/project_host.dart';
@@ -114,11 +116,14 @@ Future<void> main(List<String> arguments) async {
     }
     // What goes wrong unseen from here on, kept for the user to send.
     errors = ErrorLog(DataDirectory.current.logsDir)..install();
+    // And what the app went through, to read what led to it.
+    EventLog.current = EventLog(DataDirectory.current.logsDir);
   }
   unawaited(reapClaudeProcesses());
   unawaited(reapLspProcesses());
   unawaited(reapPtyProcesses());
   WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb) AppEventWatch.start();
   // The Windows app's own logs go beside it.
   if (errors != null) unawaited(errors.shareWithHost());
   // The editor's language packs are the language servers' (README.md in

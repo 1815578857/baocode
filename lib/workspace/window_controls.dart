@@ -7,6 +7,7 @@ import '../chat/chat_models.dart';
 import '../chat/composer/composer_files.dart';
 import '../chat/composer/file_drop.dart';
 import '../platform/app_platform.dart';
+import '../platform/event_log.dart';
 
 /// One of the window's own buttons, over a header the app draws itself: the
 /// system hit-tests and acts on those pixels, so the header only paints them
@@ -72,6 +73,7 @@ abstract final class WindowControls {
   /// All the app's windows take it.
   static Future<void> setDarkAppearance(bool dark) async {
     if (!(AppPlatform.isMacOS || AppPlatform.isWindows)) return;
+    appEvent('window', 'appearance ${dark ? 'dark' : 'light'}');
     try {
       await _main.invokeMethod<void>('setAppearance', dark);
     } on MissingPluginException {
