@@ -10,6 +10,8 @@ import 'package:path/path.dart' as p;
 
 import '../chat/composer/composer_files.dart';
 import '../chat/widgets/hover_builder.dart';
+import '../chat/widgets/scroll_edge_fade.dart';
+import '../icons/brand_logos.dart' show BaoCodeLogo;
 import '../ide/file_views.dart';
 import '../ide/ide_button.dart';
 import '../ide/ide_dialog.dart';
@@ -35,17 +37,20 @@ import 'stash_actions.dart';
 import 'stash_ai.dart';
 import 'stash_controller.dart';
 import 'stash_editor.dart' show StashRefs, isRemoteStashPicture;
+import 'stash_forge_view.dart';
 import 'stash_io_stub.dart' if (dart.library.io) 'stash_io.dart' as io;
 import 'stash_note.dart';
 import 'stash_note_editor.dart';
 import 'stash_settings.dart';
+import 'stash_thread_view.dart';
+import 'stash_welcome.dart';
 
 /// The stashes, in place of the conversations (see docs/stash.md): cards
-/// by when they were written, the newest first, those done last and faded;
-/// searched by their words (and the text in their pictures), or by what
-/// they mean (AI, when asked: it costs); filtered by time, project and
-/// status. Picked, one shows beside them to be read and edited, made a
-/// requirement and carried out in a conversation.
+/// by their number, the newest first, those done last and faded; searched
+/// by their words (and the text in their pictures), or by what they mean
+/// (AI, when asked: it costs); filtered by time, projects and statuses
+/// (those not done at first). Picked, one shows beside them to be read
+/// and edited, made a requirement and carried out in a conversation.
 class StashView extends StatefulWidget {
   const StashView({
     super.key,
@@ -85,9 +90,8 @@ class StashView extends StatefulWidget {
 
 enum _Time { all, today, week, month }
 
-enum _Status { all, open, collected, requirement, implementing, done }
-
-class StashViewState extends State<StashView> with _StashActions {
+class StashViewState extends State<StashView>
+    with _StashActions, SingleTickerProviderStateMixin {
   final TextEditingController _query = TextEditingController();
 
   @override
@@ -108,9 +112,40 @@ class StashViewState extends State<StashView> with _StashActions {
 
   _Time _time = _Time.all;
 
-  /// A project's path, '' for none; null for all.
-  String? _project;
-  _Status _status = _Status.all;
+  /// The projects shown, by their paths ('' for none); all when empty.
+  final Set<String> _projects = {};
+
+  /// The statuses shown; all when empty. Those not done at first.
+  final Set<StashStatus> _statuses = {..._notDone};
+
+  static const _notDone = {
+    StashStatus.collected,
+    StashStatus.requirement,
+    StashStatus.implementing,
+  };
+
+  /// The cards' scrolling, to bring one into view ([reveal]).
+  final _scroll = ScrollController();
+
+  /// Each card's, once built: where it is, to scroll to.
+  final Map<int, GlobalKey> _cardKeys = {};
+
+  /// The stash beside the cards coming in and going ([_shown]): its room
+  /// growing as it fades and slides in.
+  late final AnimationController _detailIn = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+    reverseDuration: const Duration(milliseconds: 220),
+    value: widget.initial == null ? 0 : 1,
+  )..addStatusListener(_detailStatus);
+  late final Animation<double> _detailCurve = CurvedAnimation(
+    parent: _detailIn,
+    curve: Curves.easeOutCubic,
+    reverseCurve: Curves.easeInCubic,
+  );
+
+  /// The one last shown, shown while it goes.
+  int? _lastShown;
 
   /// The AI's answer to the query: the stashes by what they mean.
   List<int>? _aiResults;
@@ -131,11 +166,18 @@ class StashViewState extends State<StashView> with _StashActions {
   void initState() {
     super.initState();
     _open = widget.initial;
+    _lastShown = widget.initial;
+    _shown.addListener(_shownChanged);
     _query.addListener(() => setState(() {}));
     _controller.addListener(_changed);
     _controller.store.addListener(_changed);
-    unawaited(_controller.store.load());
+    unawaited(
+      _controller.store.load().then((_) {
+        if (widget.initial case final id? when mounted) reveal(id);
+      }),
+    );
     unawaited(_controller.suggestMerges());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _welcome());
   }
 
   @override
@@ -144,6 +186,8 @@ class StashViewState extends State<StashView> with _StashActions {
     _controller.store.removeListener(_changed);
     _query.dispose();
     _shown.dispose();
+    _scroll.dispose();
+    _detailIn.dispose();
     super.dispose();
   }
 
@@ -151,40 +195,130 @@ class StashViewState extends State<StashView> with _StashActions {
     if (mounted) setState(() {});
   }
 
-  /// Shows [id]'s stash.
-  void show(int id) => setState(() {
-    _open = _controller.store.byId(id)?.id;
-    _picked.clear();
-  });
+  void _shownChanged() {
+    if (_shown.value case final id?) {
+      _lastShown = id;
+      unawaited(_detailIn.forward());
+    } else {
+      unawaited(_detailIn.reverse());
+    }
+  }
+
+  void _detailStatus(AnimationStatus status) {
+    // Gone: the cards take its room back for good.
+    if (status == AnimationStatus.dismissed && mounted) setState(() {});
+  }
+
+  /// The first time the page shows: what Stash is.
+  Future<void> _welcome() async {
+    if (!mounted || _controller.welcomed) return;
+    _controller.welcomed = true;
+    await showStashWelcome(context, controller: _controller);
+  }
+
+  /// Shows [id]'s stash, its card brought into view.
+  void show(int id) {
+    setState(() {
+      _open = _controller.store.byId(id)?.id;
+      _picked.clear();
+    });
+    reveal(id);
+  }
+
+  /// Brings [id]'s card into view, smoothly: the filters widened first
+  /// when they hide it.
+  void reveal(int id) {
+    final note = _controller.store.byId(id);
+    if (note == null) return;
+    setState(() {
+      if (_statuses.isNotEmpty && !_statuses.contains(note.status)) {
+        _statuses.add(note.status);
+      }
+      if (_projects.isNotEmpty && !_projects.contains(note.project ?? '')) {
+        _projects.clear();
+      }
+      if (!_timeOk(note, DateTime.now())) _time = _Time.all;
+      if (!_filtered.any((shown) => shown.id == id)) {
+        _query.clear();
+        _aiResults = null;
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollTo(id, 0));
+  }
+
+  void _scrollTo(int id, int attempt) {
+    if (!mounted) return;
+    final card = _cardKeys[id]?.currentContext;
+    if (card != null && card.mounted) {
+      unawaited(
+        Scrollable.ensureVisible(
+          card,
+          alignment: .2,
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOutCubic,
+        ),
+      );
+      return;
+    }
+    // Not built, out of view: about where it is first, then to it.
+    if (attempt >= 4 || !_scroll.hasClients) return;
+    final order = [
+      for (final (_, notes) in _grouped(_filtered, context.l10n)) ...notes,
+    ];
+    final index = order.indexWhere((note) => note.id == id);
+    if (index < 0) return;
+    final position = _scroll.position;
+    position.jumpTo(
+      (position.maxScrollExtent * index / math.max(1, order.length - 1)).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      ),
+    );
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _scrollTo(id, attempt + 1),
+    );
+  }
+
+  /// Imports issues as stashes (see [showStashImportDialog]): about the
+  /// project shown, if one is; the stash shown when it is one.
+  Future<void> _import() async {
+    final forge = _controller.forge;
+    if (forge == null) return;
+    final notes = await showStashImportDialog(
+      context,
+      forge: forge,
+      project: _projects.length == 1 && _projects.single.isNotEmpty
+          ? _projects.single
+          : null,
+    );
+    if (notes != null && notes.length == 1 && mounted) show(notes.single.id);
+  }
 
   // --- What shows ---------------------------------------------------------------
 
-  List<StashNote> get _filtered {
-    final store = _controller.store;
-    final now = DateTime.now();
+  bool _timeOk(StashNote note, DateTime now) {
     final today = DateTime(now.year, now.month, now.day);
-    bool timeOk(StashNote note) => switch (_time) {
+    return switch (_time) {
       _Time.all => true,
       _Time.today => !note.updated.isBefore(today),
       _Time.week => now.difference(note.updated) < const Duration(days: 7),
       _Time.month => now.difference(note.updated) < const Duration(days: 30),
     };
-    bool statusOk(StashNote note) => switch (_status) {
-      _Status.all => true,
-      _Status.open => note.status != StashStatus.done,
-      _Status.collected => note.status == StashStatus.collected,
-      _Status.requirement => note.status == StashStatus.requirement,
-      _Status.implementing => note.status == StashStatus.implementing,
-      _Status.done => note.status == StashStatus.done,
-    };
-    bool projectOk(StashNote note) => switch (_project) {
-      null => true,
-      '' => note.project == null,
-      final project => note.project == project,
-    };
+  }
+
+  List<StashNote> get _filtered {
+    final store = _controller.store;
+    final now = DateTime.now();
+    bool statusOk(StashNote note) =>
+        _statuses.isEmpty || _statuses.contains(note.status);
+    bool projectOk(StashNote note) =>
+        _projects.isEmpty || _projects.contains(note.project ?? '');
     final among = store.notes.where(
       (note) =>
-          !note.isBlank && timeOk(note) && statusOk(note) && projectOk(note),
+          !note.isBlank &&
+          _timeOk(note, now) &&
+          statusOk(note) &&
+          projectOk(note),
     );
     final ai = _aiResults;
     if (ai != null && _aiQuery == _query.text.trim()) {
@@ -196,43 +330,29 @@ class StashViewState extends State<StashView> with _StashActions {
 
   bool get _searching => _query.text.trim().isNotEmpty;
 
-  /// [notes] under their headings: pinned first, then by when they were
-  /// last written, those done at the end.
-  List<(String, List<StashNote>)> _grouped(
+  /// [notes] by their number, the newest first: those pinned, the rest,
+  /// those done; under headings where there is more than one of these
+  /// (none for the rest alone).
+  List<(String?, List<StashNote>)> _grouped(
     List<StashNote> notes,
     AppLocalizations l10n,
   ) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final groups = <String, List<StashNote>>{};
     final pinned = <StashNote>[];
+    final rest = <StashNote>[];
     final done = <StashNote>[];
-    final sorted = [...notes]..sort((a, b) => b.updated.compareTo(a.updated));
+    final sorted = [...notes]..sort((a, b) => b.id.compareTo(a.id));
     for (final note in sorted) {
-      if (note.pinned) {
-        pinned.add(note);
-        continue;
-      }
-      if (note.status == StashStatus.done) {
-        done.add(note);
-        continue;
-      }
-      final at = note.updated;
-      final heading = !at.isBefore(today)
-          ? l10n.stashGroupToday
-          : !at.isBefore(yesterday)
-          ? l10n.stashGroupYesterday
-          : now.difference(at) < const Duration(days: 7)
-          ? l10n.stashGroupWeek
-          : now.difference(at) < const Duration(days: 30)
-          ? l10n.stashGroupMonth
-          : l10n.stashGroupEarlier;
-      (groups[heading] ??= []).add(note);
+      (note.pinned
+              ? pinned
+              : note.status == StashStatus.done
+              ? done
+              : rest)
+          .add(note);
     }
+    final headed = pinned.isNotEmpty || done.isNotEmpty;
     return [
       if (pinned.isNotEmpty) (l10n.stashGroupPinned, pinned),
-      for (final MapEntry(:key, :value) in groups.entries) (key, value),
+      if (rest.isNotEmpty) (headed ? l10n.stashGroupOthers : null, rest),
       if (done.isNotEmpty) (l10n.stashGroupDone, done),
     ];
   }
@@ -332,7 +452,11 @@ class StashViewState extends State<StashView> with _StashActions {
     if (StashRefs.stashOf(href) case final id?) {
       show(id);
     } else if (StashRefs.projectOf(href) case final project?) {
-      setState(() => _project = project);
+      setState(
+        () => _projects
+          ..clear()
+          ..add(project),
+      );
     }
   }
 
@@ -341,7 +465,9 @@ class StashViewState extends State<StashView> with _StashActions {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final open = _open == null ? null : _controller.store.byId(_open!);
+    // The one going is shown till it has gone.
+    final showing = _open ?? (_detailIn.isDismissed ? null : _lastShown);
+    final open = showing == null ? null : _controller.store.byId(showing);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -355,30 +481,101 @@ class StashViewState extends State<StashView> with _StashActions {
               // where it was scrolled to.
               final list = KeyedSubtree(key: _list, child: _buildList(l10n));
               if (open == null) return list;
-              // The one shown as [_tap] changes it.
+              // The one shown as [_tap] changes it, one fading into the
+              // other.
               final detail = ValueListenableBuilder(
                 valueListenable: _shown,
-                builder: (context, id, _) => StashDetail(
-                  controller: _controller,
-                  id: id ?? open.id,
-                  onOpenAgent: widget.onOpenAgent,
-                  onOpenLink: _openLink,
-                  onClose: () => setState(() => _open = null),
+                builder: (context, id, _) => AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween(
+                        begin: const Offset(0, .012),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  ),
+                  layoutBuilder: (current, previous) => Stack(
+                    fit: StackFit.expand,
+                    children: [...previous, ?current],
+                  ),
+                  child: StashDetail(
+                    key: ValueKey(id ?? open.id),
+                    controller: _controller,
+                    id: id ?? open.id,
+                    onOpenAgent: widget.onOpenAgent,
+                    onOpenLink: _openLink,
+                    onClose: () => setState(() => _open = null),
+                  ),
                 ),
               );
-              if (!wide) return detail;
+              if (!wide) {
+                // In place of the cards, the one fading into the other.
+                return AnimatedBuilder(
+                  animation: _detailCurve,
+                  builder: (context, _) {
+                    final t = _detailCurve.value;
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Offstage(
+                          offstage: t >= 1,
+                          child: Opacity(opacity: 1 - t, child: list),
+                        ),
+                        Opacity(
+                          opacity: t,
+                          child: Transform.translate(
+                            offset: Offset(0, (1 - t) * 18),
+                            child: detail,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              }
               final width = _widthOfDetail(room);
               final dragging = _dragStart != null;
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(child: list),
-                      _sash(room, dragging: dragging),
-                      SizedBox(width: width, child: detail),
-                    ],
+                  // Its room grows as it slides in and fades up.
+                  AnimatedBuilder(
+                    animation: _detailCurve,
+                    builder: (context, _) {
+                      final t = _detailCurve.value;
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(child: list),
+                          Opacity(
+                            opacity: t,
+                            child: _sash(room, dragging: dragging),
+                          ),
+                          SizedBox(
+                            width: width * t,
+                            child: ClipRect(
+                              child: OverflowBox(
+                                alignment: Alignment.centerLeft,
+                                minWidth: width,
+                                maxWidth: width,
+                                child: Opacity(
+                                  opacity: t,
+                                  child: Transform.translate(
+                                    offset: Offset((1 - t) * 40, 0),
+                                    child: detail,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                   // The resize cursor wherever the pointer goes while
                   // dragging; a press there (a drag whose end was lost)
@@ -519,6 +716,12 @@ class StashViewState extends State<StashView> with _StashActions {
               tooltip: l10n.stashNewTooltip,
               onTap: () => unawaited(_controller.present()),
             ),
+            if (_controller.forge != null)
+              SidebarIconButton(
+                icon: Codicons.issues,
+                tooltip: l10n.stashImport,
+                onTap: () => unawaited(_import()),
+              ),
             SidebarIconButton(
               icon: Codicons.folderOpened,
               tooltip: l10n.stashReveal,
@@ -540,11 +743,15 @@ class StashViewState extends State<StashView> with _StashActions {
     final notes = _filtered;
     final ai = _aiResults != null && _aiQuery == _query.text.trim();
     final merges = _controller.mergeSuggestions;
-    return CustomScrollView(
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-          sliver: SliverList.list(
+    // The search and the filters stay; the cards scroll under them, faded
+    // in at the edge they go past.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 children: [
@@ -575,17 +782,6 @@ class StashViewState extends State<StashView> with _StashActions {
               ),
               const SizedBox(height: 10),
               _buildFilters(l10n),
-              for (final group in merges)
-                _Banner(
-                  icon: Codicons.merge,
-                  text: l10n.stashMergeSuggestion(
-                    group.map((id) => '#$id').join(', '),
-                  ),
-                  actions: [
-                    (l10n.stashMerge, () => unawaited(_merge(group))),
-                    (l10n.stashDismiss, () => _controller.dismissMerge(group)),
-                  ],
-                ),
               if (_picked.length > 1) _buildPickedBar(l10n),
               if (ai)
                 Padding(
@@ -625,28 +821,63 @@ class StashViewState extends State<StashView> with _StashActions {
             ],
           ),
         ),
-        if (notes.isEmpty)
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: Center(
-              child: Text(
-                _controller.store.notes.isEmpty
-                    ? switch (_hotkeyLabel()) {
-                        '' => l10n.stashEmptyNoHotkey,
-                        final hotkey => l10n.stashEmpty(hotkey),
-                      }
-                    : l10n.stashNoMatch,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textFaint, fontSize: 13),
-              ),
+        Expanded(
+          child: ScrollEdgeFade(
+            fadeLength: 28,
+            child: CustomScrollView(
+              controller: _scroll,
+              slivers: [
+                if (merges.isNotEmpty)
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    sliver: SliverList.list(
+                      children: [
+                        for (final group in merges)
+                          StashBanner(
+                            icon: Codicons.merge,
+                            text: l10n.stashMergeSuggestion(
+                              group.map((id) => '#$id').join(', '),
+                            ),
+                            actions: [
+                              (l10n.stashMerge, () => unawaited(_merge(group))),
+                              (
+                                l10n.stashDismiss,
+                                () => _controller.dismissMerge(group),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                if (notes.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Text(
+                        _controller.store.notes.isEmpty
+                            ? switch (_hotkeyLabel()) {
+                                '' => l10n.stashEmptyNoHotkey,
+                                final hotkey => l10n.stashEmpty(hotkey),
+                              }
+                            : l10n.stashNoMatch,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.textFaint,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  )
+                else if (_searching || ai)
+                  ..._section(null, notes)
+                else
+                  for (final (heading, group) in _grouped(notes, l10n))
+                    ..._section(heading, group),
+                const SliverToBoxAdapter(child: SizedBox(height: 32)),
+              ],
             ),
-          )
-        else if (_searching || ai)
-          ..._section(null, notes)
-        else
-          for (final (heading, group) in _grouped(notes, l10n))
-            ..._section(heading, group),
-        const SliverToBoxAdapter(child: SizedBox(height: 32)),
+          ),
+        ),
       ],
     );
   }
@@ -672,7 +903,7 @@ class StashViewState extends State<StashView> with _StashActions {
         ),
       )
     else
-      const SliverToBoxAdapter(child: SizedBox(height: 14)),
+      const SliverToBoxAdapter(child: SizedBox(height: 10)),
     SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       sliver: SliverGrid.builder(
@@ -681,6 +912,7 @@ class StashViewState extends State<StashView> with _StashActions {
         itemBuilder: (context, i) {
           final note = notes[i];
           return _StashCard(
+            key: _cardKeys.putIfAbsent(note.id, GlobalKey.new),
             note: note,
             store: _controller,
             selection: _shown,
@@ -688,6 +920,7 @@ class StashViewState extends State<StashView> with _StashActions {
             projectName: _projectName(note.project),
             onTap: () => _tap(note),
             onMenu: (position) => unawaited(_cardMenu(note, position)),
+            onOpenThread: widget.onOpenAgent,
           );
         },
       ),
@@ -701,19 +934,25 @@ class StashViewState extends State<StashView> with _StashActions {
       _Time.week => l10n.stashGroupWeek,
       _Time.month => l10n.stashGroupMonth,
     };
-    final projectLabel = switch (_project) {
-      null => l10n.stashFilterAnyProject,
-      '' => l10n.stashNoProject,
-      final path => _projectName(path) ?? path,
+    final projectLabel = switch ([..._projects]) {
+      [] => l10n.stashFilterAnyProject,
+      [''] => l10n.stashNoProject,
+      [final path] => _projectName(path) ?? path,
+      final paths => l10n.stashFilterProjects(paths.length),
     };
-    final statusLabel = switch (_status) {
-      _Status.all => l10n.stashFilterAnyStatus,
-      _Status.open => l10n.stashFilterOpen,
-      _Status.collected => stashStatusLabel(l10n, StashStatus.collected),
-      _Status.requirement => stashStatusLabel(l10n, StashStatus.requirement),
-      _Status.implementing => stashStatusLabel(l10n, StashStatus.implementing),
-      _Status.done => stashStatusLabel(l10n, StashStatus.done),
-    };
+    final allStatuses =
+        _statuses.isEmpty || _statuses.length == StashStatus.values.length;
+    final statusLabel = allStatuses
+        ? l10n.stashFilterAnyStatus
+        : _statuses.length == _notDone.length && _statuses.containsAll(_notDone)
+        ? l10n.stashFilterOpen
+        : [
+            for (final status in StashStatus.values)
+              if (_statuses.contains(status)) stashStatusLabel(l10n, status),
+          ].join(l10n.stashFilterJoiner);
+    void toggle<T>(Set<T> set, T value) => setState(() {
+      if (!set.remove(value)) set.add(value);
+    });
     return Wrap(
       spacing: 6,
       runSpacing: 6,
@@ -738,43 +977,63 @@ class StashViewState extends State<StashView> with _StashActions {
             ]),
           ),
         ),
+        // Several of these, checked in the menu, which stays open.
         _FilterChip(
           icon: Codicons.folder,
           label: projectLabel,
-          active: _project != null,
+          active: _projects.isNotEmpty,
           onTap: (anchor) => unawaited(
             _filterMenu(anchor, [
               IdeMenuAction(
                 l10n.stashFilterAnyProject,
-                checked: _project == null,
-                onSelected: () => setState(() => _project = null),
+                checkedNow: () => _projects.isEmpty,
+                onSelected: () => setState(_projects.clear),
               ),
-              ..._projectEntries(
-                (project) => setState(() => _project = project ?? ''),
-                current: _project == '' ? null : (_project ?? '\u0000'),
+              const IdeMenuSeparator(),
+              IdeMenuAction(
+                l10n.stashNoProject,
+                keepOpen: true,
+                checkedNow: () => _projects.contains(''),
+                onSelected: () => toggle(_projects, ''),
               ),
+              for (final project in _controller.workspace.projects)
+                IdeMenuAction(
+                  project.name,
+                  icon: stashProjectIcon(_controller.workspace, project),
+                  keepOpen: true,
+                  checkedNow: () => _projects.contains(project.path),
+                  onSelected: () => toggle(_projects, project.path),
+                ),
             ]),
           ),
         ),
         _FilterChip(
           icon: Codicons.filter,
           label: statusLabel,
-          active: _status != _Status.all,
+          active: !allStatuses,
           onTap: (anchor) => unawaited(
             _filterMenu(anchor, [
-              for (final (status, label) in [
-                (_Status.all, l10n.stashFilterAnyStatus),
-                (_Status.open, l10n.stashFilterOpen),
-                for (final status in StashStatus.values)
-                  (
-                    _Status.values.byName(status.name),
-                    stashStatusLabel(l10n, status),
-                  ),
-              ])
+              IdeMenuAction(
+                l10n.stashFilterAnyStatus,
+                checkedNow: () =>
+                    _statuses.isEmpty ||
+                    _statuses.length == StashStatus.values.length,
+                onSelected: () => setState(_statuses.clear),
+              ),
+              const IdeMenuSeparator(),
+              for (final status in StashStatus.values)
                 IdeMenuAction(
-                  label,
-                  checked: _status == status,
-                  onSelected: () => setState(() => _status = status),
+                  stashStatusLabel(l10n, status),
+                  keepOpen: true,
+                  checkedNow: () =>
+                      _statuses.isEmpty || _statuses.contains(status),
+                  onSelected: () => setState(() {
+                    // From all: all but it.
+                    if (_statuses.isEmpty) {
+                      _statuses.addAll(StashStatus.values);
+                    }
+                    if (!_statuses.remove(status)) _statuses.add(status);
+                  }),
                 ),
             ]),
           ),
@@ -1016,7 +1275,7 @@ mixin _StashActions<T extends StatefulWidget> on State<T> {
 
   String _sourceText(StashNote note) {
     final source = note.source;
-    final when = _dateText(note.created);
+    final when = stashDateText(note.created);
     return switch (source.branch) {
       final branch? => '$when · ⎇ $branch',
       null => when,
@@ -1138,7 +1397,6 @@ class _StashDetailState extends State<StashDetail> with _StashActions {
     final l10n = context.l10n;
     final note = _controller.store.byId(widget.id);
     if (note == null) return const SizedBox.shrink();
-    final thread = _controller.threadOf(note);
     final suggested = note.suggestedProject;
     final clarifying = _controller.clarifying(note.id);
     final failure = _controller.clarifyFailure(note.id);
@@ -1244,7 +1502,7 @@ class _StashDetailState extends State<StashDetail> with _StashActions {
         if (note.project == null && suggested != null && suggested.isNotEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-            child: _Banner(
+            child: StashBanner(
               icon: Codicons.sparkle,
               text: l10n.stashProjectSuggestion(
                 _projectName(suggested) ?? suggested,
@@ -1265,29 +1523,28 @@ class _StashDetailState extends State<StashDetail> with _StashActions {
               ],
             ),
           ),
-        if (note.thread case final link?)
+        if (note.threads.isNotEmpty || note.source.thread != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-            child: _Banner(
-              icon: Codicons.commentDiscussion,
-              text: link.session == null
-                  ? l10n.stashThreadStarting
-                  : l10n.stashThreadLinked(
-                      thread?.title ??
-                          link.title ??
-                          link.session!.substring(0, 8),
-                    ),
-              actions: [
-                if (thread != null)
-                  if (widget.onOpenAgent case final open?)
-                    (l10n.stashOpenThread, () => open(thread)),
-              ],
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+            child: StashThreadList(
+              controller: _controller,
+              note: note,
+              onOpen: widget.onOpenAgent,
+            ),
+          ),
+        if (_controller.forge case final forge? when note.issues.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+            child: StashIssueSection(
+              key: ValueKey(('issues', note.id)),
+              forge: forge,
+              note: note,
             ),
           ),
         if (failure != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-            child: _Banner(
+            child: StashBanner(
               icon: Codicons.error,
               iconColor: themeColors['errorForeground'],
               text: failure.changed
@@ -1333,7 +1590,7 @@ class _StashDetailState extends State<StashDetail> with _StashActions {
               Builder(
                 builder: (context) => IdeButton(
                   label: l10n.stashImplement,
-                  icon: Codicons.rocket,
+                  leading: const BaoCodeLogo(),
                   onPressed: () {
                     final box = context.findRenderObject() as RenderBox?;
                     if (box == null) return;
@@ -1362,7 +1619,7 @@ class _StashDetailState extends State<StashDetail> with _StashActions {
                   onPressed: () => unawaited(
                     _setStatus(
                       [note.id],
-                      note.thread?.session != null
+                      note.threads.isNotEmpty
                           ? StashStatus.implementing
                           : note.requirement != null
                           ? StashStatus.requirement
@@ -1389,17 +1646,6 @@ class _StashDetailState extends State<StashDetail> with _StashActions {
   }
 }
 
-String _dateText(DateTime at) {
-  final now = DateTime.now();
-  String two(int n) => n.toString().padLeft(2, '0');
-  final time = '${two(at.hour)}:${two(at.minute)}';
-  if (at.year == now.year && at.month == now.month && at.day == now.day) {
-    return time;
-  }
-  if (at.year == now.year) return '${at.month}/${at.day} $time';
-  return '${at.year}/${at.month}/${at.day}';
-}
-
 /// A status's name, as the cards and menus show it.
 String stashStatusLabel(AppLocalizations l10n, StashStatus status) =>
     switch (status) {
@@ -1420,6 +1666,7 @@ IconData _statusIcon(StashStatus status) => switch (status) {
 /// its project and status. Dragged, it goes into a composer.
 class _StashCard extends StatelessWidget {
   const _StashCard({
+    super.key,
     required this.note,
     required this.store,
     required this.selection,
@@ -1427,6 +1674,7 @@ class _StashCard extends StatelessWidget {
     required this.projectName,
     required this.onTap,
     required this.onMenu,
+    this.onOpenThread,
   });
 
   final StashNote note;
@@ -1439,6 +1687,9 @@ class _StashCard extends StatelessWidget {
   final String? projectName;
   final VoidCallback onTap;
   final ValueChanged<Offset> onMenu;
+
+  /// Opens the conversation its [StashThreadChip] shows.
+  final ValueChanged<AgentThread>? onOpenThread;
 
   @override
   Widget build(BuildContext context) {
@@ -1477,16 +1728,24 @@ class _StashCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Expanded(
-                child: Text(
-                  note.summary,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 12,
-                    height: 1.45,
-                  ),
-                ),
+                // Worked on: where, in place of its text (its title says
+                // what it is).
+                child: note.threads.isNotEmpty
+                    ? StashThreadChip(
+                        controller: store,
+                        note: note,
+                        onOpen: onOpenThread,
+                      )
+                    : Text(
+                        note.summary,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                          height: 1.45,
+                        ),
+                      ),
               ),
               const SizedBox(height: 6),
               Row(
@@ -1497,18 +1756,18 @@ class _StashCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    _dateText(note.updated),
+                    stashDateText(note.updated),
                     style: TextStyle(color: AppColors.textFaint, fontSize: 11),
                   ),
                   const SizedBox(width: 6),
                   if (projectName case final name?)
                     Flexible(
-                      child: _Badge(icon: Codicons.folder, label: name),
+                      child: StashBadge(icon: Codicons.folder, label: name),
                     ),
                   if (store.clarifying(note.id)) ...[
                     const SizedBox(width: 4),
                     Flexible(
-                      child: _Badge(
+                      child: StashBadge(
                         icon: Codicons.sync,
                         label: l10n.stashClarifying,
                         spinning: true,
@@ -1517,7 +1776,7 @@ class _StashCard extends StatelessWidget {
                   ] else if (store.clarifyFailure(note.id) != null) ...[
                     const SizedBox(width: 4),
                     Flexible(
-                      child: _Badge(
+                      child: StashBadge(
                         icon: Codicons.error,
                         label: l10n.stashClarifyFailedShort,
                         color: themeColors['errorForeground'],
@@ -1527,10 +1786,17 @@ class _StashCard extends StatelessWidget {
                   if (note.status != StashStatus.collected) ...[
                     const SizedBox(width: 4),
                     Flexible(
-                      child: _Badge(
+                      child: StashBadge(
                         icon: _statusIcon(note.status),
                         label: stashStatusLabel(l10n, note.status),
                       ),
+                    ),
+                  ],
+                  if (store.forge case final forge?
+                      when note.issues.isNotEmpty) ...[
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: StashIssueBadge(forge: forge, note: note),
                     ),
                   ],
                 ],
@@ -1648,8 +1914,10 @@ class _DragFeedback extends StatelessWidget {
   );
 }
 
-class _Badge extends StatelessWidget {
-  const _Badge({
+/// A card's small mark: an icon and a word (its project, its status).
+class StashBadge extends StatelessWidget {
+  const StashBadge({
+    super.key,
     required this.icon,
     required this.label,
     this.spinning = false,
@@ -1750,8 +2018,11 @@ class _FilterChip extends StatelessWidget {
   );
 }
 
-class _Banner extends StatelessWidget {
-  const _Banner({
+/// What asks the user something, over the cards or a stash: [text], and
+/// the [actions] that answer it.
+class StashBanner extends StatelessWidget {
+  const StashBanner({
+    super.key,
     required this.icon,
     required this.text,
     required this.actions,

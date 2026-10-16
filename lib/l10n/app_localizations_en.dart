@@ -1494,6 +1494,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sidePanelSource => 'Source';
 
   @override
+  String get sidePanelEdit => 'Edit';
+
+  @override
   String get sidePanelNoOriginal =>
       'The file before the agent\'s changes is not known: showing it as it is.';
 
@@ -1531,9 +1534,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sidePanelSearchFiles => 'Search the project\'s files';
-
-  @override
-  String get sidePanelSearchResults => 'Search Results';
 
   @override
   String get sidePanelCloseSearch => 'Close the search';
@@ -1719,6 +1719,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ideChatHistory => 'Agent History';
 
   @override
+  String get ideChatShowArchived => 'Show archived agents';
+
+  @override
   String get ideChatNoAgents => 'No agents in this project';
 
   @override
@@ -1785,6 +1788,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sidebarCopySessionId => 'Copy session ID';
+
+  @override
+  String sidebarOpenStash(int id) {
+    return 'Open Stash #$id';
+  }
 
   @override
   String get sidebarFork => 'Fork';
@@ -2351,13 +2359,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planDrafting => 'Drafting';
 
   @override
-  String get planAwaiting => 'Awaiting approval';
+  String get planAwaiting => 'Ready to start';
 
   @override
   String get planApproved => 'Approved';
 
   @override
   String get planSentBack => 'Sent back';
+
+  @override
+  String get planStart => 'Start';
+
+  @override
+  String get planStartHint => 'Leave Plan mode and carry out this plan';
+
+  @override
+  String get planStartMessage => 'Carry out the plan';
 
   @override
   String turnFiles(int count) {
@@ -2532,6 +2549,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stripUndo => 'Undo';
 
   @override
+  String get agentKeepFile => 'Keep file';
+
+  @override
   String get stripChangeAdded => 'Added';
 
   @override
@@ -2676,39 +2696,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get interactionDenyHint => 'Tell the agent what to do instead';
 
   @override
-  String get interactionPlanTitle => 'Ready to code?';
-
-  @override
-  String get interactionStartBuilding => 'Yes, start building';
-
-  @override
-  String interactionStartWith(String approvals) {
-    return 'Yes, start · $approvals';
-  }
-
-  @override
-  String get interactionKeepPlanningOption => 'No, keep planning';
-
-  @override
-  String get interactionWhatShouldChange => 'What should change?';
-
-  @override
-  String get interactionSayWhatToChange =>
-      'Or say what should change in the message box';
-
-  @override
-  String get interactionViewPlan => 'View plan';
-
-  @override
   String interactionStepOf(int step, int total) {
     return '$step / $total';
   }
 
   @override
   String get interactionSkip => 'Skip';
-
-  @override
-  String get interactionKeepPlanning => 'Keep planning';
 
   @override
   String get interactionSubmit => 'Submit';
@@ -3891,12 +3884,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scmPush => 'Push';
 
   @override
-  String get scmPickRepository => 'Pick Repository';
-
-  @override
-  String get scmUnpickRepository => 'Unpick Repository';
-
-  @override
   String scmPullCommits(int count, String upstream) {
     return 'Pull $count commits from $upstream';
   }
@@ -4422,26 +4409,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get langClickToRetry => 'Click to retry';
 
   @override
-  String langNotInstalled(String id) {
-    return '$id not installed';
-  }
-
-  @override
-  String langNeedsRuntime(String id, String runtime) {
-    return 'Installing $id needs $runtime, which was not found';
-  }
-
-  @override
-  String langClickToInstall(String id) {
-    return 'Click to install $id';
-  }
-
-  @override
-  String langNotOnPath(String id) {
-    return '$id was not found on PATH';
-  }
-
-  @override
   String langInstallingItem(String id) {
     return 'Installing $id…';
   }
@@ -4776,18 +4743,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get wbUnpinTimeline => 'Unpin the Current Timeline';
-
-  @override
-  String get wbLanguageServices => 'Language services';
-
-  @override
-  String get wbMonacoEditor => 'Monaco editor';
-
-  @override
-  String get wbTextEditor => 'Text editor';
-
-  @override
-  String get wbRetryLanguageServices => 'Retry language services';
 
   @override
   String get wbNoProblems => 'No Problems';
@@ -7129,7 +7084,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appearanceSettingsCodeSizeDescription =>
-      'The size of code in the IDE editor and the side panel\'s file and changes views. Code in the chat follows the interface text size; the terminal has its own size.';
+      'The size of code in the IDE editor and the side panel\'s file and changes views. Code in the chat follows the interface size; the terminal has its own size.';
 
   @override
   String appearanceSettingsCodeSizeLabel(String size) {
@@ -7144,15 +7099,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Draws sequences such as => and != as one glyph where the font has one. The terminal does not.';
 
   @override
-  String get appearanceSettingsUiScale => 'Interface Text Size';
+  String get appearanceSettingsUiScale => 'Interface Size';
 
   @override
   String get appearanceSettingsUiScaleDescription =>
-      'The size of interface text, code in the chat, and terminal text while the terminal size follows it. Code in the IDE editor and side panel files and changes keeps its own size.';
+      'Zooms the whole interface (its text, icons and spacing), code in the chat, and terminal text while the terminal size follows it. Code in the IDE editor and side panel files and changes keeps its own size.';
 
   @override
   String appearanceSettingsUiScaleLabel(String percent) {
-    return 'Interface text size: $percent%';
+    return 'Interface size: $percent%';
   }
 
   @override
@@ -7160,11 +7115,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appearanceSettingsTerminalSizeDescription =>
-      'The size of terminal text. By default it follows the interface text size; it can be set on its own.';
+      'The size of terminal text. By default it follows the interface size; it can be set on its own.';
 
   @override
-  String get appearanceSettingsTerminalSizeFollow =>
-      'Follow Interface Text Size';
+  String get appearanceSettingsTerminalSizeFollow => 'Follow Interface Size';
 
   @override
   String get appearanceSettingsTerminalSizeCustom => 'Custom';
@@ -8147,7 +8101,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mobilePublicAddressDescription =>
-      'A domain or IP this computer can be reached at from the internet (with the port forwarded), put in the QR code; several separated by commas. Public IPv6 addresses are found by themselves.';
+      'A domain or IP this computer can be reached at from the internet (with the port forwarded), put in the QR code; several separated by commas. Behind a proxy that only takes HTTPS (such as a Cloudflare Tunnel), write it as wss://domain. Public IPv6 addresses are found by themselves.';
 
   @override
   String get mobileRelay => 'Relay';
@@ -8649,18 +8603,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'Work directly in this project, on the current branch.';
 
   @override
-  String stashImplementComplete(int id) {
-    return 'When it is finished, mark it done with the stash_complete tool (id $id).';
-  }
+  String get stashImplementComplete =>
+      'When it is finished, mark it done in the Stash.';
 
   @override
-  String get stashThreadStarting =>
-      'A conversation is ready for it; send its message to start.';
+  String get stashThreads => 'Conversations';
 
   @override
-  String stashThreadLinked(String title) {
-    return 'Implemented in conversation “$title”';
-  }
+  String get stashThreadSource => 'Noted in this conversation';
+
+  @override
+  String get stashThreadNoReply => 'No reply yet';
+
+  @override
+  String get stashThreadGone => 'No longer in the list';
 
   @override
   String get stashOpenThread => 'Open';
@@ -8780,4 +8736,394 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stashFormatMore => 'More';
+
+  @override
+  String get branchBarSwitch => 'Switch Branch';
+
+  @override
+  String get branchBarSearch => 'Search branches';
+
+  @override
+  String get branchBarCreate => 'Create Branch…';
+
+  @override
+  String branchBarCreateFrom(String branch) {
+    return 'Create a branch from “$branch”';
+  }
+
+  @override
+  String branchBarCreateIn(String folder) {
+    return 'Create a branch in “$folder”';
+  }
+
+  @override
+  String get branchBarCreateButton => 'Create';
+
+  @override
+  String get branchBarDetached => 'Detached HEAD';
+
+  @override
+  String get branchBarRunning =>
+      'Branches can\'t be switched while the agent works';
+
+  @override
+  String branchBarFailed(String branch) {
+    return 'Couldn\'t switch to “$branch”';
+  }
+
+  @override
+  String get branchBarNotRepository => 'Not a Git repository';
+
+  @override
+  String get branchBarWorkspace => 'Branches of the folders';
+
+  @override
+  String get settingsSectionAccounts => 'Accounts';
+
+  @override
+  String get settingsAccountsKeywords =>
+      'GitHub GitLab sign in login token issue pull request merge request';
+
+  @override
+  String get accountsDescription =>
+      'Sign in to GitHub or GitLab to see the state of the issues and pull requests linked in Stash, import issues as stashes, and reply to them once you confirm.';
+
+  @override
+  String get accountsSignedIn => 'Signed in';
+
+  @override
+  String get accountsAdd => 'Add an account';
+
+  @override
+  String get accountsKeptLocally =>
+      'Tokens are kept in this computer\'s keychain and are sent only to the GitHub or GitLab they are for. Nothing is posted without your confirmation.';
+
+  @override
+  String get accountsGitHubHosts =>
+      'github.com, or your company\'s GitHub Enterprise';
+
+  @override
+  String get accountsGitLabHosts => 'gitlab.com, or a self-managed GitLab';
+
+  @override
+  String get accountsSignInBrowser => 'Sign in with Browser';
+
+  @override
+  String get accountsSignInToken => 'Use a Token…';
+
+  @override
+  String get accountsViaBrowser => 'signed in with browser';
+
+  @override
+  String get accountsViaToken => 'signed in with token';
+
+  @override
+  String get accountsSignOut => 'Sign Out';
+
+  @override
+  String accountsSignOutTitle(String login, String forge) {
+    return 'Sign out of $forge account $login?';
+  }
+
+  @override
+  String accountsSignOutDetail(String forge) {
+    return 'The token is deleted from this computer. To revoke BaoCode\'s access altogether, revoke it in your $forge settings too.';
+  }
+
+  @override
+  String accountsRevoke(String forge) {
+    return 'Sign Out and Open $forge Settings';
+  }
+
+  @override
+  String accountsTokenTitle(String forge) {
+    return 'Sign in to $forge with a Token';
+  }
+
+  @override
+  String get accountsSignIn => 'Sign In';
+
+  @override
+  String get accountsHost => 'Host';
+
+  @override
+  String get accountsToken => 'Token';
+
+  @override
+  String get accountsTokenGitHubScopes =>
+      'A classic token with the repo and read:user scopes, or a fine-grained token with read and write access to issues and pull requests.';
+
+  @override
+  String get accountsTokenGitLabScopes =>
+      'A personal access token with the api scope.';
+
+  @override
+  String accountsTokenCreate(String host) {
+    return 'Create a Token on $host';
+  }
+
+  @override
+  String get accountsTokenRefused =>
+      'The token was not accepted. Check that it is complete and has not expired.';
+
+  @override
+  String accountsBrowserTitle(String forge) {
+    return 'Sign in to $forge';
+  }
+
+  @override
+  String accountsBrowserDetail(String host) {
+    return 'Enter this code on $host to let BaoCode access your account:';
+  }
+
+  @override
+  String get accountsCopyAndOpen => 'Copy Code and Open Browser';
+
+  @override
+  String get accountsOpenAgain => 'Copied · Open Again';
+
+  @override
+  String get accountsBrowserStarting => 'Getting a code…';
+
+  @override
+  String get accountsBrowserWaiting =>
+      'Waiting for you to authorize in the browser…';
+
+  @override
+  String get accountsRetry => 'Try Again';
+
+  @override
+  String get forgeStateOpen => 'Open';
+
+  @override
+  String get forgeStateDraft => 'Draft';
+
+  @override
+  String get forgeStateClosed => 'Closed';
+
+  @override
+  String get forgeStateMerged => 'Merged';
+
+  @override
+  String get forgeChecksPassed => 'Checks passed';
+
+  @override
+  String get forgeChecksFailed => 'Checks failed';
+
+  @override
+  String get forgeChecksRunning => 'Checks running';
+
+  @override
+  String get stashIssues => 'Issues & pull requests';
+
+  @override
+  String stashIssueClosedBanner(String tag) {
+    return '$tag was closed. Is this stash done too?';
+  }
+
+  @override
+  String stashIssueOpenBanner(String tag) {
+    return 'This stash is done, but $tag is still open.';
+  }
+
+  @override
+  String get stashIssueReplyClose => 'Reply and close…';
+
+  @override
+  String stashIssueNotSignedIn(String forge) {
+    return 'Sign in to $forge to see its state';
+  }
+
+  @override
+  String get stashIssueSignIn => 'Sign In…';
+
+  @override
+  String get stashIssueFailed => 'Could not refresh';
+
+  @override
+  String get stashIssueOpen => 'Open in Browser';
+
+  @override
+  String get stashIssueCopy => 'Copy Link';
+
+  @override
+  String get stashIssueComment => 'Comment…';
+
+  @override
+  String get stashIssueClose => 'Close Issue…';
+
+  @override
+  String get stashIssueUnlink => 'Unlink';
+
+  @override
+  String stashWriteFixedIn(String pulls) {
+    return 'Fixed in $pulls.';
+  }
+
+  @override
+  String stashWriteTitle(String tag) {
+    return 'Comment on $tag';
+  }
+
+  @override
+  String stashWriteCloseTitle(String tag) {
+    return 'Close $tag';
+  }
+
+  @override
+  String get stashWriteSend => 'Comment';
+
+  @override
+  String get stashWriteSendClose => 'Comment and Close';
+
+  @override
+  String get stashWriteCloseOnly => 'Close Issue';
+
+  @override
+  String get stashWriteSendAnyway => 'Send Anyway';
+
+  @override
+  String get stashWritePlaceholder => 'Write a comment (Markdown)';
+
+  @override
+  String get stashWriteAlsoClose => 'Close the issue too';
+
+  @override
+  String get stashWriteSensitive =>
+      'This looks like it has paths on this computer or secrets, which everyone who can see the issue will see:';
+
+  @override
+  String stashWriteAs(String login, String host) {
+    return 'Posted as $login on $host.';
+  }
+
+  @override
+  String stashWriteFailed(String error) {
+    return 'Not sent: $error';
+  }
+
+  @override
+  String get stashImport => 'Import from Issues…';
+
+  @override
+  String get stashImportTitle => 'Import Issues';
+
+  @override
+  String get stashImportAction => 'Import';
+
+  @override
+  String stashImportCount(int count) {
+    return 'Import $count';
+  }
+
+  @override
+  String get stashImportPaste => 'Paste an issue or pull request link';
+
+  @override
+  String get stashImportAdd => 'Add';
+
+  @override
+  String get stashImportNotALink =>
+      'Not a GitHub or GitLab issue or pull request link.';
+
+  @override
+  String stashImportSignIn(String forge) {
+    return 'Sign in to $forge in Settings → Accounts to list its issues.';
+  }
+
+  @override
+  String get stashImportRepo => 'Repository';
+
+  @override
+  String get stashImportAssigned => 'Assigned to me';
+
+  @override
+  String get stashImportCreated => 'Created by me';
+
+  @override
+  String get stashImportAll => 'All open';
+
+  @override
+  String get stashImportSearch => 'Search';
+
+  @override
+  String get stashImportLoading => 'Loading…';
+
+  @override
+  String get stashImportNoRepos =>
+      'No project has a GitHub or GitLab remote. Paste an issue link above.';
+
+  @override
+  String get stashImportNone => 'No open issues here.';
+
+  @override
+  String stashImportKnown(int id) {
+    return 'in Stash #$id';
+  }
+
+  @override
+  String sidebarOpenPull(String tag) {
+    return 'Open $tag';
+  }
+
+  @override
+  String get stashGroupOthers => 'Others';
+
+  @override
+  String stashFilterProjects(int count) {
+    return '$count projects';
+  }
+
+  @override
+  String get stashFilterJoiner => ', ';
+
+  @override
+  String get stashWelcomeTitle => 'Meet Stash';
+
+  @override
+  String get stashWelcomeLead =>
+      'Note things down the moment they come to you, hand them to an agent when you are ready, and see how each one is going.';
+
+  @override
+  String get stashWelcomeNoteTitle => 'Note it down';
+
+  @override
+  String get stashWelcomeAgentTitle => 'Hand it to an agent';
+
+  @override
+  String get stashWelcomeAgent =>
+      'Click Implement in BaoCode, or mention it in a conversation; the conversation and the stash stay linked.';
+
+  @override
+  String get stashWelcomeTrackTitle => 'See how it goes';
+
+  @override
+  String get stashWelcomeTrack =>
+      'Cards show their conversations live, and the GitHub and GitLab issues and pull requests they link to stay in sync.';
+
+  @override
+  String get stashWelcomeStart => 'Get Started';
+
+  @override
+  String get stashWelcomeNoteBody =>
+      'Text, screenshots and links all go in, and each one gets a number of its own, like an issue.';
+
+  @override
+  String get stashWelcomeHotkeyTitle => 'Set a shortcut to note things down';
+
+  @override
+  String get stashWelcomeHotkeySetTitle => 'Shortcut set';
+
+  @override
+  String get stashWelcomeHotkey =>
+      'Press it in any app and the Stash panel comes up, ready to type. Click the box below and press the keys you want.';
+
+  @override
+  String stashWelcomeHotkeySet(String hotkey) {
+    return 'Press $hotkey in any app to note something down. Change it here or in Settings → Stash any time.';
+  }
+
+  @override
+  String get stashWelcomeHotkeyLater =>
+      'You can also set it later in Settings → Stash.';
 }

@@ -91,6 +91,10 @@ abstract interface class ReviewStore {
 
   Future<Uint8List> read(ReviewBlob blob);
 
+  /// Keeps [bytes] as a blob of [mode] (one no snapshot has, such as what
+  /// was there before with part of a change kept).
+  Future<ReviewBlob> store(Uint8List bytes, {required String mode});
+
   /// Puts [blob] at [path]; null deletes the file (and the folders it
   /// leaves empty).
   Future<void> restore(String path, ReviewBlob? blob);

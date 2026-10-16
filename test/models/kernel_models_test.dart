@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:baocode/kernel/agent_kernel.dart';
 import 'package:baocode/kernel/claude_code/claude_code_kernel.dart';
 import 'package:baocode/kernel/claude_code/claude_code_transport.dart';
+import 'package:baocode/kernel/claude_code/claude_code_translator.dart';
 import 'package:baocode/kernel/kernel_types.dart';
 import 'package:baocode/kernel/transcript.dart';
 import 'package:baocode/kernel/mock/mock_kernels.dart';
@@ -609,10 +610,11 @@ void main() {
     expect(transcript.pendingInteraction, isNull);
     expect(cli.responses.last['behavior'], 'allow');
     expect(cli.responses.last['updatedInput'], command);
-    // The plan is still the user's.
+    // The plan is still the user's: put to them, not approved here.
     ask('r2', 'ExitPlanMode', {'plan': '1. Do it'});
     await pumpEventQueue();
-    expect(transcript.pendingInteraction, isA<PlanReviewRequest>());
+    expect(transcript.pendingInteraction, isNull);
+    expect(cli.responses.last['message'], ClaudeTranslator.planPresented);
     kernel.dispose();
   });
 

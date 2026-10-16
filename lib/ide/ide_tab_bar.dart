@@ -100,6 +100,7 @@ class IdeTabBar extends StatefulWidget {
     this.markdownPreview,
     this.onMarkdownPreview,
     this.page,
+    this.actions,
   });
 
   final List<IdeDocument> documents;
@@ -123,6 +124,10 @@ class IdeTabBar extends StatefulWidget {
 
   /// Shows the active markdown file's preview (true) or source (false).
   final ValueChanged<bool>? onMarkdownPreview;
+
+  /// After the tabs, before the active tab's switch and More Actions (an
+  /// agent's change to its file: Undo and Keep).
+  final Widget? actions;
 
   static const height = IdeTabStrip.height;
 
@@ -316,6 +321,7 @@ class _IdeTabBarState extends State<IdeTabBar> {
               ),
             ),
           ),
+          ?widget.actions,
           if ((widget.markdownPreview, widget.onMarkdownPreview) case (
             final preview?,
             final onChanged?,

@@ -9,6 +9,9 @@ import '../chat/floating/floating_placement.dart';
 import '../chat/widgets/hover_builder.dart';
 import '../chat/widgets/inline_rename_field.dart';
 import '../chat/widgets/pixel_loader.dart';
+import '../forge/forge_api.dart' show ForgeState;
+import '../forge/forge_ref.dart' show ForgeItemKind;
+import '../forge/forge_view.dart' show forgeStateLook;
 import '../icons/project_icon_picker.dart';
 import '../icons/project_icon_view.dart';
 import '../ide/ide_button.dart' show IdeButtonColors;
@@ -168,6 +171,7 @@ class Sidebar extends StatefulWidget {
     this.customizing = false,
     this.onStash,
     this.stashing = false,
+    this.stashes,
     this.drag,
     this.link,
     this.current,
@@ -243,6 +247,10 @@ class Sidebar extends StatefulWidget {
 
   /// They show: the Stash row is selected.
   final bool stashing;
+
+  /// The stashes each conversation carries out, on its row; none without
+  /// the Stash.
+  final SidebarStashes? stashes;
 
   /// An agent was opened or created from here (the drawer closes).
   final VoidCallback? onOpened;
@@ -1378,10 +1386,30 @@ class _SidebarState extends State<Sidebar>
     );
   }
 
-  Widget _buildRow(AgentThread thread, _Group group) {
+  Widget _buildRow(AgentThread thread, _Group group) =>
+      switch (widget.stashes) {
+        // Linked to one, or done with it, meanwhile.
+        final stashes? => ListenableBuilder(
+          listenable: stashes.changes,
+          builder: (context, _) => _buildThreadRow(thread, group),
+        ),
+        null => _buildThreadRow(thread, group),
+      };
+
+  Widget _buildThreadRow(AgentThread thread, _Group group) {
     return _ThreadRow(
       thread: thread,
       height: _rowHeight,
+      stashes: switch ((widget.stashes, thread.id)) {
+        (final stashes?, final session?) => stashes.of(session),
+        _ => const [],
+      },
+      onOpenStash: widget.stashes?.open,
+      pulls: switch ((widget.stashes, thread.id)) {
+        (final stashes?, final session?) => stashes.pulls(session),
+        _ => const [],
+      },
+      onOpenPull: widget.stashes?.openPull,
       selected:
           _listSelection.values.contains(thread) ||
           (!_listFocus.hasFocus &&
@@ -2664,6 +2692,10 @@ class _ThreadRow extends StatelessWidget {
   const _ThreadRow({
     required this.thread,
     required this.height,
+    this.stashes = const [],
+    this.onOpenStash,
+    this.pulls = const [],
+    this.onOpenPull,
     required this.selected,
     required this.focusedItem,
     required this.focused,
@@ -2688,6 +2720,16 @@ class _ThreadRow extends StatelessWidget {
 
   final AgentThread thread;
   final double height;
+
+  /// The stashes it carries out: a tag on it, opened by [onOpenStash].
+  final List<SidebarStash> stashes;
+  final ValueChanged<int>? onOpenStash;
+
+  /// The pull requests it opened (or worked on), by their stash: a tag
+  /// on it, opened by [onOpenPull].
+  final List<SidebarPull> pulls;
+  final ValueChanged<String>? onOpenPull;
+
   final bool selected;
   final bool focusedItem;
   final bool focused;
@@ -2726,7 +2768,9 @@ class _ThreadRow extends StatelessWidget {
       return [
         if (targets.every((thread) => !thread.archived))
           SidebarMenuItem(
-            pinned ? l10n.sidebarUnpinCount(count) : l10n.sidebarPinCount(count),
+            pinned
+                ? l10n.sidebarUnpinCount(count)
+                : l10n.sidebarPinCount(count),
             icon: pinned ? Icons.push_pin : Icons.push_pin_outlined,
             onSelected: () => onPinAll(targets, !pinned),
           ),
@@ -2746,6 +2790,20 @@ class _ThreadRow extends StatelessWidget {
       ];
     }
     return [
+      if (onOpenStash case final open?)
+        for (final stash in stashes)
+          SidebarMenuItem(
+            l10n.sidebarOpenStash(stash.id),
+            icon: Codicons.note,
+            onSelected: () => open(stash.id),
+          ),
+      if (onOpenPull case final open?)
+        for (final pull in pulls)
+          SidebarMenuItem(
+            l10n.sidebarOpenPull(pull.tag),
+            icon: Codicons.gitPullRequest,
+            onSelected: () => open(pull.url),
+          ),
       SidebarMenuItem(
         l10n.commonRename,
         icon: Icons.edit_outlined,
@@ -2881,6 +2939,20 @@ class _ThreadRow extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(thread.project.path, style: faint),
+          for (final stash in stashes)
+            Text(
+              'Stash #${stash.id} · ${stash.title}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: faint,
+            ),
+          for (final pull in pulls)
+            Text(
+              [pull.tag, ?pull.title].join(' · '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: faint,
+            ),
           Text(
             [
               ?status,
@@ -2944,6 +3016,22 @@ class _ThreadRow extends StatelessWidget {
   ) {
     final diff = thread.diff;
     return [
+      if (stashes.isNotEmpty) ...[
+        const SizedBox(width: 6),
+        _StashTag(
+          stashes: stashes,
+          color: selected ? foreground : AppColors.textMuted,
+          onOpen: onOpenStash,
+        ),
+      ],
+      if (pulls.isNotEmpty) ...[
+        const SizedBox(width: 6),
+        _PullTag(
+          pulls: pulls,
+          color: selected ? foreground : AppColors.textMuted,
+          onOpen: onOpenPull,
+        ),
+      ],
       if (diff != null && !active) ...[
         const SizedBox(width: 6),
         Text.rich(
@@ -3010,6 +3098,169 @@ class _ThreadRow extends StatelessWidget {
       const SizedBox(width: 2),
     ];
   }
+}
+
+/// A stash a conversation carries out, as its row shows it.
+typedef SidebarStash = ({int id, String title, bool done});
+
+/// What the sidebar shows of the stashes (docs/stash.md): those each
+/// conversation carries out, by its session, and how to open one; told
+/// by [changes] when they may have changed.
+class SidebarStashes {
+  const SidebarStashes({
+    required this.changes,
+    required this.of,
+    required this.open,
+    this.pulls = _none,
+    this.openPull,
+  });
+
+  final Listenable changes;
+  final List<SidebarStash> Function(String session) of;
+  final ValueChanged<int> open;
+
+  /// The pull requests each conversation opened, by its session; opened
+  /// (in the browser) by [openPull].
+  final List<SidebarPull> Function(String session) pulls;
+  final ValueChanged<String>? openPull;
+
+  static List<SidebarPull> _none(String session) => const [];
+}
+
+/// A pull (merge) request a conversation opened, as its row shows it: its
+/// link, `o/r#7`, its title and state when known.
+typedef SidebarPull = ({
+  String url,
+  String tag,
+  String? title,
+  ForgeState? state,
+});
+
+/// On a conversation's row: the pull request it opened (`#7`, `+1` for
+/// each other) in its state's icon and color, its title on hover; a click
+/// opens it.
+class _PullTag extends StatelessWidget {
+  const _PullTag({
+    required this.pulls,
+    required this.color,
+    required this.onOpen,
+  });
+
+  final List<SidebarPull> pulls;
+  final Color color;
+  final ValueChanged<String>? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = pulls.first;
+    final (icon, stateColor) = forgeStateLook(ForgeItemKind.pull, first.state);
+    final number = RegExp(r'[#!]\d+$').firstMatch(first.tag)?[0] ?? first.tag;
+    // In its state's color, its icon telling it from a stash's.
+    final tag = _TagPill(
+      color: first.state == null ? color : stateColor,
+      icon: icon,
+      label: '$number${pulls.length > 1 ? ' +${pulls.length - 1}' : ''}',
+    );
+    return IdeHover(
+      message: [
+        for (final pull in pulls) [pull.tag, ?pull.title].join(' · '),
+      ].join('\n'),
+      child: switch (onOpen) {
+        final open? => MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => open(first.url),
+            child: tag,
+          ),
+        ),
+        null => tag,
+      },
+    );
+  }
+}
+
+/// On a conversation's row: the stash it carries out (`#31`, `+1` for
+/// each other) in a pill of the row's text's color, faded once done; its
+/// title on hover; a click opens it.
+class _StashTag extends StatelessWidget {
+  const _StashTag({
+    required this.stashes,
+    required this.color,
+    required this.onOpen,
+  });
+
+  final List<SidebarStash> stashes;
+  final Color color;
+  final ValueChanged<int>? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = stashes.first;
+    final tag = Opacity(
+      opacity: first.done ? .55 : 1,
+      child: _TagPill(
+        color: color,
+        label:
+            '#${first.id}${stashes.length > 1 ? ' +${stashes.length - 1}' : ''}',
+      ),
+    );
+    return IdeHover(
+      message: [
+        for (final stash in stashes) 'Stash #${stash.id} · ${stash.title}',
+      ].join('\n'),
+      child: switch (onOpen) {
+        final open? => MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => open(first.id),
+            child: tag,
+          ),
+        ),
+        null => tag,
+      },
+    );
+  }
+}
+
+/// A conversation's row's tag: [label] in [color], on a pill of it, faint.
+class _TagPill extends StatelessWidget {
+  const _TagPill({required this.color, required this.label, this.icon});
+
+  final Color color;
+  final String label;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 16,
+    padding: const EdgeInsets.symmetric(horizontal: 6),
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .14),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon case final icon?) ...[
+          Icon(icon, size: 10, color: color),
+          const SizedBox(width: 2),
+        ],
+        Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontSize: 10.5,
+            height: 1.2,
+            fontWeight: FontWeight.w500,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 /// What an agent needs: a spinner while it runs, an amber dot when it

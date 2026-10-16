@@ -3,6 +3,7 @@
 // searches with, and a result opens its file at its line.
 
 import 'package:bao_editor/monaco/flutter/editor_surface.dart';
+import 'package:baocode/ide/ide_notifications.dart';
 import 'package:baocode/chat/chat_session.dart';
 import 'package:baocode/chat/side_panel/file_link.dart';
 import 'package:baocode/chat/side_panel/file_open.dart';
@@ -96,6 +97,7 @@ Future<({AgentSidePanel panel, ChatSession session})> _pump(
           child: AgentSidePanelArea(
             panel: panel,
             builder: (context) => AgentSidePanelView(
+              notifications: IdeNotifications(),
               panel: panel,
               session: session,
               files: _files,

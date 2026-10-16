@@ -4,7 +4,8 @@ import 'package:baocode/stash/stash_note_editor.dart';
 import 'package:baocode/stash/stash_ai.dart';
 import 'package:baocode/models/model_providers.dart';
 import 'package:baocode/chat/composer/composer_files.dart';
-import 'package:baocode/kernel/claude_code/claude_sdk_tools.dart';
+import 'package:baocode/chat/chat_models.dart' show oneLineExcerpt;
+import 'package:baocode/chat/chat_session.dart' show ComposerMessage;
 import 'package:baocode/l10n/l10n.dart';
 import 'package:baocode/stash/stash_actions.dart';
 import 'package:baocode/stash/stash_controller.dart';
@@ -395,47 +396,50 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('agents write stashes down and mark them done', (tester) async {
+  testWidgets('a conversation a message names a stash in is linked to it, '
+      'and keeps what its agent last said', (tester) async {
     await setUpFlow(tester);
     await controller.start();
     // No shortcut taken unasked.
     expect(hotkeys, ['']);
     expect(controller.hotkeyTaken, isNull);
-    const call = ClaudeSdkCall(cwd: '/work/app', sessionId: 'session-1');
-    Future<Map<String, Object?>> tool(
-      String name,
-      Map<String, Object?> arguments,
-    ) async {
-      final answer = await ClaudeSdkTools.handle({
-        'id': 1,
-        'method': 'tools/call',
-        'params': {'name': name, 'arguments': arguments},
-      }, call);
-      return answer['result']! as Map<String, Object?>;
+    final note = await store.create(body: 'Retry uploads on 503');
+    final thread = workspace.threads.first;
+
+    thread.session.send(ComposerMessage(text: 'Do [Stash #${note.id}] please'));
+    await tester.pump();
+    expect(thread.id, isNotNull);
+    final linked = store.byId(note.id)!;
+    expect(linked.status, StashStatus.implementing);
+    expect(linked.threads.single.session, thread.id);
+    expect(linked.threads.single.project, thread.project.path);
+    expect(controller.threads.threadOf(linked.threads.single), thread);
+
+    // Its turn over, what its agent said last goes with the link (and to
+    // its file, for the cards while it is not open).
+    for (var i = 0; i < 200 && thread.session.lastReply == null; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
     }
+    final reply = thread.session.lastReply;
+    expect(reply, isNotNull);
+    thread.session.stop();
+    await tester.pump(const Duration(seconds: 1));
+    final said = store.byId(note.id)!.threads.single;
+    expect(said.said, oneLineExcerpt(reply!, max: 240));
+    expect(said.title, thread.title);
+    expect(said.at, isNotNull);
+    expect(StashNote.decode(note.id, store.byId(note.id)!.encode()).threads, [
+      said,
+    ]);
 
-    final created = await tool('stash_create', {
-      'text': 'Retry uploads on 503',
-      'title': 'Upload retries',
-    });
-    expect(created['isError'], isNull);
-    final note = store.notes.single;
-    expect(note.title, 'Upload retries');
-    expect(note.project, '/work/app');
-    expect(note.source.thread, 'session-1');
-
-    final read = await tool('stash_read', {'id': note.id});
-    expect(
-      ((read['content']! as List).single as Map)['text'],
-      contains('Retry uploads on 503'),
-    );
-
-    await tool('stash_complete', {'id': '#${note.id}'});
+    // Done stays done, named again.
+    await store.update(note.id, (note) => note.status = StashStatus.done);
+    thread.session.send(ComposerMessage(text: 'And [Stash #${note.id}]'));
+    await tester.pump();
     expect(store.byId(note.id)!.status, StashStatus.done);
-    expect(store.byId(note.id)!.thread?.session, 'session-1');
-
-    final missing = await tool('stash_complete', {'id': 404});
-    expect(missing['isError'], isTrue);
+    expect(store.byId(note.id)!.threads, hasLength(1));
+    thread.session.stop();
+    await tester.pump(const Duration(seconds: 1));
 
     // Dragged or mentioned into a message, it goes as a reference.
     final reference = stashReferenceOf(store, store.byId(note.id)!);

@@ -201,13 +201,17 @@ class ClaudeLaunch {
   /// The permission rule that lets it read what is in [folder] (absolute):
   /// `Read(//Users/me/x/**)`, a Windows path as Claude Code matches it
   /// (`C:\\x` as `/c/x`).
-  static String readRule(String folder) {
+  static String readRule(String folder) => folderRule('Read', folder);
+
+  /// The permission rule for [tool] (`Read`, `Edit`) on what is in
+  /// [folder] (absolute), as [readRule]'s.
+  static String folderRule(String tool, String folder) {
     var path = folder.replaceAll(r'\', '/');
     if (RegExp(r'^[A-Za-z]:').hasMatch(path)) {
       path = '/${path[0].toLowerCase()}${path.substring(2)}';
     }
     if (path.endsWith('/')) path = path.substring(0, path.length - 1);
-    return 'Read(/$path/**)';
+    return '$tool(/$path/**)';
   }
 
   /// Has Claude Code read the `CLAUDE.md` of the folders given with

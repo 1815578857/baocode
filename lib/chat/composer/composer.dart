@@ -9,13 +9,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
 
-import '../../ide/ide_dialog.dart';
 import '../../kernel/agent_kernel.dart';
 import '../../kernel/kernel_types.dart';
 import '../../keybindings/chat_keybindings.dart';
 import '../../l10n/l10n.dart';
-import '../../settings/settings_dialog.dart'
-    show SettingsOpener, SettingsSection;
 import '../../theme/app_theme.dart';
 import '../../theme/workbench_theme.dart' show WorkbenchColors, themeColors;
 import '../chat_keys.dart';
@@ -36,6 +33,7 @@ import 'composer_images.dart';
 import 'composer_mock_data.dart';
 import 'composer_picker.dart';
 import 'pickers_row.dart';
+import 'session_model_picker.dart';
 import 'kernel_option_text.dart';
 import 'file_drop.dart';
 import 'suggestion_menu.dart';
@@ -56,6 +54,12 @@ class _Trigger {
 
   bool sameAnchor(_Trigger? other) =>
       other != null && other.kind == kind && other.start == start;
+}
+
+/// A rich-text shortcut of Quill's: with no action for it, the key is not
+/// handled (see [ChatComposerState._richTextShortcuts]).
+class _NoRichTextIntent extends Intent {
+  const _NoRichTextIntent();
 }
 
 /// The chat input, built on flutter_quill.
@@ -202,7 +206,13 @@ class ChatComposerState extends State<ChatComposer>
     final config = QuillControllerConfig(
       // Quill's only hook for taking over paste; experimental in 11.x.
       // ignore: experimental_member_use
-      clipboardConfig: QuillClipboardConfig(onClipboardPaste: _paste),
+      clipboardConfig: QuillClipboardConfig(
+        // ignore: experimental_member_use
+        onClipboardPaste: _paste,
+        // Nor, where that leaves it to Quill, its HTML or Markdown as such.
+        // ignore: experimental_member_use
+        enableExternalRichPaste: false,
+      ),
     );
     if (widget.draft case final draft? when draft.saved) {
       final document = Document.fromDelta(draft.content!);
@@ -1691,12 +1701,47 @@ class ChatComposerState extends State<ChatComposer>
         ],
         // ignore: experimental_member_use
         onKeyPressed: _handleKey,
+        customShortcuts: _richTextShortcuts(),
         onTapOutside: (event, focusNode) {},
         showCursor: false,
         customStyles: _editorStyles(context),
       ),
     );
   }
+
+  /// Quill's rich-text shortcuts (headers, styles, lists, indents, its link,
+  /// image and search dialogs), bound to nothing: they do nothing here and
+  /// go on to the window. [_handleKey] swallows them first, but not when an
+  /// open menu answers for the key; and the controller takes no style.
+  static Map<ShortcutActivator, Intent> _richTextShortcuts() {
+    // Quill's own modifier: ⌘ on macOS, Ctrl elsewhere.
+    final mac = defaultTargetPlatform == TargetPlatform.macOS;
+    return {
+      for (final (key, shift) in _quillShortcutKeys)
+        SingleActivator(key, meta: mac, control: !mac, shift: shift):
+            const _NoRichTextIntent(),
+    };
+  }
+
+  static final _quillShortcutKeys = [
+    (LogicalKeyboardKey.keyB, false),
+    (LogicalKeyboardKey.keyB, true),
+    (LogicalKeyboardKey.keyU, false),
+    (LogicalKeyboardKey.keyI, false),
+    (LogicalKeyboardKey.keyS, true),
+    (LogicalKeyboardKey.backquote, false),
+    (LogicalKeyboardKey.tilde, true),
+    (LogicalKeyboardKey.keyK, false),
+    (LogicalKeyboardKey.keyL, true),
+    (LogicalKeyboardKey.keyO, true),
+    (LogicalKeyboardKey.keyC, true),
+    (LogicalKeyboardKey.keyM, false),
+    (LogicalKeyboardKey.keyM, true),
+    for (var digit = 0; digit <= 6; digit++)
+      (LogicalKeyboardKey(LogicalKeyboardKey.digit0.keyId + digit), false),
+    (LogicalKeyboardKey.keyG, false),
+    (LogicalKeyboardKey.keyF, false),
+  ];
 
   /// [text] as Quill's placeholder takes it. Quill reads the placeholder as
   /// JSON it splices the text into, escaping only its quotes: a backslash
@@ -1725,39 +1770,6 @@ class ChatComposerState extends State<ChatComposer>
         ),
       ),
     );
-  }
-
-  /// The model with its settings, e.g. "Opus · 1M · High": the context
-  /// only when it is not the standard one; its upstream before it only
-  /// when another upstream has a model of its name.
-  String _modelLabel(KernelOption model, List<KernelOption> options) => [
-    if (model.group case final group?
-        when options.any(
-          (other) => other.label == model.label && other.group?.id != group.id,
-        ))
-      group.label,
-    model.label,
-    for (final setting in widget.session.modelSettings(model.id))
-      if (setting.selected case final selected?
-          when setting.kind != KernelChoiceKind.context ||
-              selected != setting.options.first)
-        selected.label,
-  ].join(' · ');
-
-  /// Runs [pick], which switches to [option]: once confirmed, if that
-  /// restarts the agent on another upstream mid-conversation.
-  Future<void> _switchModel(KernelOption option, VoidCallback pick) async {
-    final session = widget.session;
-    if (!session.switchRestarts(option.id)) return pick();
-    final l10n = context.l10n;
-    final choice = await showIdeDialog(
-      context,
-      message: l10n.modelsSwitchTitle(option.group?.label ?? option.label),
-      detail: l10n.modelsSwitchDetail,
-      buttons: [l10n.modelsSwitchConfirm],
-      type: IdeDialogType.question,
-    );
-    if (choice == 0 && mounted) pick();
   }
 
   Widget _buildToolbar() {
@@ -1835,51 +1847,16 @@ class ChatComposerState extends State<ChatComposer>
                       const SizedBox(width: 2),
                     ],
                     if (model != null)
-                      ComposerPicker(
-                        key: _modelPickerKey,
-                        options: model.options,
-                        selected: model.selected,
-                        label: _modelLabel(model.selected, model.options),
-                        // Each its name alone, one line; its maker's logo
-                        // and its upstream's heading tell the rest.
-                        describes: false,
-                        settingsOf: (option) => [
-                          for (final setting in session.modelSettings(
-                            option.id,
-                          ))
-                            ModelSettingChoice(
-                              kind: setting.kind,
-                              options: setting.options,
-                              selected: setting.selected,
-                              toggle: setting.toggle,
-                              onSelected: (choice) => unawaited(
-                                _switchModel(
-                                  option,
-                                  () => setting.onSelected(choice),
-                                ),
-                              ),
-                            ),
-                        ],
+                      SessionModelPicker(
+                        session: session,
+                        pickerKey: _modelPickerKey,
                         tooltip: ChatKeys.titleWithKey(
                           l10n.composerPickModel,
                           ChatCommandIds.openModelPicker,
                           input,
                         ),
-                        menuWidth: 260,
-                        searchPlaceholder: l10n.modelsSearch,
-                        footer: switch (SettingsOpener.maybeOf(this.context)) {
-                          final open? => (
-                            label: l10n.modelsManage,
-                            icon: Icons.tune_rounded,
-                            onTap: () => open(SettingsSection.models),
-                          ),
-                          null => null,
-                        },
                         tapRegionGroupId: widget.tapRegionGroupId,
                         focusNode: _focusNode,
-                        onSelected: (option) => unawaited(
-                          _switchModel(option, () => model.onSelected(option)),
-                        ),
                       ),
                   ],
                 ),

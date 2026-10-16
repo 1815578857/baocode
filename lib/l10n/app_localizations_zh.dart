@@ -1456,6 +1456,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sidePanelSource => '源码';
 
   @override
+  String get sidePanelEdit => '编辑';
+
+  @override
   String get sidePanelNoOriginal => '不知道智能体修改前的文件内容，显示当前内容。';
 
   @override
@@ -1490,9 +1493,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sidePanelSearchFiles => '搜索项目文本';
-
-  @override
-  String get sidePanelSearchResults => '搜索结果';
 
   @override
   String get sidePanelCloseSearch => '关闭搜索';
@@ -1657,6 +1657,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ideChatHistory => '历史智能体';
 
   @override
+  String get ideChatShowArchived => '显示已归档的智能体';
+
+  @override
   String get ideChatNoAgents => '此项目中没有智能体';
 
   @override
@@ -1723,6 +1726,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sidebarCopySessionId => '复制会话 ID';
+
+  @override
+  String sidebarOpenStash(int id) {
+    return '打开 Stash #$id';
+  }
 
   @override
   String get sidebarFork => 'Fork 对话';
@@ -2271,13 +2279,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get planDrafting => '起草中';
 
   @override
-  String get planAwaiting => '待审批';
+  String get planAwaiting => '待开始';
 
   @override
   String get planApproved => '已批准';
 
   @override
   String get planSentBack => '已退回';
+
+  @override
+  String get planStart => '开始执行';
+
+  @override
+  String get planStartHint => '退出计划模式，按此计划开始执行';
+
+  @override
+  String get planStartMessage => '按计划开始执行';
 
   @override
   String turnFiles(int count) {
@@ -2443,6 +2460,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get stripUndo => '撤销';
 
   @override
+  String get agentKeepFile => '保留当前';
+
+  @override
   String get stripChangeAdded => '新增';
 
   @override
@@ -2581,38 +2601,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get interactionDenyHint => '告诉智能体改做什么';
 
   @override
-  String get interactionPlanTitle => '准备好开始了吗？';
-
-  @override
-  String get interactionStartBuilding => '是，开始构建';
-
-  @override
-  String interactionStartWith(String approvals) {
-    return '是，开始 · $approvals';
-  }
-
-  @override
-  String get interactionKeepPlanningOption => '不，继续规划';
-
-  @override
-  String get interactionWhatShouldChange => '需要改什么？';
-
-  @override
-  String get interactionSayWhatToChange => '或在下方输入框说明要改什么';
-
-  @override
-  String get interactionViewPlan => '查看计划';
-
-  @override
   String interactionStepOf(int step, int total) {
     return '$step / $total';
   }
 
   @override
   String get interactionSkip => '跳过';
-
-  @override
-  String get interactionKeepPlanning => '继续规划';
 
   @override
   String get interactionSubmit => '提交';
@@ -3644,12 +3638,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scmPush => '推送';
 
   @override
-  String get scmPickRepository => '选中仓库';
-
-  @override
-  String get scmUnpickRepository => '取消选中仓库';
-
-  @override
   String scmPullCommits(int count, String upstream) {
     return '从 $upstream 拉取 $count 个提交';
   }
@@ -4121,26 +4109,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get langClickToRetry => '单击以重试';
 
   @override
-  String langNotInstalled(String id) {
-    return '$id 未安装';
-  }
-
-  @override
-  String langNeedsRuntime(String id, String runtime) {
-    return '安装 $id 需要 $runtime，但未找到';
-  }
-
-  @override
-  String langClickToInstall(String id) {
-    return '单击以安装 $id';
-  }
-
-  @override
-  String langNotOnPath(String id) {
-    return '在 PATH 中找不到 $id';
-  }
-
-  @override
   String langInstallingItem(String id) {
     return '正在安装 $id…';
   }
@@ -4451,18 +4419,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get wbUnpinTimeline => '取消固定当前时间线';
-
-  @override
-  String get wbLanguageServices => '语言服务';
-
-  @override
-  String get wbMonacoEditor => 'Monaco 编辑器';
-
-  @override
-  String get wbTextEditor => '文本编辑器';
-
-  @override
-  String get wbRetryLanguageServices => '重试语言服务';
 
   @override
   String get wbNoProblems => '没有问题';
@@ -6686,7 +6642,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appearanceSettingsCodeSizeDescription =>
-      'Fast IDE 编辑器及侧边栏文件、变更视图中源码的字号。对话中的代码跟随界面文字大小，终端使用终端字号。';
+      'Fast IDE 编辑器及侧边栏文件、变更视图中源码的字号。对话中的代码跟随界面大小，终端使用终端字号。';
 
   @override
   String appearanceSettingsCodeSizeLabel(String size) {
@@ -6701,15 +6657,15 @@ class AppLocalizationsZh extends AppLocalizations {
       '字体有对应字形时，把 => 、!= 等组合画成一个字形。终端不使用连字。';
 
   @override
-  String get appearanceSettingsUiScale => '界面文字大小';
+  String get appearanceSettingsUiScale => '界面大小';
 
   @override
   String get appearanceSettingsUiScaleDescription =>
-      '缩放界面文字、对话中的代码，以及终端字号为“跟随界面文字大小”时的终端文字。Fast IDE 编辑器及侧边栏文件、变更中的源码使用代码字号。';
+      '缩放整个界面（文字、图标与间距）、对话中的代码，以及终端字号为“跟随界面大小”时的终端文字。Fast IDE 编辑器及侧边栏文件、变更中的源码使用代码字号。';
 
   @override
   String appearanceSettingsUiScaleLabel(String percent) {
-    return '界面文字大小：$percent%';
+    return '界面大小：$percent%';
   }
 
   @override
@@ -6717,10 +6673,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appearanceSettingsTerminalSizeDescription =>
-      '终端文字的字号。默认跟随界面文字大小，也可单独设定。';
+      '终端文字的字号。默认跟随界面大小，也可单独设定。';
 
   @override
-  String get appearanceSettingsTerminalSizeFollow => '跟随界面文字大小';
+  String get appearanceSettingsTerminalSizeFollow => '跟随界面大小';
 
   @override
   String get appearanceSettingsTerminalSizeCustom => '自定义';
@@ -7671,7 +7627,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mobilePublicAddressDescription =>
-      '可从公网访问这台电脑的域名或 IP（需转发端口），会写入二维码；多个用逗号分隔。公网 IPv6 地址会自动加入。';
+      '可从公网访问这台电脑的域名或 IP（需转发端口），会写入二维码；多个用逗号分隔。经只收 HTTPS 的代理（如 Cloudflare Tunnel）访问时，写成 wss://域名。公网 IPv6 地址会自动加入。';
 
   @override
   String get mobileRelay => '中转';
@@ -8156,17 +8112,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get stashImplementInPlace => '直接在当前项目、当前分支上开发。';
 
   @override
-  String stashImplementComplete(int id) {
-    return '全部完成后，用 stash_complete 工具把它标记为已完成（id $id）。';
-  }
+  String get stashImplementComplete => '全部完成后，在 Stash 里把它标为已完成。';
 
   @override
-  String get stashThreadStarting => '已为它开好对话，发送消息后开始实施。';
+  String get stashThreads => '对话';
 
   @override
-  String stashThreadLinked(String title) {
-    return '已在对话“$title”中实施';
-  }
+  String get stashThreadSource => '在这个对话里记下';
+
+  @override
+  String get stashThreadNoReply => '还没有回复';
+
+  @override
+  String get stashThreadGone => '已不在对话列表中';
 
   @override
   String get stashOpenThread => '打开';
@@ -8281,4 +8239,383 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get stashFormatMore => '更多';
+
+  @override
+  String get branchBarSwitch => '切换分支';
+
+  @override
+  String get branchBarSearch => '搜索分支';
+
+  @override
+  String get branchBarCreate => '新建分支…';
+
+  @override
+  String branchBarCreateFrom(String branch) {
+    return '从“$branch”新建分支';
+  }
+
+  @override
+  String branchBarCreateIn(String folder) {
+    return '在“$folder”中新建分支';
+  }
+
+  @override
+  String get branchBarCreateButton => '创建';
+
+  @override
+  String get branchBarDetached => '分离的 HEAD';
+
+  @override
+  String get branchBarRunning => 'Agent 运行时不能切换分支';
+
+  @override
+  String branchBarFailed(String branch) {
+    return '无法切换到“$branch”';
+  }
+
+  @override
+  String get branchBarNotRepository => '不是 Git 仓库';
+
+  @override
+  String get branchBarWorkspace => '各文件夹的分支';
+
+  @override
+  String get settingsSectionAccounts => '账号';
+
+  @override
+  String get settingsAccountsKeywords =>
+      'GitHub GitLab 登录 令牌 token issue PR 合并请求';
+
+  @override
+  String get accountsDescription =>
+      '登录 GitHub 或 GitLab 后，Stash 中链接的 issue 和 PR 会显示最新状态，可以把 issue 导入为 Stash，并在你确认后回帖。';
+
+  @override
+  String get accountsSignedIn => '已登录';
+
+  @override
+  String get accountsAdd => '添加账号';
+
+  @override
+  String get accountsKeptLocally =>
+      '令牌只保存在本机钥匙串里，只会发给对应的 GitHub 或 GitLab。未经你确认，不会发布任何内容。';
+
+  @override
+  String get accountsGitHubHosts => 'github.com，或公司的 GitHub Enterprise';
+
+  @override
+  String get accountsGitLabHosts => 'gitlab.com，或自建的 GitLab';
+
+  @override
+  String get accountsSignInBrowser => '在浏览器中登录';
+
+  @override
+  String get accountsSignInToken => '使用令牌…';
+
+  @override
+  String get accountsViaBrowser => '浏览器登录';
+
+  @override
+  String get accountsViaToken => '令牌登录';
+
+  @override
+  String get accountsSignOut => '退出登录';
+
+  @override
+  String accountsSignOutTitle(String login, String forge) {
+    return '退出 $forge 账号 $login？';
+  }
+
+  @override
+  String accountsSignOutDetail(String forge) {
+    return '会删除本机保存的令牌。要彻底撤销 BaoCode 的访问权限，还需要到 $forge 的设置里撤销。';
+  }
+
+  @override
+  String accountsRevoke(String forge) {
+    return '退出并打开 $forge 设置';
+  }
+
+  @override
+  String accountsTokenTitle(String forge) {
+    return '用令牌登录 $forge';
+  }
+
+  @override
+  String get accountsSignIn => '登录';
+
+  @override
+  String get accountsHost => '地址';
+
+  @override
+  String get accountsToken => '令牌';
+
+  @override
+  String get accountsTokenGitHubScopes =>
+      '需要勾选 repo 和 read:user 的经典令牌，或对 Issues、Pull requests 有读写权限的细粒度令牌。';
+
+  @override
+  String get accountsTokenGitLabScopes => '需要勾选 api 范围的个人访问令牌。';
+
+  @override
+  String accountsTokenCreate(String host) {
+    return '在 $host 上创建令牌';
+  }
+
+  @override
+  String get accountsTokenRefused => '令牌无效，请检查是否完整、是否已过期。';
+
+  @override
+  String accountsBrowserTitle(String forge) {
+    return '登录 $forge';
+  }
+
+  @override
+  String accountsBrowserDetail(String host) {
+    return '在 $host 上输入下面的代码，授权 BaoCode 访问你的账号：';
+  }
+
+  @override
+  String get accountsCopyAndOpen => '复制代码并打开浏览器';
+
+  @override
+  String get accountsOpenAgain => '已复制 · 再次打开';
+
+  @override
+  String get accountsBrowserStarting => '正在获取代码…';
+
+  @override
+  String get accountsBrowserWaiting => '等待你在浏览器中授权…';
+
+  @override
+  String get accountsRetry => '重试';
+
+  @override
+  String get forgeStateOpen => '打开';
+
+  @override
+  String get forgeStateDraft => '草稿';
+
+  @override
+  String get forgeStateClosed => '已关闭';
+
+  @override
+  String get forgeStateMerged => '已合并';
+
+  @override
+  String get forgeChecksPassed => '检查已通过';
+
+  @override
+  String get forgeChecksFailed => '检查未通过';
+
+  @override
+  String get forgeChecksRunning => '检查进行中';
+
+  @override
+  String get stashIssues => 'Issue 与 PR';
+
+  @override
+  String stashIssueClosedBanner(String tag) {
+    return '$tag 已关闭，这条 Stash 也完成了吗？';
+  }
+
+  @override
+  String stashIssueOpenBanner(String tag) {
+    return '这条 Stash 已完成，但 $tag 还开着。';
+  }
+
+  @override
+  String get stashIssueReplyClose => '回帖并关闭…';
+
+  @override
+  String stashIssueNotSignedIn(String forge) {
+    return '登录 $forge 后显示最新状态';
+  }
+
+  @override
+  String get stashIssueSignIn => '登录…';
+
+  @override
+  String get stashIssueFailed => '获取状态失败';
+
+  @override
+  String get stashIssueOpen => '在浏览器中打开';
+
+  @override
+  String get stashIssueCopy => '复制链接';
+
+  @override
+  String get stashIssueComment => '回帖…';
+
+  @override
+  String get stashIssueClose => '关闭 issue…';
+
+  @override
+  String get stashIssueUnlink => '取消关联';
+
+  @override
+  String stashWriteFixedIn(String pulls) {
+    return '已在 $pulls 中修复。';
+  }
+
+  @override
+  String stashWriteTitle(String tag) {
+    return '回帖到 $tag';
+  }
+
+  @override
+  String stashWriteCloseTitle(String tag) {
+    return '关闭 $tag';
+  }
+
+  @override
+  String get stashWriteSend => '发送';
+
+  @override
+  String get stashWriteSendClose => '发送并关闭';
+
+  @override
+  String get stashWriteCloseOnly => '关闭 issue';
+
+  @override
+  String get stashWriteSendAnyway => '仍然发送';
+
+  @override
+  String get stashWritePlaceholder => '写下回帖内容（支持 Markdown）';
+
+  @override
+  String get stashWriteAlsoClose => '同时关闭 issue';
+
+  @override
+  String get stashWriteSensitive => '内容里像是有本机路径或密钥，发出后能看到这个 issue 的人都能看到：';
+
+  @override
+  String stashWriteAs(String login, String host) {
+    return '将以 $login 的身份发到 $host。';
+  }
+
+  @override
+  String stashWriteFailed(String error) {
+    return '发送失败：$error';
+  }
+
+  @override
+  String get stashImport => '从 issue 导入…';
+
+  @override
+  String get stashImportTitle => '导入 issue';
+
+  @override
+  String get stashImportAction => '导入';
+
+  @override
+  String stashImportCount(int count) {
+    return '导入 $count 条';
+  }
+
+  @override
+  String get stashImportPaste => '粘贴 issue 或 PR 链接';
+
+  @override
+  String get stashImportAdd => '添加';
+
+  @override
+  String get stashImportNotALink => '不是 GitHub 或 GitLab 的 issue / PR 链接。';
+
+  @override
+  String stashImportSignIn(String forge) {
+    return '在 设置 → 账号 中登录 $forge 后才能列出 issue。';
+  }
+
+  @override
+  String get stashImportRepo => '仓库';
+
+  @override
+  String get stashImportAssigned => '指派给我';
+
+  @override
+  String get stashImportCreated => '我创建的';
+
+  @override
+  String get stashImportAll => '全部打开的';
+
+  @override
+  String get stashImportSearch => '搜索';
+
+  @override
+  String get stashImportLoading => '正在加载…';
+
+  @override
+  String get stashImportNoRepos =>
+      '没有项目的 Git 远程在 GitHub 或 GitLab 上，可以在上面粘贴 issue 链接。';
+
+  @override
+  String get stashImportNone => '这里没有打开的 issue。';
+
+  @override
+  String stashImportKnown(int id) {
+    return '已在 Stash #$id';
+  }
+
+  @override
+  String sidebarOpenPull(String tag) {
+    return '打开 $tag';
+  }
+
+  @override
+  String get stashGroupOthers => '其他';
+
+  @override
+  String stashFilterProjects(int count) {
+    return '$count 个项目';
+  }
+
+  @override
+  String get stashFilterJoiner => '、';
+
+  @override
+  String get stashWelcomeTitle => '认识 Stash';
+
+  @override
+  String get stashWelcomeLead => '想到就记下，准备好了交给 agent 去做，每一条进展如何一眼看清。';
+
+  @override
+  String get stashWelcomeNoteTitle => '随手记下';
+
+  @override
+  String get stashWelcomeAgentTitle => '交给 agent';
+
+  @override
+  String get stashWelcomeAgent => '点「在 BaoCode 中实施」，或在对话里 @ 它；对话和便签会自动关联。';
+
+  @override
+  String get stashWelcomeTrackTitle => '看清进展';
+
+  @override
+  String get stashWelcomeTrack =>
+      '卡片上实时显示对话状态，链接的 GitHub、GitLab issue 和 PR 也会同步状态。';
+
+  @override
+  String get stashWelcomeStart => '开始使用';
+
+  @override
+  String get stashWelcomeNoteBody => '文字、截图、链接都能放进来，每一条都有自己的编号，像 issue 一样。';
+
+  @override
+  String get stashWelcomeHotkeyTitle => '设置呼出快捷键';
+
+  @override
+  String get stashWelcomeHotkeySetTitle => '快捷键已设置';
+
+  @override
+  String get stashWelcomeHotkey =>
+      '在任何 App 里按下它，就能立刻弹出 Stash 面板记一条。点下面的框，按下想用的组合键。';
+
+  @override
+  String stashWelcomeHotkeySet(String hotkey) {
+    return '在任何 App 里按 $hotkey 就能记一条，随时可以在这里或 设置 → Stash 中修改。';
+  }
+
+  @override
+  String get stashWelcomeHotkeyLater => '也可以之后在 设置 → Stash 中设置。';
 }

@@ -1834,7 +1834,14 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
               number: image['number'] as int?,
             ),
       ];
-      final content = Delta.fromJson(kept['content']! as List<Object?>);
+      // As plain text: not with a style kept from before the composer's
+      // text was kept plain (a header ⌘2 made, several times its size).
+      final content = Delta();
+      for (final op in Delta.fromJson(
+        kept['content']! as List<Object?>,
+      ).toList()) {
+        if (op.isInsert) content.insert(op.data);
+      }
       final selection = TextSelection(
         baseOffset: kept['base']! as int,
         extentOffset: kept['extent']! as int,

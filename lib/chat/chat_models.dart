@@ -114,6 +114,17 @@ class AssistantTextItem extends ChatItem {
   final String text;
 }
 
+/// [text] (what an agent said, or asks) on one line, its markup's marks
+/// dropped, at most [max] characters: for a notification, a card.
+String oneLineExcerpt(String text, {int max = 140}) {
+  final line = text
+      .replaceAll(RegExp(r'[`*_#>]+'), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  if (line.length <= max) return line;
+  return '${line.substring(0, max - 1).trimRight()}…';
+}
+
 class ThinkingItem extends ChatItem {
   const ThinkingItem({
     required this.text,

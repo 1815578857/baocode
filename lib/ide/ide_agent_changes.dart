@@ -3,8 +3,8 @@ import 'package:flutter/widgets.dart';
 import '../chat/chat_models.dart' show FileChange;
 import '../chat/chat_session.dart';
 
-/// Follows [session]'s agent and [open]s each file it changes as a diff, so
-/// the IDE's editor shows what the agent did as it happens (as Cursor does).
+/// Follows [session]'s agent and [open]s each file it changes, so the IDE's
+/// editor shows what the agent did as it happens (as Cursor does).
 ///
 /// Nothing is drawn: it is mounted wherever its session's chat is
 /// (the IDE's chat), and reacts to the session alone.
@@ -27,7 +27,7 @@ class IdeAgentChanges extends StatefulWidget {
   /// [IdeAgentChanges.enabledSetting]).
   final bool enabled;
 
-  /// Opens [change]'s diff, its text before the change read by the reader
+  /// Opens [change]'s file, its text before the change read by the reader
   /// (null where it is not known).
   final void Function(FileChange change, Future<String> Function()? original)
   open;

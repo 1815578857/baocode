@@ -384,6 +384,55 @@ class ChangeReview extends ChangeNotifier {
     return false;
   }
 
+  // --- Part of a file -----------------------------------------------------------
+
+  /// Which text [path] (absolute) is held against: the blob of what was
+  /// there before the agent changed it ('' for a file it created), anew as
+  /// part of the change is kept; null when it has no change pending that
+  /// can be undone.
+  String? baseOf(String path) {
+    final relative = _relative(path);
+    final entry = relative == null ? null : _entries[relative];
+    if (entry == null) return null;
+    return entry.base?.oid ?? '';
+  }
+
+  /// Keeps part of the change to [path] (absolute): [base], what was there
+  /// before with that part of the change in it, is what the rest is held
+  /// against. Nothing is written. Fails (the review goes on) where the
+  /// store cannot keep it.
+  Future<void> keepPart(String path, String base) {
+    final relative = _relative(path);
+    final completer = Completer<void>();
+    unawaited(
+      _enqueue(() async {
+        final entry = relative == null ? null : _entries[relative];
+        if (entry == null) return completer.complete();
+        try {
+          final mode = entry.base?.mode ?? entry.current?.mode ?? '100644';
+          entry.base = await _store.store(utf8.encode(base), mode: mode);
+        } on Object catch (error, stack) {
+          return completer.completeError(error, stack);
+        }
+        entry.conflict = false;
+        // The file as it is now (saved since the last look, it may be what
+        // is kept): the change goes when nothing of it is left.
+        await _look(agent: false, paths: [relative!]);
+        completer.complete();
+      }).whenComplete(() {
+        if (!completer.isCompleted) completer.complete();
+      }),
+    );
+    return completer.future;
+  }
+
+  /// Looks at [paths] (absolute) again after they were written outside the
+  /// agent's turn (part of a change undone in the editor): not the agent's.
+  Future<void> settle(Iterable<String> paths) {
+    final relative = [for (final path in paths) ?_relative(path)];
+    return _enqueue(() => _look(agent: false, paths: relative));
+  }
+
   /// The text of [path] (absolute) before the agent changed it: empty for
   /// a file it created; null when it is not in the snapshots.
   Future<String> Function()? original(String path) {

@@ -249,8 +249,7 @@ class WorkspaceBridge {
           mentions.add(full);
         }
         final session = thread.session;
-        if (!session.canSend &&
-            session.pendingInteraction is! PlanReviewRequest) {
+        if (!session.canSend) {
           throw const LinkRemoteException('busy', 'The agent is at work');
         }
         // Numbered on from the conversation's, as the composer numbers

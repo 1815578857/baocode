@@ -429,9 +429,11 @@ class _WindowHeaderState extends State<WindowHeader> {
     if (minimize == null || maximize == null || close == null) return;
     if (listEquals(_reported, [minimize, maximize, close, ...controls])) return;
     _reported = [minimize, maximize, close, ...controls];
+    // In the window's pixels, as the rectangles: the interface's zoom in.
+    final header = context.findRenderObject()! as RenderBox;
     WindowControls.setHitTestAreas(
       viewId: View.maybeOf(context)?.viewId ?? 0,
-      height: AppMetrics.headerHeight,
+      height: header.localToGlobal(Offset(0, AppMetrics.headerHeight)).dy,
       controls: controls,
       minimize: minimize,
       maximize: maximize,

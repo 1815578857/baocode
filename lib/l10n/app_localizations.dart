@@ -2936,6 +2936,12 @@ abstract class AppLocalizations {
   /// **'Source'**
   String get sidePanelSource;
 
+  /// Shows a markdown file's text in the side panel, to edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get sidePanelEdit;
+
   /// Over a side panel preview asked for a diff it cannot show.
   ///
   /// In en, this message translates to:
@@ -3007,12 +3013,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search the project\'s files'**
   String get sidePanelSearchFiles;
-
-  /// The files page's header title while the text search shows.
-  ///
-  /// In en, this message translates to:
-  /// **'Search Results'**
-  String get sidePanelSearchResults;
 
   /// The files page's header button that brings the tree back.
   ///
@@ -3296,6 +3296,12 @@ abstract class AppLocalizations {
   /// **'Agent History'**
   String get ideChatHistory;
 
+  /// No description provided for @ideChatShowArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'Show archived agents'**
+  String get ideChatShowArchived;
+
   /// No description provided for @ideChatNoAgents.
   ///
   /// In en, this message translates to:
@@ -3403,6 +3409,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copy session ID'**
   String get sidebarCopySessionId;
+
+  /// No description provided for @sidebarOpenStash.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Stash #{id}'**
+  String sidebarOpenStash(int id);
 
   /// An agent's menu in the sidebar: copies its conversation into a new agent, which opens.
   ///
@@ -4289,7 +4301,7 @@ abstract class AppLocalizations {
   /// No description provided for @planAwaiting.
   ///
   /// In en, this message translates to:
-  /// **'Awaiting approval'**
+  /// **'Ready to start'**
   String get planAwaiting;
 
   /// No description provided for @planApproved.
@@ -4303,6 +4315,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sent back'**
   String get planSentBack;
+
+  /// On a plan put to the user: leaves Plan mode and has the agent carry the plan out, with the model picked beside it.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get planStart;
+
+  /// No description provided for @planStartHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave Plan mode and carry out this plan'**
+  String get planStartHint;
+
+  /// The message sent, as the user's, when they start a plan.
+  ///
+  /// In en, this message translates to:
+  /// **'Carry out the plan'**
+  String get planStartMessage;
 
   /// How many files a folded turn edited.
   ///
@@ -4556,6 +4586,12 @@ abstract class AppLocalizations {
   /// **'Undo'**
   String get stripUndo;
 
+  /// Over the editor's tabs while its file has an agent's change pending: keeps the whole change to this file.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep file'**
+  String get agentKeepFile;
+
   /// No description provided for @stripChangeAdded.
   ///
   /// In en, this message translates to:
@@ -4784,48 +4820,6 @@ abstract class AppLocalizations {
   /// **'Tell the agent what to do instead'**
   String get interactionDenyHint;
 
-  /// No description provided for @interactionPlanTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Ready to code?'**
-  String get interactionPlanTitle;
-
-  /// No description provided for @interactionStartBuilding.
-  ///
-  /// In en, this message translates to:
-  /// **'Yes, start building'**
-  String get interactionStartBuilding;
-
-  /// Approves a plan, to be carried out with the approvals named (e.g. Accept edits).
-  ///
-  /// In en, this message translates to:
-  /// **'Yes, start · {approvals}'**
-  String interactionStartWith(String approvals);
-
-  /// No description provided for @interactionKeepPlanningOption.
-  ///
-  /// In en, this message translates to:
-  /// **'No, keep planning'**
-  String get interactionKeepPlanningOption;
-
-  /// No description provided for @interactionWhatShouldChange.
-  ///
-  /// In en, this message translates to:
-  /// **'What should change?'**
-  String get interactionWhatShouldChange;
-
-  /// Under 'No, keep planning' when the plan shows in the side panel: a message sent now goes to the agent as what to change.
-  ///
-  /// In en, this message translates to:
-  /// **'Or say what should change in the message box'**
-  String get interactionSayWhatToChange;
-
-  /// No description provided for @interactionViewPlan.
-  ///
-  /// In en, this message translates to:
-  /// **'View plan'**
-  String get interactionViewPlan;
-
   /// No description provided for @interactionStepOf.
   ///
   /// In en, this message translates to:
@@ -4837,12 +4831,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Skip'**
   String get interactionSkip;
-
-  /// No description provided for @interactionKeepPlanning.
-  ///
-  /// In en, this message translates to:
-  /// **'Keep planning'**
-  String get interactionKeepPlanning;
 
   /// No description provided for @interactionSubmit.
   ///
@@ -6602,18 +6590,6 @@ abstract class AppLocalizations {
   /// **'Push'**
   String get scmPush;
 
-  /// No description provided for @scmPickRepository.
-  ///
-  /// In en, this message translates to:
-  /// **'Pick Repository'**
-  String get scmPickRepository;
-
-  /// No description provided for @scmUnpickRepository.
-  ///
-  /// In en, this message translates to:
-  /// **'Unpick Repository'**
-  String get scmUnpickRepository;
-
   /// No description provided for @scmPullCommits.
   ///
   /// In en, this message translates to:
@@ -7347,30 +7323,6 @@ abstract class AppLocalizations {
   /// **'Click to retry'**
   String get langClickToRetry;
 
-  /// No description provided for @langNotInstalled.
-  ///
-  /// In en, this message translates to:
-  /// **'{id} not installed'**
-  String langNotInstalled(String id);
-
-  /// No description provided for @langNeedsRuntime.
-  ///
-  /// In en, this message translates to:
-  /// **'Installing {id} needs {runtime}, which was not found'**
-  String langNeedsRuntime(String id, String runtime);
-
-  /// No description provided for @langClickToInstall.
-  ///
-  /// In en, this message translates to:
-  /// **'Click to install {id}'**
-  String langClickToInstall(String id);
-
-  /// No description provided for @langNotOnPath.
-  ///
-  /// In en, this message translates to:
-  /// **'{id} was not found on PATH'**
-  String langNotOnPath(String id);
-
   /// No description provided for @langInstallingItem.
   ///
   /// In en, this message translates to:
@@ -7886,30 +7838,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unpin the Current Timeline'**
   String get wbUnpinTimeline;
-
-  /// No description provided for @wbLanguageServices.
-  ///
-  /// In en, this message translates to:
-  /// **'Language services'**
-  String get wbLanguageServices;
-
-  /// No description provided for @wbMonacoEditor.
-  ///
-  /// In en, this message translates to:
-  /// **'Monaco editor'**
-  String get wbMonacoEditor;
-
-  /// No description provided for @wbTextEditor.
-  ///
-  /// In en, this message translates to:
-  /// **'Text editor'**
-  String get wbTextEditor;
-
-  /// No description provided for @wbRetryLanguageServices.
-  ///
-  /// In en, this message translates to:
-  /// **'Retry language services'**
-  String get wbRetryLanguageServices;
 
   /// No description provided for @wbNoProblems.
   ///
@@ -11730,7 +11658,7 @@ abstract class AppLocalizations {
   /// No description provided for @appearanceSettingsCodeSizeDescription.
   ///
   /// In en, this message translates to:
-  /// **'The size of code in the IDE editor and the side panel\'s file and changes views. Code in the chat follows the interface text size; the terminal has its own size.'**
+  /// **'The size of code in the IDE editor and the side panel\'s file and changes views. Code in the chat follows the interface size; the terminal has its own size.'**
   String get appearanceSettingsCodeSizeDescription;
 
   /// No description provided for @appearanceSettingsCodeSizeLabel.
@@ -11754,19 +11682,19 @@ abstract class AppLocalizations {
   /// No description provided for @appearanceSettingsUiScale.
   ///
   /// In en, this message translates to:
-  /// **'Interface Text Size'**
+  /// **'Interface Size'**
   String get appearanceSettingsUiScale;
 
   /// No description provided for @appearanceSettingsUiScaleDescription.
   ///
   /// In en, this message translates to:
-  /// **'The size of interface text, code in the chat, and terminal text while the terminal size follows it. Code in the IDE editor and side panel files and changes keeps its own size.'**
+  /// **'Zooms the whole interface (its text, icons and spacing), code in the chat, and terminal text while the terminal size follows it. Code in the IDE editor and side panel files and changes keeps its own size.'**
   String get appearanceSettingsUiScaleDescription;
 
   /// No description provided for @appearanceSettingsUiScaleLabel.
   ///
   /// In en, this message translates to:
-  /// **'Interface text size: {percent}%'**
+  /// **'Interface size: {percent}%'**
   String appearanceSettingsUiScaleLabel(String percent);
 
   /// No description provided for @appearanceSettingsTerminalSize.
@@ -11778,13 +11706,13 @@ abstract class AppLocalizations {
   /// No description provided for @appearanceSettingsTerminalSizeDescription.
   ///
   /// In en, this message translates to:
-  /// **'The size of terminal text. By default it follows the interface text size; it can be set on its own.'**
+  /// **'The size of terminal text. By default it follows the interface size; it can be set on its own.'**
   String get appearanceSettingsTerminalSizeDescription;
 
   /// No description provided for @appearanceSettingsTerminalSizeFollow.
   ///
   /// In en, this message translates to:
-  /// **'Follow Interface Text Size'**
+  /// **'Follow Interface Size'**
   String get appearanceSettingsTerminalSizeFollow;
 
   /// No description provided for @appearanceSettingsTerminalSizeCustom.
@@ -13356,7 +13284,7 @@ abstract class AppLocalizations {
   /// No description provided for @mobilePublicAddressDescription.
   ///
   /// In en, this message translates to:
-  /// **'A domain or IP this computer can be reached at from the internet (with the port forwarded), put in the QR code; several separated by commas. Public IPv6 addresses are found by themselves.'**
+  /// **'A domain or IP this computer can be reached at from the internet (with the port forwarded), put in the QR code; several separated by commas. Behind a proxy that only takes HTTPS (such as a Cloudflare Tunnel), write it as wss://domain. Public IPv6 addresses are found by themselves.'**
   String get mobilePublicAddressDescription;
 
   /// No description provided for @mobileRelay.
@@ -14226,20 +14154,32 @@ abstract class AppLocalizations {
   /// No description provided for @stashImplementComplete.
   ///
   /// In en, this message translates to:
-  /// **'When it is finished, mark it done with the stash_complete tool (id {id}).'**
-  String stashImplementComplete(int id);
+  /// **'When it is finished, mark it done in the Stash.'**
+  String get stashImplementComplete;
 
-  /// No description provided for @stashThreadStarting.
+  /// No description provided for @stashThreads.
   ///
   /// In en, this message translates to:
-  /// **'A conversation is ready for it; send its message to start.'**
-  String get stashThreadStarting;
+  /// **'Conversations'**
+  String get stashThreads;
 
-  /// No description provided for @stashThreadLinked.
+  /// No description provided for @stashThreadSource.
   ///
   /// In en, this message translates to:
-  /// **'Implemented in conversation “{title}”'**
-  String stashThreadLinked(String title);
+  /// **'Noted in this conversation'**
+  String get stashThreadSource;
+
+  /// No description provided for @stashThreadNoReply.
+  ///
+  /// In en, this message translates to:
+  /// **'No reply yet'**
+  String get stashThreadNoReply;
+
+  /// No description provided for @stashThreadGone.
+  ///
+  /// In en, this message translates to:
+  /// **'No longer in the list'**
+  String get stashThreadGone;
 
   /// No description provided for @stashOpenThread.
   ///
@@ -14450,6 +14390,654 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'More'**
   String get stashFormatMore;
+
+  /// Tooltip and menu title of the branch picker under the chat input.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch Branch'**
+  String get branchBarSwitch;
+
+  /// Placeholder of the branch picker's search line under the chat input.
+  ///
+  /// In en, this message translates to:
+  /// **'Search branches'**
+  String get branchBarSearch;
+
+  /// Action of the branch picker under the chat input: names a new branch and checks it out.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Branch…'**
+  String get branchBarCreate;
+
+  /// Message of the dialog that names a new branch, made where the branch {branch} is.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a branch from “{branch}”'**
+  String branchBarCreateFrom(String branch);
+
+  /// Message of the dialog that names a new branch of the workspace folder {folder}, made where its current branch is.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a branch in “{folder}”'**
+  String branchBarCreateIn(String folder);
+
+  /// Button of the dialog that names a new branch.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get branchBarCreateButton;
+
+  /// What the branch picker under the chat input shows when no branch is checked out.
+  ///
+  /// In en, this message translates to:
+  /// **'Detached HEAD'**
+  String get branchBarDetached;
+
+  /// Tooltip of the branch under the chat input while the agent is working.
+  ///
+  /// In en, this message translates to:
+  /// **'Branches can\'t be switched while the agent works'**
+  String get branchBarRunning;
+
+  /// Message of the dialog shown when Git refused to check out or create the branch {branch}; Git's own message is the detail.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t switch to “{branch}”'**
+  String branchBarFailed(String branch);
+
+  /// Under a workspace folder's name in the branch picker under the chat input: the folder has no Git repository.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a Git repository'**
+  String get branchBarNotRepository;
+
+  /// Tooltip and menu title of the branch picker under the chat input of a multi-folder workspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Branches of the folders'**
+  String get branchBarWorkspace;
+
+  /// No description provided for @settingsSectionAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts'**
+  String get settingsSectionAccounts;
+
+  /// No description provided for @settingsAccountsKeywords.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub GitLab sign in login token issue pull request merge request'**
+  String get settingsAccountsKeywords;
+
+  /// No description provided for @accountsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to GitHub or GitLab to see the state of the issues and pull requests linked in Stash, import issues as stashes, and reply to them once you confirm.'**
+  String get accountsDescription;
+
+  /// No description provided for @accountsSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in'**
+  String get accountsSignedIn;
+
+  /// No description provided for @accountsAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add an account'**
+  String get accountsAdd;
+
+  /// No description provided for @accountsKeptLocally.
+  ///
+  /// In en, this message translates to:
+  /// **'Tokens are kept in this computer\'s keychain and are sent only to the GitHub or GitLab they are for. Nothing is posted without your confirmation.'**
+  String get accountsKeptLocally;
+
+  /// No description provided for @accountsGitHubHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'github.com, or your company\'s GitHub Enterprise'**
+  String get accountsGitHubHosts;
+
+  /// No description provided for @accountsGitLabHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'gitlab.com, or a self-managed GitLab'**
+  String get accountsGitLabHosts;
+
+  /// No description provided for @accountsSignInBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Browser'**
+  String get accountsSignInBrowser;
+
+  /// No description provided for @accountsSignInToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a Token…'**
+  String get accountsSignInToken;
+
+  /// No description provided for @accountsViaBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'signed in with browser'**
+  String get accountsViaBrowser;
+
+  /// No description provided for @accountsViaToken.
+  ///
+  /// In en, this message translates to:
+  /// **'signed in with token'**
+  String get accountsViaToken;
+
+  /// No description provided for @accountsSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign Out'**
+  String get accountsSignOut;
+
+  /// No description provided for @accountsSignOutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out of {forge} account {login}?'**
+  String accountsSignOutTitle(String login, String forge);
+
+  /// No description provided for @accountsSignOutDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'The token is deleted from this computer. To revoke BaoCode\'s access altogether, revoke it in your {forge} settings too.'**
+  String accountsSignOutDetail(String forge);
+
+  /// No description provided for @accountsRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign Out and Open {forge} Settings'**
+  String accountsRevoke(String forge);
+
+  /// No description provided for @accountsTokenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to {forge} with a Token'**
+  String accountsTokenTitle(String forge);
+
+  /// No description provided for @accountsSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign In'**
+  String get accountsSignIn;
+
+  /// No description provided for @accountsHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Host'**
+  String get accountsHost;
+
+  /// No description provided for @accountsToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Token'**
+  String get accountsToken;
+
+  /// No description provided for @accountsTokenGitHubScopes.
+  ///
+  /// In en, this message translates to:
+  /// **'A classic token with the repo and read:user scopes, or a fine-grained token with read and write access to issues and pull requests.'**
+  String get accountsTokenGitHubScopes;
+
+  /// No description provided for @accountsTokenGitLabScopes.
+  ///
+  /// In en, this message translates to:
+  /// **'A personal access token with the api scope.'**
+  String get accountsTokenGitLabScopes;
+
+  /// No description provided for @accountsTokenCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a Token on {host}'**
+  String accountsTokenCreate(String host);
+
+  /// No description provided for @accountsTokenRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The token was not accepted. Check that it is complete and has not expired.'**
+  String get accountsTokenRefused;
+
+  /// No description provided for @accountsBrowserTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to {forge}'**
+  String accountsBrowserTitle(String forge);
+
+  /// No description provided for @accountsBrowserDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter this code on {host} to let BaoCode access your account:'**
+  String accountsBrowserDetail(String host);
+
+  /// No description provided for @accountsCopyAndOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Code and Open Browser'**
+  String get accountsCopyAndOpen;
+
+  /// No description provided for @accountsOpenAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied · Open Again'**
+  String get accountsOpenAgain;
+
+  /// No description provided for @accountsBrowserStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting a code…'**
+  String get accountsBrowserStarting;
+
+  /// No description provided for @accountsBrowserWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for you to authorize in the browser…'**
+  String get accountsBrowserWaiting;
+
+  /// No description provided for @accountsRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try Again'**
+  String get accountsRetry;
+
+  /// No description provided for @forgeStateOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get forgeStateOpen;
+
+  /// No description provided for @forgeStateDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get forgeStateDraft;
+
+  /// No description provided for @forgeStateClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get forgeStateClosed;
+
+  /// No description provided for @forgeStateMerged.
+  ///
+  /// In en, this message translates to:
+  /// **'Merged'**
+  String get forgeStateMerged;
+
+  /// No description provided for @forgeChecksPassed.
+  ///
+  /// In en, this message translates to:
+  /// **'Checks passed'**
+  String get forgeChecksPassed;
+
+  /// No description provided for @forgeChecksFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Checks failed'**
+  String get forgeChecksFailed;
+
+  /// No description provided for @forgeChecksRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Checks running'**
+  String get forgeChecksRunning;
+
+  /// No description provided for @stashIssues.
+  ///
+  /// In en, this message translates to:
+  /// **'Issues & pull requests'**
+  String get stashIssues;
+
+  /// No description provided for @stashIssueClosedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'{tag} was closed. Is this stash done too?'**
+  String stashIssueClosedBanner(String tag);
+
+  /// No description provided for @stashIssueOpenBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'This stash is done, but {tag} is still open.'**
+  String stashIssueOpenBanner(String tag);
+
+  /// No description provided for @stashIssueReplyClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply and close…'**
+  String get stashIssueReplyClose;
+
+  /// No description provided for @stashIssueNotSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to {forge} to see its state'**
+  String stashIssueNotSignedIn(String forge);
+
+  /// No description provided for @stashIssueSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign In…'**
+  String get stashIssueSignIn;
+
+  /// No description provided for @stashIssueFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not refresh'**
+  String get stashIssueFailed;
+
+  /// No description provided for @stashIssueOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Browser'**
+  String get stashIssueOpen;
+
+  /// No description provided for @stashIssueCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Link'**
+  String get stashIssueCopy;
+
+  /// No description provided for @stashIssueComment.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment…'**
+  String get stashIssueComment;
+
+  /// No description provided for @stashIssueClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close Issue…'**
+  String get stashIssueClose;
+
+  /// No description provided for @stashIssueUnlink.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink'**
+  String get stashIssueUnlink;
+
+  /// No description provided for @stashWriteFixedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixed in {pulls}.'**
+  String stashWriteFixedIn(String pulls);
+
+  /// No description provided for @stashWriteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment on {tag}'**
+  String stashWriteTitle(String tag);
+
+  /// No description provided for @stashWriteCloseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Close {tag}'**
+  String stashWriteCloseTitle(String tag);
+
+  /// No description provided for @stashWriteSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment'**
+  String get stashWriteSend;
+
+  /// No description provided for @stashWriteSendClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment and Close'**
+  String get stashWriteSendClose;
+
+  /// No description provided for @stashWriteCloseOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Close Issue'**
+  String get stashWriteCloseOnly;
+
+  /// No description provided for @stashWriteSendAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Anyway'**
+  String get stashWriteSendAnyway;
+
+  /// No description provided for @stashWritePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a comment (Markdown)'**
+  String get stashWritePlaceholder;
+
+  /// No description provided for @stashWriteAlsoClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close the issue too'**
+  String get stashWriteAlsoClose;
+
+  /// No description provided for @stashWriteSensitive.
+  ///
+  /// In en, this message translates to:
+  /// **'This looks like it has paths on this computer or secrets, which everyone who can see the issue will see:'**
+  String get stashWriteSensitive;
+
+  /// No description provided for @stashWriteAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Posted as {login} on {host}.'**
+  String stashWriteAs(String login, String host);
+
+  /// No description provided for @stashWriteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Not sent: {error}'**
+  String stashWriteFailed(String error);
+
+  /// No description provided for @stashImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from Issues…'**
+  String get stashImport;
+
+  /// No description provided for @stashImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Issues'**
+  String get stashImportTitle;
+
+  /// No description provided for @stashImportAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get stashImportAction;
+
+  /// No description provided for @stashImportCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Import {count}'**
+  String stashImportCount(int count);
+
+  /// No description provided for @stashImportPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste an issue or pull request link'**
+  String get stashImportPaste;
+
+  /// No description provided for @stashImportAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get stashImportAdd;
+
+  /// No description provided for @stashImportNotALink.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a GitHub or GitLab issue or pull request link.'**
+  String get stashImportNotALink;
+
+  /// No description provided for @stashImportSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to {forge} in Settings → Accounts to list its issues.'**
+  String stashImportSignIn(String forge);
+
+  /// No description provided for @stashImportRepo.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository'**
+  String get stashImportRepo;
+
+  /// No description provided for @stashImportAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned to me'**
+  String get stashImportAssigned;
+
+  /// No description provided for @stashImportCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Created by me'**
+  String get stashImportCreated;
+
+  /// No description provided for @stashImportAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All open'**
+  String get stashImportAll;
+
+  /// No description provided for @stashImportSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get stashImportSearch;
+
+  /// No description provided for @stashImportLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading…'**
+  String get stashImportLoading;
+
+  /// No description provided for @stashImportNoRepos.
+  ///
+  /// In en, this message translates to:
+  /// **'No project has a GitHub or GitLab remote. Paste an issue link above.'**
+  String get stashImportNoRepos;
+
+  /// No description provided for @stashImportNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No open issues here.'**
+  String get stashImportNone;
+
+  /// No description provided for @stashImportKnown.
+  ///
+  /// In en, this message translates to:
+  /// **'in Stash #{id}'**
+  String stashImportKnown(int id);
+
+  /// No description provided for @sidebarOpenPull.
+  ///
+  /// In en, this message translates to:
+  /// **'Open {tag}'**
+  String sidebarOpenPull(String tag);
+
+  /// No description provided for @stashGroupOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'Others'**
+  String get stashGroupOthers;
+
+  /// No description provided for @stashFilterProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} projects'**
+  String stashFilterProjects(int count);
+
+  /// No description provided for @stashFilterJoiner.
+  ///
+  /// In en, this message translates to:
+  /// **', '**
+  String get stashFilterJoiner;
+
+  /// No description provided for @stashWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Meet Stash'**
+  String get stashWelcomeTitle;
+
+  /// No description provided for @stashWelcomeLead.
+  ///
+  /// In en, this message translates to:
+  /// **'Note things down the moment they come to you, hand them to an agent when you are ready, and see how each one is going.'**
+  String get stashWelcomeLead;
+
+  /// No description provided for @stashWelcomeNoteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Note it down'**
+  String get stashWelcomeNoteTitle;
+
+  /// No description provided for @stashWelcomeAgentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand it to an agent'**
+  String get stashWelcomeAgentTitle;
+
+  /// No description provided for @stashWelcomeAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Click Implement in BaoCode, or mention it in a conversation; the conversation and the stash stay linked.'**
+  String get stashWelcomeAgent;
+
+  /// No description provided for @stashWelcomeTrackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'See how it goes'**
+  String get stashWelcomeTrackTitle;
+
+  /// No description provided for @stashWelcomeTrack.
+  ///
+  /// In en, this message translates to:
+  /// **'Cards show their conversations live, and the GitHub and GitLab issues and pull requests they link to stay in sync.'**
+  String get stashWelcomeTrack;
+
+  /// No description provided for @stashWelcomeStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Get Started'**
+  String get stashWelcomeStart;
+
+  /// No description provided for @stashWelcomeNoteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Text, screenshots and links all go in, and each one gets a number of its own, like an issue.'**
+  String get stashWelcomeNoteBody;
+
+  /// No description provided for @stashWelcomeHotkeyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a shortcut to note things down'**
+  String get stashWelcomeHotkeyTitle;
+
+  /// No description provided for @stashWelcomeHotkeySetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortcut set'**
+  String get stashWelcomeHotkeySetTitle;
+
+  /// No description provided for @stashWelcomeHotkey.
+  ///
+  /// In en, this message translates to:
+  /// **'Press it in any app and the Stash panel comes up, ready to type. Click the box below and press the keys you want.'**
+  String get stashWelcomeHotkey;
+
+  /// No description provided for @stashWelcomeHotkeySet.
+  ///
+  /// In en, this message translates to:
+  /// **'Press {hotkey} in any app to note something down. Change it here or in Settings → Stash any time.'**
+  String stashWelcomeHotkeySet(String hotkey);
+
+  /// No description provided for @stashWelcomeHotkeyLater.
+  ///
+  /// In en, this message translates to:
+  /// **'You can also set it later in Settings → Stash.'**
+  String get stashWelcomeHotkeyLater;
 }
 
 class _AppLocalizationsDelegate

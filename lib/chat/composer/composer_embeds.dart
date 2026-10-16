@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 
 import '../../kernel/kernel_types.dart' show FileSuggestion;
 import '../../l10n/l10n.dart';
+import '../../stash/stash_store.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
 import '../../theme/material_file_icons.dart';
@@ -909,9 +910,10 @@ class ComposerStashEmbedBuilder extends EmbedBuilder {
 }
 
 /// The inline tag for a stash ([ComposerStashEmbed] data), centered on
-/// text of [textStyle]: its number and title, its text on hover, all of it
-/// on a click (see [showTextPreview]). In the composer and in sent messages
-/// alike.
+/// text of [textStyle]: its number and title, its text on hover, the stash
+/// itself on a click (where the chat's files open, as the Stash page shows
+/// it; its text by [showTextPreview] once it is gone). In the composer and
+/// in sent messages alike.
 class ComposerStashChip extends StatelessWidget {
   const ComposerStashChip({
     super.key,
@@ -984,12 +986,26 @@ class ComposerStashChip extends StatelessWidget {
       child: HoverTooltip(
         content: (context) => _TextPreview(label: label, text: stash.text),
         child: PreviewClick(
-          onOpen: () => showTextPreview(
-            context,
-            title: label,
-            text: stash.text,
-            name: '$name.md',
-          ),
+          onOpen: () {
+            // The stash itself, as the Stash page shows it, while it is
+            // kept; else the text it was sent with.
+            if ((
+                  FileOpenScope.find(context),
+                  StashStore.current?.fileOf(stash.id),
+                )
+                case (final scope?, final file?)) {
+              scope.showLocal(file);
+              return;
+            }
+            unawaited(
+              showTextPreview(
+                context,
+                title: label,
+                text: stash.text,
+                name: '$name.md',
+              ),
+            );
+          },
           child: tag,
         ),
       ),

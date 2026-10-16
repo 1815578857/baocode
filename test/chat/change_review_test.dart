@@ -158,6 +158,47 @@ void main() {
     expect(changesOf(review)['lib/b.txt']!.conflict, isTrue);
   }, skip: !hasGit);
 
+  test('keeps and undoes a change part by part', () async {
+    final review = await open();
+    await review.begin();
+    write('a.txt', 'one\n2\n3\n4\nfive\n');
+    await review.observe();
+    final a = path('a.txt');
+    final created = review.baseOf(a);
+    expect(created, isNotNull);
+    expect(await review.original(a)!(), '1\n2\n3\n4\n5\n');
+
+    // The first line kept: held against what was there with it in.
+    await review.keepPart(a, 'one\n2\n3\n4\n5\n');
+    expect(review.baseOf(a), isNot(created));
+    expect(await review.original(a)!(), 'one\n2\n3\n4\n5\n');
+    expect(
+      (changesOf(review)['a.txt']!.added, changesOf(review)['a.txt']!.removed),
+      (1, 1),
+    );
+    expect(read('a.txt'), 'one\n2\n3\n4\nfive\n');
+
+    // The last undone in the file, as the editor does it: nothing left.
+    write('a.txt', 'one\n2\n3\n4\n5\n');
+    await review.settle([a]);
+    expect(review.changes, isEmpty);
+    expect(review.baseOf(a), isNull);
+
+    // Not the agent's at the next look.
+    await review.observe();
+    expect(review.changes, isEmpty);
+  }, skip: !hasGit);
+
+  test('keeping every part of a change keeps it', () async {
+    final review = await open(session: 's');
+    await review.begin();
+    write('a.txt', '1\n2\nthree\n4\n5\n');
+    await review.observe();
+    await review.keepPart(path('a.txt'), '1\n2\nthree\n4\n5\n');
+    expect(review.changes, isEmpty);
+    expect(read('a.txt'), '1\n2\nthree\n4\n5\n');
+  }, skip: !hasGit);
+
   test('puts back line endings and bytes as they were', () async {
     write('.gitattributes', '* text=auto\n');
     File(path('crlf.txt')).writeAsBytesSync('x\r\ny\r\n'.codeUnits);

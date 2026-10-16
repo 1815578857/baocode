@@ -66,6 +66,7 @@ import 'git/git_model.dart';
 import 'git/git_repository.dart';
 import 'git/ide_scm_view.dart';
 import 'git/ide_timeline_view.dart';
+import 'ide_agent_edits.dart';
 import 'ide_breadcrumbs.dart';
 import 'ide_button.dart';
 import 'ide_color_theme_picker.dart';
@@ -155,6 +156,7 @@ class IdeWorkbench extends StatefulWidget {
     this.onAddFolder,
     this.onRemoveFolder,
     this.recentWorkspaceOf,
+    this.agentEdits,
   });
 
   final IdeWorkspace workspace;
@@ -230,6 +232,10 @@ class IdeWorkbench extends StatefulWidget {
   /// Writes the Source Control view's commit messages (Claude Haiku; a
   /// fake in widget tests).
   final IdeCommitMessageModel commitMessage;
+
+  /// The agents' changes pending in its files, shown in the editor with
+  /// Undo and Keep by each change, and over its tabs for the file's.
+  final IdeAgentEdits? agentEdits;
 
   /// Whether the window is kept on top of other apps; [onPinnedChanged]
   /// toggles it from the title bar, as the chat's pin does.
@@ -426,7 +432,6 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
 
   /// Servers whose install was recommended in this session.
   final Set<String> _recommended = {};
-  String _lspStatus = 'Language services';
   Position _caretPosition = const Position(1, 1);
   int _statusColumn = 1;
   int _selectionLength = 0;
@@ -2293,24 +2298,6 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     }
   }
 
-  /// The status bar's missing server: why it cannot be installed, or its
-  /// recommendation again.
-  void _installServer(LanguageServerStatus status) {
-    final path = widget.workspace.active?.path;
-    if (path == null) return;
-    if (status.installable && status.missingRuntime == null) {
-      _recommendServer(status, path);
-      return;
-    }
-    final runtime = status.missingRuntime;
-    _notifications.notify(
-      IdeSeverity.warning,
-      runtime != null
-          ? context.l10n.extMissingRuntime(status.serverId, runtime)
-          : (status.message ?? context.l10n.extUnavailable(status.serverId)),
-    );
-  }
-
   // --- Layout ------------------------------------------------------------
 
   void _showView(IdeSideView view) {
@@ -3597,13 +3584,20 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     ),
     IdeSideView.sourceControl => IdeScmView(
       key: _scmKey,
-      workspace: widget.workspace,
+      host: widget.workspace,
       session: _scm,
+      sessionOf: (git) => identical(git, _git)
+          ? _scm
+          : _scmSessions.putIfAbsent(
+              git,
+              () => IdeScmSession(settings: widget.settings),
+            ),
       notifications: _notifications,
       onOpen: (path, {focusEditor = false}) =>
           _open(path, focusEditor: focusEditor),
       onOpenChange: _openChange,
       onRevealInExplorer: _revealInExplorer,
+      onOpenInTerminal: _terminals == null ? null : _openInTerminal,
       onAddToChat: widget.onAddToChat,
       trash: WindowControls.canMoveToTrash ? WindowControls.moveToTrash : null,
       commitMessage: widget.commitMessage,
@@ -3868,6 +3862,18 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
               onMarkdownPreview: (preview) =>
                   unawaited(_setMarkdownPreview(preview)),
               page: page == null ? null : _extensionPageTab(page),
+              actions: switch (widget.agentEdits) {
+                final edits? when !pageShown && active != null =>
+                  ListenableBuilder(
+                    listenable: edits,
+                    builder: (context, _) => switch (edits.of(active.path)) {
+                      final edit? when active.diff == null =>
+                        IdeAgentEditActions(edit: edit),
+                      _ => const SizedBox.shrink(),
+                    },
+                  ),
+                _ => null,
+              },
             ),
             if (!pageShown && active != null && !active.isUntitled)
               IdeBreadcrumbs(
@@ -3980,11 +3986,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                                 workspace: widget.workspace,
                                 active: active,
                                 onError: _report,
-                                onLspStatus: (status) {
-                                  if (mounted) {
-                                    setState(() => _lspStatus = status);
-                                  }
-                                },
+                                onLspStatus: (_) {},
                                 onPositionChanged: _positionChanged,
                                 onOpenLocation: _openLocation,
                                 onShowReferences: _showReferences,
@@ -3994,6 +3996,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                                 onPaste: _pasteInEditor,
                                 formatOnSave: _formatOnSave,
                                 debug: _debug,
+                                agentEdits: widget.agentEdits,
                               ),
                   ),
                 ),
@@ -4569,19 +4572,6 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
             ),
             onTap: () => _showView(IdeSideView.sourceControl),
           ),
-      IdeStatusBarItem(
-        switch (_lspStatus) {
-          'Language services' => l10n.wbLanguageServices,
-          'Monaco editor' => l10n.wbMonacoEditor,
-          'Text editor' => l10n.wbTextEditor,
-          final status => status,
-        },
-        tooltip: keys.titleWithKeybinding(
-          l10n.wbRetryLanguageServices,
-          'baocode.ide.retryLanguageServices',
-        ),
-        onTap: () => unawaited(_editor?.retryLanguageServer()),
-      ),
       if (_languages case final languages?) ...[
         () {
           final counts = ideDiagnosticCounts(languages.allDiagnostics);
@@ -4604,12 +4594,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
           );
         }(),
         if (widget.workspace.active case final doc?)
-          ...ideLanguageStatusItems(
-            languages,
-            doc.path,
-            onInstall: _installServer,
-            l10n: l10n,
-          ),
+          ...ideLanguageStatusItems(languages, doc.path, l10n: l10n),
       ],
       if (_statusMessage case final message?) IdeStatusBarItem(message),
     ];

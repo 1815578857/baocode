@@ -146,9 +146,17 @@ class AgentSidePanel extends ChangeNotifier {
   /// while the panel is (as the IDE's Source Control view keeps its own).
   final Map<IdeGitRepository, IdeScmSession> _scm = {};
 
-  /// The commit message and choices of [git].
+  /// The commit message and choices of [git]; its changes as a tree or a
+  /// list as last picked ([changesAsTree]).
   IdeScmSession scmOf(IdeGitRepository git) =>
-      _scm[git] ??= IdeScmSession(settings: settings);
+      _scm[git] ??= IdeScmSession(settings: settings)..treeView = changesAsTree;
+
+  /// The repositories folded under their headers on the changes page of
+  /// each project (by its folder), as Source Control's.
+  final Map<String, Set<String>> _scmCollapsed = {};
+
+  Set<String> scmCollapsedOf(String root) =>
+      _scmCollapsed.putIfAbsent(p.normalize(root), () => {});
 
   static const defaultWidth = 640.0;
   static const minWidth = 280.0;

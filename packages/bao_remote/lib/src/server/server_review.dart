@@ -67,6 +67,12 @@ class ServerReview {
         return (await store.current(string('path')))?.toJson();
       case 'read':
         return encodeBytes(await store.read(_blob(args['blob'])!));
+      case 'store':
+        final blob = await store.store(
+          decodeBytes(args['bytes']),
+          mode: string('mode'),
+        );
+        return blob.toJson();
       case 'restore':
         await store.restore(string('path'), _blob(args['blob']));
         return null;

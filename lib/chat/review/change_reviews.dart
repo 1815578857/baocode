@@ -102,6 +102,14 @@ class ChangeReviews extends ChangeNotifier {
   Future<String> Function()? original(String path) =>
       _partOf(path).original(_absolute(path));
 
+  String? baseOf(String path) => _partOf(path).baseOf(_absolute(path));
+
+  Future<void> keepPart(String path, String base) =>
+      _partOf(path).keepPart(_absolute(path), base);
+
+  Future<void> settle(Iterable<String> paths) =>
+      _each(paths, (part, paths) => part.settle(paths));
+
   Future<void> discard() => _all((part) => part.discard());
 
   Future<void> _all(Future<void> Function(ChangeReview part) operation) async {

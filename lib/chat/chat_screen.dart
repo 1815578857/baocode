@@ -40,6 +40,7 @@ import 'widgets/chat_minimap.dart';
 import 'widgets/code_citation.dart';
 import 'widgets/inline_rename_field.dart';
 import 'widgets/pixel_loader.dart';
+import 'widgets/plan_start.dart';
 
 /// Layout, top to bottom:
 /// - history + live turn: a virtual list that yields height;
@@ -67,6 +68,7 @@ class ChatScreen extends StatefulWidget {
     this.colorizeCodeBlock,
     this.start,
     this.startHint,
+    this.below,
     this.sessions,
     this.fileMentions,
     this.openEditor,
@@ -139,6 +141,9 @@ class ChatScreen extends StatefulWidget {
   /// [start]): the setup checklist, say, which builds [hint] when it has
   /// nothing to show.
   final Widget Function(BuildContext context, Widget hint)? startHint;
+
+  /// Under the composer, e.g. the branch it works on.
+  final Widget? below;
 
   /// The other conversations its messages may refer to, which `@` in the
   /// composer offers (see [ComposerVocabulary.sessions]).
@@ -303,7 +308,6 @@ class _ChatScreenState extends State<ChatScreen>
     _session.attach();
     _session.addListener(_checkStarting);
     _planShown = _session.plan?.seq;
-    _planReviewShown = _session.pendingInteraction;
     _session.addListener(_followPlan);
     _restoreAgents();
     ChatWidth.current.addListener(_widthChanged);
@@ -347,22 +351,15 @@ class _ChatScreenState extends State<ChatScreen>
     _composerKey.currentState?.focus();
   }
 
-  /// The sequence of the plan writing last shown, and the plan to approve.
+  /// The sequence of the plan writing last shown.
   int? _planShown;
-  InteractionRequest? _planReviewShown;
 
-  /// Shows the plan beside the chat as the agent writes it, and again as
-  /// it asks to go ahead with it: the file read anew each time.
+  /// Shows the plan beside the chat as the agent writes it: the file read
+  /// anew each time.
   void _followPlan() {
     if (_session.plan case final plan? when plan.seq != _planShown) {
       _planShown = plan.seq;
       _openFile(FileOpenRequest(plan.path, plan: true));
-    }
-    final request = _session.pendingInteraction;
-    if (request == _planReviewShown) return;
-    _planReviewShown = request;
-    if (request case PlanReviewRequest(:final planPath?)) {
-      _openFile(FileOpenRequest(planPath, plan: true));
     }
   }
 
@@ -653,7 +650,7 @@ class _ChatScreenState extends State<ChatScreen>
             child: scoped,
           );
         }
-        return scoped;
+        return PlanStartScope(session: _session, child: scoped);
       },
       child: _buildBody(),
     );
@@ -745,11 +742,13 @@ class _ChatScreenState extends State<ChatScreen>
           ),
           ListenableBuilder(
             listenable: _session,
-            // Level with the history's text, laid out (not built) for the
-            // width: a pane being resized does not build the composer anew.
+            // In the middle as the history's text is, laid out (not built)
+            // for the width: a pane being resized does not build the
+            // composer anew. The minimap stays beside the history, over
+            // it: no room left for it here.
             builder: (context, _) => _ConversationColumn(
               maxWidth: _maxContentWidth,
-              minimap: _minimap,
+              minimap: false,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -776,15 +775,6 @@ class _ChatScreenState extends State<ChatScreen>
                         key: ObjectKey(request),
                         request: request,
                         onAnswer: _answer,
-                        kernel: _session.kernel.id,
-                        onOpenPlan: switch (request) {
-                          PlanReviewRequest(:final planPath?)
-                              when widget.fileLinks != null =>
-                            () => _openFile(
-                              FileOpenRequest(planPath, plan: true),
-                            ),
-                          _ => null,
-                        },
                       ),
                       null => null,
                     },
@@ -904,6 +894,7 @@ class _ChatScreenState extends State<ChatScreen>
           contextPanelOpen: _contextPanelOpen,
           onToggleContextPanel: _toggleContextPanel,
         ),
+        ?widget.below,
       ],
     );
   }

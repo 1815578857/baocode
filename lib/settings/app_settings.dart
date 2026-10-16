@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../diagnostics/diagnostics_upload.dart';
+import '../forge/forge_accounts.dart';
 import '../customize/customization_store.dart';
 import '../kernel/claude_code/claude_path_setting.dart';
 import '../keybindings/import_dialog.dart';
@@ -22,6 +23,7 @@ import '../tips/feature_tips_controller.dart';
 import '../update/update_controller.dart';
 import '../workspace/workspace.dart';
 import 'app_locale.dart';
+import 'pages/accounts_page.dart';
 import 'pages/appearance_page.dart';
 import 'pages/customize_page.dart';
 import 'pages/data_dir_page.dart';
@@ -164,6 +166,8 @@ class AppSettings {
         return NotificationsSettingsPage(settings: files?.settings);
       case SettingsSection.stash:
         return StashSettingsPage(settings: files?.settings);
+      case SettingsSection.accounts:
+        return AccountsSettingsPage(accounts: ForgeAccounts.current);
       case SettingsSection.customize:
         return CustomizeSettingsPage(
           customizations: customizations,

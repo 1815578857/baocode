@@ -631,11 +631,91 @@ void main() {
       expect(transcript.edits.map((edit) => edit.change.path), [
         '/p/lib/a.dart',
       ]);
-      expect(translator.planPath, plan);
 
       // Put again unchanged after it was sent back: a round of its own.
       use('t7', 'ExitPlanMode', {'plan': '# Five lines'});
       expect(shown(transcript).last, 'plan v3 awaiting ×0');
+    });
+
+    test('a plan put to the user awaits their next message: sent back by '
+        'one, started by the one that says so', () {
+      const plan = '/Users/me/.claude/plans/quiet-river.md';
+      final transcript = Transcript();
+      var seq = 0;
+      final translator = ClaudeTranslator(
+        emit: transcript.apply,
+        nextSeq: () => ++seq,
+      );
+      void use(String id, String name, Map<String, Object?> input) =>
+          translator.translate({
+            'type': 'assistant',
+            'parent_tool_use_id': null,
+            'message': {
+              'id': 'msg-$id',
+              'role': 'assistant',
+              'content': [
+                {'type': 'tool_use', 'id': id, 'name': name, 'input': input},
+              ],
+            },
+          });
+      void result(String id, {String content = 'ok', bool error = false}) =>
+          translator.translate({
+            'type': 'user',
+            'parent_tool_use_id': null,
+            'message': {
+              'role': 'user',
+              'content': [
+                {
+                  'type': 'tool_result',
+                  'tool_use_id': id,
+                  'content': content,
+                  'is_error': error,
+                },
+              ],
+            },
+          });
+      void prompt(String id, List<String> texts) => translator.translate({
+        'type': 'user',
+        'uuid': id,
+        'parent_tool_use_id': null,
+        'message': {
+          'role': 'user',
+          'content': [
+            for (final text in texts) {'type': 'text', 'text': text},
+          ],
+        },
+      });
+      void putPlan(String id, String text) {
+        use('w$id', 'Write', {'file_path': plan, 'content': text});
+        result('w$id');
+        use('x$id', 'ExitPlanMode', {'plan': text});
+        result('x$id', content: ClaudeTranslator.planPresented, error: true);
+      }
+
+      putPlan('1', '# Grow the input');
+      expect(shown(transcript), ['plan v1 awaiting ×1']);
+      expect(translator.awaitingPlan?.round, 1);
+
+      // A message: what should change.
+      prompt('u1', ['Keep it short']);
+      expect(shown(transcript), ['plan v1 sentBack ×1', 'user: Keep it short']);
+      expect((transcript.itemAt(0) as PlanItem).feedback, 'Keep it short');
+      expect(translator.awaitingPlan, isNull);
+
+      // The next round, started: the note marks it, and is not shown.
+      putPlan('2', '# Grow the input a little');
+      expect(translator.awaitingPlan?.round, 2);
+      prompt('u2', [
+        'Carry out the plan',
+        ClaudeTranslator.planStartedNote(plan),
+      ]);
+      expect(shown(transcript), [
+        'plan v1 sentBack ×1',
+        'user: Keep it short',
+        'plan v2 approved ×1',
+        'user: Carry out the plan',
+      ]);
+      expect(translator.awaitingPlan, isNull);
     });
 
     test('a plan said, not written, is said in the conversation', () {
@@ -659,6 +739,35 @@ void main() {
       });
       expect((transcript.itemAt(0) as AssistantTextItem).text, '1. Do it');
       expect(transcript.plan, isNull);
+    });
+
+    test('the classifier billing warning is not shown, others are', () {
+      final transcript = Transcript();
+      var seq = 0;
+      final translator = ClaudeTranslator(
+        emit: transcript.apply,
+        nextSeq: () => ++seq,
+      );
+      for (final (uuid, content) in [
+        (
+          'w1',
+          "We're changing auto mode to no longer charge for classifier "
+              'requests in Claude Code. To fix it, ask your gateway to '
+              'implement: https://code.claude.com/docs/en/'
+              'auto-mode-classifier-billing',
+        ),
+        ('w2', 'Something else'),
+      ]) {
+        translator.translate({
+          'type': 'system',
+          'subtype': 'informational',
+          'level': 'warning',
+          'uuid': uuid,
+          'content': content,
+        });
+      }
+      expect(transcript.length, 1);
+      expect((transcript.itemAt(0) as NoticeItem).text, 'Something else');
     });
 
     test('replaying the kept session shows what streaming showed', () async {
@@ -924,109 +1033,117 @@ void main() {
       kernel.dispose();
     });
 
-    test('denying says why; a plan is approved or sent back', () async {
-      final cli = FakeCli();
-      final (:kernel, :transcript, events: _) = claude(cli);
-      kernel.send(const KernelTurn(id: 'u1', text: 'go'));
-      await pumpEventQueue();
-      void ask(String id, String tool, Map<String, Object?> input) => cli.push({
-        'type': 'control_request',
-        'request_id': id,
-        'request': {
-          'subtype': 'can_use_tool',
-          'tool_name': tool,
-          'input': input,
-        },
-      });
-
-      ask('r1', 'Bash', {'command': 'rm -rf build', 'description': 'Clean'});
-      await pumpEventQueue();
-      final bash = transcript.pendingInteraction as ApprovalRequest;
-      expect((bash.preview as CommandPreview).command, 'rm -rf build');
-      expect(bash.alwaysAllowLabel, isNull);
-      kernel.answer(
-        'r1',
-        const ApprovalAnswer(ApprovalDecision.deny, message: 'Keep the build'),
-      );
-      expect(cli.responses.last, {
-        'behavior': 'deny',
-        'message': 'Keep the build',
-      });
-
-      ask('r2', 'ExitPlanMode', {'plan': '1. Do it'});
-      await pumpEventQueue();
-      expect(
-        (transcript.pendingInteraction as PlanReviewRequest).plan,
-        '1. Do it',
-      );
-      // Not written to a file: it shows in the request.
-      expect(
-        (transcript.pendingInteraction as PlanReviewRequest).planPath,
-        isNull,
-      );
-      kernel.answer(
-        'r2',
-        const PlanAnswer(PlanDecision.keepPlanning, feedback: 'Smaller steps'),
-      );
-      expect(cli.responses.last['behavior'], 'deny');
-      expect(cli.responses.last['message'], contains('Smaller steps'));
-
-      // Carried out with the approvals picked; written to its file, which
-      // shows it.
-      kernel.mode.select('plan');
-      kernel.permission.select('acceptEdits');
-      const planFile = '/home/me/.claude/plans/small-steps.md';
-      cli
-        ..push({
-          'type': 'assistant',
-          'parent_tool_use_id': null,
-          'message': {
-            'id': 'msg-plan',
-            'role': 'assistant',
-            'content': [
-              {
-                'type': 'tool_use',
-                'id': 'w1',
-                'name': 'Write',
-                'input': {'file_path': planFile, 'content': '1. Small'},
+    test(
+      'denying says why; a plan is put to the user, who starts it',
+      () async {
+        final cli = FakeCli();
+        final (:kernel, :transcript, events: _) = claude(cli);
+        kernel.send(const KernelTurn(id: 'u1', text: 'go'));
+        await pumpEventQueue();
+        void ask(String id, String tool, Map<String, Object?> input) =>
+            cli.push({
+              'type': 'control_request',
+              'request_id': id,
+              'request': {
+                'subtype': 'can_use_tool',
+                'tool_name': tool,
+                'input': input,
               },
-            ],
-          },
-        })
-        ..push({
-          'type': 'user',
-          'parent_tool_use_id': null,
-          'message': {
-            'role': 'user',
-            'content': [
-              {'type': 'tool_result', 'tool_use_id': 'w1', 'content': 'ok'},
-            ],
-          },
-          'tool_use_result': {'type': 'create', 'filePath': planFile},
+            });
+
+        ask('r1', 'Bash', {'command': 'rm -rf build', 'description': 'Clean'});
+        await pumpEventQueue();
+        final bash = transcript.pendingInteraction as ApprovalRequest;
+        expect((bash.preview as CommandPreview).command, 'rm -rf build');
+        expect(bash.alwaysAllowLabel, isNull);
+        kernel.answer(
+          'r1',
+          const ApprovalAnswer(
+            ApprovalDecision.deny,
+            message: 'Keep the build',
+          ),
+        );
+        expect(cli.responses.last, {
+          'behavior': 'deny',
+          'message': 'Keep the build',
         });
-      ask('r3', 'ExitPlanMode', {'plan': '1. Do it in small steps'});
-      await pumpEventQueue();
-      expect(
-        (transcript.pendingInteraction as PlanReviewRequest).planPath,
-        planFile,
-      );
-      expect(transcript.plan?.path, planFile);
-      expect(
-        (transcript.pendingInteraction as PlanReviewRequest).approveLabel,
-        'Yes, start · Accept edits',
-      );
-      expect(
-        (transcript.pendingInteraction as PlanReviewRequest).approvals?.id,
-        'acceptEdits',
-      );
-      kernel.answer('r3', const PlanAnswer(PlanDecision.approve));
-      expect(cli.responses.last['updatedPermissions'], [
-        {'type': 'setMode', 'mode': 'acceptEdits', 'destination': 'session'},
-      ]);
-      expect(kernel.mode.selected, 'agent');
-      expect(kernel.permission.selected, 'acceptEdits');
-      kernel.dispose();
-    });
+
+        // A plan is put to the user at once, and the turn left to end: the
+        // user starts it later, with the approvals picked.
+        kernel.mode.select('plan');
+        kernel.permission.select('acceptEdits');
+        const planFile = '/home/me/.claude/plans/small-steps.md';
+        void said(String id, String name, Map<String, Object?> input) =>
+            cli.push({
+              'type': 'assistant',
+              'parent_tool_use_id': null,
+              'message': {
+                'id': 'msg-$id',
+                'role': 'assistant',
+                'content': [
+                  {'type': 'tool_use', 'id': id, 'name': name, 'input': input},
+                ],
+              },
+            });
+        void result(String id, String content, {bool error = false}) =>
+            cli.push({
+              'type': 'user',
+              'parent_tool_use_id': null,
+              'message': {
+                'role': 'user',
+                'content': [
+                  {
+                    'type': 'tool_result',
+                    'tool_use_id': id,
+                    'content': content,
+                    'is_error': error,
+                  },
+                ],
+              },
+            });
+        said('w1', 'Write', {'file_path': planFile, 'content': '1. Small'});
+        result('w1', 'ok');
+        said('x1', 'ExitPlanMode', {'plan': '1. Small'});
+        ask('r2', 'ExitPlanMode', {'plan': '1. Small'});
+        await pumpEventQueue();
+        expect(transcript.pendingInteraction, isNull);
+        expect(cli.responses.last, {
+          'behavior': 'deny',
+          'message': ClaudeTranslator.planPresented,
+        });
+        result('x1', ClaudeTranslator.planPresented, error: true);
+        await pumpEventQueue();
+        expect(transcript.plan?.path, planFile);
+        expect(
+          transcript.liveItems
+              .map((entry) => entry.$2)
+              .whereType<PlanItem>()
+              .map((plan) => plan.status),
+          [PlanStatus.awaiting],
+        );
+        // Still planning until the user starts it.
+        expect(kernel.mode.selected, 'plan');
+
+        kernel.startBuilding();
+        expect(kernel.mode.selected, 'agent');
+        expect(kernel.permission.selected, 'acceptEdits');
+        expect(cli.requests('set_permission_mode').last['mode'], 'acceptEdits');
+        kernel.send(const KernelTurn(id: 'u2', text: 'Carry out the plan'));
+        await pumpEventQueue();
+        final content = (cli.users.last['message'] as Map)['content'] as List;
+        expect(content, [
+          {'type': 'text', 'text': 'Carry out the plan'},
+          {'type': 'text', 'text': ClaudeTranslator.planStartedNote(planFile)},
+        ]);
+        // Only the message that starts it says so.
+        kernel.send(const KernelTurn(id: 'u3', text: 'And test it'));
+        await pumpEventQueue();
+        expect((cli.users.last['message'] as Map)['content'], [
+          {'type': 'text', 'text': 'And test it'},
+        ]);
+        kernel.dispose();
+      },
+    );
 
     test('full access answers questions itself; Don\'t ask refuses what '
         'it would ask', () async {
@@ -1137,13 +1254,17 @@ void main() {
           const ApprovalAnswer(ApprovalDecision.allowOnce),
         );
       }
+      // The plan is put to the user, not asked about.
       ask('r3', 'ExitPlanMode', {'plan': '1. Do it'});
       await pumpEventQueue();
-      expect(transcript.pendingInteraction, isA<PlanReviewRequest>());
-      kernel.answer('r3', const PlanAnswer(PlanDecision.keepPlanning));
+      expect(transcript.pendingInteraction, isNull);
+      expect(cli.responses.last, {
+        'behavior': 'deny',
+        'message': ClaudeTranslator.planPresented,
+      });
 
-      // Don't ask: what it would ask about is refused; questions and the
-      // plan are asked.
+      // Don't ask: what it would ask about is refused; questions are
+      // asked.
       kernel.permission.select('dontAsk');
       final answered = cli.responses.length;
       ask('r4', 'Bash', command);
@@ -1157,7 +1278,8 @@ void main() {
       kernel.answer('r5', const QuestionAnswer([], skipped: true));
       ask('r6', 'ExitPlanMode', {'plan': '1. Do it'});
       await pumpEventQueue();
-      expect(transcript.pendingInteraction, isA<PlanReviewRequest>());
+      expect(transcript.pendingInteraction, isNull);
+      expect(cli.responses.last['message'], ClaudeTranslator.planPresented);
       kernel.dispose();
     });
 

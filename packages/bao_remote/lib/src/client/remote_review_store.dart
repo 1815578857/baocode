@@ -84,6 +84,10 @@ class RemoteReviewStore implements ReviewStore {
       decodeBytes(await _call('read', {'blob': blob.toJson()}));
 
   @override
+  Future<ReviewBlob> store(Uint8List bytes, {required String mode}) async =>
+      _blob(await _call('store', {'bytes': encodeBytes(bytes), 'mode': mode}))!;
+
+  @override
   Future<void> restore(String path, ReviewBlob? blob) =>
       _call('restore', {'path': path, 'blob': blob?.toJson()});
 

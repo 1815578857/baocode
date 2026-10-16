@@ -11,7 +11,9 @@ import 'package:baocode/stash/stash_note.dart';
 import 'package:baocode/stash/stash_note_editor.dart';
 import 'package:baocode/stash/stash_store.dart';
 import 'package:baocode/sidebar/sidebar.dart' show SidebarIconButton;
+import 'package:baocode/stash/stash_thread_view.dart';
 import 'package:baocode/stash/stash_view.dart';
+import 'package:baocode/chat/chat_session.dart' show ComposerMessage;
 import 'package:baocode/theme/app_theme.dart';
 import 'package:baocode/theme/codicons.dart';
 import 'package:baocode/workspace/workspace.dart';
@@ -158,7 +160,11 @@ void main() {
     });
   });
 
-  Future<void> pumpView(WidgetTester tester, {int? open}) async {
+  Future<void> pumpView(
+    WidgetTester tester, {
+    int? open,
+    ValueChanged<AgentThread>? onOpenAgent,
+  }) async {
     tester.view.physicalSize = const Size(1400, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -172,7 +178,7 @@ void main() {
           child: StashView(
             controller: controller,
             onClose: () {},
-            onOpenAgent: (_) {},
+            onOpenAgent: onOpenAgent ?? (_) {},
             initial: open,
           ),
         ),
@@ -292,6 +298,75 @@ void main() {
     await unmount(tester);
   });
 
+  testWidgets('cards by their number, the newest first; those done hidden '
+      'at first; statuses and projects picked several at once', (
+    tester,
+  ) async {
+    final ids = (await tester.runAsync(() async {
+      final ids = <int>[];
+      for (final (title, project) in [
+        ('Alpha', null),
+        ('Beta', '~/code/baocode'),
+        ('Gamma', '~/code/cursor-docs'),
+      ]) {
+        final note = await store.create(body: '$title\n\nmore');
+        // Not collected: none to be merged, which would ask the AI.
+        await store.update(note.id, (note) {
+          note.status = title == 'Alpha'
+              ? StashStatus.done
+              : StashStatus.requirement;
+          note.project = project;
+        });
+        ids.add(note.id);
+      }
+      // Beta written last: still after Gamma, by its number.
+      await store.update(ids[1], (note) => note.body = 'Beta\n\nagain');
+      return ids;
+    }))!;
+    await pumpView(tester);
+    Finder card(String title) => find.descendant(
+      of: find.byWidgetPredicate((widget) => widget is Draggable),
+      matching: find.text(title),
+    );
+    expect(card('Alpha'), findsNothing);
+    final gamma = tester.getTopLeft(card('Gamma'));
+    final beta = tester.getTopLeft(card('Beta'));
+    expect(
+      gamma.dy < beta.dy || (gamma.dy == beta.dy && gamma.dx < beta.dx),
+      isTrue,
+    );
+
+    // Done checked too, the menu left open.
+    await tester.tap(find.text('Not done'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Done').last);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(card('Alpha'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Any status'), findsOneWidget);
+
+    await tester.tap(find.text('Any project'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('baocode').last);
+    await tester.pump();
+    await tester.tap(find.text('cursor-docs').last);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('2 projects'), findsOneWidget);
+    expect(card('Alpha'), findsNothing);
+    expect(card('Beta'), findsOneWidget);
+
+    // Shown from elsewhere: the filters let it be seen.
+    tester.state<StashViewState>(find.byType(StashView)).show(ids[0]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(card('Alpha'), findsOneWidget);
+    expect(find.text('Any project'), findsOneWidget);
+    await unmount(tester);
+  });
+
   testWidgets('the card shown is drawn as the explorer\'s selected file; '
       'another shown, the other cards are left as they were', (tester) async {
     final ids = await tester.runAsync(
@@ -339,6 +414,82 @@ void main() {
     expect(StashNoteEditorState.showing(ids[1]), isNotNull);
     // Not built anew.
     expect(identical(tester.element(card('Third')).widget, third), isTrue);
+    await unmount(tester);
+  });
+
+  testWidgets('the card shows the conversation it was last worked on in, '
+      'what its agent said, a click away; the detail lists them all', (
+    tester,
+  ) async {
+    // Its agents' kernels started in the test's time.
+    controller.dispose();
+    controller = StashController(
+      store: store,
+      workspace: Workspace.mock(),
+      host: StashHost(channel: const MethodChannel('test/stash-view')),
+    );
+    final thread = controller.workspace.threads.first;
+    thread.session.send(const ComposerMessage(text: 'Retry the uploads'));
+    for (var i = 0; i < 50 && thread.id == null; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    final session = thread.id!;
+    thread.session.stop();
+    await tester.pump(const Duration(seconds: 1));
+    final note = (await tester.runAsync(
+      () => store.create(body: 'Uploads fail\nThey should retry on 503'),
+    ))!;
+    await tester.runAsync(
+      () => store.update(note.id, (note) {
+        note.status = StashStatus.implementing;
+        note.threads.addAll([
+          const StashThreadLink(
+            session: 'gone',
+            project: '/elsewhere/app',
+            title: 'An old one',
+            said: 'Looked into it.',
+          ),
+          StashThreadLink(
+            session: session,
+            project: thread.project.path,
+            said: 'Uploads retry three times now.',
+            at: DateTime(2026, 10, 15, 9),
+          ),
+        ]);
+      }, touch: false),
+    );
+    AgentThread? opened;
+    await pumpView(tester, onOpenAgent: (thread) => opened = thread);
+
+    final chip = find.byType(StashThreadChip);
+    expect(chip, findsOneWidget);
+    Finder inChip(String text) =>
+        find.descendant(of: chip, matching: find.text(text));
+    expect(inChip(thread.title), findsOneWidget);
+    expect(inChip('Uploads retry three times now.'), findsOneWidget);
+    expect(inChip('+1'), findsOneWidget);
+    // In place of its text (its title stays).
+    expect(find.text('Uploads fail'), findsOneWidget);
+    expect(find.text('They should retry on 503'), findsNothing);
+    await tester.tap(chip);
+    expect(opened, thread);
+
+    opened = null;
+    await tester.tap(find.text('Uploads fail'));
+    // Sliding in.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    final list = find.byType(StashThreadList);
+    Finder inList(String text) =>
+        find.descendant(of: list, matching: find.text(text));
+    expect(inList('Conversations'), findsOneWidget);
+    expect(inList('An old one'), findsOneWidget);
+    expect(inList('Looked into it.'), findsOneWidget);
+    // Not listed any more: nothing to open.
+    await tester.tap(inList('An old one'));
+    expect(opened, isNull);
+    await tester.tap(inList('Uploads retry three times now.'));
+    expect(opened, thread);
     await unmount(tester);
   });
 

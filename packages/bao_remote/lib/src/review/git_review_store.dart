@@ -685,6 +685,17 @@ class GitReviewStore implements ReviewStore {
       (await _git(['cat-file', 'blob', blob.oid])).bytes;
 
   @override
+  Future<ReviewBlob> store(Uint8List bytes, {required String mode}) async {
+    final hashed = await _git([
+      'hash-object',
+      '-w',
+      '--no-filters',
+      '--stdin',
+    ], input: bytes);
+    return ReviewBlob(mode, hashed.text.trim());
+  }
+
+  @override
   Future<void> restore(String path, ReviewBlob? blob) async {
     final full = _full(path);
     final type = FileSystemEntity.typeSync(full, followLinks: false);

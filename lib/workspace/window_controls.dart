@@ -196,6 +196,23 @@ abstract final class WindowControls {
     _hovered.remove(viewId)?.dispose();
     _maximized.remove(viewId)?.dispose();
     _channels.remove(viewId);
+    _titleBarDrops.remove(viewId);
+  }
+
+  static final _titleBarDrops = <int, double>{};
+
+  /// Keeps the macOS traffic lights level with the title bar Flutter draws
+  /// as the interface is zoomed: [drop] (the window's points) below where
+  /// the system puts them. Said once a change; 0 is where they start.
+  static Future<void> setTitleBarDrop(double drop, {required int viewId}) async {
+    if (!AppPlatform.isMacOS) return;
+    if ((_titleBarDrops[viewId] ?? 0) == drop) return;
+    _titleBarDrops[viewId] = drop;
+    try {
+      await channelFor(viewId).invokeMethod<void>('setTitleBarDrop', drop);
+    } on MissingPluginException {
+      // A host without the channel (e.g. tests).
+    }
   }
 
   static WindowButton? _buttonNamed(String name) => switch (name) {

@@ -410,6 +410,9 @@ class IdeSearchView extends StatefulWidget {
     this.replaceBackend,
     this.onEscape,
     this.onError,
+    this.titleActions = const [],
+    this.titleBorder,
+    this.background,
   });
 
   final IdeSearchSession session;
@@ -435,6 +438,17 @@ class IdeSearchView extends StatefulWidget {
   /// workbench's own command to it, and gives none).
   final VoidCallback? onEscape;
   final ValueChanged<Object>? onError;
+
+  /// The host's actions in the title, before the view's own (the side
+  /// panel's, back to its tree).
+  final List<Widget> titleActions;
+
+  /// The line under the title, beside an editor's tabs (see
+  /// [IdeViewTitle.border]).
+  final Color? titleBorder;
+
+  /// Behind it, the side bar's where not given.
+  final Color? background;
 
   @override
   State<IdeSearchView> createState() => IdeSearchViewState();
@@ -933,13 +947,15 @@ class IdeSearchViewState extends State<IdeSearchView>
     // their tooltips (searchActionsTopBar.ts, in `MenuId.ViewTitle`).
     final keys = KeybindingService.instance;
     return ColoredBox(
-      color: AppColors.sidebarSurface,
+      color: widget.background ?? AppColors.sidebarSurface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           IdeViewTitle(
             context.l10n.searchTitle,
+            border: widget.titleBorder,
             actions: [
+              ...widget.titleActions,
               IdePaneAction(
                 icon: Codicons.refresh,
                 tooltip: keys.titleWithKeybinding(
@@ -1012,7 +1028,8 @@ class IdeSearchViewState extends State<IdeSearchView>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Only where replacing is offered: the searching-alone host
-            // has nothing to toggle.
+            // has nothing to toggle, its room kept so that the input lines
+            // up with the include and exclude ones as it does here.
             if (widget.replaceBackend != null)
               _ToggleReplace(
                 expanded: _replacing,
@@ -1020,7 +1037,9 @@ class IdeSearchViewState extends State<IdeSearchView>
                   session.replaceShown = !session.replaceShown;
                   session.notify();
                 },
-              ),
+              )
+            else
+              const SizedBox(width: _ToggleReplace.width),
             const SizedBox(width: 2),
             Expanded(
               child: Column(
@@ -1423,6 +1442,8 @@ class IdeSearchViewState extends State<IdeSearchView>
 class _ToggleReplace extends StatefulWidget {
   const _ToggleReplace({required this.expanded, required this.onPressed});
 
+  static const width = 16.0;
+
   final bool expanded;
   final VoidCallback onPressed;
 
@@ -1448,7 +1469,7 @@ class _ToggleReplaceState extends State<_ToggleReplace> {
           behavior: HitTestBehavior.opaque,
           onTap: widget.onPressed,
           child: Container(
-            width: 16,
+            width: _ToggleReplace.width,
             decoration: BoxDecoration(
               color: _hover ? themeColors['toolbar.hoverBackground'] : null,
               borderRadius: BorderRadius.circular(4),

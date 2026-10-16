@@ -115,6 +115,15 @@ abstract interface class SelectsMode {
   KernelChoiceSource get mode;
 }
 
+/// Puts its plans to the user without waiting on them: a plan's card
+/// shows it awaiting, the turn over, for the user to start when they like
+/// or to say in a message what should change.
+abstract interface class StartsPlans {
+  /// Out of planning, into building with the approvals picked: the next
+  /// message carries out the plan awaiting.
+  void startBuilding();
+}
+
 /// How the agent's actions are approved: e.g. ask each time, accept
 /// edits, or no checks. Apart from [SelectsMode]: a plan, once approved,
 /// is carried out with these approvals.

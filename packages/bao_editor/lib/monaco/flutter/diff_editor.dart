@@ -244,30 +244,13 @@ class _DiffEditorState extends State<DiffEditor> {
                 )
               : null,
         ),
-        DiffZoneKind.deletedCode => EditorViewZone(
-          afterLineNumber: zone.afterLineNumber,
-          heightInLines: zone.heightInLines,
-          content: CustomPaint(
-            painter: _DeletedCodePainter(
-              original: original,
-              lines: zone.deleted!,
-              diff: zone.diff,
-              styledLines: widget.originalStyledLines,
-              style: widget.style,
-              textScaler: MediaQuery.textScalerOf(context),
-              lineBackground: widget.colors.removedLine,
-              textBackground: widget.colors.removedText,
-            ),
-          ),
-          margin: CustomPaint(
-            painter: _DeletedCodeMarginPainter(
-              lines: zone.deleted!.length,
-              background: widget.colors.removedGutter,
-              sign: widget.colors.signForeground,
-              style: widget.style,
-              textScaler: MediaQuery.textScalerOf(context),
-            ),
-          ),
+        DiffZoneKind.deletedCode => _deletedCodeZone(
+          zone,
+          original,
+          colors: widget.colors,
+          style: widget.style,
+          textScaler: MediaQuery.textScalerOf(context),
+          styledLines: widget.originalStyledLines,
         ),
       };
 
@@ -440,6 +423,49 @@ class _DiffEditorState extends State<DiffEditor> {
       dark: widget.dark,
     );
   }
+}
+
+/// What one editor shows of its text's changes against [model]'s original,
+/// with no diff editor around it (as the inline view's modified editor):
+/// the original's deleted code in zones above the changes, its changed
+/// lines decorated; none while the diff is not known.
+({List<EditorViewZone> zones, List<EditorDecoration> decorations})
+inlineDiffParts(
+  DiffEditorModel model, {
+  required DiffEditorColors colors,
+  required TextStyle style,
+  required TextScaler textScaler,
+  Map<int, List<TextSpan>>? originalStyledLines,
+}) {
+  final original = model.originalSnapshot;
+  final mappings = model.mappings;
+  if (original == null || mappings == null) {
+    return (zones: const [], decorations: const []);
+  }
+  final zones = computeDiffZones(
+    computeDiffAlignments(mappings, original, innerHunkAlignment: false),
+    sideBySide: false,
+  ).modified;
+  return (
+    zones: [
+      for (final zone in zones)
+        if (zone.kind == DiffZoneKind.deletedCode)
+          _deletedCodeZone(
+            zone,
+            original,
+            colors: colors,
+            style: style,
+            textScaler: textScaler,
+            styledLines: originalStyledLines,
+          ),
+    ],
+    decorations: computeDiffDecorations(
+      mappings,
+      original,
+      model.modified.snapshot,
+      colors,
+    ).modified,
+  );
 }
 
 /// `.diffOverview`: the original's changes in the left lane, the
@@ -735,6 +761,41 @@ class _DiagonalFillPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _DiagonalFillPainter old) => old.color != color;
 }
+
+/// A [DiffZoneKind.deletedCode] zone: [original]'s deleted lines, with the
+/// removed signs in its margin.
+EditorViewZone _deletedCodeZone(
+  DiffZone zone,
+  DocumentSnapshot original, {
+  required DiffEditorColors colors,
+  required TextStyle style,
+  required TextScaler textScaler,
+  Map<int, List<TextSpan>>? styledLines,
+}) => EditorViewZone(
+  afterLineNumber: zone.afterLineNumber,
+  heightInLines: zone.heightInLines,
+  content: CustomPaint(
+    painter: _DeletedCodePainter(
+      original: original,
+      lines: zone.deleted!,
+      diff: zone.diff,
+      styledLines: styledLines,
+      style: style,
+      textScaler: textScaler,
+      lineBackground: colors.removedLine,
+      textBackground: colors.removedText,
+    ),
+  ),
+  margin: CustomPaint(
+    painter: _DeletedCodeMarginPainter(
+      lines: zone.deleted!.length,
+      background: colors.removedGutter,
+      sign: colors.signForeground,
+      style: style,
+      textScaler: textScaler,
+    ),
+  ),
+);
 
 /// The inline view's deleted code (`renderLines` in a `line-delete` zone):
 /// the original's [lines] with their tokens, on the removed line

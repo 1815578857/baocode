@@ -9,6 +9,7 @@ import 'package:bao_editor/monaco/flutter/editor_document_model.dart';
 import 'file_service.dart';
 import 'file_views.dart';
 import 'git/git_repository.dart';
+import 'git/scm_host.dart';
 import 'git/repository_scan.dart';
 import 'ide_layout.dart';
 import 'ide_notifications.dart';
@@ -212,7 +213,8 @@ class IdeDocument {
 }
 
 /// Open files belong to the IDE pane, not to any one agent conversation.
-class IdeWorkspace extends ChangeNotifier implements IdeSearchReplaceBackend {
+class IdeWorkspace extends ChangeNotifier
+    implements IdeSearchReplaceBackend, IdeScmHost {
   IdeWorkspace(
     this.root, {
     IdeFileService? files,
@@ -242,6 +244,7 @@ class IdeWorkspace extends ChangeNotifier implements IdeSearchReplaceBackend {
 
   /// The project's folder; a multi-folder workspace's own (empty) folder
   /// when it has [roots].
+  @override
   final String root;
 
   /// Path syntax of the project's host, with relative paths based at [root]
@@ -348,6 +351,7 @@ class IdeWorkspace extends ChangeNotifier implements IdeSearchReplaceBackend {
   /// one folder's, its own and those found in its subfolders, when there
   /// are any (none otherwise: [git] is its one). A folder that is not a
   /// repository is left out when ones were found in it.
+  @override
   List<(String root, IdeGitRepository git)> get repositories => [
     for (final folder in isMultiRoot ? _roots : [root])
       if (isMultiRoot || (_found[folder]?.isNotEmpty ?? false))
@@ -360,17 +364,27 @@ class IdeWorkspace extends ChangeNotifier implements IdeSearchReplaceBackend {
 
   IdeGitRepository? _activeRepository;
 
-  /// The repositories picked in Source Control's REPOSITORIES with Cmd
-  /// (Ctrl) (#76); CHANGES shows them grouped once there is more than one,
-  /// the one [selectRepository] picked otherwise. Kept with the workspace,
-  /// not the view's session, which follows the shown repository.
-  final Set<IdeGitRepository> scmSelectedRepositories = {};
-
   /// Repositories whose groups are folded in CHANGES, by root (#76).
+  @override
   final Set<String> scmCollapsedRepositories = {};
+
+  /// Appends [lines] to the file at [path]: in its editor, saved, when it
+  /// is open; else on disk.
+  @override
+  Future<void> appendLines(String path, String lines) async {
+    final normalized = paths.normalize(path);
+    final doc = _documents.where((d) => d.path == normalized).firstOrNull;
+    if (doc == null || doc.openError != null) {
+      await ideAppendLinesToFile(files, path, lines);
+      return;
+    }
+    edit(doc.path, ideAppendLines(doc.text, lines));
+    await save(doc);
+  }
 
   /// The repository SCm, the status bar and the timeline show:
   /// the one picked of a workspace's (its first until one is).
+  @override
   void selectRepository(IdeGitRepository repository) {
     if (identical(repository, _activeRepository)) return;
     _activeRepository = repository;
@@ -439,6 +453,7 @@ class IdeWorkspace extends ChangeNotifier implements IdeSearchReplaceBackend {
   /// Control and the timeline; null for none. Disposed with the workspace.
   /// A multi-folder workspace's is the one picked of its [repositories], as
   /// is a folder's with repositories in its subfolders.
+  @override
   IdeGitRepository? get git =>
       isMultiRoot || (_found[root]?.isNotEmpty ?? false)
       ? _activeRepository ?? repositories.firstOrNull?.$2
@@ -746,6 +761,7 @@ class IdeWorkspace extends ChangeNotifier implements IdeSearchReplaceBackend {
   /// changed their files (a discard, an undone commit, an agent's edit), as
   /// VS Code reloads an editor whose file changed on disk. Documents with
   /// unsaved changes keep them; those whose file is gone are [deleted].
+  @override
   Future<void> reload(Iterable<String> paths) async {
     final wanted = {for (final path in paths) this.paths.normalize(path)};
     var changed = false;

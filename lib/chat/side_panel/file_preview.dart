@@ -52,6 +52,7 @@ class FilePreview extends StatefulWidget {
     this.reveal = 0,
     this.onOpenFile,
     this.actions = const [],
+    this.language = true,
     this.edit,
     this.onEdit,
     this.highlights,
@@ -97,6 +98,9 @@ class FilePreview extends StatefulWidget {
 
   /// At the end of its bar.
   final List<Widget> actions;
+
+  /// Whether its bar names the file's language, to change it.
+  final bool language;
 
   /// Past this many lines, the text is not colored.
   static const maxColoredLines = 5000;
@@ -431,15 +435,15 @@ class _FilePreviewState extends State<FilePreview> {
               ),
             ),
           ),
-          if (!_image)
-            _LanguageButton(
-              name: IdeLanguageNames.forPath(path),
+          if (!_image && widget.language)
+            _TextButton(
+              label: IdeLanguageNames.forPath(path),
+              tooltip: l10n.languageModeChange,
               onPressed: () => unawaited(changeLanguageMode(context, path)),
             ),
           if (_isMarkdown && _markdown != null)
-            IdeActionButton(
-              icon: _source ? Codicons.openPreview : Codicons.code,
-              tooltip: _source ? l10n.sidePanelPreview : l10n.sidePanelSource,
+            _TextButton(
+              label: _source ? l10n.sidePanelPreview : l10n.sidePanelEdit,
               onPressed: () => setState(() => _source = !_source),
             ),
           ...widget.actions,
@@ -1041,18 +1045,23 @@ class _Message extends StatelessWidget {
   }
 }
 
-/// The file's language, as the IDE's status bar names it: a click changes
-/// it (Change Language Mode).
-class _LanguageButton extends StatelessWidget {
-  const _LanguageButton({required this.name, required this.onPressed});
+/// A button in the bar named by its [label], as the IDE's status bar's:
+/// the file's language (a click changes it), a markdown file's Edit or
+/// Preview. [tooltip] over it when given.
+class _TextButton extends StatelessWidget {
+  const _TextButton({
+    required this.label,
+    required this.onPressed,
+    this.tooltip,
+  });
 
-  final String name;
+  final String label;
+  final String? tooltip;
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) => IdeHover(
-    message: context.l10n.languageModeChange,
-    child: HoverBuilder(
+  Widget build(BuildContext context) {
+    final button = HoverBuilder(
       cursor: SystemMouseCursors.click,
       builder: (context, hovered) => GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -1066,11 +1075,15 @@ class _LanguageButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(
-            name,
+            label,
             style: TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
         ),
       ),
-    ),
-  );
+    );
+    if (tooltip case final message?) {
+      return IdeHover(message: message, child: button);
+    }
+    return button;
+  }
 }

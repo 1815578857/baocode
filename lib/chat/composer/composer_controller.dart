@@ -14,6 +14,9 @@ import 'package:flutter_quill/flutter_quill.dart';
 /// embeds as the U+FFFC standing for them, which it puts back as text (drawn
 /// as a boxed "OBJ" on Windows 10). Leaving out what such a replacement keeps
 /// as it was leaves those embeds be.
+///
+/// Its text is plain: no style goes on it, by whatever way Quill has to put
+/// one (a shortcut, a link, a paste with its styles).
 class ComposerController extends QuillController {
   ComposerController({
     required super.document,
@@ -26,6 +29,26 @@ class ComposerController extends QuillController {
         document: Document(),
         selection: const TextSelection.collapsed(offset: 0),
       );
+
+  /// Only a style taken off (Backspace at the start of a line takes its
+  /// block's): ⌘2 made the line a header, its text and the placeholder
+  /// several times their size.
+  @override
+  void formatText(
+    int index,
+    int len,
+    Attribute? attribute, {
+    bool shouldNotifyListeners = true,
+  }) {
+    if (attribute?.value != null) return;
+    super.formatText(
+      index,
+      len,
+      attribute,
+      // ignore: experimental_member_use
+      shouldNotifyListeners: shouldNotifyListeners,
+    );
+  }
 
   @override
   void replaceText(

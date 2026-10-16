@@ -11,7 +11,12 @@ import 'editor_launcher_stub.dart'
 /// An app a project can be opened in, named as each platform has it.
 enum Editor {
   /// BaoCode's own editor: the IDE layout, not an app to launch.
-  fastIde('Fast Ide', null, icon: Codicons.layout, builtIn: true),
+  fastIde(
+    'Fast Ide',
+    null,
+    icon: Icons.space_dashboard_outlined,
+    builtIn: true,
+  ),
   vscode(
     'VS Code',
     'code',
@@ -66,7 +71,8 @@ enum Editor {
   /// Whether it is BaoCode's own ([fastIde]), shown instead of launched.
   final bool builtIn;
 
-  /// Its codicon, as the IDE's own buttons have theirs.
+  /// Its icon: a codicon, as the IDE's own buttons have theirs, but for the
+  /// Fast Ide's own.
   final IconData icon;
 
   /// What the platform calls it.

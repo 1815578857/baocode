@@ -3,6 +3,7 @@
 // page's to pick from; the files the agent names found in its folders.
 
 import 'package:bao_editor/monaco/flutter/editor_surface.dart';
+import 'package:baocode/ide/ide_notifications.dart';
 import 'package:baocode/theme/code_font.dart';
 import 'package:baocode/chat/chat_session.dart';
 import 'package:baocode/chat/side_panel/file_link.dart';
@@ -113,6 +114,7 @@ Future<({AgentSidePanel panel, ChatSession session})> _pump(
           child: AgentSidePanelArea(
             panel: panel,
             builder: (context) => AgentSidePanelView(
+              notifications: IdeNotifications(),
               panel: panel,
               session: session,
               files: _files,
@@ -224,8 +226,8 @@ void main() {
     expect(added, 1);
   });
 
-  testWidgets('the changes page lists each folder\'s repository, counts '
-      'them all, and shows the one picked', (tester) async {
+  testWidgets('the changes page lists each folder\'s repository with its '
+      'changes, counts them all, and shows the one clicked', (tester) async {
     final site = FakeGit(_site)..status = '## main\x00 M index.html\x00';
     final api = FakeGit(_api)..status = '## dev\x00 M main.go\x00?? new.go\x00';
     final repositories = [(_site, site.repository()), (_api, api.repository())];
@@ -237,11 +239,15 @@ void main() {
       section: SidePanelSection.changes,
       repositories: repositories,
     );
-    // Each with its branch and changes.
-    expect(_inList('site'), findsOneWidget);
+    // Each under its header, with its branch, and all their changes (the
+    // graph's description names the one shown too).
+    expect(_inList('site'), findsNWidgets(2));
     expect(_inList('api'), findsOneWidget);
-    expect(_inList('main'), findsOneWidget);
-    expect(_inList('dev'), findsOneWidget);
+    expect(_inList('main*'), findsOneWidget);
+    expect(_inList('dev*'), findsOneWidget);
+    for (final name in ['index.html', 'main.go', 'new.go']) {
+      expect(_inList(name), findsOneWidget, reason: name);
+    }
     // The page's tab counts every repository's.
     expect(
       find.descendant(
@@ -252,15 +258,10 @@ void main() {
       ),
       findsOneWidget,
     );
-    // The first's changes until another is picked.
-    expect(_inList('index.html'), findsOneWidget);
-    expect(_inList('new.go'), findsNothing);
-
-    await tester.tap(_inList('dev'));
+    // A header clicked: its repository the one shown (the graph's).
+    await tester.tap(_inList('api'));
     await tester.pumpAndSettle();
     expect(panel.repositoryOf(session.root!), _api);
-    expect(_inList('new.go'), findsOneWidget);
-    expect(_inList('index.html'), findsNothing);
   });
 
   testWidgets('a repository on the changes page has its menu on a right '

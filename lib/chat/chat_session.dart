@@ -524,8 +524,57 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
   /// reported at: higher each time it writes it again.
   ({String path, int seq})? get plan => _transcript.plan;
 
+  /// The plan put to the user for them to start (see [startPlan]): the
+  /// last round's, until a message is sent after it.
+  PlanItem? get awaitingPlan {
+    if (_kernel is! StartsPlans) return null;
+    // Looked up once a change: asked on each, as the turn streams.
+    final key = (_transcript, _transcript.version, _transcript.length);
+    if (_awaitingPlan case (final at, final plan) when at == key) return plan;
+    PlanItem? found;
+    for (var i = _transcript.length - 1; i >= 0; i--) {
+      final item = _transcript.itemAt(i);
+      if (item is UserMessageItem) break;
+      if (item is PlanItem) {
+        if (item.status == PlanStatus.awaiting) found = item;
+        break;
+      }
+    }
+    _awaitingPlan = (key, found);
+    return found;
+  }
+
+  ((Transcript, int, int), PlanItem?)? _awaitingPlan;
+
+  /// Whether the plan awaiting can be started now: not while the turn
+  /// that put it is still under way.
+  bool get canStartPlan => awaitingPlan != null && !isStreaming;
+
+  /// Starts the plan awaiting: out of planning, into building with the
+  /// approvals and the model picked, [text] sent to say so.
+  void startPlan(String text) {
+    if (!canStartPlan) return;
+    (_kernel as StartsPlans).startBuilding();
+    send(ComposerMessage(text: text));
+  }
+
   /// Sequence of the last turn to end, to tell whether it was seen.
   int get lastTurnEndSeq => _transcript.lastTurnEndSeq;
+
+  /// What the agent said last, if it said anything after the last message
+  /// sent (this run, or in the history read).
+  String? get lastReply {
+    for (var i = _transcript.length - 1; i >= 0; i--) {
+      switch (_transcript.itemAt(i)) {
+        case UserMessageItem():
+          return null;
+        case AssistantTextItem(:final text) when text.trim().isNotEmpty:
+          return text;
+        default:
+      }
+    }
+    return null;
+  }
 
   /// Whether the last turn to end was stopped rather than done.
   bool get lastTurnInterrupted => _transcript.lastTurnInterrupted;
@@ -832,6 +881,10 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
   Future<String> Function()? originalOf(FileChange change) =>
       _activeReview?.original(change.path);
 
+  /// The review of the agent's changes while it holds (the editor keeps
+  /// and undoes them part by part with it); null without one.
+  ChangeReviews? get changeReview => _activeReview;
+
   final Map<Symbol, Object> _cache = {};
   int _cacheVersion = -1;
 
@@ -883,8 +936,8 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
   }
 
   /// Sends [message]; [now], taken up at once, the turn running stopped
-  /// for it (rather than queued behind it). With a plan shown beside the
-  /// chat waiting on the user, it says what should change in it instead.
+  /// for it (rather than queued behind it). With a plan awaiting (see
+  /// [awaitingPlan]), it says what should change in it.
   ///
   /// [editor] gives the file open in the editor beside the chat, where
   /// there is one; the agent is told of it as it changes.
@@ -893,13 +946,6 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
     bool now = false,
     OpenEditor? Function()? editor,
   }) {
-    if (pendingInteraction case PlanReviewRequest(planPath: _?)
-        when message.text.trim().isNotEmpty) {
-      answer(
-        PlanAnswer(PlanDecision.keepPlanning, feedback: message.text.trim()),
-      );
-      return;
-    }
     if (message.isEmpty || !canSend) return;
     final turn = KernelTurn(
       id: newTurnId(),

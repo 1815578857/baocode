@@ -65,7 +65,10 @@ import 'settings/data_dir_startup.dart';
 import 'settings/user_settings.dart';
 import 'telemetry/telemetry_platform.dart';
 import 'stash/stash_editor.dart' show StashEditor;
+import 'forge/forge_accounts.dart';
+import 'forge/forge_io_stub.dart' if (dart.library.io) 'forge/forge_io.dart' show IoForgeHttp;
 import 'stash/stash_controller.dart';
+import 'stash/stash_forge.dart';
 import 'stash/stash_disk.dart';
 import 'stash/stash_panel_view.dart';
 import 'stash/stash_settings.dart';
@@ -75,6 +78,7 @@ import 'telemetry/telemetry_store.dart';
 import 'theme/app_theme.dart';
 import 'theme/code_font.dart';
 import 'theme/pixel_snapped_text_scaler.dart';
+import 'theme/ui_zoom.dart';
 import 'theme/workbench_theme.dart';
 import 'update/update_controller.dart';
 import 'update/update_platform.dart';
@@ -259,7 +263,16 @@ Future<void> main(List<String> arguments) async {
       settingsChanges: files.settings,
       cacheDir: DataDirectory.current.cacheDir,
       storage: files.storage,
+      installSkill: true,
+      // The user's GitHub and GitLab accounts: their tokens in the
+      // keychain, the rest in the global storage.
+      accounts: ForgeAccounts.current = ForgeAccounts(
+        http: IoForgeHttp(),
+        read: () => files.storage.get<List<Object?>>(forgeAccountsKey),
+        write: (json) => files.storage.set(forgeAccountsKey, json),
+      ),
     );
+    StashForge.current = stash.forge;
     unawaited(stash.start());
   }
   // What shows at launch (settings.json's `workbench.mainWindow`): with
@@ -639,20 +652,28 @@ class _BaoCodeAppState extends State<BaoCodeApp> {
     builder: (context, child) => ValueListenableBuilder<int>(
       valueListenable: CodeFont.uiScale,
       builder: (context, percent, scaled) {
-        final media = MediaQuery.of(context);
+        // The whole window is zoomed, not its text alone: its fixed heights,
+        // icons and gaps grow with the text they hold.
+        final zoom = percent / 100;
+        final media = UiZoom.zoomed(MediaQuery.of(context), zoom);
+        // The traffic lights, level with the title bar as it grows.
+        WindowControls.setTitleBarDrop(
+          AppMetrics.titleBarHeight * (zoom - 1) / 2,
+          viewId: window.viewId,
+        );
         // Windows blurs glyphs drawn at a fractional pixel size.
         TextScaler snapped(TextScaler scaler) => AppPlatform.isWindows
             ? PixelSnappedTextScaler(scaler, media.devicePixelRatio)
             : scaler;
+        final system = media.textScaler;
         return SystemTextScale(
-          scaler: snapped(media.textScaler),
+          // Code at its own size: the zoom taken back off.
+          scaler: snapped(
+            zoom == 1 ? system : TextScaler.linear(system.scale(1) / zoom),
+          ),
           child: MediaQuery(
-            data: media.copyWith(
-              textScaler: snapped(
-                TextScaler.linear(media.textScaler.scale(1) * percent / 100),
-              ),
-            ),
-            child: scaled!,
+            data: media.copyWith(textScaler: snapped(system)),
+            child: UiZoom(scale: zoom, child: scaled),
           ),
         );
       },

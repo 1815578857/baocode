@@ -183,21 +183,14 @@ Future<AgentThread?> implementStash(
     l10n.stashImplementStarter(reference.reference),
     if (git)
       worktree ? l10n.stashImplementInWorktree : l10n.stashImplementInPlace,
-    l10n.stashImplementComplete(note.id),
+    l10n.stashImplementComplete,
   ].join(' ');
   final workspace = controller.workspace;
   final thread = workspace.create(project: workspace.projectAt(project));
+  // Sent, it names the stash: linked to it then (see StashThreads).
   thread.session.draft.restore(
     '$starter${codeAppendix([reference])}',
     const [],
   );
-  if (note.status == StashStatus.collected) {
-    await store.update(
-      id,
-      (note) => note.status = StashStatus.requirement,
-      touch: false,
-    );
-  }
-  await controller.linkThread(id, thread);
   return thread;
 }

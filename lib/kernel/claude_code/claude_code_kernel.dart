@@ -66,14 +66,16 @@ typedef ProviderEnvironment = Future<Map<String, String>> Function(
 /// One process per session, started when first needed: the conversation
 /// goes to its stdin as user messages, settings and questions as control
 /// requests; its output is translated by [ClaudeTranslator]. Tool
-/// permissions, questions and plan approvals come back as control requests
-/// of its own and become [InteractionRequest]s.
+/// permissions and questions come back as control requests of its own and
+/// become [InteractionRequest]s; a plan is put to the user without waiting
+/// (see [StartsPlans]).
 class ClaudeCodeKernel
     with KernelEventSource
     implements
         AgentKernel,
         SelectsModel,
         SelectsMode,
+        StartsPlans,
         SelectsPermission,
         SelectsEffort,
         SelectsContextSize,
@@ -649,9 +651,35 @@ class ClaudeCodeKernel
 
   // --- The conversation -----------------------------------------------------------
 
+  /// Set by [startBuilding]: the next message starts the plan awaiting.
+  bool _startsPlan = false;
+
   @override
-  void send(KernelTurn turn) {
-    if (_sent.containsKey(turn.id)) return;
+  void startBuilding() {
+    _startsPlan = true;
+    _work = 'agent';
+    _applyMode();
+  }
+
+  @override
+  void send(KernelTurn sent) {
+    if (_sent.containsKey(sent.id)) return;
+    var turn = sent;
+    if (_startsPlan) {
+      _startsPlan = false;
+      // Told the model with it, so that it builds rather than plans on;
+      // the note marks the plan started (see the translator).
+      if (_translator.awaitingPlan case final plan?) {
+        turn = KernelTurn(
+          id: sent.id,
+          text: sent.text,
+          mentions: sent.mentions,
+          images: sent.images,
+          now: sent.now,
+          notes: [...sent.notes, ClaudeTranslator.planStartedNote(plan.path)],
+        );
+      }
+    }
     _sent[turn.id] = turn;
     final busy = _turn != null;
     if (busy) {
@@ -1111,7 +1139,6 @@ class ClaudeCodeKernel
           if (url != null && url.isNotEmpty) unawaited(_openLink(url));
           return {'action': 'accept'};
         }(),
-        PlanAnswer() => {'action': 'cancel'},
       });
       return;
     }
@@ -1138,14 +1165,6 @@ class ClaudeCodeKernel
           },
         },
       },
-      PlanAnswer(decision: PlanDecision.approve) => allow(
-        rules: [_setMode(_startBuilding())],
-      ),
-      PlanAnswer(:final feedback) => deny(
-        feedback == null || feedback.trim().isEmpty
-            ? 'The user wants to keep planning. Do not start yet.'
-            : 'The user wants to keep planning: $feedback',
-      ),
       ApprovalAnswer(decision: ApprovalDecision.allowOnce) => allow(),
       ApprovalAnswer(decision: ApprovalDecision.allowAlways) => allow(
         rules: permission.suggestions,
@@ -1158,21 +1177,6 @@ class ClaudeCodeKernel
     });
   }
 
-  /// Out of Plan, into Agent with the approvals picked: the mode the CLI
-  /// goes on in.
-  String _startBuilding() {
-    _work = 'agent';
-    _cliMode = _cliApproval;
-    emitInfoChanged();
-    return _cliApproval;
-  }
-
-  static Map<String, Object?> _setMode(String mode) => {
-    'type': 'setMode',
-    'mode': mode,
-    'destination': 'session',
-  };
-
   Future<void> _permission(
     String requestId,
     Map<String, Object?> request,
@@ -1180,13 +1184,21 @@ class ClaudeCodeKernel
     final tool = request['tool_name'] as String? ?? 'Tool';
     final input = (request['input'] as Map?)?.cast<String, Object?>() ?? {};
     final suggestions = request['permission_suggestions'] as List? ?? const [];
+    // The plan is put to the user without waiting on them: its card
+    // awaits, the turn ends, and their next message starts it (see
+    // startBuilding) or says what should change. The CLI stays in Plan.
+    if (tool == 'ExitPlanMode') {
+      _control!.respond(requestId, {
+        'behavior': 'deny',
+        'message': ClaudeTranslator.planPresented,
+      });
+      return;
+    }
     // Answered here, with nothing shown: in Don't ask nothing that is not
     // pre-approved is asked about (the CLI asks in Plan all the same). A
-    // question and a plan are always the user's to answer, in any mode:
-    // the approvals are about what the agent does, not what it asks.
-    if (_approval == 'dontAsk' &&
-        tool != 'AskUserQuestion' &&
-        tool != 'ExitPlanMode') {
+    // question is always the user's to answer, in any mode: the approvals
+    // are about what the agent does, not what it asks.
+    if (_approval == 'dontAsk' && tool != 'AskUserQuestion') {
       _control!.respond(requestId, {'behavior': 'deny', 'message': _notAsked});
       return;
     }
@@ -1198,7 +1210,6 @@ class ClaudeCodeKernel
     if (_approval == 'bypassPermissions' &&
         (_work != 'plan' || !_classifies) &&
         tool != 'AskUserQuestion' &&
-        tool != 'ExitPlanMode' &&
         !_askedInFullAccess(request)) {
       _control!.respond(requestId, {
         'behavior': 'allow',
@@ -1236,29 +1247,6 @@ class ClaudeCodeKernel
                   ],
                 ),
           ],
-        );
-      case 'ExitPlanMode':
-        var plan = input['plan'] as String?;
-        if (plan == null) {
-          try {
-            plan = (await _control!.request('get_plan'))['content'] as String?;
-          } on Object {
-            plan = null;
-          }
-        }
-        final approvals = _approvals
-            .where((a) => a.id == _approval)
-            .firstOrNull;
-        interaction = PlanReviewRequest(
-          id: requestId,
-          title: 'Ready to code?',
-          plan: plan ?? '(The plan could not be read.)',
-          planPath: _translator.planPath,
-          approvals: approvals,
-          approveLabel: switch (approvals) {
-            final approvals? => 'Yes, start · ${approvals.label}',
-            null => 'Yes, start building',
-          },
         );
       default:
         interaction = ApprovalRequest(

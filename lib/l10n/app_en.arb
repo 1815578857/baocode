@@ -702,6 +702,10 @@
   "@sidePanelSource": {
     "description": "Shows a markdown file's text."
   },
+  "sidePanelEdit": "Edit",
+  "@sidePanelEdit": {
+    "description": "Shows a markdown file's text in the side panel, to edit."
+  },
   "sidePanelNoOriginal": "The file before the agent's changes is not known: showing it as it is.",
   "@sidePanelNoOriginal": {
     "description": "Over a side panel preview asked for a diff it cannot show."
@@ -749,10 +753,6 @@
   "sidePanelSearchFiles": "Search the project's files",
   "@sidePanelSearchFiles": {
     "description": "The files page's header button that shows the text search in place of the tree."
-  },
-  "sidePanelSearchResults": "Search Results",
-  "@sidePanelSearchResults": {
-    "description": "The files page's header title while the text search shows."
   },
   "sidePanelCloseSearch": "Close the search",
   "@sidePanelCloseSearch": {
@@ -914,6 +914,7 @@
   "@ideChatHistory": {
     "description": "Button over the IDE's chat that lists the project's agents to switch to."
   },
+  "ideChatShowArchived": "Show archived agents",
   "ideChatNoAgents": "No agents in this project",
   "sidebarNewAgentIn": "New chat in {project}",
   "@sidebarNewAgentIn": {
@@ -992,6 +993,14 @@
     }
   },
   "sidebarCopySessionId": "Copy session ID",
+  "sidebarOpenStash": "Open Stash #{id}",
+  "@sidebarOpenStash": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
   "@sidebarCopySessionId": {
     "description": "An agent's menu in the sidebar: copies the id of its session, which Claude Code finds the conversation by."
   },
@@ -1455,9 +1464,18 @@
     }
   },
   "planDrafting": "Drafting",
-  "planAwaiting": "Awaiting approval",
+  "planAwaiting": "Ready to start",
   "planApproved": "Approved",
   "planSentBack": "Sent back",
+  "planStart": "Start",
+  "@planStart": {
+    "description": "On a plan put to the user: leaves Plan mode and has the agent carry the plan out, with the model picked beside it."
+  },
+  "planStartHint": "Leave Plan mode and carry out this plan",
+  "planStartMessage": "Carry out the plan",
+  "@planStartMessage": {
+    "description": "The message sent, as the user's, when they start a plan."
+  },
   "turnFiles": "{count, plural, =1{1 file} other{{count} files}}",
   "@turnFiles": {
     "description": "How many files a folded turn edited.",
@@ -1582,6 +1600,10 @@
   "stripKeepAll": "Keep all",
   "stripKeep": "Keep",
   "stripUndo": "Undo",
+  "agentKeepFile": "Keep file",
+  "@agentKeepFile": {
+    "description": "Over the editor's tabs while its file has an agent's change pending: keeps the whole change to this file."
+  },
   "stripChangeAdded": "Added",
   "stripChangeModified": "Modified",
   "stripChangeDeleted": "Deleted",
@@ -1745,24 +1767,6 @@
   "interactionAllowOnce": "Allow once",
   "interactionDeny": "Deny",
   "interactionDenyHint": "Tell the agent what to do instead",
-  "interactionPlanTitle": "Ready to code?",
-  "interactionStartBuilding": "Yes, start building",
-  "interactionStartWith": "Yes, start · {approvals}",
-  "@interactionStartWith": {
-    "description": "Approves a plan, to be carried out with the approvals named (e.g. Accept edits).",
-    "placeholders": {
-      "approvals": {
-        "type": "String"
-      }
-    }
-  },
-  "interactionKeepPlanningOption": "No, keep planning",
-  "interactionWhatShouldChange": "What should change?",
-  "interactionSayWhatToChange": "Or say what should change in the message box",
-  "@interactionSayWhatToChange": {
-    "description": "Under 'No, keep planning' when the plan shows in the side panel: a message sent now goes to the agent as what to change."
-  },
-  "interactionViewPlan": "View plan",
   "interactionStepOf": "{step} / {total}",
   "@interactionStepOf": {
     "placeholders": {
@@ -1775,7 +1779,6 @@
     }
   },
   "interactionSkip": "Skip",
-  "interactionKeepPlanning": "Keep planning",
   "interactionSubmit": "Submit",
   "interactionNext": "Next",
   "interactionBack": "Back",
@@ -2636,8 +2639,6 @@
   "scmFetchFromAllRemotes": "Fetch From All Remotes",
   "scmPull": "Pull",
   "scmPush": "Push",
-  "scmPickRepository": "Pick Repository",
-  "scmUnpickRepository": "Unpick Repository",
   "scmPullCommits": "Pull {count} commits from {upstream}",
   "@scmPullCommits": {
     "placeholders": {
@@ -3145,41 +3146,6 @@
     }
   },
   "langClickToRetry": "Click to retry",
-  "langNotInstalled": "{id} not installed",
-  "@langNotInstalled": {
-    "placeholders": {
-      "id": {
-        "type": "String"
-      }
-    }
-  },
-  "langNeedsRuntime": "Installing {id} needs {runtime}, which was not found",
-  "@langNeedsRuntime": {
-    "placeholders": {
-      "id": {
-        "type": "String"
-      },
-      "runtime": {
-        "type": "String"
-      }
-    }
-  },
-  "langClickToInstall": "Click to install {id}",
-  "@langClickToInstall": {
-    "placeholders": {
-      "id": {
-        "type": "String"
-      }
-    }
-  },
-  "langNotOnPath": "{id} was not found on PATH",
-  "@langNotOnPath": {
-    "placeholders": {
-      "id": {
-        "type": "String"
-      }
-    }
-  },
   "langInstallingItem": "Installing {id}…",
   "@langInstallingItem": {
     "placeholders": {
@@ -3439,10 +3405,6 @@
   "wbTimeline": "Timeline",
   "wbPinTimeline": "Pin the Current Timeline",
   "wbUnpinTimeline": "Unpin the Current Timeline",
-  "wbLanguageServices": "Language services",
-  "wbMonacoEditor": "Monaco editor",
-  "wbTextEditor": "Text editor",
-  "wbRetryLanguageServices": "Retry language services",
   "wbNoProblems": "No Problems",
   "wbProblemCounts": "Errors: {errors}, Warnings: {warnings}",
   "@wbProblemCounts": {
@@ -5085,7 +5047,7 @@
     }
   },
   "appearanceSettingsCodeSize": "Code Size",
-  "appearanceSettingsCodeSizeDescription": "The size of code in the IDE editor and the side panel's file and changes views. Code in the chat follows the interface text size; the terminal has its own size.",
+  "appearanceSettingsCodeSizeDescription": "The size of code in the IDE editor and the side panel's file and changes views. Code in the chat follows the interface size; the terminal has its own size.",
   "appearanceSettingsCodeSizeLabel": "Code size: {size}",
   "@appearanceSettingsCodeSizeLabel": {
     "placeholders": {
@@ -5096,9 +5058,9 @@
   },
   "appearanceSettingsLigatures": "Font Ligatures",
   "appearanceSettingsLigaturesDescription": "Draws sequences such as => and != as one glyph where the font has one. The terminal does not.",
-  "appearanceSettingsUiScale": "Interface Text Size",
-  "appearanceSettingsUiScaleDescription": "The size of interface text, code in the chat, and terminal text while the terminal size follows it. Code in the IDE editor and side panel files and changes keeps its own size.",
-  "appearanceSettingsUiScaleLabel": "Interface text size: {percent}%",
+  "appearanceSettingsUiScale": "Interface Size",
+  "appearanceSettingsUiScaleDescription": "Zooms the whole interface (its text, icons and spacing), code in the chat, and terminal text while the terminal size follows it. Code in the IDE editor and side panel files and changes keeps its own size.",
+  "appearanceSettingsUiScaleLabel": "Interface size: {percent}%",
   "@appearanceSettingsUiScaleLabel": {
     "placeholders": {
       "percent": {
@@ -5107,8 +5069,8 @@
     }
   },
   "appearanceSettingsTerminalSize": "Terminal Font Size",
-  "appearanceSettingsTerminalSizeDescription": "The size of terminal text. By default it follows the interface text size; it can be set on its own.",
-  "appearanceSettingsTerminalSizeFollow": "Follow Interface Text Size",
+  "appearanceSettingsTerminalSizeDescription": "The size of terminal text. By default it follows the interface size; it can be set on its own.",
+  "appearanceSettingsTerminalSizeFollow": "Follow Interface Size",
   "appearanceSettingsTerminalSizeCustom": "Custom",
   "appearanceSettingsTerminalSizeValue": "Custom Size",
   "appearanceSettingsTerminalSizeLabel": "Terminal font size: {size}",
@@ -5957,7 +5919,7 @@
     }
   },
   "mobilePublicAddress": "Public Address",
-  "mobilePublicAddressDescription": "A domain or IP this computer can be reached at from the internet (with the port forwarded), put in the QR code; several separated by commas. Public IPv6 addresses are found by themselves.",
+  "mobilePublicAddressDescription": "A domain or IP this computer can be reached at from the internet (with the port forwarded), put in the QR code; several separated by commas. Behind a proxy that only takes HTTPS (such as a Cloudflare Tunnel), write it as wss://domain. Public IPv6 addresses are found by themselves.",
   "mobileRelay": "Relay",
   "mobileRelayDescription": "Reach this computer through BaoCode's relay when none of its addresses can be reached. Coming later.",
   "mobileRelayUnavailable": "Not Available Yet",
@@ -6245,23 +6207,11 @@
   },
   "stashImplementInWorktree": "First create a new git worktree on a new branch for this work and do it there; tell me the branch when done.",
   "stashImplementInPlace": "Work directly in this project, on the current branch.",
-  "stashImplementComplete": "When it is finished, mark it done with the stash_complete tool (id {id}).",
-  "@stashImplementComplete": {
-    "placeholders": {
-      "id": {
-        "type": "int"
-      }
-    }
-  },
-  "stashThreadStarting": "A conversation is ready for it; send its message to start.",
-  "stashThreadLinked": "Implemented in conversation “{title}”",
-  "@stashThreadLinked": {
-    "placeholders": {
-      "title": {
-        "type": "String"
-      }
-    }
-  },
+  "stashImplementComplete": "When it is finished, mark it done in the Stash.",
+  "stashThreads": "Conversations",
+  "stashThreadSource": "Noted in this conversation",
+  "stashThreadNoReply": "No reply yet",
+  "stashThreadGone": "No longer in the list",
   "stashOpenThread": "Open",
   "stashProjectSuggestion": "AI thinks this is about {project}.",
   "@stashProjectSuggestion": {
@@ -6364,5 +6314,314 @@
   "stashFormatMore": "More",
   "@stashFormatMore": {
     "description": "Tooltip of the stash editor selection toolbar button that opens the less used formats."
-  }
+  },
+  "branchBarSwitch": "Switch Branch",
+  "@branchBarSwitch": {
+    "description": "Tooltip and menu title of the branch picker under the chat input."
+  },
+  "branchBarSearch": "Search branches",
+  "@branchBarSearch": {
+    "description": "Placeholder of the branch picker's search line under the chat input."
+  },
+  "branchBarCreate": "Create Branch…",
+  "@branchBarCreate": {
+    "description": "Action of the branch picker under the chat input: names a new branch and checks it out."
+  },
+  "branchBarCreateFrom": "Create a branch from “{branch}”",
+  "@branchBarCreateFrom": {
+    "description": "Message of the dialog that names a new branch, made where the branch {branch} is.",
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "branchBarCreateIn": "Create a branch in “{folder}”",
+  "@branchBarCreateIn": {
+    "description": "Message of the dialog that names a new branch of the workspace folder {folder}, made where its current branch is.",
+    "placeholders": {
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
+  "branchBarCreateButton": "Create",
+  "@branchBarCreateButton": {
+    "description": "Button of the dialog that names a new branch."
+  },
+  "branchBarDetached": "Detached HEAD",
+  "@branchBarDetached": {
+    "description": "What the branch picker under the chat input shows when no branch is checked out."
+  },
+  "branchBarRunning": "Branches can't be switched while the agent works",
+  "@branchBarRunning": {
+    "description": "Tooltip of the branch under the chat input while the agent is working."
+  },
+  "branchBarFailed": "Couldn't switch to “{branch}”",
+  "@branchBarFailed": {
+    "description": "Message of the dialog shown when Git refused to check out or create the branch {branch}; Git's own message is the detail.",
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "branchBarNotRepository": "Not a Git repository",
+  "@branchBarNotRepository": {
+    "description": "Under a workspace folder's name in the branch picker under the chat input: the folder has no Git repository."
+  },
+  "branchBarWorkspace": "Branches of the folders",
+  "@branchBarWorkspace": {
+    "description": "Tooltip and menu title of the branch picker under the chat input of a multi-folder workspace."
+  },
+  "settingsSectionAccounts": "Accounts",
+  "settingsAccountsKeywords": "GitHub GitLab sign in login token issue pull request merge request",
+  "accountsDescription": "Sign in to GitHub or GitLab to see the state of the issues and pull requests linked in Stash, import issues as stashes, and reply to them once you confirm.",
+  "accountsSignedIn": "Signed in",
+  "accountsAdd": "Add an account",
+  "accountsKeptLocally": "Tokens are kept in this computer's keychain and are sent only to the GitHub or GitLab they are for. Nothing is posted without your confirmation.",
+  "accountsGitHubHosts": "github.com, or your company's GitHub Enterprise",
+  "accountsGitLabHosts": "gitlab.com, or a self-managed GitLab",
+  "accountsSignInBrowser": "Sign in with Browser",
+  "accountsSignInToken": "Use a Token…",
+  "accountsViaBrowser": "signed in with browser",
+  "accountsViaToken": "signed in with token",
+  "accountsSignOut": "Sign Out",
+  "accountsSignOutTitle": "Sign out of {forge} account {login}?",
+  "@accountsSignOutTitle": {
+    "placeholders": {
+      "login": {
+        "type": "String"
+      },
+      "forge": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsSignOutDetail": "The token is deleted from this computer. To revoke BaoCode's access altogether, revoke it in your {forge} settings too.",
+  "@accountsSignOutDetail": {
+    "placeholders": {
+      "forge": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsRevoke": "Sign Out and Open {forge} Settings",
+  "@accountsRevoke": {
+    "placeholders": {
+      "forge": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsTokenTitle": "Sign in to {forge} with a Token",
+  "@accountsTokenTitle": {
+    "placeholders": {
+      "forge": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsSignIn": "Sign In",
+  "accountsHost": "Host",
+  "accountsToken": "Token",
+  "accountsTokenGitHubScopes": "A classic token with the repo and read:user scopes, or a fine-grained token with read and write access to issues and pull requests.",
+  "accountsTokenGitLabScopes": "A personal access token with the api scope.",
+  "accountsTokenCreate": "Create a Token on {host}",
+  "@accountsTokenCreate": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsTokenRefused": "The token was not accepted. Check that it is complete and has not expired.",
+  "accountsBrowserTitle": "Sign in to {forge}",
+  "@accountsBrowserTitle": {
+    "placeholders": {
+      "forge": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsBrowserDetail": "Enter this code on {host} to let BaoCode access your account:",
+  "@accountsBrowserDetail": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "accountsCopyAndOpen": "Copy Code and Open Browser",
+  "accountsOpenAgain": "Copied · Open Again",
+  "accountsBrowserStarting": "Getting a code…",
+  "accountsBrowserWaiting": "Waiting for you to authorize in the browser…",
+  "accountsRetry": "Try Again",
+  "forgeStateOpen": "Open",
+  "forgeStateDraft": "Draft",
+  "forgeStateClosed": "Closed",
+  "forgeStateMerged": "Merged",
+  "forgeChecksPassed": "Checks passed",
+  "forgeChecksFailed": "Checks failed",
+  "forgeChecksRunning": "Checks running",
+  "stashIssues": "Issues & pull requests",
+  "stashIssueClosedBanner": "{tag} was closed. Is this stash done too?",
+  "@stashIssueClosedBanner": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "stashIssueOpenBanner": "This stash is done, but {tag} is still open.",
+  "@stashIssueOpenBanner": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "stashIssueReplyClose": "Reply and close…",
+  "stashIssueNotSignedIn": "Sign in to {forge} to see its state",
+  "@stashIssueNotSignedIn": {
+    "placeholders": {
+      "forge": {
+        "type": "String"
+      }
+    }
+  },
+  "stashIssueSignIn": "Sign In…",
+  "stashIssueFailed": "Could not refresh",
+  "stashIssueOpen": "Open in Browser",
+  "stashIssueCopy": "Copy Link",
+  "stashIssueComment": "Comment…",
+  "stashIssueClose": "Close Issue…",
+  "stashIssueUnlink": "Unlink",
+  "stashWriteFixedIn": "Fixed in {pulls}.",
+  "@stashWriteFixedIn": {
+    "placeholders": {
+      "pulls": {
+        "type": "String"
+      }
+    }
+  },
+  "stashWriteTitle": "Comment on {tag}",
+  "@stashWriteTitle": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "stashWriteCloseTitle": "Close {tag}",
+  "@stashWriteCloseTitle": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "stashWriteSend": "Comment",
+  "stashWriteSendClose": "Comment and Close",
+  "stashWriteCloseOnly": "Close Issue",
+  "stashWriteSendAnyway": "Send Anyway",
+  "stashWritePlaceholder": "Write a comment (Markdown)",
+  "stashWriteAlsoClose": "Close the issue too",
+  "stashWriteSensitive": "This looks like it has paths on this computer or secrets, which everyone who can see the issue will see:",
+  "stashWriteAs": "Posted as {login} on {host}.",
+  "@stashWriteAs": {
+    "placeholders": {
+      "login": {
+        "type": "String"
+      },
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "stashWriteFailed": "Not sent: {error}",
+  "@stashWriteFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "stashImport": "Import from Issues…",
+  "stashImportTitle": "Import Issues",
+  "stashImportAction": "Import",
+  "stashImportCount": "Import {count}",
+  "@stashImportCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stashImportPaste": "Paste an issue or pull request link",
+  "stashImportAdd": "Add",
+  "stashImportNotALink": "Not a GitHub or GitLab issue or pull request link.",
+  "stashImportSignIn": "Sign in to {forge} in Settings → Accounts to list its issues.",
+  "@stashImportSignIn": {
+    "placeholders": {
+      "forge": {
+        "type": "String"
+      }
+    }
+  },
+  "stashImportRepo": "Repository",
+  "stashImportAssigned": "Assigned to me",
+  "stashImportCreated": "Created by me",
+  "stashImportAll": "All open",
+  "stashImportSearch": "Search",
+  "stashImportLoading": "Loading…",
+  "stashImportNoRepos": "No project has a GitHub or GitLab remote. Paste an issue link above.",
+  "stashImportNone": "No open issues here.",
+  "stashImportKnown": "in Stash #{id}",
+  "@stashImportKnown": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "sidebarOpenPull": "Open {tag}",
+  "@sidebarOpenPull": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "stashGroupOthers": "Others",
+  "stashFilterProjects": "{count} projects",
+  "@stashFilterProjects": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stashFilterJoiner": ", ",
+  "stashWelcomeTitle": "Meet Stash",
+  "stashWelcomeLead": "Note things down the moment they come to you, hand them to an agent when you are ready, and see how each one is going.",
+  "stashWelcomeNoteTitle": "Note it down",
+  "stashWelcomeAgentTitle": "Hand it to an agent",
+  "stashWelcomeAgent": "Click Implement in BaoCode, or mention it in a conversation; the conversation and the stash stay linked.",
+  "stashWelcomeTrackTitle": "See how it goes",
+  "stashWelcomeTrack": "Cards show their conversations live, and the GitHub and GitLab issues and pull requests they link to stay in sync.",
+  "stashWelcomeStart": "Get Started",
+  "stashWelcomeNoteBody": "Text, screenshots and links all go in, and each one gets a number of its own, like an issue.",
+  "stashWelcomeHotkeyTitle": "Set a shortcut to note things down",
+  "stashWelcomeHotkeySetTitle": "Shortcut set",
+  "stashWelcomeHotkey": "Press it in any app and the Stash panel comes up, ready to type. Click the box below and press the keys you want.",
+  "stashWelcomeHotkeySet": "Press {hotkey} in any app to note something down. Change it here or in Settings → Stash any time.",
+  "@stashWelcomeHotkeySet": {
+    "placeholders": {
+      "hotkey": {
+        "type": "String"
+      }
+    }
+  },
+  "stashWelcomeHotkeyLater": "You can also set it later in Settings → Stash."
 }

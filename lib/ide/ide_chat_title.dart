@@ -1,36 +1,32 @@
 // The title over the IDE's chat: the folder's chats as tabs, each
 // closable (by a right click, the others too) and dragged to order, its agent's status on it (as the
-// sidebar's), a button for a new one, and one listing the folder's agents to
-// open one as a tab (as VS Code's chat view titles its New Chat and Show
-// Chats actions).
+// sidebar's), a button for a new one, and one showing the folder's agents
+// in a panel over the chat to open one as a tab (as VS Code's chat view titles its New
+// Chat and Show Chats actions; see [IdeChatHistory]).
 
 import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../chat/widgets/pixel_loader.dart';
 import '../keybindings/chat_keybindings.dart';
 import '../keybindings/keybinding_service.dart';
 import '../l10n/l10n.dart';
-import '../theme/app_theme.dart' show AppColors;
 import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' show themeColors;
+import '../workspace/thread_status_mark.dart';
 import '../workspace/workspace.dart';
-import 'ide_dates.dart';
+import 'ide_chat_history.dart';
 import 'ide_hover.dart';
 import 'ide_menu.dart';
-import 'ide_quick_input.dart';
 import 'ide_tab_bar.dart';
-import 'ide_workbench.dart';
 import 'tab_strip_scroll.dart';
 
 class IdeChatTitle extends StatelessWidget {
   const IdeChatTitle({
     super.key,
     required this.tabs,
-    required this.threads,
     required this.current,
     required this.onNew,
     required this.onOpen,
@@ -41,13 +37,12 @@ class IdeChatTitle extends StatelessWidget {
     required this.onFork,
     required this.onArchive,
     required this.onDelete,
+    required this.onHistory,
+    this.historyOpen = false,
   });
 
   /// The chats open as tabs, in order.
   final List<AgentThread> tabs;
-
-  /// The folder's agents, archived ones included (they are left out).
-  final List<AgentThread> threads;
 
   /// The agent the chat shows.
   final AgentThread? current;
@@ -79,54 +74,12 @@ class IdeChatTitle extends StatelessWidget {
   /// Deletes an agent's conversation, once confirmed.
   final ValueChanged<AgentThread> onDelete;
 
-  /// The agents as the history lists them: pinned ones first, then by date.
-  /// A new one nothing was sent to has no history yet.
-  List<AgentThread> get _listed {
-    final listed = [
-      for (final thread in threads)
-        if (!thread.archived && !thread.untouched) thread,
-    ]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-    return [
-      ...listed.where((thread) => thread.pinned),
-      ...listed.where((thread) => !thread.pinned),
-    ];
-  }
+  /// Shows the folder's agents over the chat ([IdeChatHistory]), or the
+  /// chat again.
+  final VoidCallback onHistory;
 
-  void _showHistory(BuildContext context) {
-    final workbench = context.findAncestorStateOfType<IdeWorkbenchState>();
-    if (workbench == null) return;
-    final l10n = context.l10n;
-    final items = <AgentThread, IdeQuickPickItem>{
-      for (final thread in _listed)
-        thread: IdeQuickPickItem(
-          label: thread.localizedTitle(l10n),
-          description: ideFromNow(thread.updatedAt, ago: true, l10n: l10n),
-          icon: _ThreadIcon(thread),
-          badge: _StatusBuilder(
-            thread,
-            (context, status) => switch (status) {
-              ThreadStatus.needsInput || ThreadStatus.unread => Padding(
-                padding: const EdgeInsetsDirectional.only(start: 6),
-                child: _StatusMark(status),
-              ),
-              _ => const SizedBox.shrink(),
-            },
-          ),
-          onAccept: () => onOpen(thread),
-        ),
-    };
-    workbench.showQuickPick(
-      IdeQuickPick(
-        items: items.isEmpty
-            ? [IdeQuickPickItem(label: l10n.ideChatNoAgents)]
-            : items.values.toList(),
-        placeholder: l10n.sidebarSearchAgents,
-        sortByLabel: false,
-        activeItems: [?items[current]],
-        onDidAccept: (item) => item?.onAccept?.call(),
-      ),
-    );
-  }
+  /// Whether the history shows: its button pressed.
+  final bool historyOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +117,8 @@ class IdeChatTitle extends StatelessWidget {
             icon: Codicons.history,
             size: 28,
             tooltip: l10n.ideChatHistory,
-            onPressed: () => _showHistory(context),
+            checked: historyOpen,
+            onPressed: onHistory,
           ),
           const SizedBox(width: 4),
         ],
@@ -321,9 +275,10 @@ class _ChatTabsState extends State<_ChatTabs> {
         if (mounted) onSelected();
       },
     );
-    // A fork keeps the conversation: none before its first message.
-    final canFork =
-        thread.id != null && (!thread.isOpen || thread.session.canFork);
+    void act(VoidCallback action) {
+      if (mounted) action();
+    }
+
     unawaited(
       showIdeMenu(
         context,
@@ -345,31 +300,14 @@ class _ChatTabsState extends State<_ChatTabs> {
             }, enabled: at >= 0 && at < tabs.length - 1),
             item(l10n.tabCloseAll, () => widget.onClose([...widget.tabs])),
           ],
-          [
-            item(l10n.commonRename, () => setState(() => _renaming = thread)),
-            // A new one, nothing sent to it, is in no list to pin or
-            // archive it in.
-            if (!thread.untouched) ...[
-              if (!thread.archived)
-                item(
-                  thread.pinned ? l10n.sidebarUnpin : l10n.sidebarPin,
-                  () => widget.onPin(thread),
-                ),
-              item(
-                thread.archived ? l10n.sidebarUnarchive : l10n.sidebarArchive,
-                () => widget.onArchive(thread),
-              ),
-            ],
-            if (canFork)
-              item(l10n.sidebarFork, () => widget.onFork(thread)),
-            // Claude Code finds the conversation by it (none before the
-            // first message).
-            if (thread.id case final id?)
-              item(
-                l10n.sidebarCopySessionId,
-                () => unawaited(Clipboard.setData(ClipboardData(text: id))),
-              ),
-          ],
+          ideAgentMenuActions(
+            context,
+            thread,
+            onRename: () => act(() => setState(() => _renaming = thread)),
+            onPin: (thread) => act(() => widget.onPin(thread)),
+            onArchive: (thread) => act(() => widget.onArchive(thread)),
+            onFork: (thread) => act(() => widget.onFork(thread)),
+          ),
           [item(l10n.commonDelete, () => widget.onDelete(thread))],
         ]),
       ),
@@ -421,13 +359,13 @@ class _ChatTabsState extends State<_ChatTabs> {
 
 /// An agent's icon in the history: a spinner while it runs, as the
 /// sidebar shows it; else pinned, or a chat.
-class _ThreadIcon extends StatelessWidget {
-  const _ThreadIcon(this.thread);
+class IdeThreadIcon extends StatelessWidget {
+  const IdeThreadIcon(this.thread, {super.key});
 
   final AgentThread thread;
 
   @override
-  Widget build(BuildContext context) => _StatusBuilder(
+  Widget build(BuildContext context) => ThreadStatusBuilder(
     thread,
     (context, status) => status == ThreadStatus.running
         ? SizedBox.square(
@@ -437,48 +375,6 @@ class _ThreadIcon extends StatelessWidget {
             ),
           )
         : Icon(thread.pinned ? Codicons.pinned : Codicons.commentDiscussion),
-  );
-}
-
-/// Builds with [thread]'s status, again as it changes: a session not
-/// opened has none to change; one that is may start, stop or ask while
-/// shown.
-class _StatusBuilder extends StatelessWidget {
-  const _StatusBuilder(this.thread, this.builder);
-
-  final AgentThread thread;
-  final Widget Function(BuildContext context, ThreadStatus status) builder;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!thread.isOpen) return builder(context, thread.shownStatus);
-    return ListenableBuilder(
-      listenable: thread.session,
-      builder: (context, _) => builder(context, thread.shownStatus),
-    );
-  }
-}
-
-/// What an agent needs, as the sidebar shows it: a spinner while it runs,
-/// an amber dot when it waits on a question, a blue dot when it finished
-/// unseen; nothing when idle.
-class _StatusMark extends StatelessWidget {
-  const _StatusMark(this.status);
-
-  final ThreadStatus status;
-
-  @override
-  Widget build(BuildContext context) => switch (status) {
-    ThreadStatus.running => const PixelLoader.agent(),
-    ThreadStatus.needsInput => _dot(themeColors['list.warningForeground']),
-    ThreadStatus.unread => _dot(AppColors.accent),
-    ThreadStatus.idle => const SizedBox.shrink(),
-  };
-
-  static Widget _dot(Color color) => Container(
-    width: 7,
-    height: 7,
-    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
   );
 }
 
@@ -590,17 +486,17 @@ class _ChatTab extends StatelessWidget {
   final ValueChanged<Offset> onMenu;
 
   @override
-  Widget build(BuildContext context) => _StatusBuilder(
+  Widget build(BuildContext context) => ThreadStatusBuilder(
     thread,
     (context, status) => IdeEditorTab(
-      icon: _ThreadIcon(thread),
+      icon: IdeThreadIcon(thread),
       label: title,
       active: active,
       renaming: renaming,
       onRenamed: onRename,
       mark: switch (status) {
         ThreadStatus.needsInput ||
-        ThreadStatus.unread => (_) => Center(child: _StatusMark(status)),
+        ThreadStatus.unread => (_) => Center(child: ThreadStatusMark(status)),
         _ => null,
       },
       closeTooltip: closeTooltip,

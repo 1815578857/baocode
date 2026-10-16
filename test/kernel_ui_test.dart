@@ -10,6 +10,7 @@ import 'package:baocode/chat/chat_screen.dart';
 import 'package:baocode/chat/chat_session.dart';
 import 'package:baocode/chat/composer/composer.dart';
 import 'package:baocode/chat/composer/composer_picker.dart';
+import 'package:baocode/chat/composer/session_model_picker.dart';
 import 'package:baocode/chat/panels/activity_strip.dart';
 import 'package:baocode/chat/panels/interaction_panel.dart';
 import 'package:baocode/chat/panels/context_usage_panel.dart';
@@ -37,6 +38,7 @@ import 'package:baocode/chat/agent_view.dart';
 import 'package:baocode/chat/widgets/plan_card.dart';
 import 'package:baocode/chat/widgets/user_message_bubble.dart';
 import 'package:baocode/kernel/claude_code/claude_code_kernel.dart';
+import 'package:baocode/kernel/claude_code/claude_code_translator.dart';
 
 import 'kernel_test.dart' show FakeCli;
 
@@ -361,9 +363,8 @@ void main() {
     expect(find.byType(ActivityStrip), findsNothing);
   });
 
-  testWidgets('Claude Code in Plan mode asks to start with its plan', (
-    tester,
-  ) async {
+  testWidgets('Claude Code in Plan mode puts its plan to the user, who '
+      'starts it from its card', (tester) async {
     final session = await pumpSession(tester, MockKernels.claudeCode);
     final modes = session.modes!;
     modes.onSelected(modes.options.firstWhere((mode) => mode.label == 'Plan'));
@@ -376,22 +377,29 @@ void main() {
     expect(picker('Accept edits'), findsOneWidget);
 
     session.send(const ComposerMessage(text: '把输入框改成随内容增高'));
-    await runWhile(tester, () => session.pendingInteraction == null);
-    expect(find.text('Ready to code?'), findsOneWidget);
+    await runWhile(tester, () => session.isStreaming);
+    // Nothing waits on the user: the turn is over, and the plan's card
+    // offers to start it, with the model it is carried out with.
+    expect(find.byType(InteractionPanel), findsNothing);
+    final card = find.byType(PlanCard);
+    expect(tester.widget<PlanCard>(card).item.status, PlanStatus.awaiting);
+    final start = find.descendant(of: card, matching: find.text('Start'));
+    expect(start, findsOneWidget);
     expect(
-      find.descendant(
-        of: find.byType(InteractionPanel),
-        matching: find.textContaining('计划：'),
-      ),
+      find.descendant(of: card, matching: find.byType(SessionModelPicker)),
       findsOneWidget,
     );
+    expect(picker('Plan'), findsOneWidget);
 
-    await tester.tap(find.text('Yes, start · Accept edits'));
+    await tester.tap(start);
     await tester.pump();
     // The plan is carried out: back in Agent, with the approvals picked.
     expect(picker('Agent'), findsOneWidget);
     expect(picker('Accept edits'), findsOneWidget);
+    expect(find.text('Carry out the plan'), findsOneWidget);
     await runWhile(tester, () => session.isStreaming);
+    expect(tester.widget<PlanCard>(card).item.status, PlanStatus.approved);
+    expect(start, findsNothing);
     expect(find.text('3 files changed'), findsOneWidget);
     expect(find.textContaining('Running ·'), findsOneWidget);
 
@@ -489,6 +497,7 @@ void main() {
     await tester.tap(card);
     expect(opened, hasLength(3));
 
+    // Put to the user: answered at once, nothing waits on them.
     cli
       ..push(
         assistant(null, 'e1', {
@@ -506,43 +515,12 @@ void main() {
         },
       });
     await tester.pump();
-    final panel = find.byType(InteractionPanel);
-    expect(panel, findsOneWidget);
-    expect(opened, hasLength(4));
-    expect(tester.widget<PlanCard>(card).item.status, PlanStatus.awaiting);
-    // Its name and the way to it, not the plan itself.
-    expect(
-      find.descendant(of: panel, matching: find.text('tall-input.md')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: panel, matching: find.textContaining('Grow')),
-      findsNothing,
-    );
-    expect(
-      find.text('Or say what should change in the message box'),
-      findsOneWidget,
-    );
-    await tester.tap(
-      find.descendant(of: panel, matching: find.text('View plan')),
-    );
-    expect(opened, hasLength(5));
-
-    // A message now sends the plan back, with what should change.
-    session.send(const ComposerMessage(text: 'Keep it to five lines'));
-    await tester.pump();
-    expect(cli.responses.last['behavior'], 'deny');
-    expect(cli.responses.last['message'], contains('Keep it to five lines'));
     expect(find.byType(InteractionPanel), findsNothing);
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is UserMessageBubble &&
-            widget.text == 'Keep it to five lines',
-      ),
-      findsNothing,
-    );
-    // Sent back, the card folds to a line saying so.
+    expect(cli.responses.last, {
+      'behavior': 'deny',
+      'message': ClaudeTranslator.planPresented,
+    });
+    final start = find.descendant(of: card, matching: find.text('Start'));
     cli.push({
       'type': 'user',
       'parent_tool_use_id': null,
@@ -552,12 +530,32 @@ void main() {
           {
             'type': 'tool_result',
             'tool_use_id': 'e1',
-            'content': cli.responses.last['message'],
+            'content': ClaudeTranslator.planPresented,
             'is_error': true,
           },
         ],
       },
     });
+    await tester.pump();
+    expect(tester.widget<PlanCard>(card).item.status, PlanStatus.awaiting);
+    expect(session.awaitingPlan?.path, plan);
+    // Not started while the turn that put it goes on.
+    expect(session.canStartPlan, isFalse);
+    expect(start, findsOneWidget);
+    cli.push({'type': 'result', 'subtype': 'success', 'is_error': false});
+    await tester.pump();
+    expect(session.canStartPlan, isTrue);
+
+    // A message now sends the plan back, with what should change: the
+    // agent is not told to start it.
+    session.send(const ComposerMessage(text: 'Keep it to five lines'));
+    await tester.pump();
+    expect(start, findsNothing);
+    expect((cli.users.last['message'] as Map)['content'], [
+      {'type': 'text', 'text': 'Keep it to five lines'},
+    ]);
+    // Sent back once the CLI takes it, the card folds to a line saying so.
+    cli.push(cli.users.last);
     await tester.pump();
     expect(
       find.textContaining(

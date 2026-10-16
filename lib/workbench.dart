@@ -41,6 +41,8 @@ import 'ide/file_service.dart'
         readBytesThrough,
         readFileBytes;
 import 'ide/ide_agent_changes.dart';
+import 'ide/ide_agent_edits.dart';
+import 'ide/ide_chat_history.dart';
 import 'ide/ide_chat_title.dart';
 import 'ide/ide_color_theme_picker.dart';
 import 'ide/ide_commands.dart';
@@ -108,7 +110,9 @@ import 'remote/ssh_host.dart';
 import 'remote/ssh_password_dialog.dart';
 import 'remote/ssh_passwords.dart';
 import 'stash/stash_controller.dart';
+import 'stash/stash_thread_view.dart' show sidebarStashes;
 import 'stash/stash_view.dart';
+import 'workspace/chat_branch_bar.dart';
 import 'workspace/chat_drag.dart';
 import 'workspace/chat_grid_view.dart';
 import 'workspace/chat_terminal.dart';
@@ -304,6 +308,9 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   /// its empty window.
   final Map<String, IdeWorkspace> _ideSpaces = {};
   final Map<String, GlobalKey<IdeWorkbenchState>> _ideKeys = {};
+
+  /// The agents' changes each folder's IDE shows in its files.
+  final Map<String, IdeAgentEdits> _ideAgentEdits = {};
   final Map<String, List<IdeCommand>> _ideCommands = {};
 
   /// The key of the IDE's empty window, with no folder open.
@@ -638,6 +645,9 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
 
   @override
   void dispose() {
+    for (final edits in _ideAgentEdits.values) {
+      edits.dispose();
+    }
     if (SshHosts.instance.passwords.ask == _askSshPassword) {
       SshHosts.instance.passwords.ask = null;
     }
@@ -661,6 +671,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     _drag.dispose();
     _width.dispose();
     _looseChatFolder.dispose();
+    _ideHistory.dispose();
     _lifecycle?.dispose();
     _attention?.dispose();
     _starPrompt?.dispose();
@@ -2070,9 +2081,24 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     return _ideChatIn(folder, openEditor);
   }
 
-  /// The IDE's chat tabs in [folder] over the one shown.
+  /// The folder whose IDE chat shows its agents' history floating over it.
+  final ValueNotifier<String?> _ideHistory = ValueNotifier(null);
+
+  /// Back from [folder]'s history to its chat, the keyboard there.
+  void _closeIdeHistory(String folder) {
+    if (_ideHistory.value != folder) return;
+    _ideHistory.value = null;
+    if (_workspace.ideChat(folder) case final current?) _focusChat(current);
+  }
+
+  /// The IDE's chat tabs in [folder] over the one shown, its agents'
+  /// history floating over that while it shows.
   Widget _ideChatIn(String folder, OpenEditor? Function() openEditor) {
     final current = _workspace.ideChat(folder);
+    final threads = [
+      for (final thread in _workspace.threads)
+        if (thread.project.path == folder) thread,
+    ];
     // Reads and writes the setting live, as the IDE's own do.
     final settings = widget.settings?.files?.settings;
     return Column(
@@ -2096,34 +2122,74 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
                       _openChange(current, change, original),
                 ),
         ),
-        IdeChatTitle(
-          tabs: _workspace.ideChats(folder),
-          threads: [
-            for (final thread in _workspace.threads)
-              if (thread.project.path == folder) thread,
-          ],
-          current: current,
-          onNew: () => _newIdeChat(folder),
-          onOpen: (thread) => _openIdeChat(folder, thread),
-          onClose: (threads) => _workspace.closeIdeChats(folder, threads),
-          onPin: (thread) => _workspace.setPinned(thread, !thread.pinned),
-          onMove: (thread, index) =>
-              _workspace.moveIdeChat(folder, thread, index),
-          onRename: _workspace.rename,
-          onFork: (thread) => unawaited(_forkIdeChat(folder, thread)),
-          onArchive: (thread) =>
-              _workspace.setArchived(thread, !thread.archived),
-          onDelete: (thread) => unawaited(_confirmDeleteThread(thread)),
+        ValueListenableBuilder(
+          valueListenable: _ideHistory,
+          builder: (context, historyFolder, _) => IdeChatTitle(
+            tabs: _workspace.ideChats(folder),
+            current: current,
+            onNew: () {
+              _ideHistory.value = null;
+              _newIdeChat(folder);
+            },
+            onOpen: (thread) {
+              _ideHistory.value = null;
+              _openIdeChat(folder, thread);
+            },
+            onClose: (threads) => _workspace.closeIdeChats(folder, threads),
+            onPin: (thread) => _workspace.setPinned(thread, !thread.pinned),
+            onMove: (thread, index) =>
+                _workspace.moveIdeChat(folder, thread, index),
+            onRename: _workspace.rename,
+            onFork: (thread) => unawaited(_forkIdeChat(folder, thread)),
+            onArchive: (thread) =>
+                _workspace.setArchived(thread, !thread.archived),
+            onDelete: (thread) => unawaited(_confirmDeleteThread(thread)),
+            historyOpen: historyFolder == folder,
+            onHistory: () => historyFolder == folder
+                ? _closeIdeHistory(folder)
+                : _ideHistory.value = folder,
+          ),
         ),
         Expanded(
-          child: current == null
-              ? const SizedBox.shrink()
-              : _buildChat(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (current == null)
+                const SizedBox.shrink()
+              else
+                _buildChat(
                   showToggle: false,
                   embedded: true,
                   pane: current,
                   openEditor: openEditor,
                 ),
+              // Over the chat, which keeps what it was at underneath.
+              ValueListenableBuilder(
+                valueListenable: _ideHistory,
+                builder: (context, historyFolder, _) => historyFolder != folder
+                    ? const SizedBox.shrink()
+                    : IdeChatHistory(
+                        threads: threads,
+                        current: current,
+                        onOpen: (thread) {
+                          _ideHistory.value = null;
+                          _openIdeChat(folder, thread);
+                        },
+                        onPin: (thread) =>
+                            _workspace.setPinned(thread, !thread.pinned),
+                        onArchive: (thread) =>
+                            _workspace.setArchived(thread, !thread.archived),
+                        onFork: (thread) {
+                          _ideHistory.value = null;
+                          unawaited(_forkIdeChat(folder, thread));
+                        },
+                        onDelete: (thread) =>
+                            unawaited(_confirmDeleteThread(thread)),
+                        onDismiss: () => _closeIdeHistory(folder),
+                      ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -2369,6 +2435,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
             // Claude Haiku where the project is.
             commitMessage: (prompt, {cancel}) =>
                 ideClaudeCommitMessage(prompt, cancel: cancel, location: path),
+            agentEdits: _ideAgentEdits.putIfAbsent(path, IdeAgentEdits.new)
+              ..sessions = _agentSessionsIn(path),
             chat: shown
                 ? _ideConversation(_buildIdeChat(path))
                 : const SizedBox.shrink(),
@@ -2383,6 +2451,20 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         ),
       ),
     );
+  }
+
+  /// The conversations whose changes [path]'s IDE shows in its files: its
+  /// chat's first, then the others open in the project.
+  List<ChatSession> _agentSessionsIn(String path) {
+    final chat = _workspace.ideChat(path);
+    return [
+      if (chat != null && chat.isOpen) chat.session,
+      for (final thread in _workspace.threads)
+        if (thread.isOpen &&
+            thread.project.path == path &&
+            !identical(thread, chat))
+          thread.session,
+    ];
   }
 
   /// The sidebar docked beside [body] (by default the chat's panes).
@@ -2584,6 +2666,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
           ? null
           : () => _stashing ? _closeCustomize() : _showStash(),
       stashing: _stashing,
+      // Opened on the Stash page, which an agent's window has not.
+      stashes: switch (StashController.current) {
+        final stash? when agent == null => sidebarStashes(stash, _showStash),
+        _ => null,
+      },
       drag: _drag,
     );
   }
@@ -3115,6 +3202,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       // Claude Haiku where the project is, as the IDE's Source Control.
       commitMessage: (prompt, {cancel}) =>
           ideClaudeCommitMessage(prompt, cancel: cancel, location: location),
+      notifications: _notifications,
       workspaceName: multi?.name,
       roots: multi?.folders ?? const [],
       repositories: multi == null
@@ -3226,6 +3314,24 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   }
 
   final Map<String, IdeGitRepository> _sidePanelGits = {};
+
+  /// Under [thread]'s composer: the branch of its project, or its
+  /// workspace's name and its folders' branches, with the side panel's
+  /// repositories.
+  Widget _branchBar(AgentThread thread) {
+    final project = thread.project;
+    final multi = _workspace.workspaceOf(project);
+    final git = multi == null ? _sidePanelGit(thread) : null;
+    return ChatBranchBar(
+      session: thread.session,
+      name: multi?.name ?? project.name,
+      workspace: multi != null,
+      repositories: multi != null
+          ? _sidePanelRepositories(multi)
+          : [if (git != null) (project.path, git)],
+    );
+  }
+
   final Map<String, Future<bool> Function(String)> _projectFileChecks = {};
   final Map<String, Future<Uint8List> Function(String)> _projectByteReaders =
       {};
@@ -3280,7 +3386,13 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       );
     }
     if (request.change case final change? when request.diff) {
-      return _openChange(thread, change, request.original);
+      final range = request.range;
+      return _openChange(
+        thread,
+        change,
+        request.original,
+        lines: range == null ? null : (start: range.start, end: range.end),
+      );
     }
     if (request.range case final range?) {
       return _openCode(thread, request.path, range.start, range.end);
@@ -3556,6 +3668,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
           ),
           _ => null,
         },
+        below: _branchBar(thread),
         sessions: () => _mentionable(thread),
         fileMentions: _fileMentionsOf(thread.project),
         openEditor: openEditor ?? () => _sidePanelEditor(thread),
@@ -3605,31 +3718,27 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     ];
   }
 
-  /// Opens a file [thread]'s agent changed in the IDE: a diff of its text
-  /// before the agent changed it ([original]) against the file, the text
-  /// alone where the agent deleted it, or the file where that is unknown.
+  /// Opens a file [thread]'s agent changed in the IDE: the file, its
+  /// change shown in it with Undo and Keep (see [IdeAgentEdits]), at
+  /// [lines] when given; its text before the change ([original]) alone
+  /// where the agent deleted it.
   void _openChange(
     AgentThread thread,
     FileChange change,
-    Future<String> Function()? original,
-  ) {
-    final label = context.l10n.stripChangesDiff;
-    _inIdeOf(
-      thread,
-      (ide) => switch ((original, change.kind)) {
-        (null, _) => ide.open(change.path),
-        (final read?, FileChangeKind.deleted) => ide.openRevision(
-          change.path,
-          label: label,
-          read: read,
-        ),
-        (final read?, _) => ide.openDiff(
-          change.path,
-          label: label,
-          original: read,
-        ),
-      },
-    );
+    Future<String> Function()? original, {
+    ({int start, int end})? lines,
+  }) {
+    if ((original, change.kind) case (final read?, FileChangeKind.deleted)) {
+      final label = context.l10n.stripChangesDiff;
+      return _inIdeOf(
+        thread,
+        (ide) => ide.openRevision(change.path, label: label, read: read),
+      );
+    }
+    if (lines != null) {
+      return _openCode(thread, change.path, lines.start, lines.end);
+    }
+    _inIdeOf(thread, (ide) => ide.open(change.path));
   }
 
   /// Shows [thread] in the IDE (its project's window, with the IDE's

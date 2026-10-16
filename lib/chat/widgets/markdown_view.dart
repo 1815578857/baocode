@@ -318,19 +318,12 @@ Widget? _block(md.Node node, TextStyle style, MarkdownOptions options) {
         language: name == null || name.isEmpty ? null : name,
       );
     case 'blockquote':
-      return Container(
-        padding: const EdgeInsets.only(left: 12),
-        decoration: BoxDecoration(
-          color: themeColors['textBlockQuote.background'],
-          border: Border(
-            left: BorderSide(
-              color: themeColors['textBlockQuote.border'],
-              width: 3,
-            ),
-          ),
-        ),
+      final children = node.children ?? const <md.Node>[];
+      return MarkdownQuoteBlock(
+        // Its paragraphs' text, as they read.
+        text: children.map((child) => child.textContent).join('\n\n'),
         child: MarkdownBlocks(
-          nodes: node.children ?? const [],
+          nodes: children,
           style: style.copyWith(color: AppColors.textMuted),
           options: options,
         ),

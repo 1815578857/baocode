@@ -108,7 +108,6 @@ class ClaudeTranslator {
   final List<Map<String, Object?>> _goalRecords = [];
 
   /// The plan file the agent last wrote, in plan mode (see [isPlanPath]).
-  String? get planPath => _planPath;
   String? _planPath;
 
   /// Whether [path] is a plan file: one in a `plans` folder, where Claude
@@ -117,12 +116,40 @@ class ClaudeTranslator {
       path.split(RegExp(r'[/\\]')).contains('plans');
 
   /// The round of planning under way: the id its card is at. Over once
-  /// the plan put to the user is answered.
+  /// the plan is put to the user.
   String? _planRound;
   int _planRounds = 0;
 
   /// Each round's card, by its id.
   final Map<String, PlanItem> _plans = {};
+
+  /// The card of the plan put to the user and not yet started nor sent
+  /// back: the next message does one or the other.
+  String? _awaitingPlan;
+
+  /// The plan put to the user, for them to start; null when none is.
+  PlanItem? get awaitingPlan => _plans[_awaitingPlan];
+
+  /// What the CLI is told when the model puts its plan to the user (by
+  /// `ClaudeCodeKernel`, at once): the user starts it, or says what should
+  /// change, in a message of their own.
+  static const planPresented =
+      'Your plan is now shown to the user, who will start it or say what '
+      'should change in their next message. End your turn here without '
+      'repeating the plan: do not start implementing it, and do not call '
+      'ExitPlanMode again.';
+
+  /// Marks the note sent with the message that starts a plan.
+  static const _planStarted = 'The user has started your plan';
+
+  /// The note sent with the message that starts the plan in [path]: not
+  /// shown, it tells the model planning is over.
+  static String planStartedNote(String path) =>
+      '<system-reminder>$_planStarted: plan mode is over. Carry out the '
+      'plan in $path now.</system-reminder>';
+
+  /// Whether [text] says the plan is started (see [planStartedNote]).
+  static bool startsPlan(String text) => text.contains(_planStarted);
 
   /// The card each call that wrote the plan or put it to the user is on.
   final Map<String, String> _planCalls = {};
@@ -133,7 +160,8 @@ class ClaudeTranslator {
     'Edit' ||
     'MultiEdit' ||
     'Write' => isPlanPath(_string(input['file_path']) ?? ''),
-    'ExitPlanMode' => _planPath != null,
+    'ExitPlanMode' =>
+      _planPath != null || _string(input['planFilePath']) != null,
     _ => false,
   };
 
@@ -146,7 +174,11 @@ class ClaudeTranslator {
     var plan =
         _plans[card] ??
         PlanItem(
-          path: _string(input['file_path']) ?? _planPath!,
+          // Put to the user, the CLI names its file.
+          path:
+              _string(input['file_path']) ??
+              _string(input['planFilePath']) ??
+              _planPath!,
           round: ++_planRounds,
         );
     // An edit changes the text once; written whole, it is the text.
@@ -162,13 +194,13 @@ class ClaudeTranslator {
       if (card != id) emit(ItemRemoved(nextSeq(), id));
     }
     if (text != null) _planText = text;
+    final putToUser = proposes && plan.status == PlanStatus.drafting;
     plan = plan.copyWith(
       title: PlanItem.titleOf(text),
       text: text,
-      status: proposes && plan.status == PlanStatus.drafting
-          ? PlanStatus.awaiting
-          : null,
+      status: putToUser ? PlanStatus.awaiting : null,
     );
+    if (putToUser) _awaitingPlan = card;
     _plans[card] = plan;
     _put(card, plan);
   }
@@ -197,18 +229,23 @@ class ClaudeTranslator {
   }
 
   /// What a call of a round of planning on [card] returned: the plan
-  /// written, or the user's answer to it.
+  /// written, or put to the user. (A session kept from before plans were
+  /// put to the user without waiting has their answer here.)
   void _planResult(String card, _Tool tool, _Outcome outcome, String text) {
     final plan = _plans[card]!;
     if (tool.name == 'ExitPlanMode') {
-      _plans[card] = outcome == _Outcome.done
-          ? plan.copyWith(status: PlanStatus.approved)
-          : plan.copyWith(
-              status: PlanStatus.sentBack,
-              feedback: _planFeedback(text),
-            );
       if (_planRound == card) _planRound = null;
-      _put(card, _plans[card]!);
+      // Put to the user: it awaits their next message.
+      if (text.contains(planPresented)) return;
+      _resolvePlan(
+        card,
+        outcome == _Outcome.done
+            ? plan.copyWith(status: PlanStatus.approved)
+            : plan.copyWith(
+                status: PlanStatus.sentBack,
+                feedback: _planFeedback(text),
+              ),
+      );
       return;
     }
     if (outcome != _Outcome.done) return;
@@ -217,8 +254,29 @@ class ClaudeTranslator {
     if (!replaying) emit(PlanWritten(nextSeq(), path));
   }
 
+  /// [card] as [plan], its round over.
+  void _resolvePlan(String card, PlanItem plan) {
+    if (_awaitingPlan == card) _awaitingPlan = null;
+    _plans[card] = plan;
+    _put(card, plan);
+  }
+
+  /// The plan awaiting the user, started ([feedback] null) or sent back
+  /// with what they said.
+  void _answerPlan({String? feedback}) {
+    final card = _awaitingPlan;
+    if (card == null) return;
+    final plan = _plans[card]!;
+    _resolvePlan(
+      card,
+      feedback == null
+          ? plan.copyWith(status: PlanStatus.approved)
+          : plan.copyWith(status: PlanStatus.sentBack, feedback: feedback),
+    );
+  }
+
   /// What the user said should change in a plan sent back, as the kernel
-  /// tells the CLI (see `ClaudeCodeKernel.answer`).
+  /// told the CLI when it waited on them.
   static String? _planFeedback(String text) {
     const said = 'keep planning: ';
     final at = text.indexOf(said);
@@ -580,6 +638,7 @@ class ClaudeTranslator {
     final pasted = _list(message['imagePasteIds']);
     int? label;
     var pictures = 0;
+    var startsPlan = false;
     for (final (index, block) in blocks.indexed) {
       switch (block['type']) {
         case 'tool_result':
@@ -587,7 +646,10 @@ class ClaudeTranslator {
         case 'text':
           final text = block['text'] as String? ?? '';
           // A note for the model sent along (e.g. by the host), not typed.
-          if (text.trimLeft().startsWith('<system-reminder>')) continue;
+          if (text.trimLeft().startsWith('<system-reminder>')) {
+            if (ClaudeTranslator.startsPlan(text)) startsPlan = true;
+            continue;
+          }
           // An image's name before it (as this client sends them).
           if (imageReferencePattern.matchAsPrefix(text.trim()) case final match?
               when match.end == text.trim().length &&
@@ -611,6 +673,7 @@ class ClaudeTranslator {
           }
       }
     }
+    if (startsPlan && parent == null) _answerPlan();
     if (texts.isNotEmpty || images.isNotEmpty) {
       _prompt(message, texts.join('\n'), parent, images: images);
     }
@@ -675,6 +738,7 @@ class ClaudeTranslator {
         text: args.isEmpty ? command : '$command $args',
         images: images,
       );
+      _answerPlan(feedback: item.text);
       _put(id, item);
       if (replaying) _replayPrompt(id, item, message);
       return;
@@ -692,6 +756,8 @@ class ClaudeTranslator {
       return;
     }
     final item = UserMessageItem(text: trimmed, images: images);
+    // Said with a plan awaiting: what should change in it.
+    _answerPlan(feedback: trimmed);
     _put(id, item);
     if (replaying) _replayPrompt(id, item, message);
   }
@@ -1242,6 +1308,12 @@ class ClaudeTranslator {
 
   // --- Runtime messages ------------------------------------------------------------
 
+  /// Whether the CLI's [content] is a notice not shown: the one on auto
+  /// mode's classifier billing, which it gives each session whose requests
+  /// go through a gateway (ours, on this machine), nothing the user can do.
+  static bool _unshownNotice(String content) =>
+      content.contains('auto-mode-classifier-billing');
+
   void _system(Map<String, Object?> message) {
     final uuid = message['uuid'] as String? ?? '${nextSeq()}';
     switch (message['subtype']) {
@@ -1294,6 +1366,7 @@ class ClaudeTranslator {
         final level = message['level'];
         final content = _string(message['content']);
         if (level == 'info' || content == null || content.isEmpty) return;
+        if (_unshownNotice(content)) return;
         _put(
           uuid,
           NoticeItem(
