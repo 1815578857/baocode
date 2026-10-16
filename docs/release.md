@@ -385,6 +385,8 @@ CI 从 `baocode-dev/mobile` 的 main 取代码（放在本仓库旁边，`../mon
 - **Android**（Ubuntu）：`flutter build apk --release`，用发布密钥签名。每个版本都要用**同一把密钥**，否则装不上旧版之上，只能卸载重装。
 - **iOS**（macOS）：`flutter build ios --release --no-codesign`，打成不签名的 IPA。用户用 AltStore、Sideloadly 等工具以自己的 Apple ID 签名安装（下载页有说明）。
 
+两个包上传时都用 `--content-type` 说明类型。R2 认得 `.apk`（`application/vnd.android.package-archive`），不认得 `.ipa`：不说明的话对象就没有 Content-Type，浏览器嗅探到里面是 zip，把下载的文件存成 `.zip`，用户得手动改回 `.ipa` 才能导进 Sideloadly。IPA 用 `application/octet-stream`，浏览器便照扩展名保存。
+
 发布时文件传到 `releases/mobile/<版本>/`，最后写 `releases/mobile/latest.json`（`version`、`pubDate`、`beta`、`downloads.android` / `downloads.ios` 的 `url / size / sha256`）。桌面版的 `latest.json` 不受影响。
 
 **`release` 环境里要有的**（7.2 那些之外）：

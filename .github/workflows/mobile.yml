@@ -182,6 +182,16 @@ jobs:
           merge-multiple: true
       - name: Upload
         run: |
+          # R2 knows an .apk's type but not an .ipa's. A file it is given no
+          # type for is sniffed by the browser, which finds the zip inside
+          # the IPA and saves it as .zip: it has to be renamed back before
+          # Sideloadly will take it.
+          content_type() {
+            case ${1##*.} in
+              apk) echo application/vnd.android.package-archive ;;
+              *)   echo application/octet-stream ;;
+            esac
+          }
           name=$(printf '%s' "${GITHUB_REF_NAME#mobile-test-}" | tr -c 'A-Za-z0-9.-' '-' | sed 's/-*$//')
           dir="test/mobile-$MARKETING-$name-$GITHUB_RUN_NUMBER"
           {
@@ -190,7 +200,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           for file in dist/BaoCode-*; do
             name=$(basename "$file")
-            aws s3 cp "$file" "s3://$R2_BUCKET/$dir/$name" --cache-control 'public, max-age=86400'
+            aws s3 cp "$file" "s3://$R2_BUCKET/$dir/$name" --cache-control 'public, max-age=86400' \
+              --content-type "$(content_type "$name")"
             url="https://dl.baocode.dev/$dir/$name"
             served=$(curl -fsSI "$url" | tr -d '\r' | awk 'tolower($1) == "content-length:" { print $2 }')
             [ "$served" = "$(stat -c %s "$file")" ] || { echo "::error::$url is not served as uploaded"; exit 1; }
@@ -221,9 +232,18 @@ jobs:
           merge-multiple: true
       - name: Upload the builds
         run: |
+          # As in the share job: the type R2 has to be told, or a browser
+          # sniffing the IPA saves it as .zip.
+          content_type() {
+            case ${1##*.} in
+              apk) echo application/vnd.android.package-archive ;;
+              *)   echo application/octet-stream ;;
+            esac
+          }
           for file in dist/BaoCode-*; do
             aws s3 cp "$file" "s3://$R2_BUCKET/releases/mobile/$MARKETING/$(basename "$file")" \
-              --cache-control 'public, max-age=31536000, immutable'
+              --cache-control 'public, max-age=31536000, immutable' \
+              --content-type "$(content_type "$file")"
           done
       - name: Write the manifest, and check the downloads are served
         run: |
