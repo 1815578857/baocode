@@ -146,6 +146,10 @@ h2.plain::before { content: none; }
 .platform .get { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .platform .size { margin-left: 4px; font: 13.5px var(--sans); color: var(--muted); white-space: nowrap; }
 @media (max-width: 640px) { .platforms { grid-template-columns: 1fr; } }
+/* The phone app, a beta still: its heading's word for it. */
+.beta { display: inline-block; margin-left: 8px; padding: 2px 8px; font: 500 12px/1.5 var(--sans); letter-spacing: .02em; vertical-align: .35em; color: var(--muted); border: 1px solid var(--rule); border-radius: 999px; background: var(--tint); }
+#phone + .meta { margin-top: -6px; }
+[data-phones] + p { margin-top: 24px; }
 
 /* The changelog (made by tool/build_changelog.dart): a version a section,
    its heading a link to itself; the version the app links to is marked. */

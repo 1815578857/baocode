@@ -23,7 +23,7 @@
   if (!dialog?.showModal) return;
   const key = 'baocode.starAsked';
   const asked = () => { try { return localStorage.getItem(key) === '1'; } catch { return false; } };
-  for (const a of document.querySelectorAll('.platform a[data-file]')) {
+  for (const a of document.querySelectorAll('[data-platforms] a[data-file]')) {
     a.addEventListener('click', () => {
       if (asked()) return;
       try { localStorage.setItem(key, '1'); } catch {}

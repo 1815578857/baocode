@@ -18,6 +18,7 @@ BaoCode 的版本号怎么定、一个版本怎么发出去、发到哪里、已
 7. [第一次发布前的准备](#7-第一次发布前的准备)
 8. [出了问题](#8-出了问题)
 9. [不用 CI，手动发布](#9-不用-ci手动发布)
+10. [手机版](#10-手机版)
 
 ---
 
@@ -369,3 +370,31 @@ macOS 本机签名时用的环境变量：
 | `BAOCODE_NOTARY_ISSUER` | Issuer ID |
 
 只设 `BAOCODE_MACOS_SIGN_IDENTITY` 就只签名、不公证；都不设就是 ad hoc 签名。
+
+## 10. 手机版
+
+手机版（Android 的 APK、iOS 的 IPA）由 `.github/workflows/mobile.yml` 构建，和桌面版分开发布，版本号也分开（手机版 `pubspec.yaml` 里的版本，`0.x` 算 Beta）。官网下载页的「手机版」两个按钮是 `/dl/android`、`/dl/ios`，由 `site-worker/index.js` 按 `releases/mobile/latest.json` 跳转到当前版本。
+
+```sh
+git tag mobile-v0.1.0 && git push origin mobile-v0.1.0      # 发布：标签要和手机版的版本一致
+git tag mobile-test-foo && git push origin mobile-test-foo  # 只打测试包，传到 dl.baocode.dev/test/mobile-…
+```
+
+CI 从 `baocode-dev/mobile` 的 main 取代码（放在本仓库旁边，`../monad` 的包照常能找到），分两台机器构建：
+
+- **Android**（Ubuntu）：`flutter build apk --release`，用发布密钥签名。每个版本都要用**同一把密钥**，否则装不上旧版之上，只能卸载重装。
+- **iOS**（macOS）：`flutter build ios --release --no-codesign`，打成不签名的 IPA。用户用 AltStore、Sideloadly 等工具以自己的 Apple ID 签名安装（下载页有说明）。
+
+发布时文件传到 `releases/mobile/<版本>/`，最后写 `releases/mobile/latest.json`（`version`、`pubDate`、`beta`、`downloads.android` / `downloads.ios` 的 `url / size / sha256`）。桌面版的 `latest.json` 不受影响。
+
+**`release` 环境里要有的**（7.2 那些之外）：
+
+| 名字 | 是什么 |
+| --- | --- |
+| `MOBILE_DEPLOY_KEY` | 读 `baocode-dev/mobile` 的部署密钥（私钥）。公钥加在那个仓库的 Settings → Deploy keys，只读即可 |
+| `ANDROID_KEYSTORE` | Android 发布密钥库（`.jks`）的 base64 |
+| `ANDROID_KEYSTORE_PASSWORD` | 它的密码（密钥别名 `baocode`，密钥密码与之相同） |
+
+环境的部署规则里要允许 `mobile-*` 标签。
+
+> 发布密钥库丢了就再也发不了能覆盖安装的 APK：本机和 CI 之外务必另存一份。
