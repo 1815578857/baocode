@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show AppExitResponse, AppExitType;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show ServicesBinding;
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -278,7 +278,10 @@ Future<void> main(List<String> arguments) async {
       settingsChanges: files.settings,
       cacheDir: DataDirectory.current.cacheDir,
       storage: files.storage,
-      installSkill: true,
+      // Claude Code's skills are the installed app's: a build run from the
+      // source, often on a data folder of its own (`BAOCODE_DATA_DIR`),
+      // would point the user's agents at its stashes.
+      installSkill: !kDebugMode,
       // The user's GitHub and GitLab accounts: their tokens in the
       // keychain, the rest in the global storage.
       accounts: ForgeAccounts.current = ForgeAccounts(
