@@ -6600,6 +6600,13 @@ class AppLocalizationsZh extends AppLocalizations {
       '在对话左侧显示整段对话的缩略图，滚动时显示当前所在位置，点击或拖动即可跳转。开启时代替右侧滚动条；窗口太窄时不显示。关闭后恢复右侧滚动条。';
 
   @override
+  String get appearanceSettingsSidebarTimes => '侧边栏显示时间';
+
+  @override
+  String get appearanceSettingsSidebarTimesDescription =>
+      '在侧边栏每个智能体的右侧显示它最后一次活动的时间。关闭后只在鼠标悬停时显示。';
+
+  @override
   String get appearanceSettingsMinimapGlass => '液态玻璃不透明度';
 
   @override

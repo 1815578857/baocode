@@ -36,6 +36,7 @@ import '../workspace/window_controls.dart';
 import '../workspace/workspace.dart';
 import '../workspace/workspace_dialog.dart';
 import 'sidebar_menu.dart';
+import 'sidebar_times.dart';
 
 enum SidebarGrouping {
   project('Project', Icons.folder_outlined),
@@ -341,12 +342,15 @@ class _SidebarState extends State<Sidebar>
       setState(() {});
     });
     _workspace.addListener(_markRowsDirty);
+    SidebarTimes.shown.addListener(_timesChanged);
     _listFocus.addListener(_focusChanged);
     widget.link?._state = this;
     _attachDrag(widget.drag);
   }
 
   void _markRowsDirty() => _rowsDirty = true;
+
+  void _timesChanged() => setState(_markRowsDirty);
 
   void _focusChanged() {
     if (mounted) setState(() {});
@@ -391,6 +395,7 @@ class _SidebarState extends State<Sidebar>
     if (widget.link?._state == this) widget.link!._state = null;
     _detachDrag(widget.drag);
     _workspace.removeListener(_markRowsDirty);
+    SidebarTimes.shown.removeListener(_timesChanged);
     _clock.cancel();
     _autoScroll?.cancel();
     _listFocus.removeListener(_focusChanged);
@@ -1435,6 +1440,7 @@ class _SidebarState extends State<Sidebar>
       dragThreads: () => _targetsFor(thread),
       drag: widget.drag,
       showProject: group.project == null,
+      showTime: SidebarTimes.shown.value,
       projectIcon: switch (_workspace.iconOf(thread.project)) {
         null when _workspace.workspaceOf(thread.project) != null => Icon(
           Codicons.folderLibrary,
@@ -2710,6 +2716,7 @@ class _ThreadRow extends StatelessWidget {
     required this.focused,
     required this.drag,
     required this.showProject,
+    required this.showTime,
     this.projectIcon,
     required this.renaming,
     required this.onTap,
@@ -2745,6 +2752,10 @@ class _ThreadRow extends StatelessWidget {
 
   final ChatDrag? drag;
   final bool showProject;
+
+  /// Whether the time it last did something shows at its end (its hover
+  /// shows it either way).
+  final bool showTime;
 
   /// Before the project's name, when it shows and has an icon.
   final Widget? projectIcon;
@@ -3066,7 +3077,7 @@ class _ThreadRow extends StatelessWidget {
           ),
         ),
       ],
-      const SizedBox(width: 6),
+      if (active || showTime) const SizedBox(width: 6),
       // The time; while hovered, pin and archive in its place (the rest is
       // in the context menu).
       if (active) ...[
@@ -3087,7 +3098,7 @@ class _ThreadRow extends StatelessWidget {
           size: 20,
           onTap: onArchive,
         ),
-      ] else
+      ] else if (showTime)
         // Wider where the language's times are.
         ConstrainedBox(
           constraints: const BoxConstraints(minWidth: 26),

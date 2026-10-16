@@ -66,6 +66,7 @@ import 'settings/app_locale.dart';
 import 'settings/app_settings.dart';
 import 'settings/data_dir_startup.dart';
 import 'settings/user_settings.dart';
+import 'sidebar/sidebar_times.dart';
 import 'telemetry/telemetry_platform.dart';
 import 'stash/stash_editor.dart' show StashEditor;
 import 'forge/forge_accounts.dart';
@@ -186,6 +187,11 @@ Future<void> main(List<String> arguments) async {
     ChatMinimap.follow(files.settings, (key) => files.settings[key]);
     // Settings → Appearance: what an agent and a subagent show running.
     PixelLoaderRole.follow(files.settings, (key) => files.settings[key]);
+    // Settings → Appearance: whether the sidebar's agents show their times.
+    SidebarTimes.follow(
+      files.settings,
+      () => files.settings[SidebarTimes.settingKey],
+    );
     // Settings → Appearance: the code's font, size and ligatures, and the
     // window's text size.
     CodeFont.follow(files.settings, (key) => files.settings[key]);

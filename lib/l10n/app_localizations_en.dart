@@ -7042,6 +7042,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'A minimap of the whole conversation at the left of its column, where you are in it shown as you scroll; click or drag it to get somewhere. It stands in for the scrollbar, and is not shown in a window too narrow for it. Off: the scrollbar.';
 
   @override
+  String get appearanceSettingsSidebarTimes => 'Times in the Sidebar';
+
+  @override
+  String get appearanceSettingsSidebarTimesDescription =>
+      'Each agent in the sidebar ends with when it last did something. Off: only its hover tells it.';
+
+  @override
   String get appearanceSettingsMinimapGlass => 'Glass Opacity';
 
   @override

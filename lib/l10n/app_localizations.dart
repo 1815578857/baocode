@@ -11589,6 +11589,18 @@ abstract class AppLocalizations {
   /// **'A minimap of the whole conversation at the left of its column, where you are in it shown as you scroll; click or drag it to get somewhere. It stands in for the scrollbar, and is not shown in a window too narrow for it. Off: the scrollbar.'**
   String get appearanceSettingsMinimapDescription;
 
+  /// No description provided for @appearanceSettingsSidebarTimes.
+  ///
+  /// In en, this message translates to:
+  /// **'Times in the Sidebar'**
+  String get appearanceSettingsSidebarTimes;
+
+  /// No description provided for @appearanceSettingsSidebarTimesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Each agent in the sidebar ends with when it last did something. Off: only its hover tells it.'**
+  String get appearanceSettingsSidebarTimesDescription;
+
   /// No description provided for @appearanceSettingsMinimapGlass.
   ///
   /// In en, this message translates to:

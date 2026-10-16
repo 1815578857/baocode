@@ -20,6 +20,7 @@ import 'package:baocode/main.dart';
 import 'package:baocode/search/search_palette.dart';
 import 'package:baocode/chat/widgets/user_message_bubble.dart';
 import 'package:baocode/sidebar/sidebar.dart';
+import 'package:baocode/sidebar/sidebar_times.dart';
 import 'package:baocode/theme/codicons.dart';
 import 'package:baocode/theme/workbench_theme.dart';
 import 'package:baocode/workspace/chat_grid_view.dart';
@@ -642,6 +643,22 @@ void main() {
     await tester.pump();
     expect(thread.archived, isTrue);
     expect(thread.pinned, isFalse);
+  });
+
+  testWidgets('with the times turned off in the settings, the rows show none', (
+    tester,
+  ) async {
+    addTearDown(() => SidebarTimes.shown.value = true);
+    await pumpApp(tester);
+    expect(inSidebar(find.text('55m')), findsOneWidget);
+
+    SidebarTimes.shown.value = false;
+    await tester.pump();
+    expect(inSidebar(find.text('55m')), findsNothing);
+
+    SidebarTimes.shown.value = true;
+    await tester.pump();
+    expect(inSidebar(find.text('55m')), findsOneWidget);
   });
 
   testWidgets('a clipped mixed-language title stays on its baseline when '
