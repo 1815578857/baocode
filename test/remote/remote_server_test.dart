@@ -652,6 +652,97 @@ printf '%s\n' "$line"
       },
     );
 
+    test('a page leaves out what is not shown: a file read whole, a '
+        'picture, a file before an edit', () async {
+      final sessions = Directory(p.join(home.path, '.claude', 'projects', '-x'))
+        ..createSync(recursive: true);
+      final lines = [
+        {
+          'uuid': 'u1',
+          'type': 'user',
+          'cwd': root,
+          'message': {'role': 'user', 'content': 'Go'},
+        },
+        {
+          'uuid': 'r1',
+          'parentUuid': 'u1',
+          'type': 'user',
+          'message': {
+            'role': 'user',
+            'content': [
+              {
+                'type': 'tool_result',
+                'tool_use_id': 't1',
+                'content': 'a' * 10000,
+              },
+            ],
+          },
+          'toolUseResult': {
+            'type': 'text',
+            'file': {'filePath': '/x/a.txt', 'content': 'a' * 10000},
+          },
+        },
+        {
+          'uuid': 'r2',
+          'parentUuid': 'r1',
+          'type': 'user',
+          'message': {
+            'role': 'user',
+            'content': [
+              {
+                'type': 'tool_result',
+                'tool_use_id': 't2',
+                'content': [
+                  {'type': 'text', 'text': 'shot'},
+                  {
+                    'type': 'image',
+                    'source': {'type': 'base64', 'data': 'b' * 10000},
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        {
+          'uuid': 'r3',
+          'parentUuid': 'r2',
+          'type': 'user',
+          'message': {
+            'role': 'user',
+            'content': [
+              {'type': 'tool_result', 'tool_use_id': 't3', 'content': 'ok'},
+            ],
+          },
+          'toolUseResult': {
+            'filePath': '/x/a.txt',
+            'originalFile': 'c' * 10000,
+            'structuredPatch': <Object?>[],
+          },
+        },
+      ];
+      File(p.join(sessions.path, 'slim.jsonl'))
+          .writeAsStringSync(lines.map(jsonEncode).join('\n'));
+      final projects = await client().claudeProjects();
+      final path = projects.single.sessions.single.path;
+      final page = await client().claudeHistoryPage(path, turns: 10);
+      final [_, read, shot, edit] = page.entries;
+      Object? content(Map<String, Object?> entry) =>
+          ((entry['message']! as Map)['content'] as List).single['content'];
+
+      expect(content(read), '${'a' * 4000}…');
+      expect(read['toolUseResult'], {
+        'type': 'text',
+        'file': {'filePath': '/x/a.txt'},
+      });
+      expect(content(shot), [
+        {'type': 'text', 'text': 'shot'},
+      ]);
+      expect(edit['toolUseResult'], {
+        'filePath': '/x/a.txt',
+        'structuredPatch': <Object?>[],
+      });
+    });
+
     test('a turn the agent worked long at is cut within it, its calls '
         'with their results', () async {
       final sessions = Directory(p.join(home.path, '.claude', 'projects', '-x'))

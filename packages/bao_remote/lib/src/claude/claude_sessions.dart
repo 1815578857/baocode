@@ -639,7 +639,7 @@ ClaudeHistoryPage _page(
   // Calls answered after the line at hand, made at or before it.
   final answered = <String>{};
   for (var i = end - 1; i >= 0; i--) {
-    final entry = branch[i];
+    final entry = branch[i] = _slim(branch[i]);
     size += jsonEncode(entry).length;
     for (final block in _blocks(entry)) {
       switch (block) {
@@ -673,6 +673,61 @@ bool _isPrompt(Map<String, Object?> entry) =>
     entry['isCompactSummary'] != true &&
     entry['uuid'] is String &&
     _promptText(entry) != null;
+
+/// [entry] without what is not shown of it, which may be most of it: a
+/// file read whole (kept twice, in the call's result for the model and in
+/// the CLI's), a picture a call gave the model, a file as it was before
+/// an edit.
+Map<String, Object?> _slim(Map<String, Object?> entry) {
+  final result = entry['toolUseResult'];
+  final read = result is Map && result['file'] is Map;
+  final edit = result is Map && result.containsKey('originalFile');
+  final message = entry['message'];
+  final results =
+      message is Map &&
+      message['content'] is List &&
+      _blocks(entry).any((block) => block['type'] == 'tool_result');
+  if (!read && !edit && !results) return entry;
+  final slim = {...entry};
+  if (read) {
+    final file = {...result['file'] as Map}
+      ..remove('content')
+      ..remove('base64');
+    slim['toolUseResult'] = {...result, 'file': file};
+  } else if (edit) {
+    slim['toolUseResult'] = {...result}..remove('originalFile');
+  }
+  if (results) {
+    // A file read is shown by its start.
+    Object? cut(Object? content) => switch (content) {
+      final String text when read && text.length > _readShown =>
+        '${text.substring(0, _readShown)}…',
+      final List<Object?> blocks => [
+        for (final block in blocks)
+          if (block is! Map || block['type'] != 'image') cut(block),
+      ],
+      {'type': 'text', 'text': final String text} => {
+        ...content as Map,
+        'text': cut(text),
+      },
+      _ => content,
+    };
+    slim['message'] = {
+      ...message,
+      'content': [
+        for (final block in _blocks(entry))
+          if (block['type'] == 'tool_result')
+            {...block, 'content': cut(block['content'])}
+          else
+            block,
+      ],
+    };
+  }
+  return slim;
+}
+
+/// How much of a file read is shown, at most.
+const _readShown = 4000;
 
 /// The content blocks of [entry]'s message.
 Iterable<Map<Object?, Object?>> _blocks(Map<String, Object?> entry) =>
