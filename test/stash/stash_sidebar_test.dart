@@ -173,4 +173,52 @@ void main() {
     await tester.tap(tag);
     expect(opened, [pull]);
   });
+
+  testWidgets('with the Stash shown, the conversation picked before it is '
+      'no longer shown picked', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final workspace = Workspace.mock();
+    final thread = workspace.threads.first;
+    var stashing = false;
+    late StateSetter rebuild;
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [AppLocalizations.delegate],
+        home: Scaffold(
+          body: SizedBox(
+            width: 300,
+            child: StatefulBuilder(
+              builder: (context, setState) {
+                rebuild = setState;
+                return Sidebar(
+                  workspace: workspace,
+                  onCollapse: () {},
+                  onStash: () {},
+                  stashing: stashing,
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    bool picked(String label) => tester
+        .widgetList<Semantics>(
+          find.ancestor(of: find.text(label), matching: find.byType(Semantics)),
+        )
+        .any((semantics) => semantics.properties.selected ?? false);
+
+    await tester.tap(find.text(thread.title));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(picked(thread.title), isTrue);
+
+    rebuild(() => stashing = true);
+    await tester.pump();
+    expect(picked(thread.title), isFalse);
+    expect(picked('Stash'), isTrue);
+  });
 }

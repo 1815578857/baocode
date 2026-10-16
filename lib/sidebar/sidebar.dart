@@ -376,7 +376,15 @@ class _SidebarState extends State<Sidebar>
       _detachDrag(oldWidget.drag);
       _attachDrag(widget.drag);
     }
+    // Customize or the Stash shown: its row is the one picked, not the
+    // conversation picked before it.
+    if (_onPage && !(oldWidget.customizing || oldWidget.stashing)) {
+      _listSelection.select(null);
+    }
   }
+
+  /// Customize or the Stash is shown in place of the chat.
+  bool get _onPage => widget.customizing || widget.stashing;
 
   @override
   void dispose() {
@@ -1412,7 +1420,8 @@ class _SidebarState extends State<Sidebar>
       onOpenPull: widget.stashes?.openPull,
       selected:
           _listSelection.values.contains(thread) ||
-          (!_listFocus.hasFocus &&
+          (!_onPage &&
+              !_listFocus.hasFocus &&
               _listSelection.values.isEmpty &&
               identical(thread, _current)),
       focusedItem: identical(_listSelection.focused, thread),
