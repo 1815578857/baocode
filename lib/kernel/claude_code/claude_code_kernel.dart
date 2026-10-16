@@ -600,16 +600,17 @@ class ClaudeCodeKernel
     prepare();
   }
 
-  /// Whether stopping the process would cut work short: a turn (or the
-  /// CLI's work past one), one to come, or a task in the background whose
-  /// notice the agent awaits.
-  bool get _busy =>
+  /// Whether stopping the process would cut work short: [_working], or a
+  /// task in the background whose notice the agent awaits.
+  bool get _busy => _working || _translator.workingInBackground;
+
+  /// A turn (or the CLI's work past one), one to come, or the start.
+  bool get _working =>
       _turn != null ||
       _cliWorking ||
       _queued.isNotEmpty ||
       _permissions.isNotEmpty ||
-      _starting != null ||
-      _translator.workingInBackground;
+      _starting != null;
 
   /// Frees the process now if idle, else once the CLI says it is (one
   /// that does not say keeps it until asked again).
@@ -630,13 +631,16 @@ class ClaudeCodeKernel
   /// only as a message is sent, so a pick leaves the conversation be.
   ///
   /// So is another provider, or one whose setup changed: the session goes
-  /// on, resumed, on it.
+  /// on, resumed, on it. That even with tasks at work in the background
+  /// (a server it started), which end with the process: the user agreed
+  /// to the restart, and the message is not for the provider before.
   void _applyWindow() {
-    if (!_running || _busy) return;
-    if (_providerKey == _launchedProvider && _autocompact == _launchedWindow) {
-      return;
-    }
+    if (!_running) return;
+    final otherProvider = _providerKey != _launchedProvider;
+    if (!otherProvider && _autocompact == _launchedWindow) return;
+    if (otherProvider ? _working : _busy) return;
     _teardown();
+    _translator.endTasks();
     _setHealth(KernelHealth.idle);
   }
 

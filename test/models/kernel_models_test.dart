@@ -586,6 +586,46 @@ void main() {
     kernel.dispose();
   });
 
+  test('another provider is taken up with the next message even while a '
+      'task works in the background, which ends with the CLI', () async {
+    final (:kernel, :launches, :clis, environments: _) = start(providers, {
+      'model': 'default',
+    });
+    kernel.send(const KernelTurn(id: 'u1', text: 'start the server'));
+    await pumpEventQueue();
+    final first = clis.last
+      ..push({'type': 'system', 'subtype': 'init', 'session_id': 's1'})
+      ..push({
+        'type': 'system',
+        'subtype': 'task_started',
+        'task_id': 'b1',
+        'task_type': 'local_bash',
+        'description': 'Run the server',
+        'is_backgrounded': true,
+      })
+      // Claude Code's own: out of its plan's usage.
+      ..push({'type': 'result', 'subtype': 'success', 'is_error': true});
+    await pumpEventQueue();
+
+    kernel.model.select('@other/m');
+    await pumpEventQueue();
+    kernel.send(const KernelTurn(id: 'u2', text: 'go on'));
+    await pumpEventQueue();
+    expect(first.closed, isTrue);
+    expect(first.users.map((u) => u['uuid']), ['u1']);
+    expect(launches, hasLength(2));
+    expect(launches.last.resume, 's1');
+    expect(launches.last.model, 'm');
+    expect(clis.last.users.single['uuid'], 'u2');
+
+    // The task went with the CLI before: nothing keeps this one at work.
+    clis.last.push({'type': 'result', 'subtype': 'success', 'is_error': false});
+    await pumpEventQueue();
+    kernel.release();
+    expect(clis.last.closed, isTrue);
+    kernel.dispose();
+  });
+
   test('full access in Plan approves on a provider\'s model, with no '
       'classifier to leave commands to', () async {
     final (:kernel, launches: _, :clis, environments: _) = start(providers, {
