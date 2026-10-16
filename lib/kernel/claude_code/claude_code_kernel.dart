@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:bao_remote/claude.dart' show ClaudeHistoryPage;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -19,6 +20,7 @@ import '../agent_kernel.dart';
 import '../commit_attribution.dart';
 import '../kernel_event.dart';
 import '../kernel_types.dart';
+import '../transcript.dart';
 import '../queued_messages.dart';
 import 'claude_code_transport.dart';
 import 'claude_code_translator.dart';
@@ -32,6 +34,14 @@ import 'control_channel.dart';
 typedef ClaudeHistoryReader = Future<List<Map<String, Object?>>> Function(
   SessionRecord session,
 );
+
+/// Reads some of a kept session: its last [turns], or the [turns] before
+/// the line [before].
+typedef ClaudeHistoryPager = Future<ClaudeHistoryPage> Function(
+  SessionRecord session, {
+  required int turns,
+  String? before,
+});
 
 /// Copies the session [id], run in [cwd], into a new one, [into] (see
 /// ClaudeSessions.fork): the new session's file.
@@ -101,6 +111,7 @@ class ClaudeCodeKernel
     this._context, {
     required this._start,
     ClaudeHistoryReader? readHistory,
+    ClaudeHistoryPager? readHistoryPage,
     this._readGoal,
     this._forkSession,
     ClaudeUsageSwitch? usageOffBy,
@@ -152,10 +163,22 @@ class ClaudeCodeKernel
     if (_model case final model? when !_pickedFast.containsKey(model)) {
       _pickedFast[model] = settings[KernelChoiceKind.fast.name] == 'fast';
     }
-    if ((_context.resume, readHistory) case (final session?, final read?)) {
+    Future<ClaudeHistoryPage> wholePage(
+      SessionRecord session, {
+      required int turns,
+      String? before,
+    }) async => ClaudeHistoryPage.whole(await readHistory!(session));
+    final pager = readHistoryPage ?? (readHistory == null ? null : wholePage);
+    if ((_context.resume, pager) case (final session?, final read?)) {
+      _pager = read;
       _history = _replay(read, session);
     }
   }
+
+  /// How many turns of a long session are read at first, from its end, and
+  /// then each time the user asks for the earlier ones.
+  static const _firstTurns = 10;
+  static const _earlierTurns = 20;
 
   @override
   final KernelDescriptor descriptor;
@@ -194,6 +217,31 @@ class ClaudeCodeKernel
   @override
   bool get loadingHistory => _loadingHistory;
   bool _loadingHistory = false;
+
+  @override
+  bool get hasEarlierHistory => _earlier != null && !_loadingHistory;
+
+  @override
+  bool get loadingEarlier => _earlierLoad != null;
+  ClaudeHistoryPager? _pager;
+
+  /// What to read the turns before those read by, if there are some.
+  String? _earlier;
+  Future<void>? _earlierLoad;
+
+  /// Whether what was read begins within a turn (a long one is cut so):
+  /// the turn the page before it ends with goes on past it, so is not
+  /// timed.
+  bool _readInTurn = false;
+
+  /// Whether [page] begins within a turn: with a message of the agent's,
+  /// not the user's prompt.
+  static bool _beginsInTurn(ClaudeHistoryPage page) {
+    for (final line in page.entries) {
+      if (line['type'] != 'attachment') return line['type'] == 'assistant';
+    }
+    return false;
+  }
 
   /// Writes wait on this: for the process to be ready, and for a rewind to
   /// land before the message that follows it.
@@ -2106,14 +2154,16 @@ class ClaudeCodeKernel
 
   // --- History ------------------------------------------------------------------------
 
-  Future<void> _replay(ClaudeHistoryReader read, SessionRecord session) async {
+  Future<void> _replay(ClaudeHistoryPager read, SessionRecord session) async {
     // Read in the constructor, before anyone listens: seen when asked.
     _loadingHistory = true;
     try {
-      final lines = await read(session);
+      final page = await read(session, turns: _firstTurns);
+      _earlier = page.earlier;
+      _readInTurn = _beginsInTurn(page);
       _translator.replaying = true;
       var counted = false;
-      for (final line in lines) {
+      for (final line in page.entries) {
         if (line['type'] == 'assistant') counted |= _countRequest(line);
         _translator.translate(line);
       }
@@ -2131,6 +2181,54 @@ class ClaudeCodeKernel
       _translator.replaying = false;
       _loadingHistory = false;
       if (!_disposed) emitInfoChanged();
+    }
+  }
+
+  @override
+  Future<void> loadEarlier() {
+    if (_earlier == null || _disposed) return Future.value();
+    return _earlierLoad ??= _readEarlier().whenComplete(() {
+      _earlierLoad = null;
+      if (!_disposed) emitInfoChanged();
+    });
+  }
+
+  Future<void> _readEarlier() async {
+    emitInfoChanged();
+    try {
+      final page = await _pager!(
+        _context.resume!,
+        turns: _earlierTurns,
+        before: _earlier,
+      );
+      if (_disposed) return;
+      // Told apart from the live one: it only gathers the items, and its
+      // events never reach the stream.
+      var seq = 0;
+      final items = Transcript();
+      final translator = ClaudeTranslator(
+        emit: items.apply,
+        nextSeq: () => ++seq,
+      )..replaying = true;
+      var counted = false;
+      for (final line in page.entries) {
+        if (line['type'] == 'assistant') counted |= _countRequest(line);
+        translator.translate(line);
+      }
+      if (!_readInTurn) translator.endPage();
+      if (counted) _reportStats();
+      _earlier = page.earlier;
+      _readInTurn = _beginsInTurn(page);
+      emit(HistoryPrepended(nextSeq, [...items.liveItems]));
+    } on Object catch (error) {
+      if (_disposed) return;
+      emit(
+        ItemUpserted(
+          nextSeq,
+          'history-error',
+          NoticeItem(NoticeKind.error, 'Could not read earlier: $error'),
+        ),
+      );
     }
   }
 

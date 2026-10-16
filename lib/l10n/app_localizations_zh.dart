@@ -1981,6 +1981,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatOpensItsConversation => '打开其对话';
 
   @override
+  String get chatLoadEarlier => '加载更早的消息';
+
+  @override
   String get chatStop => '停止';
 
   @override

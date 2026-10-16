@@ -61,6 +61,15 @@ final class ItemUpserted extends KernelEvent {
   final bool streaming;
 }
 
+/// Earlier [items] of the conversation, read on asking: they go before all
+/// there is (but any leading history, see [Transcript]), oldest first.
+/// Those with an id already here are left out.
+final class HistoryPrepended extends KernelEvent {
+  const HistoryPrepended(super.seq, this.items);
+
+  final List<(String, ChatItem)> items;
+}
+
 /// [text] at [offset] of a streaming text or thought: the part already
 /// there is skipped, so a repeated delta adds nothing.
 final class TextDelta extends KernelEvent {

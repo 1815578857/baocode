@@ -440,6 +440,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   @override
   void initState() {
     super.initState();
+    _scrollController.laidOut = _keepShownLaidOut;
     _find
       ..feed = _feed
       ..addListener(_findChanged);
@@ -447,6 +448,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     _feed.addListener(_handleSessionChanged);
     UserMessageStyle.current.addListener(_handleStyleChanged);
     _wasLive = _feed.isStreaming;
+    _prependedSeen = _session?.prependedCount ?? 0;
     _refold();
     _seeItems();
     _resumeEditing();
@@ -581,6 +583,299 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
           const Duration(milliseconds: 250) ||
       _scrollController.position.userScrollDirection != ScrollDirection.idle;
 
+  // --- Earlier turns -----------------------------------------------------------
+  //
+  // A long conversation is read from its end (see [LoadsHistory]): the turns
+  // before are read when the list is scrolled near its top, or the bar above
+  // its first item is pressed. That bar is not a row of the list, so no index
+  // is moved by it; the room for it is the list's top padding.
+
+  /// The list's room above its first item, and the bar's height after it.
+  static const _chatTopPadding = 20.0;
+  static const _earlierBarHeight = 40.0;
+
+  /// How near the top the list is scrolled before the earlier turns are read.
+  static const _earlierReach = 300.0;
+
+  ChatSession? get _session => switch (_feed) {
+    final ChatSession session => session,
+    _ => null,
+  };
+
+  /// There were earlier turns to read: the room for the bar stays, as it
+  /// goes with the last of them.
+  bool _earlierSeen = false;
+
+  bool get _earlierRoom {
+    final session = _session;
+    if (session != null &&
+        (session.hasEarlierHistory || session.loadingEarlier)) {
+      _earlierSeen = true;
+    }
+    return _earlierSeen;
+  }
+
+  /// Reading them brought nothing: not tried again until asked to.
+  bool _earlierFailed = false;
+  bool _earlierQueued = false;
+
+  /// How many items were put before the others, as last seen.
+  int _prependedSeen = 0;
+
+  /// The first item shown, and how far its top is above the view's, when the
+  /// earlier turns were asked for: to put it back where it was.
+  ({int index, double above})? _held;
+
+  /// Reads the earlier turns once the frame is done, if the list is near its
+  /// top (and it is not the first read, nor under way).
+  void _wantEarlier() {
+    if (_earlierQueued || _session?.hasEarlierHistory != true) return;
+    _earlierQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _earlierQueued = false;
+      if (!mounted || _earlierFailed || !_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      if (!position.hasContentDimensions) return;
+      if (position.pixels - position.minScrollExtent <= _earlierReach) {
+        _loadEarlier();
+      }
+    });
+  }
+
+  Future<void> _loadEarlier() async {
+    final session = _session;
+    if (session == null || !session.hasEarlierHistory) return;
+    if (session.loadingEarlier) return;
+    final before = session.prependedCount;
+    _held = _firstShown();
+    await session.loadEarlier();
+    // Its items come with the kernel's events, a moment later.
+    await Future<void>.delayed(Duration.zero);
+    _held = null;
+    if (!mounted) return;
+    final failed =
+        session.hasEarlierHistory && session.prependedCount == before;
+    if (failed != _earlierFailed) setState(() => _earlierFailed = failed);
+    if (!failed) _wantEarlier();
+  }
+
+  /// The first row that shows any of it, and how far its top is above the
+  /// view's (below it, if less than 0).
+  ({int index, double above})? _firstShown() {
+    for (final item in _laidOutItems()) {
+      if (RenderAbstractViewport.maybeOf(item) case final RenderBox viewport) {
+        final top = viewport.localToGlobal(Offset.zero).dy;
+        final itemTop = item.localToGlobal(Offset.zero).dy;
+        if (itemTop + item.size.height <= top) continue;
+        return (index: _indexOf(item), above: top - itemTop);
+      }
+      return null;
+    }
+    return null;
+  }
+
+  /// [count] items were put before the others: what is kept by index moves
+  /// with its items.
+  void _shiftIndexes(int count) {
+    final expanded = {
+      for (final MapEntry(:key, :value) in _expanded.entries)
+        key + count: value,
+    };
+    _expanded
+      ..clear()
+      ..addAll(expanded);
+    final opened = {
+      for (final MapEntry(key: (kind, start), :value) in _foldOpen.entries)
+        (kind, start + count): value,
+    };
+    _foldOpen
+      ..clear()
+      ..addAll(opened);
+    final unfolded = {for (final start in _unfoldedTurns) start + count};
+    _unfoldedTurns
+      ..clear()
+      ..addAll(unfolded);
+    final motions = {
+      for (final MapEntry(:key, :value) in _motions.entries) key + count: value,
+    };
+    _motions
+      ..clear()
+      ..addAll(motions);
+    _hiddenRows.clear();
+    _seenItems += count;
+    _appearing.clear();
+    _endHandoff();
+    _stickyKeys.clear();
+    _stickyIndices = const {};
+    if (_editingIndex case final index?) _editingIndex = index + count;
+    if (_closingIndex case final index?) _closingIndex = index + count;
+    if (_feed.editing case (:final index, :final draft)) {
+      _feed.editing = (index: index + count, draft: draft);
+    }
+  }
+
+  /// [count] rows are put before the others, not laid out yet: the list
+  /// takes them as new rows before its first (it would take them as rows
+  /// after its last, the extents it measured moved to other rows), and
+  /// moves down by them at once, so what is shown stays where it is, not a
+  /// frame of them shown in its place. False when it cannot now.
+  bool _keepAbove(int count) {
+    if (!_scrollController.hasClients ||
+        !_listController.isAttached ||
+        _listController.isLocked ||
+        _listController.numberOfItems + count != _feed.itemCount) {
+      return false;
+    }
+    final position = _scrollController.position;
+    if (!position.hasPixels) return false;
+    var above = 0.0;
+    for (var i = 0; i < count; i++) {
+      // Estimated as row i.
+      _listController.addItem(i);
+      above += _listController.extentForIndex(i).$1;
+    }
+    if (_firstShown() case (:final index, above: _)) {
+      // Still laid out as it was, at its index before.
+      _keepShown = switch (_endAboveOf(index + count, laidOutAt: index)) {
+        final end? => (index: index + count, above: end),
+        null => null,
+      };
+    }
+    // Not a jump: one would take the end as it was, and keep to it.
+    position.correctBy(above);
+    _forgetRows = true;
+    _listKey.currentContext?.findRenderObject()?.markNeedsLayout();
+    return true;
+  }
+
+  /// The row shown first when rows were put before it, and how far its end
+  /// was above the view's top: put back there once the list is laid out.
+  ({int index, double above})? _keepShown;
+
+  /// How far the list is to move to put the row shown first back where it
+  /// was (see [_keepShown]), once laid out: the rows before it laid out,
+  /// those estimated, but the one the view's top came to, measured below
+  /// it.
+  double _keepShownLaidOut() {
+    final keep = _keepShown;
+    _keepShown = null;
+    if (keep == null) return 0;
+    final above = _endAboveOf(keep.index);
+    return above == null ? 0 : keep.above - above;
+  }
+
+  /// How far row [index]'s end is above the view's top, if it is laid out:
+  /// by where the list has it, so also while it is laid out. Its end, not
+  /// its top: the room above it is not the same when a turn comes before
+  /// it.
+  double? _endAboveOf(int index, {int? laidOutAt}) {
+    final sliver = _findSliver();
+    if (sliver == null || !_scrollController.hasClients) return null;
+    for (var child = sliver.firstChild; child != null;) {
+      final data = child.parentData! as SliverMultiBoxAdaptorParentData;
+      if (data.index == (laidOutAt ?? index)) {
+        final offset = data.layoutOffset;
+        if (offset == null) return null;
+        return _scrollController.position.pixels -
+            sliver.constraints.precedingScrollExtent -
+            offset -
+            _listController.extentForIndex(index).$1;
+      }
+      child = sliver.childAfter(child);
+    }
+    return null;
+  }
+
+  /// The rows laid out are let go before the list is next laid out (see
+  /// [_forgetRowsLaidOut]).
+  bool _forgetRows = false;
+
+  /// Lets go of the rows laid out, once built with the items now at their
+  /// indexes: kept where they are, each would show the item now at its
+  /// index where the one before was, and the list keep to them. Laid out
+  /// anew, from the extents, the list keeps what is shown in place as it
+  /// measures the rows before it.
+  void _forgetRowsLaidOut(RenderObject list) {
+    if (!_forgetRows) return;
+    _forgetRows = false;
+    void forget(RenderObject node) {
+      if (node is RenderSliverMultiBoxAdaptor) {
+        node.visitChildren((child) {
+          (child.parentData! as SliverMultiBoxAdaptorParentData).layoutOffset =
+              null;
+        });
+      } else {
+        node.visitChildren(forget);
+      }
+    }
+
+    forget(list);
+  }
+
+  /// Puts row [index] where it was (see [_held]), [above] its top above the
+  /// view's, once the rows put before it are laid out.
+  void _keepAt(int index, double above) {
+    if (!_scrollController.hasClients || !_listController.isAttached) return;
+    if (index >= _feed.itemCount) return;
+    final height = _scrollController.position.viewportDimension;
+    _listController.jumpToItem(
+      index: index,
+      scrollController: _scrollController,
+      alignment: above < 0 && height > 0 ? -above / height : 0,
+      rect: Rect.fromLTWH(0, math.max(above, 0), 0, 0),
+    );
+  }
+
+  /// The bar above the first item: shows the earlier turns are read, as
+  /// they are once it is near; reads them on a press, once that brought
+  /// nothing. It scrolls with the list.
+  Widget _earlierBar() => Positioned.fill(
+    child: ListenableBuilder(
+      listenable: Listenable.merge([_scrollController, _feed]),
+      builder: (context, _) {
+        final session = _session;
+        final position = _scrollController.hasClients
+            ? _scrollController.position
+            : null;
+        if (session == null ||
+            position == null ||
+            !position.hasPixels ||
+            !(session.hasEarlierHistory || session.loadingEarlier) ||
+            position.pixels > _chatTopPadding + _earlierBarHeight) {
+          return const SizedBox.shrink();
+        }
+        return Stack(
+          children: [
+            Positioned(
+              top: _chatTopPadding - position.pixels,
+              left: 0,
+              right: 0,
+              height: _earlierBarHeight,
+              child: Center(
+                child: session.loadingEarlier || !_earlierFailed
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : TextButton(
+                        onPressed: () {
+                          setState(() => _earlierFailed = false);
+                          _loadEarlier();
+                        },
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          textStyle: const TextStyle(fontSize: 12),
+                        ),
+                        child: Text(context.l10n.chatLoadEarlier),
+                      ),
+              ),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+
   void _handleScroll() {
     if (_userScrolling) {
       final position = _scrollController.position;
@@ -599,6 +894,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     _syncEdgeFades();
     _scheduleStickyUpdate();
     if (_pointersDown > 0) _scheduleDragReselect();
+    _wantEarlier();
   }
 
   /// Flutter only extends a drag selection when the pointer moves (or on its
@@ -829,6 +1125,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     _syncEdgeFades();
     _scheduleStickyUpdate();
     _editorMoved.value++;
+    _wantEarlier();
     return false;
   }
 
@@ -838,6 +1135,10 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   }
 
   void _handleSessionChanged() {
+    final prepended = _session?.prependedCount ?? 0;
+    final moved = prepended - _prependedSeen;
+    _prependedSeen = prepended;
+    if (moved > 0) _shiftIndexes(moved);
     final startedStreaming = _feed.isStreaming && !_wasLive;
     final ended = _wasLive && !_feed.isStreaming;
     _wasLive = _feed.isStreaming;
@@ -845,6 +1146,17 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     // leaves the user reading where they are, the turns they read open.
     final sent = _feed.isStreaming && !_feed.isUnprompted;
     _refold();
+    // Once folded: what of them is hidden takes no room.
+    if (moved > 0) {
+      if (_keepAbove(moved)) {
+        _held = null;
+      } else if (_held case (:final index, :final above)) {
+        _held = null;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _keepAt(index + moved, above);
+        });
+      }
+    }
     if (sent) _unfoldedTurns.clear();
     if (ended && !_atBottom) {
       if (_lastTurnWork() case final fold?) _unfoldedTurns.add(fold.start);
@@ -863,6 +1175,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     _itemsCame();
     _scheduleStickyUpdate();
     setState(() {});
+    _wantEarlier();
   }
 
   void _startEditing(int index) {
@@ -1825,33 +2138,40 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                                       .copyWith(scrollbars: false),
                                   child: ChatFindScope(
                                     find: _find,
-                                    child: SuperListView.builder(
+                                    child: _BeforeLayout(
                                       key: _listKey,
-                                      controller: _scrollController,
-                                      listController: _listController,
-                                      itemCount: _feed.itemCount,
-                                      extentEstimation: _estimateExtent,
-                                      cacheExtent: 900,
-                                      padding: EdgeInsets.fromLTRB(
-                                        _gutter,
-                                        20,
-                                        _gutter,
-                                        24,
+                                      onLayout: _forgetRowsLaidOut,
+                                      child: SuperListView.builder(
+                                        controller: _scrollController,
+                                        listController: _listController,
+                                        itemCount: _feed.itemCount,
+                                        extentEstimation: _estimateExtent,
+                                        cacheExtent: 900,
+                                        padding: EdgeInsets.fromLTRB(
+                                          _gutter,
+                                          _chatTopPadding +
+                                              (_earlierRoom
+                                                  ? _earlierBarHeight
+                                                  : 0),
+                                          _gutter,
+                                          24,
+                                        ),
+                                        itemBuilder: (context, index) =>
+                                            _isHidden(index) &&
+                                                index != _editingIndex
+                                            ? _hiddenRow(index)
+                                            : _row(
+                                                index,
+                                                gap: _gapBefore(index),
+                                                child: _buildItem(index),
+                                              ),
                                       ),
-                                      itemBuilder: (context, index) =>
-                                          _isHidden(index) &&
-                                              index != _editingIndex
-                                          ? _hiddenRow(index)
-                                          : _row(
-                                              index,
-                                              gap: _gapBefore(index),
-                                              child: _buildItem(index),
-                                            ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
+                            _earlierBar(),
                             // Built in layout, after the list: the copy of
                             // the message at the top is there in the very frame
                             // the list is laid out (a conversation just opened
@@ -2015,6 +2335,9 @@ class _JumpToBottomButton extends StatelessWidget {
 class _BottomAnchoredScrollController extends ScrollController {
   bool anchored = true;
 
+  /// Once the list is laid out: how far to move it, laid out again then.
+  double Function()? laidOut;
+
   /// The device of the scroll signal being handled (set before the list
   /// handles it), so only mouse wheels get sped up.
   PointerDeviceKind? signalKind;
@@ -2075,6 +2398,11 @@ class _BottomAnchoredScrollPosition extends ScrollPositionWithSingleContext {
       // Re-run layout at the new offset; the virtual list may refine its
       // extent estimate for the tail, which converges in a pass or two.
       correctPixels(maxScrollExtent);
+      return false;
+    }
+    final move = hasPixels ? controller.laidOut?.call() ?? 0.0 : 0.0;
+    if (move.abs() >= 0.5) {
+      correctPixels(pixels + move);
       return false;
     }
     return accepted;
@@ -2920,5 +3248,37 @@ class _RenderHeightMotion extends RenderProxyBox {
       super.paint,
       oldLayer: _clip.layer,
     );
+  }
+}
+
+/// [child], [onLayout] called with it before it is laid out (once what is
+/// in it is built).
+class _BeforeLayout extends SingleChildRenderObjectWidget {
+  const _BeforeLayout({super.key, required this.onLayout, super.child});
+
+  final void Function(RenderObject child) onLayout;
+
+  @override
+  _RenderBeforeLayout createRenderObject(BuildContext context) =>
+      _RenderBeforeLayout(onLayout);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderBeforeLayout renderObject,
+  ) {
+    renderObject.onLayout = onLayout;
+  }
+}
+
+class _RenderBeforeLayout extends RenderProxyBox {
+  _RenderBeforeLayout(this.onLayout);
+
+  void Function(RenderObject child) onLayout;
+
+  @override
+  void performLayout() {
+    if (child case final child?) onLayout(child);
+    super.performLayout();
   }
 }

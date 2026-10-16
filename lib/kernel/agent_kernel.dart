@@ -266,6 +266,17 @@ abstract interface class LoadsHistory {
   /// Whether that conversation is still being read: it may take a while,
   /// e.g. from a remote project's host.
   bool get loadingHistory;
+
+  /// Whether there is more of it before what was read: a long one is read
+  /// from its end, the rest on asking (see [loadEarlier]).
+  bool get hasEarlierHistory;
+
+  /// Whether that is being read.
+  bool get loadingEarlier;
+
+  /// Reads some more of it, before what was ([HistoryPrepended]). Asked
+  /// again meanwhile, it is the same reading.
+  Future<void> loadEarlier();
 }
 
 /// Offers what the user would likely send next, after a turn.
