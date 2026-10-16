@@ -12,34 +12,31 @@
 
 文中用 `example.com` 代替你自己的域名，`link.example.com` 是要用的子域——**照着做的时候换成你自己的**。
 
-## 1. 为什么必须用 80 端口
+## 1. 地址要写成 `wss://`
 
-先理解这个约束，不然后面会卡住。
+先理解这一点，不然后面会卡住。
 
-手机端的连接地址是写死的 `ws://`（[`packages/bao_link/lib/src/io.dart`](../packages/bao_link/lib/src/io.dart) 的 `LinkConnector._race`），**没有 `wss://` 分支**。而 Cloudflare 的隧道入口在 **443 端口强制 HTTPS**——明文 `ws://` 请求会被它直接挡掉：
-
-```
-$ ws://link.example.com:443/baocode-link
-HTTP/1.1 400 Bad Request          ← 没进隧道就被拒了
-```
-
-它只在 **80 端口**上接受明文 `ws` 升级，再回源到本机。所以走法只有一条：
+Cloudflare 的隧道入口在 **443 端口只收 TLS**，所以手机要用 `wss://` 去连。公网地址写成 `wss://link.example.com`，手机就会走 TLS（[`packages/bao_link/lib/src/pairing.dart`](../packages/bao_link/lib/src/pairing.dart) 的 `DirectEndpoint.parse`，`secure` 为真）：
 
 ```
-手机 → ws://link.example.com:80/baocode-link
-     → Cloudflare（80，接受明文 ws 升级）
+手机 → wss://link.example.com:443/baocode-link
+     → Cloudflare（443，TLS 在这里卸掉）
      → 隧道 → http://localhost:47100（本机 LinkServer）
 ```
 
-三个实测结果：
+本机的 `LinkServer` 还是明文 `ws`，TLS 只在手机和 Cloudflare 之间；两端之间的内容本来就端到端加密，TLS 是外面再套一层。
+
+实测结果：
 
 | 走法 | 结果 |
 | --- | --- |
-| `wss://link.example.com:443/baocode-link` | ✅ 101（但客户端不会用 wss） |
-| `ws://link.example.com:80/baocode-link` | ✅ 101 ← **用这个** |
-| `ws://<任何域名>:443/baocode-link` | ❌ Cloudflare 400 |
+| `wss://link.example.com:443/baocode-link` | ✅ 101 ← **用这个** |
+| `ws://link.example.com:80/baocode-link` | ✅ 101（仅在 `always_use_https` 为 off 时） |
+| `ws://<任何域名>:443/baocode-link` | ❌ Cloudflare 400，443 上不收明文 |
 
-另外，域名的 **`always_use_https` 必须是 off**，否则 80 端口会 301 跳去 HTTPS，明文 `ws` 升级就断了。Cloudflare 默认是 off，一般不用改（第 2 步会检查）。
+用 `wss://` 时，域名的 **Always Use HTTPS 开着关着都行**，不用为了 BaoCode 去改它。
+
+> 旧版本手机只会用明文 `ws://`，只能走 80 端口，还要求 `always_use_https` 为 off。手机升级到新版后就不用管这些了。
 
 ## 2. 装好 MCP 并登录
 
@@ -77,14 +74,7 @@ async () => (await cloudflare.request({ method: 'GET', path: '/zones' })).result
   .map(z => ({ name: z.name, id: z.id }))
 ```
 
-顺便确认三件事：目标子域还没被占用、没有同名隧道、`always_use_https` 是 `off`：
-
-```js
-async () => (await cloudflare.request({
-  method: 'GET',
-  path: `/zones/${ZONE_ID}/settings/always_use_https`,
-})).result.value                       // 期望 "off"
-```
+顺便确认两件事：目标子域还没被占用、没有同名隧道。
 
 **b. 建隧道**：
 
@@ -233,38 +223,39 @@ launchctl bootout gui/$(id -u)/dev.baocode.cftunnel-link
 桌面端 → 设置 → 手机 → **公网地址**，填：
 
 ```
-link.example.com:80
+wss://link.example.com
 ```
 
-**必须带 `:80`。**不带端口的话会被当成默认端口 47100（[`lib/link/link_host.dart`](../lib/link/link_host.dart) 的 `_parse`），连到 Cloudflare 的 47100 上，不通。
+**必须带 `wss://`。**带上它端口默认就是 443；不带的话会被当成明文、端口当成本机的 47100（[`lib/link/link_host.dart`](../lib/link/link_host.dart) 的 `_parse`），连到 Cloudflare 的 47100 上，不通。写成 `https://link.example.com` 也一样。
 
-填好之后，桌面端会把它写进二维码的地址列表，手机连的时候就会走 `ws://link.example.com:80/baocode-link`。
+填好之后，桌面端会把它（存成 `wss://link.example.com:443`）写进二维码的地址列表，手机连的时候就会走 `wss://link.example.com:443/baocode-link`。已经配对过的手机，也可以在手机端的设备页里手动加这个地址。
 
 ## 7. 排错
 
 ```bash
 # 域名有没有回源到本机：两条都应返回 404 + 正文 "BaoCode"
-curl -s http://link.example.com:80/
+curl -s https://link.example.com/
 curl -s http://localhost:47100/
 
 # WebSocket 升级（要看到 101 Switching Protocols）
-curl -i -H "Connection: Upgrade" -H "Upgrade: websocket" \
+curl -i --http1.1 -H "Connection: Upgrade" -H "Upgrade: websocket" \
      -H "Sec-WebSocket-Version: 13" \
      -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
-     http://link.example.com:80/baocode-link
+     https://link.example.com/baocode-link
 ```
 
 | 现象 | 原因 |
 | --- | --- |
 | 503 + 日志 `No ingress rules` | 进程没拉到配置，重启它（第 4 节末尾的坑） |
 | 502 | ingress 生效了但回源失败：本机 47100 没在监听 |
+| 手机连不上，公网地址没写 `wss://` | 被当成了明文 `ws` 连 47100，改成 `wss://link.example.com`（第 6 节） |
 | `ws://…:443` 返回 400 | 正常，Cloudflare 在 443 上只收 TLS |
-| 浏览器能打开但手机连不上 | 手机走的是 `ws` 不是 `https`，别拿浏览器的结果判断 |
+| 浏览器能打开但手机连不上 | 浏览器只说明隧道通了；看手机端设备页里的地址是不是 `wss://` 开头 |
 | DNS 改了但解析没变 | 等几分钟；用 `dig link.example.com` 确认 |
 
 ## 8. 注意
 
-- **Cloudflare 免费版的服务条款禁止用非 Web 端口代理服务**。这里是在 80 端口跑 WebSocket 隧道，属于个人临时使用的范畴。如果是要长期、规模化地给很多用户用，请改用 [`mobile-link.md`](./mobile-link.md) §5 里预留的中转方案（`RelayEndpoint`），也就是走 Cloudflare Workers 而不是隧道。
+- 走的是标准的 443 + WebSocket，Cloudflare 各套餐都支持。不过隧道适合个人使用；如果是要长期、规模化地给很多用户用，请改用 [`mobile-link.md`](./mobile-link.md) §5 里预留的中转方案（`RelayEndpoint`），也就是走 Cloudflare Workers 而不是隧道。
 - 隧道是**绑定这台机器**的。换机器要重新装 token 和 plist。
 - 隧道 token 是凭据，泄露了别人就能往你的隧道上挂服务。**别提交进 git**，别贴给别人。要作废就删掉隧道重新建一条。
 - 根路径返回 404、正文是 `BaoCode` 是**正常的**：`LinkServer` 只处理 `/baocode-link` 的 WebSocket 升级，别的路径一律 404。
