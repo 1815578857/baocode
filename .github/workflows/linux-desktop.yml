@@ -1,0 +1,37 @@
+# Ubuntu desktop package. The app's own release workflow only builds macOS
+# and Windows; this one builds the GTK runner in linux/ and wraps it.
+name: Ubuntu desktop
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ubuntu-desktop, linux-desktop]
+
+jobs:
+  linux:
+    name: Build for Ubuntu
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.5
+          cache: true
+      - name: Install GTK build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+      - name: Resolve packages
+        run: flutter pub get
+      - name: Build the release bundle
+        run: flutter build linux --release
+      - name: Package deb and tarball
+        run: bash tool/package_linux_deb.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-desktop
+          if-no-files-found: error
+          path: |
+            build/installers/BaoCode-*-linux-amd64.deb
+            build/installers/BaoCode-*-linux-amd64.tar.gz

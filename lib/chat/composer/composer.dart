@@ -283,7 +283,7 @@ class ChatComposerState extends State<ChatComposer>
       await insertFiles(files, here: true);
       return true;
     }
-    final text = (await Clipboard.getData(Clipboard.kTextPlain))?.text;
+    final text = await WindowControls.readPasteboardText();
     if (!mounted) return false;
     if (text != null && !raw) {
       if (CopiedCode.matching(text) case final code?) {
