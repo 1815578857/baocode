@@ -440,6 +440,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   @override
   void initState() {
     super.initState();
+    _scrollController.laidOut = _keepShownLaidOut;
     _find
       ..feed = _feed
       ..addListener(_findChanged);
@@ -652,9 +653,10 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     await Future<void>.delayed(Duration.zero);
     _held = null;
     if (!mounted) return;
-    _earlierFailed =
+    final failed =
         session.hasEarlierHistory && session.prependedCount == before;
-    if (!_earlierFailed) _wantEarlier();
+    if (failed != _earlierFailed) setState(() => _earlierFailed = failed);
+    if (!failed) _wantEarlier();
   }
 
   /// The first row that shows any of it, and how far its top is above the
@@ -693,6 +695,13 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     _unfoldedTurns
       ..clear()
       ..addAll(unfolded);
+    final motions = {
+      for (final MapEntry(:key, :value) in _motions.entries) key + count: value,
+    };
+    _motions
+      ..clear()
+      ..addAll(motions);
+    _hiddenRows.clear();
     _seenItems += count;
     _appearing.clear();
     _endHandoff();
@@ -703,6 +712,104 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     if (_feed.editing case (:final index, :final draft)) {
       _feed.editing = (index: index + count, draft: draft);
     }
+  }
+
+  /// [count] rows are put before the others, not laid out yet: the list
+  /// takes them as new rows before its first (it would take them as rows
+  /// after its last, the extents it measured moved to other rows), and
+  /// moves down by them at once, so what is shown stays where it is, not a
+  /// frame of them shown in its place. False when it cannot now.
+  bool _keepAbove(int count) {
+    if (!_scrollController.hasClients ||
+        !_listController.isAttached ||
+        _listController.isLocked ||
+        _listController.numberOfItems + count != _feed.itemCount) {
+      return false;
+    }
+    final position = _scrollController.position;
+    if (!position.hasPixels) return false;
+    var above = 0.0;
+    for (var i = 0; i < count; i++) {
+      // Estimated as row i.
+      _listController.addItem(i);
+      above += _listController.extentForIndex(i).$1;
+    }
+    if (_firstShown() case (:final index, above: _)) {
+      // Still laid out as it was, at its index before.
+      _keepShown = switch (_endAboveOf(index + count, laidOutAt: index)) {
+        final end? => (index: index + count, above: end),
+        null => null,
+      };
+    }
+    // Not a jump: one would take the end as it was, and keep to it.
+    position.correctBy(above);
+    _forgetRows = true;
+    _listKey.currentContext?.findRenderObject()?.markNeedsLayout();
+    return true;
+  }
+
+  /// The row shown first when rows were put before it, and how far its end
+  /// was above the view's top: put back there once the list is laid out.
+  ({int index, double above})? _keepShown;
+
+  /// How far the list is to move to put the row shown first back where it
+  /// was (see [_keepShown]), once laid out: the rows before it laid out,
+  /// those estimated, but the one the view's top came to, measured below
+  /// it.
+  double _keepShownLaidOut() {
+    final keep = _keepShown;
+    _keepShown = null;
+    if (keep == null) return 0;
+    final above = _endAboveOf(keep.index);
+    return above == null ? 0 : keep.above - above;
+  }
+
+  /// How far row [index]'s end is above the view's top, if it is laid out:
+  /// by where the list has it, so also while it is laid out. Its end, not
+  /// its top: the room above it is not the same when a turn comes before
+  /// it.
+  double? _endAboveOf(int index, {int? laidOutAt}) {
+    final sliver = _findSliver();
+    if (sliver == null || !_scrollController.hasClients) return null;
+    for (var child = sliver.firstChild; child != null;) {
+      final data = child.parentData! as SliverMultiBoxAdaptorParentData;
+      if (data.index == (laidOutAt ?? index)) {
+        final offset = data.layoutOffset;
+        if (offset == null) return null;
+        return _scrollController.position.pixels -
+            sliver.constraints.precedingScrollExtent -
+            offset -
+            _listController.extentForIndex(index).$1;
+      }
+      child = sliver.childAfter(child);
+    }
+    return null;
+  }
+
+  /// The rows laid out are let go before the list is next laid out (see
+  /// [_forgetRowsLaidOut]).
+  bool _forgetRows = false;
+
+  /// Lets go of the rows laid out, once built with the items now at their
+  /// indexes: kept where they are, each would show the item now at its
+  /// index where the one before was, and the list keep to them. Laid out
+  /// anew, from the extents, the list keeps what is shown in place as it
+  /// measures the rows before it.
+  void _forgetRowsLaidOut(RenderObject list) {
+    if (!_forgetRows) return;
+    _forgetRows = false;
+    void forget(RenderObject node) {
+      if (node is RenderSliverMultiBoxAdaptor) {
+        node.visitChildren((child) {
+          (child.parentData! as SliverMultiBoxAdaptorParentData).layoutOffset =
+              null;
+        });
+      } else {
+        node.visitChildren(forget);
+      }
+    }
+
+    forget(list);
   }
 
   /// Puts row [index] where it was (see [_held]), [above] its top above the
@@ -719,8 +826,9 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     );
   }
 
-  /// The bar above the first item: reads the earlier turns on a press, or
-  /// shows they are being read. It scrolls with the list.
+  /// The bar above the first item: shows the earlier turns are read, as
+  /// they are once it is near; reads them on a press, once that brought
+  /// nothing. It scrolls with the list.
   Widget _earlierBar() => Positioned.fill(
     child: ListenableBuilder(
       listenable: Listenable.merge([_scrollController, _feed]),
@@ -744,14 +852,14 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
               right: 0,
               height: _earlierBarHeight,
               child: Center(
-                child: session.loadingEarlier
+                child: session.loadingEarlier || !_earlierFailed
                     ? const SizedBox.square(
                         dimension: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : TextButton(
                         onPressed: () {
-                          _earlierFailed = false;
+                          setState(() => _earlierFailed = false);
                           _loadEarlier();
                         },
                         style: TextButton.styleFrom(
@@ -1030,15 +1138,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     final prepended = _session?.prependedCount ?? 0;
     final moved = prepended - _prependedSeen;
     _prependedSeen = prepended;
-    if (moved > 0) {
-      _shiftIndexes(moved);
-      if (_held case (:final index, :final above)) {
-        _held = null;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _keepAt(index + moved, above);
-        });
-      }
-    }
+    if (moved > 0) _shiftIndexes(moved);
     final startedStreaming = _feed.isStreaming && !_wasLive;
     final ended = _wasLive && !_feed.isStreaming;
     _wasLive = _feed.isStreaming;
@@ -1046,6 +1146,17 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     // leaves the user reading where they are, the turns they read open.
     final sent = _feed.isStreaming && !_feed.isUnprompted;
     _refold();
+    // Once folded: what of them is hidden takes no room.
+    if (moved > 0) {
+      if (_keepAbove(moved)) {
+        _held = null;
+      } else if (_held case (:final index, :final above)) {
+        _held = null;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _keepAt(index + moved, above);
+        });
+      }
+    }
     if (sent) _unfoldedTurns.clear();
     if (ended && !_atBottom) {
       if (_lastTurnWork() case final fold?) _unfoldedTurns.add(fold.start);
@@ -2027,31 +2138,34 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                                       .copyWith(scrollbars: false),
                                   child: ChatFindScope(
                                     find: _find,
-                                    child: SuperListView.builder(
+                                    child: _BeforeLayout(
                                       key: _listKey,
-                                      controller: _scrollController,
-                                      listController: _listController,
-                                      itemCount: _feed.itemCount,
-                                      extentEstimation: _estimateExtent,
-                                      cacheExtent: 900,
-                                      padding: EdgeInsets.fromLTRB(
-                                        _gutter,
-                                        _chatTopPadding +
-                                            (_earlierRoom
-                                                ? _earlierBarHeight
-                                                : 0),
-                                        _gutter,
-                                        24,
+                                      onLayout: _forgetRowsLaidOut,
+                                      child: SuperListView.builder(
+                                        controller: _scrollController,
+                                        listController: _listController,
+                                        itemCount: _feed.itemCount,
+                                        extentEstimation: _estimateExtent,
+                                        cacheExtent: 900,
+                                        padding: EdgeInsets.fromLTRB(
+                                          _gutter,
+                                          _chatTopPadding +
+                                              (_earlierRoom
+                                                  ? _earlierBarHeight
+                                                  : 0),
+                                          _gutter,
+                                          24,
+                                        ),
+                                        itemBuilder: (context, index) =>
+                                            _isHidden(index) &&
+                                                index != _editingIndex
+                                            ? _hiddenRow(index)
+                                            : _row(
+                                                index,
+                                                gap: _gapBefore(index),
+                                                child: _buildItem(index),
+                                              ),
                                       ),
-                                      itemBuilder: (context, index) =>
-                                          _isHidden(index) &&
-                                              index != _editingIndex
-                                          ? _hiddenRow(index)
-                                          : _row(
-                                              index,
-                                              gap: _gapBefore(index),
-                                              child: _buildItem(index),
-                                            ),
                                     ),
                                   ),
                                 ),
@@ -2221,6 +2335,9 @@ class _JumpToBottomButton extends StatelessWidget {
 class _BottomAnchoredScrollController extends ScrollController {
   bool anchored = true;
 
+  /// Once the list is laid out: how far to move it, laid out again then.
+  double Function()? laidOut;
+
   /// The device of the scroll signal being handled (set before the list
   /// handles it), so only mouse wheels get sped up.
   PointerDeviceKind? signalKind;
@@ -2281,6 +2398,11 @@ class _BottomAnchoredScrollPosition extends ScrollPositionWithSingleContext {
       // Re-run layout at the new offset; the virtual list may refine its
       // extent estimate for the tail, which converges in a pass or two.
       correctPixels(maxScrollExtent);
+      return false;
+    }
+    final move = hasPixels ? controller.laidOut?.call() ?? 0.0 : 0.0;
+    if (move.abs() >= 0.5) {
+      correctPixels(pixels + move);
       return false;
     }
     return accepted;
@@ -3126,5 +3248,37 @@ class _RenderHeightMotion extends RenderProxyBox {
       super.paint,
       oldLayer: _clip.layer,
     );
+  }
+}
+
+/// [child], [onLayout] called with it before it is laid out (once what is
+/// in it is built).
+class _BeforeLayout extends SingleChildRenderObjectWidget {
+  const _BeforeLayout({super.key, required this.onLayout, super.child});
+
+  final void Function(RenderObject child) onLayout;
+
+  @override
+  _RenderBeforeLayout createRenderObject(BuildContext context) =>
+      _RenderBeforeLayout(onLayout);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderBeforeLayout renderObject,
+  ) {
+    renderObject.onLayout = onLayout;
+  }
+}
+
+class _RenderBeforeLayout extends RenderProxyBox {
+  _RenderBeforeLayout(this.onLayout);
+
+  void Function(RenderObject child) onLayout;
+
+  @override
+  void performLayout() {
+    if (child case final child?) onLayout(child);
+    super.performLayout();
   }
 }

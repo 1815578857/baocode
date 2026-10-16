@@ -698,17 +698,18 @@ Map<String, Object?> _slim(Map<String, Object?> entry) {
     slim['toolUseResult'] = {...result}..remove('originalFile');
   }
   if (results) {
-    // A file read is shown by its start.
-    Object? cut(Object? content) => switch (content) {
-      final String text when read && text.length > _readShown =>
+    // A file read is shown by its start (a failed call by its end: left
+    // whole).
+    Object? cut(Object? content, bool shorten) => switch (content) {
+      final String text when shorten && text.length > _readShown =>
         '${text.substring(0, _readShown)}…',
       final List<Object?> blocks => [
         for (final block in blocks)
-          if (block is! Map || block['type'] != 'image') cut(block),
+          if (block is! Map || block['type'] != 'image') cut(block, shorten),
       ],
       {'type': 'text', 'text': final String text} => {
         ...content as Map,
-        'text': cut(text),
+        'text': cut(text, shorten),
       },
       _ => content,
     };
@@ -717,7 +718,13 @@ Map<String, Object?> _slim(Map<String, Object?> entry) {
       'content': [
         for (final block in _blocks(entry))
           if (block['type'] == 'tool_result')
-            {...block, 'content': cut(block['content'])}
+            {
+              ...block,
+              'content': cut(
+                block['content'],
+                read && block['is_error'] != true,
+              ),
+            }
           else
             block,
       ],
