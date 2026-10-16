@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path/path.dart' as p;
 
 import '../platform/app_paths.dart';
@@ -10,7 +11,13 @@ import 'stash_disk.dart';
 
 /// The stash folder on this machine: `~/BaoCode/Stash` by default.
 class FileStashDisk implements StashDisk {
-  FileStashDisk([String? root]) : root = root ?? defaultRoot;
+  FileStashDisk([String? root, @visibleForTesting this._watchFolder = _watchOf])
+    : root = root ?? defaultRoot;
+
+  static Stream<FileSystemEvent> _watchOf(Directory folder) => folder.watch();
+
+  /// How the folder is watched: the system's, or a test's events.
+  final Stream<FileSystemEvent> Function(Directory folder) _watchFolder;
 
   static String get defaultRoot =>
       p.join(AppPaths.home(Platform.environment), 'BaoCode', 'Stash');
@@ -277,10 +284,19 @@ class FileStashDisk implements StashDisk {
   Future<void> _startWatching() async {
     final folder = await _folder();
     try {
-      _watch = folder.watch().listen((event) {
-        final name = p.basename(event.path);
-        if (!_name.hasMatch(name)) return;
-        if (_ownWrites.remove(name)) return;
+      _watch = _watchFolder(folder).listen((event) {
+        // A file written whole and moved in place (this app's writes, an
+        // agent's) is, on Windows and Linux, one move: from the temporary
+        // file to the stash's.
+        var changed = false;
+        for (final path in [
+          event.path,
+          if (event case FileSystemMoveEvent(:final destination?)) destination,
+        ]) {
+          final name = p.basename(path);
+          if (_name.hasMatch(name) && !_ownWrites.remove(name)) changed = true;
+        }
+        if (!changed) return;
         // A burst of events (an editor's save) as one.
         _settle?.cancel();
         _settle = Timer(const Duration(milliseconds: 300), () {
