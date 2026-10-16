@@ -111,6 +111,14 @@ class FakeCli implements ClaudeCodeTransport {
           'get_context_usage' => _context,
           _ => const <String, Object?>{},
         };
+    // As the CLI does: the message cancelled is told of before the answer.
+    if (subtype == 'cancel_async_message' && payload['cancelled'] == true) {
+      push({
+        'type': 'command_lifecycle',
+        'command_uuid': (message['request'] as Map)['message_uuid'],
+        'state': 'cancelled',
+      });
+    }
     push({
       'type': 'control_response',
       'response': {

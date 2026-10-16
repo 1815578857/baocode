@@ -775,13 +775,13 @@ class ClaudeCodeKernel
       final response = await _control!.request('cancel_async_message', {
         'message_uuid': turnId,
       });
-      if (response['cancelled'] != true || !_queued.remove(turnId)) {
-        return false;
-      }
+      if (response['cancelled'] != true) return false;
     } on Object {
       return false;
     }
-    emit(ItemRemoved(nextSeq, turnId));
+    // The CLI tells of it as cancelled before it answers: then already
+    // taken out (see _lifecycle).
+    if (_queued.remove(turnId)) emit(ItemRemoved(nextSeq, turnId));
     return true;
   }
 
