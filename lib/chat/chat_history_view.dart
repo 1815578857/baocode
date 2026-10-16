@@ -30,6 +30,7 @@ import 'widgets/chat_item_view.dart';
 import 'widgets/chat_minimap.dart';
 import 'widgets/edge_fade_mask.dart';
 import 'widgets/fold_line.dart';
+import 'widgets/hover_builder.dart';
 import 'widgets/turn_footer.dart';
 import 'widgets/user_message_bubble.dart';
 
@@ -857,16 +858,35 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                         dimension: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : TextButton(
-                        onPressed: () {
-                          setState(() => _earlierFailed = false);
-                          _loadEarlier();
-                        },
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          textStyle: const TextStyle(fontSize: 12),
+                    : HoverBuilder(
+                        cursor: SystemMouseCursors.click,
+                        builder: (context, hovered) => GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            setState(() => _earlierFailed = false);
+                            _loadEarlier();
+                          },
+                          child: Container(
+                            height: 24,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: hovered
+                                  ? themeColors['toolbar.hoverBackground']
+                                  : null,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              context.l10n.chatLoadEarlier,
+                              style: TextStyle(
+                                color: hovered
+                                    ? AppColors.textPrimary
+                                    : AppColors.textMuted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
                         ),
-                        child: Text(context.l10n.chatLoadEarlier),
                       ),
               ),
             ),
