@@ -4137,6 +4137,37 @@ exec /bin/sh -c "\$command"
       );
       expect(asked['ASKED'], '-i');
     }, skip: Platform.isWindows);
+
+    // A function bash exports (environment modules' `ml`) is a value of
+    // more than one line: cut at the first, the terminal's bash fails to
+    // read it in.
+    const function = '() {  eval "\$(lmod)"\n  x=1\n}';
+    const exportFunction = r'''
+FUNC="$(printf '() {  eval "$(lmod)"\n  x=1\n}')"; export FUNC''';
+
+    test('keeps a value of more than one line whole', () async {
+      shell(exportFunction);
+      final asked = await ClaudeEnvironment.of();
+      expect(asked['FUNC'], function);
+      expect(asked.keys.where((name) => name.contains(' ')), isEmpty);
+    }, skip: Platform.isWindows);
+
+    test('keeps it whole from an env that cannot print NUL-separated '
+        '(BusyBox\'s)', () async {
+      final bin = Directory('${root.path}/bin')..createSync();
+      final env = File('${bin.path}/env')
+        ..writeAsStringSync('''
+#!/bin/sh
+[ "\$1" = -0 ] && exit 1
+exec /usr/bin/env "\$@"
+''');
+      Process.runSync('chmod', ['+x', env.path]);
+      shell('$exportFunction; PATH="${bin.path}:\$PATH"; export PATH');
+      final asked = await ClaudeEnvironment.of();
+      expect(asked['FUNC'], function);
+      expect(asked.keys.where((name) => name.contains(' ')), isEmpty);
+      expect(asked['PATH'], startsWith(bin.path));
+    }, skip: Platform.isWindows);
   });
 
   group('Claude Code storage', () {
