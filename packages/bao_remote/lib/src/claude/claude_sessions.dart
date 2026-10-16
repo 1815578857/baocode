@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 
 import '../platform/app_paths.dart';
 import 'claude_environment.dart';
+import 'claude_history_page.dart';
 
 /// A session Claude Code kept: its title, the folder it ran in, and when
 /// it was last talked in.
@@ -124,6 +125,16 @@ class ClaudeSessions {
   /// The session's conversation along the branch it ended on.
   static Future<List<Map<String, Object?>>> read(String path) =>
       Isolate.run(() => _branch(path));
+
+  /// The last [turns] of the session's conversation, along the branch it
+  /// ended on; or the [turns] before the line [before] (see
+  /// [ClaudeHistoryPage.earlier]). A long one is shown sooner so, from a
+  /// remote project's host above all.
+  static Future<ClaudeHistoryPage> readPage(
+    String path, {
+    required int turns,
+    String? before,
+  }) => Isolate.run(() => _page(_branch(path), turns: turns, before: before));
 
   /// What the session [id] kept of its goal (`/goal`): its `goal_status`
   /// lines, as they are, in the order written. Empty with none, or no such
@@ -594,6 +605,50 @@ List<Map<String, Object?>> _branch(String path) {
       if (_kept(entry)) entry,
   ];
 }
+
+/// [turns] of [branch], ending before the line [before] (its end when
+/// null), cut where the user began one: a turn's calls and their results
+/// stay together. The first page has how the goal stood all along: it is
+/// worked out from every record, which no other page has then.
+ClaudeHistoryPage _page(
+  List<Map<String, Object?>> branch, {
+  required int turns,
+  String? before,
+}) {
+  var end = branch.length;
+  if (before != null) {
+    // Gone, the session rewound meanwhile: nothing more before it.
+    end = branch.indexWhere((entry) => entry['uuid'] == before);
+    if (end < 0) return const ClaudeHistoryPage([]);
+  }
+  var start = 0;
+  var seen = 0;
+  for (var i = end - 1; i >= 0 && seen < turns; i--) {
+    if (_isPrompt(branch[i])) {
+      seen++;
+      start = i;
+    }
+  }
+  if (seen < turns) start = 0;
+  bool isGoal(Map<String, Object?> entry) => entry['type'] == 'attachment';
+  return ClaudeHistoryPage(
+    [
+      if (before == null) ...branch.take(start).where(isGoal),
+      for (final entry in branch.sublist(start, end))
+        if (before == null || !isGoal(entry)) entry,
+    ],
+    earlier: start > 0 ? branch[start]['uuid'] as String? : null,
+  );
+}
+
+/// Whether [entry] is the user beginning a turn.
+bool _isPrompt(Map<String, Object?> entry) =>
+    entry['type'] == 'user' &&
+    entry['isSidechain'] != true &&
+    entry['isMeta'] != true &&
+    entry['isCompactSummary'] != true &&
+    entry['uuid'] is String &&
+    _promptText(entry) != null;
 
 /// Whether [entry] is read back: a message, or how the session's goal
 /// stood (set, checked, met), which may follow the last message.

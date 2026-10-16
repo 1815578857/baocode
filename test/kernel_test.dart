@@ -5,7 +5,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bao_remote/claude.dart' show ClaudeNotInstalled;
+import 'package:bao_remote/claude.dart'
+    show ClaudeHistoryPage, ClaudeNotInstalled;
 import 'package:baocode/chat/chat_models.dart';
 import 'package:baocode/chat/widgets/tool_call_row.dart';
 import 'package:baocode/chat/chat_session.dart';
@@ -2117,6 +2118,153 @@ void main() {
       );
       expect(kernel.loadingHistory, isFalse);
       kernel.dispose();
+    });
+
+    group('a long session is read from its end', () {
+      Map<String, Object?> prompt(String id) => {
+        'type': 'user',
+        'uuid': id,
+        'message': {'role': 'user', 'content': id},
+      };
+
+      Map<String, Object?> answer(String id, int written) => {
+        'type': 'assistant',
+        'uuid': 'a-$id',
+        'message': {
+          'id': 'm-$id',
+          'role': 'assistant',
+          'model': 'claude-opus-5-5',
+          'content': [
+            {'type': 'text', 'text': 'answer $id'},
+          ],
+          'usage': {
+            'input_tokens': 1,
+            'cache_read_input_tokens': 0,
+            'cache_creation_input_tokens': written,
+          },
+        },
+      };
+
+      ClaudeCodeKernel open(ClaudeHistoryPager pager) => ClaudeCodeKernel(
+        MockKernels.claudeCode,
+        KernelContext(
+          cwd: '/p',
+          resume: SessionRecord(
+            id: 's',
+            title: 't',
+            updatedAt: DateTime(2026),
+            cwd: '/p',
+          ),
+        ),
+        start: (_) async => FakeCli(),
+        readHistoryPage: pager,
+      );
+
+      List<String> prompts(Transcript transcript) => [
+        for (final (_, item) in transcript.liveItems)
+          if (item is UserMessageItem) item.text,
+      ];
+
+      test('replays the first page, and the earlier ones go before it', () async {
+        final asked = <(int, String?)>[];
+        final kernel = open((session, {required turns, before}) async {
+          asked.add((turns, before));
+          return before == null
+              ? ClaudeHistoryPage([
+                  prompt('u3'),
+                  answer('u3', 300),
+                  prompt('u4'),
+                  answer('u4', 400),
+                ], earlier: 'u3')
+              : ClaudeHistoryPage([
+                  prompt('u1'),
+                  answer('u1', 100),
+                  prompt('u2'),
+                  answer('u2', 200),
+                ]);
+        });
+        final transcript = Transcript();
+        kernel.events.listen(transcript.apply);
+        await pumpEventQueue();
+        expect(asked, [(10, null)]);
+        expect(prompts(transcript), ['u3', 'u4']);
+        expect(kernel.hasEarlierHistory, isTrue);
+        expect(transcript.stats!.cache!.conversation.written, 700);
+        final lastSeq = transcript.lastSeq;
+
+        await kernel.loadEarlier();
+        await pumpEventQueue();
+        expect(asked.last, (20, 'u3'));
+        expect(prompts(transcript), ['u1', 'u2', 'u3', 'u4']);
+        expect(transcript.lastSeq, greaterThan(lastSeq));
+        expect(kernel.hasEarlierHistory, isFalse);
+        expect(kernel.loadingEarlier, isFalse);
+        // Counted once each, not again for the page read later.
+        expect(transcript.stats!.cache!.conversation.written, 1000);
+
+        // Nothing before: nothing is read.
+        await kernel.loadEarlier();
+        expect(asked, hasLength(2));
+        kernel.dispose();
+      });
+
+      test('asked again while it is read, it is the same reading', () async {
+        final read = Completer<ClaudeHistoryPage>();
+        var reads = 0;
+        final kernel = open((session, {required turns, before}) {
+          if (before == null) {
+            return Future.value(
+              ClaudeHistoryPage([prompt('u2'), answer('u2', 1)], earlier: 'u2'),
+            );
+          }
+          reads++;
+          return read.future;
+        });
+        final transcript = Transcript();
+        kernel.events.listen(transcript.apply);
+        await pumpEventQueue();
+
+        final first = kernel.loadEarlier();
+        final second = kernel.loadEarlier();
+        expect(kernel.loadingEarlier, isTrue);
+        expect(reads, 1);
+        read.complete(ClaudeHistoryPage([prompt('u1'), answer('u1', 1)]));
+        await Future.wait([first, second]);
+        await pumpEventQueue();
+        expect(reads, 1);
+        expect(prompts(transcript), ['u1', 'u2']);
+        expect(kernel.loadingEarlier, isFalse);
+        kernel.dispose();
+      });
+
+      test('a reading that fails can be tried again', () async {
+        var fail = true;
+        final kernel = open((session, {required turns, before}) async {
+          if (before == null) {
+            return ClaudeHistoryPage([prompt('u2')], earlier: 'u2');
+          }
+          if (fail) throw StateError('host unreachable');
+          return ClaudeHistoryPage([prompt('u1')]);
+        });
+        final transcript = Transcript();
+        kernel.events.listen(transcript.apply);
+        await pumpEventQueue();
+
+        await kernel.loadEarlier();
+        await pumpEventQueue();
+        expect(kernel.hasEarlierHistory, isTrue);
+        expect(
+          transcript.liveItems.map((e) => e.$1),
+          contains('history-error'),
+        );
+
+        fail = false;
+        await kernel.loadEarlier();
+        await pumpEventQueue();
+        expect(prompts(transcript), ['u1', 'u2']);
+        expect(kernel.hasEarlierHistory, isFalse);
+        kernel.dispose();
+      });
     });
 
     test('reports the prompt cache, from the session file then live', () async {

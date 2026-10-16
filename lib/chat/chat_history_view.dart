@@ -447,6 +447,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     _feed.addListener(_handleSessionChanged);
     UserMessageStyle.current.addListener(_handleStyleChanged);
     _wasLive = _feed.isStreaming;
+    _prependedSeen = _session?.prependedCount ?? 0;
     _refold();
     _seeItems();
     _resumeEditing();
@@ -581,6 +582,192 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
           const Duration(milliseconds: 250) ||
       _scrollController.position.userScrollDirection != ScrollDirection.idle;
 
+  // --- Earlier turns -----------------------------------------------------------
+  //
+  // A long conversation is read from its end (see [LoadsHistory]): the turns
+  // before are read when the list is scrolled near its top, or the bar above
+  // its first item is pressed. That bar is not a row of the list, so no index
+  // is moved by it; the room for it is the list's top padding.
+
+  /// The list's room above its first item, and the bar's height after it.
+  static const _chatTopPadding = 20.0;
+  static const _earlierBarHeight = 40.0;
+
+  /// How near the top the list is scrolled before the earlier turns are read.
+  static const _earlierReach = 300.0;
+
+  ChatSession? get _session => switch (_feed) {
+    final ChatSession session => session,
+    _ => null,
+  };
+
+  /// There were earlier turns to read: the room for the bar stays, as it
+  /// goes with the last of them.
+  bool _earlierSeen = false;
+
+  bool get _earlierRoom {
+    final session = _session;
+    if (session != null &&
+        (session.hasEarlierHistory || session.loadingEarlier)) {
+      _earlierSeen = true;
+    }
+    return _earlierSeen;
+  }
+
+  /// Reading them brought nothing: not tried again until asked to.
+  bool _earlierFailed = false;
+  bool _earlierQueued = false;
+
+  /// How many items were put before the others, as last seen.
+  int _prependedSeen = 0;
+
+  /// The first item shown, and how far its top is above the view's, when the
+  /// earlier turns were asked for: to put it back where it was.
+  ({int index, double above})? _held;
+
+  /// Reads the earlier turns once the frame is done, if the list is near its
+  /// top (and it is not the first read, nor under way).
+  void _wantEarlier() {
+    if (_earlierQueued || _session?.hasEarlierHistory != true) return;
+    _earlierQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _earlierQueued = false;
+      if (!mounted || _earlierFailed || !_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      if (!position.hasContentDimensions) return;
+      if (position.pixels - position.minScrollExtent <= _earlierReach) {
+        _loadEarlier();
+      }
+    });
+  }
+
+  Future<void> _loadEarlier() async {
+    final session = _session;
+    if (session == null || !session.hasEarlierHistory) return;
+    if (session.loadingEarlier) return;
+    final before = session.prependedCount;
+    _held = _firstShown();
+    await session.loadEarlier();
+    // Its items come with the kernel's events, a moment later.
+    await Future<void>.delayed(Duration.zero);
+    _held = null;
+    if (!mounted) return;
+    _earlierFailed =
+        session.hasEarlierHistory && session.prependedCount == before;
+    if (!_earlierFailed) _wantEarlier();
+  }
+
+  /// The first row that shows any of it, and how far its top is above the
+  /// view's (below it, if less than 0).
+  ({int index, double above})? _firstShown() {
+    for (final item in _laidOutItems()) {
+      if (RenderAbstractViewport.maybeOf(item) case final RenderBox viewport) {
+        final top = viewport.localToGlobal(Offset.zero).dy;
+        final itemTop = item.localToGlobal(Offset.zero).dy;
+        if (itemTop + item.size.height <= top) continue;
+        return (index: _indexOf(item), above: top - itemTop);
+      }
+      return null;
+    }
+    return null;
+  }
+
+  /// [count] items were put before the others: what is kept by index moves
+  /// with its items.
+  void _shiftIndexes(int count) {
+    final expanded = {
+      for (final MapEntry(:key, :value) in _expanded.entries)
+        key + count: value,
+    };
+    _expanded
+      ..clear()
+      ..addAll(expanded);
+    final opened = {
+      for (final MapEntry(key: (kind, start), :value) in _foldOpen.entries)
+        (kind, start + count): value,
+    };
+    _foldOpen
+      ..clear()
+      ..addAll(opened);
+    final unfolded = {for (final start in _unfoldedTurns) start + count};
+    _unfoldedTurns
+      ..clear()
+      ..addAll(unfolded);
+    _seenItems += count;
+    _appearing.clear();
+    _endHandoff();
+    _stickyKeys.clear();
+    _stickyIndices = const {};
+    if (_editingIndex case final index?) _editingIndex = index + count;
+    if (_closingIndex case final index?) _closingIndex = index + count;
+    if (_feed.editing case (:final index, :final draft)) {
+      _feed.editing = (index: index + count, draft: draft);
+    }
+  }
+
+  /// Puts row [index] where it was (see [_held]), [above] its top above the
+  /// view's, once the rows put before it are laid out.
+  void _keepAt(int index, double above) {
+    if (!_scrollController.hasClients || !_listController.isAttached) return;
+    if (index >= _feed.itemCount) return;
+    final height = _scrollController.position.viewportDimension;
+    _listController.jumpToItem(
+      index: index,
+      scrollController: _scrollController,
+      alignment: above < 0 && height > 0 ? -above / height : 0,
+      rect: Rect.fromLTWH(0, math.max(above, 0), 0, 0),
+    );
+  }
+
+  /// The bar above the first item: reads the earlier turns on a press, or
+  /// shows they are being read. It scrolls with the list.
+  Widget _earlierBar() => Positioned.fill(
+    child: ListenableBuilder(
+      listenable: Listenable.merge([_scrollController, _feed]),
+      builder: (context, _) {
+        final session = _session;
+        final position = _scrollController.hasClients
+            ? _scrollController.position
+            : null;
+        if (session == null ||
+            position == null ||
+            !position.hasPixels ||
+            !(session.hasEarlierHistory || session.loadingEarlier) ||
+            position.pixels > _chatTopPadding + _earlierBarHeight) {
+          return const SizedBox.shrink();
+        }
+        return Stack(
+          children: [
+            Positioned(
+              top: _chatTopPadding - position.pixels,
+              left: 0,
+              right: 0,
+              height: _earlierBarHeight,
+              child: Center(
+                child: session.loadingEarlier
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : TextButton(
+                        onPressed: () {
+                          _earlierFailed = false;
+                          _loadEarlier();
+                        },
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          textStyle: const TextStyle(fontSize: 12),
+                        ),
+                        child: Text(context.l10n.chatLoadEarlier),
+                      ),
+              ),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+
   void _handleScroll() {
     if (_userScrolling) {
       final position = _scrollController.position;
@@ -599,6 +786,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     _syncEdgeFades();
     _scheduleStickyUpdate();
     if (_pointersDown > 0) _scheduleDragReselect();
+    _wantEarlier();
   }
 
   /// Flutter only extends a drag selection when the pointer moves (or on its
@@ -829,6 +1017,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     _syncEdgeFades();
     _scheduleStickyUpdate();
     _editorMoved.value++;
+    _wantEarlier();
     return false;
   }
 
@@ -838,6 +1027,18 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   }
 
   void _handleSessionChanged() {
+    final prepended = _session?.prependedCount ?? 0;
+    final moved = prepended - _prependedSeen;
+    _prependedSeen = prepended;
+    if (moved > 0) {
+      _shiftIndexes(moved);
+      if (_held case (:final index, :final above)) {
+        _held = null;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _keepAt(index + moved, above);
+        });
+      }
+    }
     final startedStreaming = _feed.isStreaming && !_wasLive;
     final ended = _wasLive && !_feed.isStreaming;
     _wasLive = _feed.isStreaming;
@@ -863,6 +1064,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     _itemsCame();
     _scheduleStickyUpdate();
     setState(() {});
+    _wantEarlier();
   }
 
   void _startEditing(int index) {
@@ -1834,7 +2036,10 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                                       cacheExtent: 900,
                                       padding: EdgeInsets.fromLTRB(
                                         _gutter,
-                                        20,
+                                        _chatTopPadding +
+                                            (_earlierRoom
+                                                ? _earlierBarHeight
+                                                : 0),
                                         _gutter,
                                         24,
                                       ),
@@ -1852,6 +2057,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                                 ),
                               ),
                             ),
+                            _earlierBar(),
                             // Built in layout, after the list: the copy of
                             // the message at the top is there in the very frame
                             // the list is laid out (a conversation just opened

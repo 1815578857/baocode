@@ -54,6 +54,22 @@ Future<List<Map<String, Object?>>> readClaudeHistory(
   return client.claudeHistory(path);
 }
 
+/// Some of [session]'s conversation, read where it was kept (see
+/// ClaudeSessions.readPage): only that comes from a remote project's host.
+Future<ClaudeHistoryPage> readClaudeHistoryPage(
+  SessionRecord session, {
+  required int turns,
+  String? before,
+}) async {
+  final host = RemoteLocation.hostOf(session.cwd);
+  final path = session.path;
+  if (host == null || path == null) {
+    return ClaudeStorage.readPage(session, turns: turns, before: before);
+  }
+  final client = await SshHosts.instance[host].ready;
+  return client.claudeHistoryPage(path, turns: turns, before: before);
+}
+
 /// What the session [id], run in [cwd], kept of its goal, read where it
 /// was kept (see ClaudeSessions.goal).
 Future<List<Map<String, Object?>>> readClaudeGoal(String cwd, String id) async {

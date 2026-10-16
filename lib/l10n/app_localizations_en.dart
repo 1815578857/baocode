@@ -2053,6 +2053,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatOpensItsConversation => 'Opens its conversation';
 
   @override
+  String get chatLoadEarlier => 'Load earlier messages';
+
+  @override
   String get chatStop => 'Stop';
 
   @override

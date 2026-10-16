@@ -268,6 +268,28 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
     _ => false,
   };
 
+  /// Whether there is more of that conversation before what was read.
+  bool get hasEarlierHistory => switch (_kernel) {
+    LoadsHistory(:final hasEarlierHistory) => hasEarlierHistory,
+    _ => false,
+  };
+
+  /// How many items were put before the others by [loadEarlier] so far: the
+  /// indexes of those there were moved by as many.
+  int get prependedCount => _transcript.prepended;
+
+  /// Whether that is being read.
+  bool get loadingEarlier => switch (_kernel) {
+    LoadsHistory(:final loadingEarlier) => loadingEarlier,
+    _ => false,
+  };
+
+  /// Reads some more of the conversation, before what was.
+  Future<void> loadEarlier() => switch (_kernel) {
+    final LoadsHistory kernel => kernel.loadEarlier(),
+    _ => Future.value(),
+  };
+
   /// The id the kernel keeps this conversation under, once known.
   String? get sessionId => _kernel.sessionId;
 

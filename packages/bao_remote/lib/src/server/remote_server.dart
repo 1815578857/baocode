@@ -348,8 +348,20 @@ class RemoteServer {
     handlers[RemoteProtocol.claudeProjects] = (_, _) async => [
       for (final project in await _sessions.projects()) project.toJson(),
     ];
-    handlers[RemoteProtocol.claudeRead] = (params, _) =>
-        ClaudeSessions.read(paramsOf(params)['path'] as String);
+    handlers[RemoteProtocol.claudeRead] = (params, _) async {
+      final args = paramsOf(params);
+      final path = args['path'] as String;
+      // Whole, as to a client before pages.
+      if (args['turns'] case final int turns) {
+        final page = await ClaudeSessions.readPage(
+          path,
+          turns: turns,
+          before: args['before'] as String?,
+        );
+        return page.toJson();
+      }
+      return ClaudeSessions.read(path);
+    };
     handlers[RemoteProtocol.claudeGoal] = (params, _) =>
         _sessions.goal(paramsOf(params)['id'] as String);
     handlers[RemoteProtocol.claudeDelete] = (params, _) async {

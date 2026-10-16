@@ -56,6 +56,23 @@ void main() {
     return (connected, await accepted);
   }
 
+  test('a session update tells of earlier items only when it is asked', () {
+    const plain = LinkSessionUpdate(session: 's', start: 0, items: [], count: 0);
+    expect(plain.toJson().containsKey('earlier'), isFalse);
+    expect(LinkSessionUpdate.fromJson(plain.toJson()).earlier, isNull);
+    for (final earlier in [true, false]) {
+      final update = LinkSessionUpdate(
+        session: 's',
+        start: 0,
+        items: const [],
+        count: 0,
+        earlier: earlier,
+      );
+      expect(update.toJson()['earlier'], earlier);
+      expect(LinkSessionUpdate.fromJson(update.toJson()).earlier, earlier);
+    }
+  });
+
   group('SecureChannel', () {
     test(
       'both ends learn the other\'s key, and messages go both ways',

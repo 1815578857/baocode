@@ -3854,6 +3854,12 @@ abstract class AppLocalizations {
   /// **'Opens its conversation'**
   String get chatOpensItsConversation;
 
+  /// No description provided for @chatLoadEarlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Load earlier messages'**
+  String get chatLoadEarlier;
+
   /// No description provided for @chatStop.
   ///
   /// In en, this message translates to:

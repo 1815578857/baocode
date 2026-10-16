@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import '../claude/claude_history_page.dart';
 import '../claude/claude_release.dart';
 import '../claude/claude_sessions.dart';
 import '../claude/claude_unavailable.dart';
@@ -695,6 +696,26 @@ class RemoteClient {
     }))
       _map(entry),
   ];
+
+  /// Some of the session's conversation (see [ClaudeSessions.readPage]);
+  /// all of it from a server before pages.
+  Future<ClaudeHistoryPage> claudeHistoryPage(
+    String path, {
+    required int turns,
+    String? before,
+  }) async {
+    final read = await _call<Object?>(RemoteProtocol.claudeRead, {
+      'path': path,
+      'turns': turns,
+      'before': ?before,
+    });
+    if (read is List) {
+      // Asked for the turns before some: it sent them all already.
+      if (before != null) return const ClaudeHistoryPage([]);
+      return ClaudeHistoryPage.whole([for (final entry in read) _map(entry)]);
+    }
+    return ClaudeHistoryPage.fromJson(_map(read));
+  }
 
   /// What the session [id] kept of its goal (see [ClaudeSessions.goal]).
   Future<List<Map<String, Object?>>> claudeGoal(String id) async => [

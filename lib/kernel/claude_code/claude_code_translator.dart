@@ -325,10 +325,14 @@ class ClaudeTranslator {
   /// The user stopped the replayed turn: it is not timed.
   bool _replayedStopped = false;
 
+  /// A page of the kept session is replayed, not all of it: times its last
+  /// turn, nothing else.
+  void endPage() => _timeReplayed();
+
   /// The kept session is all replayed: times its last turn, and has its
   /// goal as it stood (one met or given up on, nothing to show any more).
   void endReplay() {
-    _timeReplayed();
+    endPage();
     reportGoal(keptGoal(_goalRecords, seen: _goalRecords.length));
     _goalRecords.clear();
   }

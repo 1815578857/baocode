@@ -1210,6 +1210,7 @@
     }
   },
   "chatOpensItsConversation": "Opens its conversation",
+  "chatLoadEarlier": "Load earlier messages",
   "chatStop": "Stop",
   "chatKeepRunningHint": "Keep it running and let the agent go on",
   "chatBackground": "Background",
