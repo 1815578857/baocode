@@ -41,6 +41,8 @@ void main() {
       ('workspaces/w1/web.code-workspace', '{"folders": []}'),
       ('logs/errors.log', '--- BaoCode 1.0.1 ---\n'),
       ('extensions/extensions.json', '[]'),
+      // The browser plugin's profile (see lib/browser/).
+      ('browser/profile/Default/Cookies', 'chromium'),
       // Where the providers' keys are kept where the system has no
       // keychain of its own (see secret_store_io.dart).
       ('secrets/provider.abc123', 'sk-kept'),
@@ -167,6 +169,10 @@ void main() {
       'User/keybindings.json',
       'User/settings.json',
       'argv.json',
+      'browser',
+      'browser/profile',
+      'browser/profile/Default',
+      'browser/profile/Default/Cookies',
       'cache',
       'cache/claude-sessions.json',
       'checkpoints',
@@ -209,8 +215,8 @@ void main() {
       Link(p.join(target, 'servers', 'tool-link')).targetSync(),
       p.join(target, 'servers', 'tool', 'bin', 'tool'),
     );
-    expect(progress.first, (0, 16));
-    expect(progress.last, (16, 16));
+    expect(progress.first, (0, 17));
+    expect(progress.last, (17, 17));
     // The old folder is as it was: the web view's files included.
     expect(File(p.join(current, 'Cookies')).existsSync(), isTrue);
     expect(File(p.join(current, 'state', 'state.json')).existsSync(), isTrue);
@@ -272,7 +278,7 @@ void main() {
       File(p.join(target, 'icons', 'index.json')).readAsStringSync(),
       '[{"id": "a"}]',
     );
-    expect(progress.last, (16, 16));
+    expect(progress.last, (17, 17));
     expect(jsonDecode(pointer().readAsStringSync())['dataDir'], target);
   });
 

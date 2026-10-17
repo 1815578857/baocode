@@ -101,9 +101,14 @@ class FileLinkTarget {
     this.roots,
     this.inPanel = false,
     this.openInIde,
+    this.showBrowserTab,
   });
 
   final ValueChanged<FileOpenRequest> open;
+
+  /// Shows a tab of the user's browser (its id, as the agents' tools have
+  /// it) beside the conversation: on the side panel's browser page.
+  final ValueChanged<int>? showBrowserTab;
 
   /// Whether [open] shows them in the side panel (the agent window's).
   final bool inPanel;
@@ -227,8 +232,12 @@ class FileOpenScope extends InheritedWidget {
     this.sizeOf,
     this.inPanel = false,
     this.onOpenInIde,
+    this.onShowBrowserTab,
     required super.child,
   });
+
+  /// See [FileLinkTarget.showBrowserTab].
+  final ValueChanged<int>? onShowBrowserTab;
 
   /// See [FileLinkTarget.inPanel].
   final bool inPanel;
@@ -396,8 +405,7 @@ class FileOpenScope extends InheritedWidget {
   /// What a click on [path] opens it with outside the app (see
   /// [FileViews.openerOf]): only a file on this machine; null to open it in
   /// the app.
-  FileOpener? openerOf(String path) =>
-      local ? FileViews.openerOf(path) : null;
+  FileOpener? openerOf(String path) => local ? FileViews.openerOf(path) : null;
 
   static const _imageTypes = {
     '.png': 'image/png',

@@ -1439,6 +1439,144 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sidePanelTerminal => 'Terminal';
 
   @override
+  String get sidePanelBrowser => 'Browser';
+
+  @override
+  String get browserNotConnected =>
+      'No browser is connected. Add BaoCode\'s extension to Chrome (or Edge, Brave, Arc) and agents can use the tabs you share with them.';
+
+  @override
+  String get browserNoSharedTab =>
+      'No tab is shared yet. Ask an agent to open a page, or click BaoCode in the browser toolbar to share the tab in front.';
+
+  @override
+  String get browserOtherApp => 'Another BaoCode is connected to the browser.';
+
+  @override
+  String get browserSharedTabs => 'Shared Tabs';
+
+  @override
+  String get browserReload => 'Reload';
+
+  @override
+  String get browserShowInBrowser => 'Show in Browser';
+
+  @override
+  String get browserDetached =>
+      'The browser stopped letting BaoCode see this tab.';
+
+  @override
+  String get browserReconnect => 'Reconnect';
+
+  @override
+  String get browserShowInPanel => 'Show in Side Panel';
+
+  @override
+  String get browserWatchTitle => 'Watching you in the browser';
+
+  @override
+  String get browserWatchHint =>
+      'Do it in the BaoCode tab of your browser. When you\'re done, click Done here or the BaoCode button in the browser\'s toolbar.';
+
+  @override
+  String browserWatchSteps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count steps recorded',
+      one: '1 step recorded',
+      zero: 'Nothing recorded yet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get browserWatchCancel => 'Cancel';
+
+  @override
+  String get browserWatchDone => 'Done';
+
+  @override
+  String browserWatchedStep(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'click': 'Clicked',
+      'input': 'Set',
+      'key': 'Pressed',
+      'submit': 'Submitted',
+      'navigate': 'Went to',
+      'closed': 'Closed the tab',
+      'other': 'Did',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get browserTraceReveal =>
+      'Show the trace in Finder (drop it into DevTools\' Performance panel to look closer)';
+
+  @override
+  String browserStepDone(String action) {
+    String _temp0 = intl.Intl.selectLogic(action, {
+      'tabs': 'Listed tabs',
+      'open': 'Opened',
+      'navigate': 'Went to',
+      'back': 'Went back',
+      'forward': 'Went forward',
+      'reload': 'Reloaded',
+      'snapshot': 'Read the page',
+      'screenshot': 'Took a screenshot',
+      'click': 'Clicked',
+      'type': 'Typed',
+      'press': 'Pressed',
+      'scroll': 'Scrolled',
+      'evaluate': 'Ran',
+      'close': 'Closed the tab',
+      'console': 'Read the console',
+      'network': 'Listed requests',
+      'request': 'Read the request',
+      'performance': 'Profiled',
+      'recordStart': 'Started profiling',
+      'recordStop': 'Profiled',
+      'emulate': 'Emulated',
+      'watch': 'Watched you',
+      'act': 'Acted',
+      'other': 'Used the browser',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String browserStepRunning(String action) {
+    String _temp0 = intl.Intl.selectLogic(action, {
+      'tabs': 'Listing tabs',
+      'open': 'Opening',
+      'navigate': 'Going to',
+      'back': 'Going back',
+      'forward': 'Going forward',
+      'reload': 'Reloading',
+      'snapshot': 'Reading the page',
+      'screenshot': 'Taking a screenshot',
+      'click': 'Clicking',
+      'type': 'Typing',
+      'press': 'Pressing',
+      'scroll': 'Scrolling',
+      'evaluate': 'Running',
+      'close': 'Closing the tab',
+      'console': 'Reading the console',
+      'network': 'Listing requests',
+      'request': 'Reading the request',
+      'performance': 'Profiling',
+      'recordStart': 'Starting to profile',
+      'recordStop': 'Profiling',
+      'emulate': 'Emulating',
+      'watch': 'Watching you',
+      'act': 'Acting',
+      'other': 'Using the browser',
+    });
+    return '$_temp0';
+  }
+
+  @override
   String get sidePanelPlan => 'Plan';
 
   @override
@@ -2292,6 +2430,17 @@ class AppLocalizationsEn extends AppLocalizations {
       locale: localeName,
       other: 'ran $count commands',
       one: 'ran 1 command',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String stepsBrowsed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'took $count steps in the browser',
+      one: 'took 1 step in the browser',
     );
     return '$_temp0';
   }
@@ -9149,4 +9298,146 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get stashWelcomeHotkeyLater =>
       'You can also set it later in Settings → Stash.';
+
+  @override
+  String get settingsSectionBrowser => 'Browser';
+
+  @override
+  String get settingsBrowserKeywords =>
+      'chrome extension edge brave arc web page tab agent';
+
+  @override
+  String get browserSettingsDescription =>
+      'Let agents use your own browser, signed in as you are: open pages, read them, click and type in the tabs you share with them, while you watch in the side panel.';
+
+  @override
+  String get browserSettingsMacOSOnly => 'The browser is macOS-only for now.';
+
+  @override
+  String get browserSettingsEnabled => 'Let Agents Use the Browser';
+
+  @override
+  String get browserSettingsEnabledDescription =>
+      'Off, agents don\'t get the browser\'s tools, and the extension disconnects.';
+
+  @override
+  String get browserSettingsStatus => 'Status';
+
+  @override
+  String get browserSettingsNotInstalled => 'The extension isn\'t installed';
+
+  @override
+  String get browserSettingsNotInstalledDescription =>
+      'Get it from the Chrome Web Store or in developer mode, below: it connects by itself.';
+
+  @override
+  String get browserSettingsNotRunning => 'No browser connected';
+
+  @override
+  String get browserSettingsNotRunningDescription =>
+      'Open the browser that has BaoCode\'s extension: it connects by itself.';
+
+  @override
+  String browserSettingsConnected(String browser) {
+    return '$browser: connected';
+  }
+
+  @override
+  String browserSettingsExtensionVersion(String version) {
+    return 'Extension $version';
+  }
+
+  @override
+  String get browserSettingsExtensionOld =>
+      'Its extension is too old for this BaoCode. From the store, it updates itself when the browser restarts; in developer mode, download it again below.';
+
+  @override
+  String get browserSettingsAppOld =>
+      'Its extension is newer than this BaoCode: update BaoCode.';
+
+  @override
+  String get browserSettingsInstall => 'Get the Extension';
+
+  @override
+  String get browserSettingsStore => 'Chrome Web Store';
+
+  @override
+  String get browserSettingsStoreDescription =>
+      'Updates itself. For Chrome, Edge, Brave, Arc and other Chromium browsers.';
+
+  @override
+  String get browserSettingsStoreOpen => 'Open Store';
+
+  @override
+  String get browserSettingsUnpacked => 'Developer Mode';
+
+  @override
+  String get browserSettingsUnpackedDescription =>
+      'Unzip it into a folder you\'ll keep, open chrome://extensions, turn on Developer mode, click Load unpacked and choose the folder. It doesn\'t update itself.';
+
+  @override
+  String get browserSettingsUnpackedDownload => 'Download Zip';
+
+  @override
+  String get browserSettingsOpen => 'Browser Settings';
+
+  @override
+  String get browserWelcomeTitle => 'Agents can use your browser now';
+
+  @override
+  String get browserWelcomeLead =>
+      'With BaoCode\'s extension, agents open pages, read them, click and type in your own Chrome, signed in as you are.';
+
+  @override
+  String get browserWelcomeSharedTitle => 'Only the tabs you share';
+
+  @override
+  String get browserWelcomeShared =>
+      'They work in the yellow BaoCode tab group alone; your other tabs stay yours.';
+
+  @override
+  String get browserWelcomeWatchTitle => 'Watch it work';
+
+  @override
+  String get browserWelcomeWatch =>
+      'The side panel shows the page live as the agent uses it. Take over any time.';
+
+  @override
+  String get browserWelcomeShowTitle => 'Show it once';
+
+  @override
+  String get browserWelcomeShow =>
+      'Ask an agent to watch, do it yourself in the browser, and it sees each step you took.';
+
+  @override
+  String get browserWelcomeInstallTitle => 'Add the extension';
+
+  @override
+  String get browserWelcomeInstall =>
+      'For Chrome, Edge, Brave and Arc. It connects by itself, and this turns green.';
+
+  @override
+  String get browserWelcomeTurnedOff =>
+      'The browser is turned off in Settings → Browser.';
+
+  @override
+  String browserWelcomeConnected(String browser) {
+    return '$browser is connected';
+  }
+
+  @override
+  String get browserWelcomeTry =>
+      'Try telling an agent: “Open baocode.dev and look at the download page.”';
+
+  @override
+  String get browserWelcomeUnpacked => 'Developer Mode Zip';
+
+  @override
+  String get browserWelcomeDone => 'Got It';
+
+  @override
+  String get cmdBrowserWelcome => 'Connect Your Browser...';
+
+  @override
+  String get cmdStashWelcome => 'Meet Stash...';
 }

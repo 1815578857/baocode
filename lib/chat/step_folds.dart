@@ -189,7 +189,7 @@ bool isUnderWay(ChatItem item) => switch (item) {
 };
 
 /// What a quick step did, as a run's line counts it.
-enum StepAction { read, search, list, fetch, run, use }
+enum StepAction { read, search, list, fetch, run, browse, use }
 
 /// The steps of a run, counted by what they did.
 class StepTally {
@@ -202,6 +202,7 @@ class StepTally {
           ToolKind.listDir => StepAction.list,
           ToolKind.web => StepAction.fetch,
           ToolKind.command => StepAction.run,
+          ToolKind.browser => StepAction.browse,
           _ => StepAction.use,
         },
         TerminalItem(:final command) => commandAction(command),

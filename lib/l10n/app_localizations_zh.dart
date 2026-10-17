@@ -1402,6 +1402,141 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sidePanelTerminal => '终端';
 
   @override
+  String get sidePanelBrowser => '浏览器';
+
+  @override
+  String get browserNotConnected =>
+      '没有连接浏览器。在 Chrome（或 Edge、Brave、Arc）中添加 BaoCode 扩展后，agent 就能使用你共享给它的标签页。';
+
+  @override
+  String get browserNoSharedTab =>
+      '还没有共享的标签页。让 agent 打开网页，或在浏览器工具栏点 BaoCode 按钮共享当前标签页。';
+
+  @override
+  String get browserOtherApp => '另一个 BaoCode 已连接浏览器。';
+
+  @override
+  String get browserSharedTabs => '共享的标签页';
+
+  @override
+  String get browserReload => '重新加载';
+
+  @override
+  String get browserShowInBrowser => '在浏览器中显示';
+
+  @override
+  String get browserDetached => '浏览器已停止让 BaoCode 查看这个标签页。';
+
+  @override
+  String get browserReconnect => '重新连接';
+
+  @override
+  String get browserShowInPanel => '在侧边栏查看';
+
+  @override
+  String get browserWatchTitle => '正在看你在浏览器里操作';
+
+  @override
+  String get browserWatchHint =>
+      '请在浏览器的 BaoCode 标签页里操作。完成后点这里的“完成”，或点浏览器工具栏上的 BaoCode 按钮。';
+
+  @override
+  String browserWatchSteps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已记录 $count 步',
+      zero: '还没有记录',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get browserWatchCancel => '取消';
+
+  @override
+  String get browserWatchDone => '完成';
+
+  @override
+  String browserWatchedStep(String kind) {
+    String _temp0 = intl.Intl.selectLogic(kind, {
+      'click': '点击',
+      'input': '填写',
+      'key': '按下',
+      'submit': '提交',
+      'navigate': '前往',
+      'closed': '关闭了标签页',
+      'other': '操作',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get browserTraceReveal => '在访达中显示 trace 文件（拖进 DevTools 的性能面板可以细看）';
+
+  @override
+  String browserStepDone(String action) {
+    String _temp0 = intl.Intl.selectLogic(action, {
+      'tabs': '已列出标签页',
+      'open': '已打开',
+      'navigate': '已前往',
+      'back': '已后退',
+      'forward': '已前进',
+      'reload': '已重新加载',
+      'snapshot': '已读取页面',
+      'screenshot': '已截图',
+      'click': '已点击',
+      'type': '已输入',
+      'press': '已按下',
+      'scroll': '已滚动',
+      'evaluate': '已运行',
+      'close': '已关闭标签页',
+      'console': '已查看控制台',
+      'network': '已查看请求',
+      'request': '已查看请求',
+      'performance': '已分析性能',
+      'recordStart': '已开始录制性能',
+      'recordStop': '已分析性能',
+      'emulate': '已模拟',
+      'watch': '已看完你的操作',
+      'act': '已执行',
+      'other': '已使用浏览器',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String browserStepRunning(String action) {
+    String _temp0 = intl.Intl.selectLogic(action, {
+      'tabs': '正在列出标签页',
+      'open': '正在打开',
+      'navigate': '正在前往',
+      'back': '正在后退',
+      'forward': '正在前进',
+      'reload': '正在重新加载',
+      'snapshot': '正在读取页面',
+      'screenshot': '正在截图',
+      'click': '正在点击',
+      'type': '正在输入',
+      'press': '正在按下',
+      'scroll': '正在滚动',
+      'evaluate': '正在运行',
+      'close': '正在关闭标签页',
+      'console': '正在查看控制台',
+      'network': '正在查看请求',
+      'request': '正在查看请求',
+      'performance': '正在分析性能',
+      'recordStart': '正在开始录制性能',
+      'recordStop': '正在分析性能',
+      'emulate': '正在模拟',
+      'watch': '正在看你操作',
+      'act': '正在执行',
+      'other': '正在使用浏览器',
+    });
+    return '$_temp0';
+  }
+
+  @override
   String get sidePanelPlan => '计划';
 
   @override
@@ -2213,6 +2348,16 @@ class AppLocalizationsZh extends AppLocalizations {
       count,
       locale: localeName,
       other: '运行 $count 条命令',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String stepsBrowsed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '操作浏览器 $count 次',
     );
     return '$_temp0';
   }
@@ -8641,4 +8786,139 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get stashWelcomeHotkeyLater => '也可以之后在 设置 → Stash 中设置。';
+
+  @override
+  String get settingsSectionBrowser => '浏览器';
+
+  @override
+  String get settingsBrowserKeywords =>
+      '浏览器 chrome 扩展 插件 网页 标签页 edge brave arc';
+
+  @override
+  String get browserSettingsDescription =>
+      '让 agent 使用你自己的浏览器，带着你的登录状态：在你共享给它的标签页里打开网页、阅读、点击和输入，你可以在侧边栏里看着它操作。';
+
+  @override
+  String get browserSettingsMacOSOnly => '目前只支持 macOS。';
+
+  @override
+  String get browserSettingsEnabled => '允许 agent 使用浏览器';
+
+  @override
+  String get browserSettingsEnabledDescription => '关闭后 agent 没有浏览器工具，扩展也会断开连接。';
+
+  @override
+  String get browserSettingsStatus => '状态';
+
+  @override
+  String get browserSettingsNotInstalled => '还没有安装扩展';
+
+  @override
+  String get browserSettingsNotInstalledDescription =>
+      '从下方的 Chrome 应用商店或开发者模式安装，装好后会自动连接。';
+
+  @override
+  String get browserSettingsNotRunning => '没有连接浏览器';
+
+  @override
+  String get browserSettingsNotRunningDescription =>
+      '打开装有 BaoCode 扩展的浏览器，它会自动连接。';
+
+  @override
+  String browserSettingsConnected(String browser) {
+    return '$browser：已连接';
+  }
+
+  @override
+  String browserSettingsExtensionVersion(String version) {
+    return '扩展版本 $version';
+  }
+
+  @override
+  String get browserSettingsExtensionOld =>
+      '扩展版本过旧，需要更新。商店版在浏览器重启后会自动更新；开发者模式请在下方重新下载。';
+
+  @override
+  String get browserSettingsAppOld => '扩展比当前的 BaoCode 新，请更新 BaoCode。';
+
+  @override
+  String get browserSettingsInstall => '安装扩展';
+
+  @override
+  String get browserSettingsStore => 'Chrome 应用商店';
+
+  @override
+  String get browserSettingsStoreDescription =>
+      '自动更新。Chrome、Edge、Brave、Arc 等 Chromium 内核的浏览器都能用。';
+
+  @override
+  String get browserSettingsStoreOpen => '打开商店';
+
+  @override
+  String get browserSettingsUnpacked => '开发者模式';
+
+  @override
+  String get browserSettingsUnpackedDescription =>
+      '解压到一个会一直保留的文件夹，打开 chrome://extensions，打开「开发者模式」，点「加载已解压的扩展程序」，选中这个文件夹。不会自动更新。';
+
+  @override
+  String get browserSettingsUnpackedDownload => '下载 zip';
+
+  @override
+  String get browserSettingsOpen => '浏览器设置';
+
+  @override
+  String get browserWelcomeTitle => 'agent 现在能用你的浏览器了';
+
+  @override
+  String get browserWelcomeLead =>
+      '装上 BaoCode 扩展，agent 就能在你自己的 Chrome 里打开网页、阅读、点击和输入，带着你的登录状态。';
+
+  @override
+  String get browserWelcomeSharedTitle => '只用你共享的标签页';
+
+  @override
+  String get browserWelcomeShared => '它只在黄色的「BaoCode」标签页分组里工作，其他标签页仍然只属于你。';
+
+  @override
+  String get browserWelcomeWatchTitle => '看着它操作';
+
+  @override
+  String get browserWelcomeWatch => '侧边栏实时显示它正在用的网页，你随时可以接手。';
+
+  @override
+  String get browserWelcomeShowTitle => '演示一遍就会';
+
+  @override
+  String get browserWelcomeShow => '让 agent 看着，你在浏览器里自己操作一遍，它就能看到你的每一步。';
+
+  @override
+  String get browserWelcomeInstallTitle => '安装扩展';
+
+  @override
+  String get browserWelcomeInstall =>
+      'Chrome、Edge、Brave、Arc 都能用。装好后会自动连接，这里会变成绿色。';
+
+  @override
+  String get browserWelcomeTurnedOff => '浏览器功能已在 设置 → 浏览器 中关闭。';
+
+  @override
+  String browserWelcomeConnected(String browser) {
+    return '$browser 已连接';
+  }
+
+  @override
+  String get browserWelcomeTry => '试试对 agent 说：「打开 baocode.dev 看看下载页」。';
+
+  @override
+  String get browserWelcomeUnpacked => '开发者模式 zip';
+
+  @override
+  String get browserWelcomeDone => '知道了';
+
+  @override
+  String get cmdBrowserWelcome => '连接浏览器...';
+
+  @override
+  String get cmdStashWelcome => '认识 Stash...';
 }

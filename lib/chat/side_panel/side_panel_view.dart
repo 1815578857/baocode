@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
+import '../../browser/browser_bridge.dart';
+import '../../browser/browser_mirror.dart';
 import '../../ide/file_service.dart';
 import '../../ide/git/git_model.dart';
 import '../../ide/git/commit_message.dart';
@@ -473,7 +475,13 @@ class AgentSidePanelView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: Listenable.merge([panel, session, ..._gits, ?terminals]),
+    listenable: Listenable.merge([
+      panel,
+      session,
+      ..._gits,
+      ?terminals,
+      BrowserBridge.instance,
+    ]),
     builder: (context, _) {
       final tabs = panel.tabsOf(session);
       return Column(
@@ -490,6 +498,9 @@ class AgentSidePanelView extends StatelessWidget {
               SidePanelSection.files => _filesPage(context, tabs),
               SidePanelSection.changes => _changesPage(context, tabs),
               SidePanelSection.terminal => _terminalPage(context, tabs),
+              SidePanelSection.browser => const BrowserMirror(
+                key: ValueKey(('page', SidePanelSection.browser)),
+              ),
               SidePanelSection.plan => _planPage(context, tabs.plan!),
             },
           ),
@@ -1248,6 +1259,7 @@ extension SidePanelSectionUi on SidePanelSection {
     SidePanelSection.files => Codicons.files,
     SidePanelSection.changes => Codicons.sourceControl,
     SidePanelSection.terminal => Codicons.terminal,
+    SidePanelSection.browser => Codicons.globe,
     SidePanelSection.plan => Codicons.checklist,
   };
 
@@ -1256,13 +1268,14 @@ extension SidePanelSectionUi on SidePanelSection {
     SidePanelSection.files => ChatCommandIds.sidePanelFiles,
     SidePanelSection.changes => ChatCommandIds.sidePanelChanges,
     SidePanelSection.terminal => ChatCommandIds.sidePanelTerminal,
-    SidePanelSection.plan => null,
+    SidePanelSection.browser || SidePanelSection.plan => null,
   };
 
   String label(BuildContext context) => switch (this) {
     SidePanelSection.files => context.l10n.sidePanelFiles,
     SidePanelSection.changes => context.l10n.sidePanelChanges,
     SidePanelSection.terminal => context.l10n.sidePanelTerminal,
+    SidePanelSection.browser => context.l10n.sidePanelBrowser,
     SidePanelSection.plan => context.l10n.sidePanelPlan,
   };
 }
@@ -1297,7 +1310,9 @@ class SidePanelRail extends StatelessWidget {
               .where((task) => task.status == CommandStatus.running)
               .length ??
           0,
-    SidePanelSection.files || SidePanelSection.plan => 0,
+    SidePanelSection.files ||
+    SidePanelSection.browser ||
+    SidePanelSection.plan => 0,
   };
 
   static const _button = 26.0;
@@ -1376,9 +1391,11 @@ class _SectionBar extends StatelessWidget {
   /// The list's toggle and the close button, at the right.
   static const _actionsWidth = 2 * 22.0 + 2 + 6;
 
-  /// The pages there: the plan's once there is one.
+  /// The pages there: the browser's once one of the user's has connected,
+  /// the plan's once there is one.
   List<SidePanelSection> get _sections => [
     ...alwaysShownSections,
+    if (BrowserBridge.instance.used) SidePanelSection.browser,
     if (tabs.plan != null) SidePanelSection.plan,
   ];
 
@@ -1454,7 +1471,9 @@ class _SectionBar extends StatelessWidget {
                   selected: shown == section,
                   compact: compact,
                   count: switch (section) {
-                    SidePanelSection.files || SidePanelSection.plan => 0,
+                    SidePanelSection.files ||
+                    SidePanelSection.browser ||
+                    SidePanelSection.plan => 0,
                     SidePanelSection.changes => changes,
                     SidePanelSection.terminal => running,
                   },

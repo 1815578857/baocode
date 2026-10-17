@@ -19,6 +19,7 @@ BaoCode 的版本号怎么定、一个版本怎么发出去、发到哪里、已
 8. [出了问题](#8-出了问题)
 9. [不用 CI，手动发布](#9-不用-ci手动发布)
 10. [手机版](#10-手机版)
+11. [浏览器扩展](#11-浏览器扩展)
 
 ---
 
@@ -402,3 +403,37 @@ CI 从 `baocode-dev/mobile` 的 main 取代码（放在本仓库旁边，`../mon
 下载页这两张卡片各带一个二维码（`site/qr/android.svg`、`site/qr/ios.svg`，鼠标悬停或点击卡片时显示）：码里是卡片自己那个按钮的链接，也就是 `/dl/android`、`/dl/ios`，扫到就跳到当时最新的那版安装包。链接变了就先跑 `dart run tool/make_download_qr.dart` 重新生成（`test/tool/download_qr_test.dart` 会检查页面、按钮和码三者一致）。**别把 `dl.baocode.dev` 上带哈希的直链写进码里**：那地址每次发版都换，码是要能一直用的。
 
 > 发布密钥库丢了就再也发不了能覆盖安装的 APK：本机和 CI 之外务必另存一份。
+
+## 11. 浏览器扩展
+
+浏览器扩展（`browser_extension/`，原理见 `lib/browser/browser_bridge.dart`）由 `.github/workflows/extension.yml` 打包发布，版本号就是 `manifest.json` 里的 `version`，和应用、手机版都分开。用户有两种装法，官网下载页「浏览器扩展」一节两个按钮都有：
+
+- **Chrome 应用商店**（`/dl/chrome-web-store`）：自动更新。
+- **开发者模式**（`/dl/browser-extension`）：下载 zip，解压后在 `chrome://extensions` 里「加载已解压的扩展程序」。不会自动更新。
+
+两种装法的扩展 ID 一样，都是 `jfjagocghaaheooicmdnhcholmgdkngk`：开发者模式的 zip 里 `manifest.json` 带着 `key`，商店版是第一次上传时带上私钥 `key.pem` 定下的（见 [docs/browser-extension-store](browser-extension-store/README.md#第一次上传)）。应用只认这个 ID（`BrowserBridge.extensionIds`），CI 会检查 `key` 算出来的 ID 和它一致。私钥在 `~/.baocode-signing/browser-extension.pem`，丢了也不影响已上架的扩展（商店有自己的签名），但开发者模式的 ID 就没法再算出来了，务必另存一份。
+
+```sh
+# 先改 browser_extension/manifest.json 的 version（商店要求每次上传版本号都更大）
+git tag extension-v0.2.0 && git push origin extension-v0.2.0         # 发布：标签要和 manifest 的版本一致
+git tag extension-test-foo && git push origin extension-test-foo     # 只打包，传到 dl.baocode.dev/test/extension-…
+```
+
+本地打包：`tool/pack_browser_extension.sh`，产物在 `build/browser_extension/`。
+
+CI 做的事：
+
+| Job | 做什么 |
+| --- | --- |
+| `pack` | 标签和版本一致；`node --check` 检查 `background.js`；`key` 算出的 ID 等于应用认的 ID；manifest 里提到的文件都在；打两个 zip。改了扩展的 PR 也会跑这一步 |
+| `share` | `extension-test-*`：两个 zip 都传到 `test/` |
+| `publish` | 开发者模式的 zip 传到 `releases/extension/<版本>/`，最后写 `releases/extension/latest.json`（`version`、`pubDate`、`id`、`store`、`downloads.browser-extension`） |
+| `store` | 用 Chrome Web Store API 上传商店的 zip 并提交审核，审核通过后自动上架。没配凭据就跳过，提示手动上传（凭据怎么拿见 [docs/browser-extension-store](browser-extension-store/README.md#ci-自动提交之后每个版本)） |
+
+`/dl/chrome-web-store` 跳到 `latest.json` 的 `store`，它来自 `release` 环境的变量 `CHROME_WEB_STORE_URL`；没填的时候跳到下载页的说明。所以上架通过后，在变量里填上商店地址，再推一次标签（或手动改 `latest.json`），应用和官网的按钮就指向商店了，不用发新版应用。
+
+环境的部署规则里要允许 `extension-*` 标签。
+
+**少发扩展**：扩展只做应用做不了的事：通信、共享标签页的边界（应用的任何请求都越不过它）、工具栏按钮。页面里的一切走 DevTools 协议原样转发（`cdp`，带 `sessionId` 时是页面里 iframe、worker 的会话，事件也带 `sessionId`）；标签页、窗口、分组走 `call`（`chrome.tabs.*`、`chrome.windows.*`、`chrome.tabGroups.*`，只能碰共享的标签页，返回的也只有共享的）和 `subscribe`（这几类的事件，只报共享标签页的）；行为开关走 `configure`（如 `followOpeners`：共享标签页打开的新标签页自动共享，默认开）。所以新功能基本只改应用。只有要新的浏览器权限（manifest 的 `permissions`）时才必须发新版扩展，而且用户要重新同意，尽量少加。
+
+**能力和协议版本**：扩展新增的方法写进 `background.js` 的 `CAPABILITIES`，在握手时告诉应用，应用用 `BrowserConnection.can('…')` 判断后再用，旧扩展照样能连。只有改了已有消息的含义、旧的一方会理解错时，才把 `background.js` 的 `BRIDGE` 和 `BrowserBridge.protocol` 一起加一。版本对不上的连接，应用不用它，并在 设置 → 浏览器 里提示用户更新扩展或更新 BaoCode。商店版扩展会自动更新，通常比应用新；所以改协议时尽量让应用同时兼容旧版，先发应用、再发扩展。

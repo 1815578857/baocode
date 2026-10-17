@@ -712,6 +712,7 @@ class ClaudeCodeKernel
     _goalRetry?.cancel();
     _providers.removeListener(_providersChanged);
     _live.remove(this);
+    _cancelSdkCalls();
     _teardown();
     closeEvents();
   }
@@ -890,6 +891,7 @@ class ClaudeCodeKernel
     final turn = _turn;
     if (turn == null) return;
     _turn = null;
+    if (interrupted) _cancelSdkCalls();
     worked ??= switch (_turnStarted) {
       final started? => DateTime.now().difference(started),
       null => null,
@@ -926,6 +928,16 @@ class ClaudeCodeKernel
     _stoppedTurns.add(turn);
     _tell('interrupt');
     _endTurn(interrupted: true);
+  }
+
+  /// Completes as the turn's calls of the app's own tools are given up
+  /// (see [ClaudeSdkCall.cancelled]): a turn stopped, the session ended.
+  var _sdkCallsCancelled = Completer<void>();
+
+  void _cancelSdkCalls() {
+    final cancelled = _sdkCallsCancelled;
+    _sdkCallsCancelled = Completer<void>();
+    cancelled.complete();
   }
 
   @override
@@ -1622,7 +1634,11 @@ class ClaudeCodeKernel
     }
     final response = await ClaudeSdkTools.handle(
       message,
-      ClaudeSdkCall(cwd: _cwd, sessionId: _sessionId),
+      ClaudeSdkCall(
+        cwd: _cwd,
+        sessionId: _sessionId,
+        cancelled: _sdkCallsCancelled.future,
+      ),
     );
     _control?.respond(id, {'mcp_response': response});
   }

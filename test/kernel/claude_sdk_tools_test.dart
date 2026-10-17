@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:baocode/kernel/claude_code/claude_sdk_tools.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -71,4 +73,49 @@ void main() {
     }, call);
     expect((unknown['error'] as Map)['code'], -32601);
   });
+
+  test(
+    'a call is given up as the agent cancels it, or as the turn stops',
+    () async {
+      ClaudeSdkTools.register(
+        ClaudeSdkTool(
+          name: 'echo',
+          description: 'Waits.',
+          inputSchema: const {'type': 'object'},
+          run: (input, call) async {
+            await call.cancelled;
+            return 'given up';
+          },
+        ),
+      );
+      Future<String> answered(Future<Map<String, Object?>> answer) async =>
+          (((await answer)['result'] as Map)['content'] as List).single['text']
+              as String;
+
+      final cancelled = ClaudeSdkTools.handle({
+        'id': 7,
+        'method': 'tools/call',
+        'params': {'name': 'echo', 'arguments': <String, Object?>{}},
+      }, call);
+      // Another session's call of the same id is not this one.
+      await ClaudeSdkTools.handle({
+        'method': 'notifications/cancelled',
+        'params': {'requestId': 7},
+      }, const ClaudeSdkCall(cwd: '/p', sessionId: 'other'));
+      await ClaudeSdkTools.handle({
+        'method': 'notifications/cancelled',
+        'params': {'requestId': 7},
+      }, call);
+      expect(await answered(cancelled), 'given up');
+
+      final turn = Completer<void>();
+      final stopped = ClaudeSdkTools.handle({
+        'id': 8,
+        'method': 'tools/call',
+        'params': {'name': 'echo', 'arguments': <String, Object?>{}},
+      }, ClaudeSdkCall(cwd: '/p', sessionId: 's', cancelled: turn.future));
+      turn.complete();
+      expect(await answered(stopped), 'given up');
+    },
+  );
 }

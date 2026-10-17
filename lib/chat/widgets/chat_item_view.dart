@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../browser/browser_steps.dart';
 import '../../l10n/l10n.dart';
 import '../chat_models.dart';
 import 'activity_row.dart';
@@ -64,6 +65,11 @@ class ChatItemView extends StatelessWidget {
         onEdit: onEdit,
       ),
       AssistantTextItem(:final text) => AssistantText(text),
+      final ToolCallItem tool when tool.kind == ToolKind.browser => BrowserStep(
+        item: tool,
+        expanded: expanded,
+        onToggle: onToggle,
+      ),
       ThinkingItem(:final text, :final seconds, :final startedAt) =>
         ThinkingSection(
           text: text,
@@ -177,10 +183,15 @@ String chatItemPlainText(
       :final status,
       :final results,
       :final output,
+      :final tool,
+      :final input,
     ) =>
       [
         StepHeader.text(
-          label ?? toolVerb(kind, status: status, l10n: strings),
+          label ??
+              (kind == ToolKind.browser
+                  ? browserVerb(tool, input, status: status, l10n: strings)
+                  : toolVerb(kind, status: status, l10n: strings)),
           target,
           detail,
         ),

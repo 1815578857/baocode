@@ -167,6 +167,10 @@ enum ToolKind {
 
   /// A goal proposed for the session (its condition the item's output).
   goal,
+
+  /// Something done in the user's browser (see lib/browser): its [tool]
+  /// says what.
+  browser,
   other,
 }
 
@@ -182,6 +186,9 @@ class ToolCallItem extends ChatItem {
     this.label,
     this.status = ToolStatus.succeeded,
     this.output,
+    this.tool,
+    this.input = const {},
+    this.images = const [],
   });
 
   final ToolKind kind;
@@ -200,6 +207,16 @@ class ToolCallItem extends ChatItem {
 
   /// What it returned, shown on demand.
   final String? output;
+
+  /// The tool's own name (an MCP tool's, without its server's), for a
+  /// kind each of whose tools shows its own way.
+  final String? tool;
+
+  /// What it was called with, for those.
+  final Map<String, Object?> input;
+
+  /// The pictures it returned (a screenshot, say).
+  final List<ImageAttachment> images;
 }
 
 /// A subagent at work: its own conversation, one card in the history that

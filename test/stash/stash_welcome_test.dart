@@ -7,6 +7,7 @@ import 'package:baocode/stash/stash_host.dart';
 import 'package:baocode/stash/stash_settings.dart';
 import 'package:baocode/stash/stash_store.dart';
 import 'package:baocode/stash/stash_welcome.dart';
+import 'package:baocode/tips/welcome_dialog.dart';
 import 'package:baocode/workspace/workspace.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -95,6 +96,29 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await closed;
     expect(find.text('Meet Stash'), findsNothing);
+  });
+
+  testWidgets('wider than tall, its picture beside the text; a click '
+      'beside it does not close it', (tester) async {
+    await open(tester);
+    expect(tester.takeException(), isNull);
+    final card = tester.getRect(
+      find
+          .descendant(
+            of: find.byType(WelcomeFrame),
+            matching: find.byType(ClipRRect),
+          )
+          .first,
+    );
+    expect(card.width, greaterThan(card.height));
+    // The title on the right half, the picture on the left.
+    final title = tester.getRect(find.text('Meet Stash'));
+    expect(title.left, greaterThan(card.center.dx));
+
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Meet Stash'), findsOneWidget);
   });
 
   testWidgets('the shortcut recorded in place; Escape there stops the '

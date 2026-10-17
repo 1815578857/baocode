@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:path/path.dart' as p;
 
+import '../../browser/browser_bridge.dart';
 import '../../ide/file_service.dart';
 import '../../ide/git/git_repository.dart';
 import '../../ide/git/ide_scm_view.dart' show IdeScmSession;
@@ -57,7 +58,9 @@ class SidePanelTab {
 /// The side panel's pages, each a list at the left and the tabs it opened
 /// at the right: the project's files, the agent's changes, its background
 /// commands; and the plan the agent wrote, alone, while there is one.
-enum SidePanelSection { files, changes, terminal, plan }
+/// The browser's page is there once a browser of the user's has connected
+/// (see lib/browser/browser_bridge.dart).
+enum SidePanelSection { files, changes, terminal, browser, plan }
 
 /// The pages there whether or not there is anything on them: not the
 /// plan's, there only once the agent wrote one.
@@ -76,9 +79,12 @@ class SidePanelTabs {
 
   /// The page that shows: [section], but the changes page for the plan's
   /// without a plan.
-  SidePanelSection get shown => section == SidePanelSection.plan && plan == null
-      ? SidePanelSection.changes
-      : section;
+  SidePanelSection get shown => switch (section) {
+    SidePanelSection.plan when plan == null => SidePanelSection.changes,
+    SidePanelSection.browser when !BrowserBridge.instance.used =>
+      SidePanelSection.changes,
+    _ => section,
+  };
 
   /// The files previewed, on the files page.
   final List<SidePanelTab> files = [];
@@ -97,7 +103,7 @@ class SidePanelTabs {
   SidePanelTab? get current => switch (section) {
     SidePanelSection.files => active,
     SidePanelSection.changes => activeDiff,
-    SidePanelSection.terminal => null,
+    SidePanelSection.terminal || SidePanelSection.browser => null,
     SidePanelSection.plan => plan,
   };
 }
@@ -521,6 +527,8 @@ class AgentSidePanel extends ChangeNotifier {
         if (tabs.terminal case final id?) {
           return closeTerminal(conversation, id);
         }
+      case SidePanelSection.browser:
+        break;
     }
     hide();
   }

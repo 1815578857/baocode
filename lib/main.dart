@@ -11,6 +11,7 @@ import 'package:bao_editor/textmate/textmate_syntax.dart';
 
 import 'package:bao_editor/monaco/flutter/language_assets.dart';
 
+import 'browser/browser_bridge.dart';
 import 'chat/composer/composer_files.dart' show ComposerFile, pastedAsPicture;
 import 'chat/chat_width.dart';
 import 'chat/user_message_style.dart';
@@ -71,7 +72,9 @@ import 'sidebar/sidebar_times.dart';
 import 'telemetry/telemetry_platform.dart';
 import 'stash/stash_editor.dart' show StashEditor;
 import 'forge/forge_accounts.dart';
-import 'forge/forge_io_stub.dart' if (dart.library.io) 'forge/forge_io.dart' show IoForgeHttp;
+import 'forge/forge_io_stub.dart'
+    if (dart.library.io) 'forge/forge_io.dart'
+    show IoForgeHttp;
 import 'stash/stash_controller.dart';
 import 'stash/stash_forge.dart';
 import 'stash/stash_disk.dart';
@@ -195,6 +198,11 @@ Future<void> main(List<String> arguments) async {
     SidebarTimes.follow(
       files.settings,
       () => files.settings[SidebarTimes.settingKey],
+    );
+    // Settings → Browser: whether the agents may use the user's browsers.
+    BrowserBridge.instance.follow(
+      files.settings,
+      () => files.settings[BrowserBridge.settingKey],
     );
     // Settings → Appearance: the code's font, size and ligatures, and the
     // window's text size.

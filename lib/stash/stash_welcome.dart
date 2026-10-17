@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../chat/widgets/hover_builder.dart';
 import '../icons/brand_logos.dart' show BaoCodeLogo;
@@ -13,6 +12,7 @@ import '../settings/pages/stash_hotkey_field.dart' show StashHotkeyField;
 import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' show themeColors;
+import '../tips/welcome_dialog.dart';
 import 'stash_controller.dart';
 import 'stash_settings.dart';
 
@@ -23,27 +23,9 @@ import 'stash_settings.dart';
 Future<void> showStashWelcome(
   BuildContext context, {
   required StashController controller,
-}) => showGeneralDialog<void>(
-  context: context,
-  barrierDismissible: true,
-  barrierLabel: context.l10n.commonDismiss,
-  barrierColor: const Color(0x59000000),
-  transitionDuration: const Duration(milliseconds: 280),
-  transitionBuilder: (context, animation, _, child) {
-    final curved = CurvedAnimation(
-      parent: animation,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic,
-    );
-    return FadeTransition(
-      opacity: curved,
-      child: ScaleTransition(
-        scale: Tween(begin: .96, end: 1.0).animate(curved),
-        child: child,
-      ),
-    );
-  },
-  pageBuilder: (context, _, _) => StashWelcome(controller: controller),
+}) => showWelcomeDialog(
+  context,
+  builder: (context) => StashWelcome(controller: controller),
 );
 
 class StashWelcome extends StatefulWidget {
@@ -121,7 +103,6 @@ class _StashWelcomeState extends State<StashWelcome>
 
   Widget _build(BuildContext context) {
     final l10n = context.l10n;
-    final border = themeColors.get('widget.border') ?? AppColors.border;
     final hotkey = _hotkey;
     final label = StashSettings.label(hotkey, mac: AppPlatform.isMacOS);
     final lines = [
@@ -141,145 +122,63 @@ class _StashWelcomeState extends State<StashWelcome>
         l10n.stashWelcomeTrack,
       ),
     ];
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.escape): () =>
-            Navigator.pop(context),
-        const SingleActivator(LogicalKeyboardKey.enter): () =>
-            Navigator.pop(context),
-      },
-      child: FocusScope(
-        autofocus: true,
-        child: Center(
-          child: Material(
-            type: MaterialType.transparency,
-            child: Container(
-              width: 480,
-              // A short window: the lines scroll under the picture, the
-              // footer stays.
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * .9,
-              ),
-              decoration: BoxDecoration(
-                color: themeColors['editorWidget.background'],
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: border),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x33000000),
-                    blurRadius: 40,
-                    offset: Offset(0, 16),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(15),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _Picture(
-                      cards: [
-                        _step(0, .45, curve: Curves.easeOutBack),
-                        _step(.08, .53, curve: Curves.easeOutBack),
-                        _step(.16, .61, curve: Curves.easeOutBack),
-                      ],
-                      extras: _step(.4, .75),
-                      float: _float,
-                      hotkey: label,
-                    ),
-                    Flexible(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(28, 20, 28, 0),
-                              child: _Rise(
-                                animation: _step(.3, .7),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      l10n.stashWelcomeTitle,
-                                      style: TextStyle(
-                                        color: AppColors.textPrimary,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      l10n.stashWelcomeLead,
-                                      style: TextStyle(
-                                        color: AppColors.textMuted,
-                                        fontSize: 13,
-                                        height: 1.5,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            for (final (i, (icon, title, text))
-                                in lines.indexed)
-                              _Rise(
-                                animation: _step(.42 + i * .1, .82 + i * .06),
-                                child: _Line(
-                                  icon: icon,
-                                  title: title,
-                                  text: text,
-                                ),
-                              ),
-                            _Rise(
-                              animation: _step(.62, .95),
-                              child: _HotkeyStep(
-                                hotkey: hotkey,
-                                label: label,
-                                taken: widget.controller.hotkeyTaken,
-                                onChanged: _setHotkey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(28, 16, 28, 22),
-                      child: _Rise(
-                        animation: _step(.7, 1),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: hotkey.isEmpty
-                                  ? Text(
-                                      l10n.stashWelcomeHotkeyLater,
-                                      style: TextStyle(
-                                        color: AppColors.textFaint,
-                                        fontSize: 12,
-                                      ),
-                                    )
-                                  : const SizedBox.shrink(),
-                            ),
-                            const SizedBox(width: 12),
-                            IdeButton(
-                              label: l10n.stashWelcomeStart,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 6,
-                              ),
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+    return WelcomeFrame(
+      picture: _Picture(
+        cards: [
+          _step(0, .45, curve: Curves.easeOutBack),
+          _step(.08, .53, curve: Curves.easeOutBack),
+          _step(.16, .61, curve: Curves.easeOutBack),
+        ],
+        extras: _step(.4, .75),
+        float: _float,
+        hotkey: label,
+      ),
+      body: [
+        WelcomeRise(
+          animation: _step(.3, .7),
+          child: WelcomeHeading(
+            title: l10n.stashWelcomeTitle,
+            lead: l10n.stashWelcomeLead,
           ),
+        ),
+        const SizedBox(height: 10),
+        for (final (i, (icon, title, text)) in lines.indexed)
+          WelcomeRise(
+            animation: _step(.42 + i * .1, .82 + i * .06),
+            child: WelcomeLine(icon: icon, title: title, text: text),
+          ),
+        WelcomeRise(
+          animation: _step(.62, .95),
+          child: _HotkeyStep(
+            hotkey: hotkey,
+            label: label,
+            taken: widget.controller.hotkeyTaken,
+            onChanged: _setHotkey,
+          ),
+        ),
+      ],
+      footer: WelcomeRise(
+        animation: _step(.7, 1),
+        child: Row(
+          children: [
+            Expanded(
+              child: hotkey.isEmpty
+                  ? Text(
+                      l10n.stashWelcomeHotkeyLater,
+                      style: TextStyle(
+                        color: AppColors.textFaint,
+                        fontSize: 12,
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            const SizedBox(width: 12),
+            IdeButton(
+              label: l10n.stashWelcomeStart,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
         ),
       ),
     );
@@ -312,103 +211,40 @@ class _HotkeyStep extends StatelessWidget {
       StashSettings.suggestedHotkey,
       mac: AppPlatform.isMacOS,
     );
-    final green = themeColors['charts.green'];
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
-      margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-      padding: const EdgeInsets.fromLTRB(8, 12, 14, 14),
-      decoration: BoxDecoration(
-        color: (set ? green : AppColors.textMuted).withValues(alpha: .07),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: set ? green.withValues(alpha: .35) : AppColors.border,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: (set ? green : AppColors.textMuted).withValues(alpha: .14),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              transitionBuilder: (child, animation) => ScaleTransition(
-                scale: CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeOutBack,
-                ),
-                child: FadeTransition(opacity: animation, child: child),
-              ),
-              child: Icon(
-                set ? Codicons.check : Codicons.keyboard,
-                key: ValueKey(set),
-                size: 15,
-                color: set ? green : AppColors.text,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  set
-                      ? l10n.stashWelcomeHotkeySetTitle
-                      : l10n.stashWelcomeHotkeyTitle,
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  set
-                      ? l10n.stashWelcomeHotkeySet(label)
-                      : l10n.stashWelcomeHotkey,
-                  style: TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 12.5,
-                    height: 1.45,
-                  ),
-                ),
-                if (set && taken == false) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.stashSettingsHotkeyTaken,
-                    style: TextStyle(color: AppColors.caution, fontSize: 12),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    StashHotkeyField(
-                      hotkey: hotkey,
-                      onChanged: onChanged,
-                      semanticLabel: l10n.stashWelcomeHotkeyTitle,
-                    ),
-                    if (!set)
-                      _Link(
-                        l10n.stashHotkeySuggested(suggested),
-                        onTap: () => onChanged(StashSettings.suggestedHotkey),
-                      ),
-                  ],
-                ),
-              ],
-            ),
+    return WelcomeStep(
+      done: set,
+      icon: Codicons.keyboard,
+      title: set
+          ? l10n.stashWelcomeHotkeySetTitle
+          : l10n.stashWelcomeHotkeyTitle,
+      text: set ? l10n.stashWelcomeHotkeySet(label) : l10n.stashWelcomeHotkey,
+      below: [
+        if (set && taken == false) ...[
+          const SizedBox(height: 4),
+          Text(
+            l10n.stashSettingsHotkeyTaken,
+            style: TextStyle(color: AppColors.caution, fontSize: 12),
           ),
         ],
-      ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            StashHotkeyField(
+              hotkey: hotkey,
+              onChanged: onChanged,
+              semanticLabel: l10n.stashWelcomeHotkeyTitle,
+            ),
+            if (!set)
+              _Link(
+                l10n.stashHotkeySuggested(suggested),
+                onTap: () => onChanged(StashSettings.suggestedHotkey),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -437,83 +273,6 @@ class _Link extends StatelessWidget {
   );
 }
 
-/// [child] fading in as it rises a little.
-class _Rise extends StatelessWidget {
-  const _Rise({required this.animation, required this.child});
-
-  final Animation<double> animation;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: animation,
-    builder: (context, child) => Opacity(
-      opacity: animation.value.clamp(0.0, 1.0),
-      child: Transform.translate(
-        offset: Offset(0, (1 - animation.value) * 10),
-        child: child,
-      ),
-    ),
-    child: child,
-  );
-}
-
-class _Line extends StatelessWidget {
-  const _Line({required this.icon, required this.title, required this.text});
-
-  final Widget icon;
-  final String title;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(28, 6, 28, 6),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 30,
-          height: 30,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppColors.textMuted.withValues(alpha: .1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: IconTheme.merge(
-            data: IconThemeData(color: AppColors.text),
-            child: icon,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                text,
-                style: TextStyle(
-                  color: AppColors.textMuted,
-                  fontSize: 12.5,
-                  height: 1.45,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
 // --- The picture ---------------------------------------------------------------
 
 /// Three stashes coming in, fanned out, afloat: one with a picture, one
@@ -532,95 +291,79 @@ class _Picture extends StatelessWidget {
   final Animation<double> float;
   final String hotkey;
 
-  static const height = 180.0;
-
   @override
-  Widget build(BuildContext context) {
-    final glow = AppColors.accent.withValues(alpha: .10);
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: const Alignment(0, -.2),
-          radius: 1.1,
-          colors: [glow, glow.withValues(alpha: 0)],
-        ),
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: AnimatedBuilder(
-        animation: Listenable.merge([...cards, extras, float]),
-        builder: (context, _) {
-          final drift = math.sin(float.value * math.pi);
-          return Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              _place(
-                cards[0],
-                dx: -112,
-                dy: 14 - drift * 3,
-                turn: -.075,
-                child: const _MiniCard(tag: '#12', picture: true),
-              ),
-              _place(
-                cards[1],
-                dx: 112,
-                dy: 18 + drift * 2,
-                turn: .065,
-                child: const _MiniCard(tag: '#18', pull: true),
-              ),
-              _place(
-                cards[2],
-                dx: 0,
-                dy: 4 - drift * 4,
-                turn: 0,
-                child: const _MiniCard(tag: '#31', thread: true, front: true),
-              ),
-              // Set meanwhile: it pops in.
-              Positioned(
-                top: 18,
-                right: 26,
-                child: Opacity(
-                  opacity: extras.value.clamp(0.0, 1.0),
-                  child: Transform.translate(
-                    offset: Offset(0, (1 - extras.value) * -8 + drift * 2),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 360),
-                      transitionBuilder: (child, animation) => ScaleTransition(
-                        scale: CurvedAnimation(
-                          parent: animation,
-                          curve: Curves.easeOutBack,
-                        ),
-                        child: FadeTransition(opacity: animation, child: child),
-                      ),
-                      child: hotkey.isEmpty
-                          ? const SizedBox.shrink()
-                          : _Keycap(hotkey, key: ValueKey(hotkey)),
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: Listenable.merge([...cards, extras, float]),
+    builder: (context, _) {
+      final drift = math.sin(float.value * math.pi);
+      return Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          _place(
+            cards[0],
+            dx: -112,
+            dy: 14 - drift * 3,
+            turn: -.075,
+            child: const _MiniCard(tag: '#12', picture: true),
+          ),
+          _place(
+            cards[1],
+            dx: 112,
+            dy: 18 + drift * 2,
+            turn: .065,
+            child: const _MiniCard(tag: '#18', pull: true),
+          ),
+          _place(
+            cards[2],
+            dx: 0,
+            dy: 4 - drift * 4,
+            turn: 0,
+            child: const _MiniCard(tag: '#31', thread: true, front: true),
+          ),
+          // Set meanwhile: it pops in.
+          Positioned(
+            top: 18,
+            right: 26,
+            child: Opacity(
+              opacity: extras.value.clamp(0.0, 1.0),
+              child: Transform.translate(
+                offset: Offset(0, (1 - extras.value) * -8 + drift * 2),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 360),
+                  transitionBuilder: (child, animation) => ScaleTransition(
+                    scale: CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutBack,
                     ),
+                    child: FadeTransition(opacity: animation, child: child),
                   ),
+                  child: hotkey.isEmpty
+                      ? const SizedBox.shrink()
+                      : _Keycap(hotkey, key: ValueKey(hotkey)),
                 ),
               ),
-              Positioned(
-                top: 26,
-                left: 34,
-                child: Opacity(
-                  opacity: extras.value.clamp(0.0, 1.0),
-                  child: Transform.rotate(
-                    angle: float.value * .6,
-                    child: Icon(
-                      Codicons.sparkle,
-                      size: 14,
-                      color: AppColors.textMuted.withValues(alpha: .7),
-                    ),
-                  ),
+            ),
+          ),
+          Positioned(
+            top: 26,
+            left: 34,
+            child: Opacity(
+              opacity: extras.value.clamp(0.0, 1.0),
+              child: Transform.rotate(
+                angle: float.value * .6,
+                child: Icon(
+                  Codicons.sparkle,
+                  size: 14,
+                  color: AppColors.textMuted.withValues(alpha: .7),
                 ),
               ),
-            ],
-          );
-        },
-      ),
-    );
-  }
+            ),
+          ),
+        ],
+      );
+    },
+  );
 
   Widget _place(
     Animation<double> animation, {

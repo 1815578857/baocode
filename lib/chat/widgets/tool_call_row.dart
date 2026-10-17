@@ -232,7 +232,7 @@ String toolVerb(
           ? s.toolQuestionSkipped
           : s.toolAsked,
     ToolKind.goal => running ? s.toolProposingGoal : s.toolProposedGoal,
-    ToolKind.other => running ? s.toolUsing : s.toolUsed,
+    ToolKind.browser || ToolKind.other => running ? s.toolUsing : s.toolUsed,
   };
 }
 

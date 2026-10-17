@@ -645,6 +645,40 @@
   "cmdSidePanelCloseTab": "Close Side Panel Tab",
   "sidePanelFiles": "Files",
   "sidePanelTerminal": "Terminal",
+  "sidePanelBrowser": "Browser",
+  "@sidePanelBrowser": {"description": "The side panel's browser page, there once the browser plugin is installed."},
+  "browserNotConnected": "No browser is connected. Add BaoCode's extension to Chrome (or Edge, Brave, Arc) and agents can use the tabs you share with them.",
+  "browserNoSharedTab": "No tab is shared yet. Ask an agent to open a page, or click BaoCode in the browser toolbar to share the tab in front.",
+  "browserOtherApp": "Another BaoCode is connected to the browser.",
+  "browserSharedTabs": "Shared Tabs",
+  "browserReload": "Reload",
+  "browserShowInBrowser": "Show in Browser",
+  "browserDetached": "The browser stopped letting BaoCode see this tab.",
+  "browserReconnect": "Reconnect",
+  "browserShowInPanel": "Show in Side Panel",
+  "browserWatchTitle": "Watching you in the browser",
+  "@browserWatchTitle": {"description": "The card in the conversation while an agent watches the user do something in their browser (browser_watch), recording it."},
+  "browserWatchHint": "Do it in the BaoCode tab of your browser. When you're done, click Done here or the BaoCode button in the browser's toolbar.",
+  "browserWatchSteps": "{count, plural, =0{Nothing recorded yet} =1{1 step recorded} other{{count} steps recorded}}",
+  "@browserWatchSteps": {"placeholders": {"count": {"type": "int"}}},
+  "browserWatchCancel": "Cancel",
+  "browserWatchDone": "Done",
+  "browserWatchedStep": "{kind, select, click{Clicked} input{Set} key{Pressed} submit{Submitted} navigate{Went to} closed{Closed the tab} other{Did}}",
+  "@browserWatchedStep": {
+    "description": "A step the user took while watched, by its kind; what it was on follows (an element, a URL).",
+    "placeholders": {"kind": {"type": "String"}}
+  },
+  "browserTraceReveal": "Show the trace in Finder (drop it into DevTools' Performance panel to look closer)",
+  "browserStepDone": "{action, select, tabs{Listed tabs} open{Opened} navigate{Went to} back{Went back} forward{Went forward} reload{Reloaded} snapshot{Read the page} screenshot{Took a screenshot} click{Clicked} type{Typed} press{Pressed} scroll{Scrolled} evaluate{Ran} close{Closed the tab} console{Read the console} network{Listed requests} request{Read the request} performance{Profiled} recordStart{Started profiling} recordStop{Profiled} emulate{Emulated} watch{Watched you} act{Acted} other{Used the browser}}",
+  "@browserStepDone": {
+    "description": "A browser step's verb once done, by the browser tool it called; what it did it on follows (a URL, an element's name).",
+    "placeholders": {"action": {"type": "String"}}
+  },
+  "browserStepRunning": "{action, select, tabs{Listing tabs} open{Opening} navigate{Going to} back{Going back} forward{Going forward} reload{Reloading} snapshot{Reading the page} screenshot{Taking a screenshot} click{Clicking} type{Typing} press{Pressing} scroll{Scrolling} evaluate{Running} close{Closing the tab} console{Reading the console} network{Listing requests} request{Reading the request} performance{Profiling} recordStart{Starting to profile} recordStop{Profiling} emulate{Emulating} watch{Watching you} act{Acting} other{Using the browser}}",
+  "@browserStepRunning": {
+    "description": "A browser step's verb while it runs (see browserStepDone).",
+    "placeholders": {"action": {"type": "String"}}
+  },
   "sidePanelPlan": "Plan",
   "@sidePanelPlan": {
     "description": "The side panel's plan page: the plan the agent wrote in plan mode, shown while there is one."
@@ -1378,6 +1412,14 @@
   },
   "stepsRan": "{count, plural, =1{ran 1 command} other{ran {count} commands}}",
   "@stepsRan": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stepsBrowsed": "{count, plural, =1{took 1 step in the browser} other{took {count} steps in the browser}}",
+  "@stepsBrowsed": {
     "placeholders": {
       "count": {
         "type": "int"
@@ -6639,5 +6681,48 @@
       }
     }
   },
-  "stashWelcomeHotkeyLater": "You can also set it later in Settings → Stash."
+  "stashWelcomeHotkeyLater": "You can also set it later in Settings → Stash.",
+  "settingsSectionBrowser": "Browser",
+  "settingsBrowserKeywords": "chrome extension edge brave arc web page tab agent",
+  "browserSettingsDescription": "Let agents use your own browser, signed in as you are: open pages, read them, click and type in the tabs you share with them, while you watch in the side panel.",
+  "browserSettingsMacOSOnly": "The browser is macOS-only for now.",
+  "browserSettingsEnabled": "Let Agents Use the Browser",
+  "browserSettingsEnabledDescription": "Off, agents don't get the browser's tools, and the extension disconnects.",
+  "browserSettingsStatus": "Status",
+  "browserSettingsNotInstalled": "The extension isn't installed",
+  "browserSettingsNotInstalledDescription": "Get it from the Chrome Web Store or in developer mode, below: it connects by itself.",
+  "browserSettingsNotRunning": "No browser connected",
+  "browserSettingsNotRunningDescription": "Open the browser that has BaoCode's extension: it connects by itself.",
+  "browserSettingsConnected": "{browser}: connected",
+  "@browserSettingsConnected": {"description": "A browser connected, by its name (Google Chrome, Microsoft Edge…).", "placeholders": {"browser": {"type": "String"}}},
+  "browserSettingsExtensionVersion": "Extension {version}",
+  "@browserSettingsExtensionVersion": {"description": "The version of BaoCode's extension in a connected browser.", "placeholders": {"version": {"type": "String"}}},
+  "browserSettingsExtensionOld": "Its extension is too old for this BaoCode. From the store, it updates itself when the browser restarts; in developer mode, download it again below.",
+  "browserSettingsAppOld": "Its extension is newer than this BaoCode: update BaoCode.",
+  "browserSettingsInstall": "Get the Extension",
+  "browserSettingsStore": "Chrome Web Store",
+  "browserSettingsStoreDescription": "Updates itself. For Chrome, Edge, Brave, Arc and other Chromium browsers.",
+  "browserSettingsStoreOpen": "Open Store",
+  "browserSettingsUnpacked": "Developer Mode",
+  "browserSettingsUnpackedDescription": "Unzip it into a folder you'll keep, open chrome://extensions, turn on Developer mode, click Load unpacked and choose the folder. It doesn't update itself.",
+  "browserSettingsUnpackedDownload": "Download Zip",
+  "browserSettingsOpen": "Browser Settings",
+  "browserWelcomeTitle": "Agents can use your browser now",
+  "browserWelcomeLead": "With BaoCode's extension, agents open pages, read them, click and type in your own Chrome, signed in as you are.",
+  "browserWelcomeSharedTitle": "Only the tabs you share",
+  "browserWelcomeShared": "They work in the yellow BaoCode tab group alone; your other tabs stay yours.",
+  "browserWelcomeWatchTitle": "Watch it work",
+  "browserWelcomeWatch": "The side panel shows the page live as the agent uses it. Take over any time.",
+  "browserWelcomeShowTitle": "Show it once",
+  "browserWelcomeShow": "Ask an agent to watch, do it yourself in the browser, and it sees each step you took.",
+  "browserWelcomeInstallTitle": "Add the extension",
+  "browserWelcomeInstall": "For Chrome, Edge, Brave and Arc. It connects by itself, and this turns green.",
+  "browserWelcomeTurnedOff": "The browser is turned off in Settings → Browser.",
+  "browserWelcomeConnected": "{browser} is connected",
+  "@browserWelcomeConnected": {"description": "The welcome's step once a browser connected, by its name.", "placeholders": {"browser": {"type": "String"}}},
+  "browserWelcomeTry": "Try telling an agent: “Open baocode.dev and look at the download page.”",
+  "browserWelcomeUnpacked": "Developer Mode Zip",
+  "browserWelcomeDone": "Got It",
+  "cmdBrowserWelcome": "Connect Your Browser...",
+  "cmdStashWelcome": "Meet Stash..."
 }

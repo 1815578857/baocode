@@ -5,6 +5,7 @@ import '../../chat/chat_models.dart';
 import '../kernel_event.dart';
 import '../kernel_types.dart';
 import 'claude_goal.dart';
+import 'claude_sdk_tools.dart';
 
 /// Translates Claude Code's conversation messages (stream-json output, or
 /// the lines of a kept session) into [KernelEvent]s: text, thoughts, tool
@@ -856,7 +857,12 @@ class ClaudeTranslator {
     );
   }
 
-  ChatItem _toolItem(_Tool tool, _Outcome outcome, {String? output}) {
+  ChatItem _toolItem(
+    _Tool tool,
+    _Outcome outcome, {
+    String? output,
+    List<ImageAttachment> images = const [],
+  }) {
     final input = tool.input;
     final status = switch (outcome) {
       _Outcome.running => ToolStatus.running,
@@ -870,6 +876,25 @@ class ClaudeTranslator {
     String? path(String key) => _string(input[key]);
     String base(String? path) => path == null ? '' : path.split('/').last;
     final name = tool.name;
+    // The app's own, shown as it says.
+    if (ClaudeSdkTools.called(name) case ClaudeSdkTool(
+      :final name,
+      :final kind?,
+      :final summary,
+    )) {
+      final said = _string(input['description'])?.trim() ?? '';
+      return ToolCallItem(
+        kind: kind,
+        tool: name,
+        input: input,
+        // Said by the agent, it is the line, whole.
+        label: said.isEmpty ? null : '',
+        target: said.isNotEmpty ? said : summary?.call(input, output) ?? '',
+        status: status,
+        output: output,
+        images: images,
+      );
+    }
     if (name.startsWith('mcp__')) {
       final parts = name.split('__');
       return ToolCallItem(
@@ -1175,6 +1200,7 @@ class ClaudeTranslator {
         tool,
         outcome,
         output: outcome == _Outcome.done ? _short(text) : _tail(text),
+        images: _resultImages(block['content']),
       ),
       parent: tool.parent,
     );
@@ -1463,10 +1489,7 @@ class ClaudeTranslator {
           _tasks[taskId] = task.copyWith(summary: summary);
           _reportTasks();
         }
-        final toolUseId = _agentCard(
-          taskId,
-          message['tool_use_id'] as String?,
-        );
+        final toolUseId = _agentCard(taskId, message['tool_use_id'] as String?);
         final agent = toolUseId == null ? null : _agents[toolUseId];
         if (agent != null) {
           agent.item = agent.item.copyWith(
@@ -1680,6 +1703,22 @@ class ClaudeTranslator {
     ].join('\n'),
     _ => '',
   };
+
+  /// The pictures in a tool's result: as the CLI has them (an MCP tool's
+  /// made image blocks), or as the tool gave them.
+  static List<ImageAttachment> _resultImages(Object? content) => [
+    if (content is List)
+      for (final block in content.map(_map))
+        if (block['type'] == 'image')
+          ?_image(switch (block['source']) {
+            final Map<Object?, Object?> source => source.cast(),
+            _ => {
+              'type': 'base64',
+              'data': block['data'],
+              'media_type': block['mimeType'],
+            },
+          }),
+  ];
 
   static String _summary(Map<String, Object?> input) {
     for (final value in input.values) {

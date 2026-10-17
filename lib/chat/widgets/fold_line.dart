@@ -35,6 +35,7 @@ class StepsFoldLine extends StatelessWidget {
               StepAction.list => l10n.stepsListed(count),
               StepAction.fetch => l10n.stepsFetched(count),
               StepAction.run => l10n.stepsRan(count),
+              StepAction.browse => l10n.stepsBrowsed(count),
               StepAction.use => l10n.stepsUsed(count),
             },
             count,

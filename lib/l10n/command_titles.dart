@@ -45,6 +45,8 @@ String localizedCommandLabel(AppLocalizations l10n, String id, String english) {
     showSetupGuideCommandId => l10n.cmdShowSetupGuide,
     resetFeatureTipsCommandId => l10n.cmdResetFeatureTips,
     starOnGitHubCommandId => l10n.cmdStarOnGitHub,
+    browserWelcomeCommandId => l10n.cmdBrowserWelcome,
+    stashWelcomeCommandId => l10n.cmdStashWelcome,
     'workbench.action.closeActiveEditor' => l10n.cmdCloseEditor,
     'workbench.action.closeOtherEditors' => l10n.cmdCloseOtherEditors,
     'workbench.action.closeEditorsToTheRight' => l10n.cmdCloseEditorsToTheRight,

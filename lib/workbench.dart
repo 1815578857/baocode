@@ -10,6 +10,9 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
+import 'browser/browser_bridge.dart';
+import 'browser/browser_tools.dart';
+import 'browser/browser_welcome.dart';
 import 'chat/chat_column.dart';
 import 'chat/chat_keys.dart';
 import 'chat/chat_models.dart' show FileChange, FileChangeKind;
@@ -112,6 +115,7 @@ import 'remote/ssh_passwords.dart';
 import 'stash/stash_controller.dart';
 import 'stash/stash_thread_view.dart' show sidebarStashes;
 import 'stash/stash_view.dart';
+import 'stash/stash_welcome.dart' show showStashWelcome;
 import 'workspace/chat_branch_bar.dart';
 import 'workspace/chat_drag.dart';
 import 'workspace/chat_grid_view.dart';
@@ -506,6 +510,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       }
       // A web page a chat links to opens in the browser.
       FileViews.registerOpener(webPageOpener);
+      // The user's browsers, for agents (see browser_bridge.dart).
+      unawaited(BrowserTools.start());
       OpenRequests.listen((paths) => unawaited(_openPaths(paths)));
       _workspace.addListener(_syncRecentMenu);
       _syncRecentMenu();
@@ -783,6 +789,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         if (_tipsEnabled) showSetupGuideCommandId: _showSetupGuide,
         if (_tipsEnabled) resetFeatureTipsCommandId: _resetTips,
         starOnGitHubCommandId: _starOnGitHub,
+        if (BrowserBridge.instance.supported)
+          browserWelcomeCommandId: _showBrowserWelcome,
         ChatCommandIds.search: () => unawaited(_openPalette()),
         ..._sidePanelCommands(),
         ..._terminalCommands(),
@@ -803,6 +811,10 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       if (_tipsEnabled) showSetupGuideCommandId: _showSetupGuide,
       if (_tipsEnabled) resetFeatureTipsCommandId: _resetTips,
       starOnGitHubCommandId: _starOnGitHub,
+      if (BrowserBridge.instance.supported)
+        browserWelcomeCommandId: _showBrowserWelcome,
+      if (StashController.current != null)
+        stashWelcomeCommandId: _showStashWelcome,
       // As the sidebar's New Agent button: a folder first, without one.
       if (_workspace.sidebarProjects.isNotEmpty)
         ChatCommandIds.newChat: _newAgent
@@ -1185,6 +1197,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       ?action(showSetupGuideCommandId, Codicons.rocket),
       ?action(resetFeatureTipsCommandId, Codicons.discard),
       ?action(starOnGitHubCommandId, Codicons.star),
+      ?action(browserWelcomeCommandId, Codicons.globe),
+      ?action(stashWelcomeCommandId, Codicons.note),
       ?action(
         'workbench.action.toggleSidebarVisibility',
         Codicons.layoutSidebarLeft,
@@ -1287,6 +1301,20 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       label: commandCatalog[starOnGitHubCommandId]!.title,
       run: _starOnGitHub,
     ),
+    if (BrowserBridge.instance.supported)
+      IdeCommand(
+        id: browserWelcomeCommandId,
+        category: 'Help',
+        label: commandCatalog[browserWelcomeCommandId]!.title,
+        run: _showBrowserWelcome,
+      ),
+    if (StashController.current != null)
+      IdeCommand(
+        id: stashWelcomeCommandId,
+        category: 'Help',
+        label: commandCatalog[stashWelcomeCommandId]!.title,
+        run: _showStashWelcome,
+      ),
   ];
 
   // --- Feature tips ----------------------------------------------------------
@@ -1337,6 +1365,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     tips.attach(presenter);
     _restores = tips.restores;
     tips.addListener(_tipsChanged);
+    if (_main) _welcomeBrowserAfterUpdate(tips);
     if (_main) {
       _starPrompt = StarPrompt(
         workspace: _workspace,
@@ -1346,6 +1375,56 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         ask: _showStarDialog,
       )..start();
     }
+  }
+
+  // --- The browser's welcome -------------------------------------------------
+
+  /// Kept once the browser's welcome has shown by itself.
+  static const _browserWelcomedKey = 'browser.welcomed';
+
+  /// After an update, the browser's welcome, once: to a user who has not
+  /// connected one, with the tips on, when not busy.
+  void _welcomeBrowserAfterUpdate(FeatureTipsController tips) {
+    final bridge = BrowserBridge.instance;
+    if (tips.updatedFrom == null ||
+        !tips.enabled ||
+        !bridge.supported ||
+        !bridge.enabled ||
+        bridge.connectedBefore ||
+        tips.storage.get(_browserWelcomedKey) == true) {
+      return;
+    }
+    void attempt() {
+      if (!mounted) return;
+      if (_busyForTips() || !_inFront()) {
+        Timer(const Duration(seconds: 10), attempt);
+        return;
+      }
+      unawaited(tips.storage.set(_browserWelcomedKey, true));
+      _showBrowserWelcome();
+    }
+
+    // The update's notice first, the window settled.
+    Timer(const Duration(seconds: 3), attempt);
+  }
+
+  /// Connect Your Browser…, the command: the welcome, now.
+  void _showBrowserWelcome() {
+    if (!mounted) return;
+    unawaited(
+      showBrowserWelcome(
+        context,
+        openSettings: () => unawaited(openSettings(SettingsSection.browser)),
+      ),
+    );
+  }
+
+  /// Meet Stash…, the command: Stash's welcome, now.
+  void _showStashWelcome() {
+    final stash = StashController.current;
+    if (!mounted || stash == null) return;
+    stash.welcomed = true;
+    unawaited(showStashWelcome(context, controller: stash));
   }
 
   // --- Asking for a star -----------------------------------------------------
@@ -3364,6 +3443,12 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       openInIde: embedded
           ? null
           : (request) => _openRequestInIde(thread, request),
+      showBrowserTab: embedded
+          ? null
+          : (tabId) {
+              BrowserTools.show(tabId);
+              _sidePanel.showSection(thread.session, SidePanelSection.browser);
+            },
       exists: _projectFileChecks[thread.project.path] ??= fileExistsIn(
         files,
         paths: paths,
@@ -3743,7 +3828,9 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         final tab? => OpenEditor(tab.path),
         null => null,
       },
-      SidePanelSection.terminal || SidePanelSection.plan => null,
+      SidePanelSection.terminal ||
+      SidePanelSection.browser ||
+      SidePanelSection.plan => null,
     };
   }
 
