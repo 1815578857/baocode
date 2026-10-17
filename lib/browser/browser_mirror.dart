@@ -9,8 +9,7 @@ import '../ide/ide_button.dart';
 import '../ide/ide_hover.dart';
 import '../ide/ide_menu.dart';
 import '../l10n/l10n.dart';
-import '../settings/settings_dialog.dart'
-    show SettingsOpener, SettingsSection;
+import '../settings/settings_dialog.dart' show SettingsOpener, SettingsSection;
 import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
 import 'browser_bridge.dart';

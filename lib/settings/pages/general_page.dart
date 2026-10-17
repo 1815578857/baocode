@@ -386,7 +386,8 @@ class GeneralSettingsPage extends StatelessWidget {
                   children: [
                     SettingsSwitchRow(
                       label: l10n.generalSettingsAutoOpenChanges,
-                      description: l10n.generalSettingsAutoOpenChangesDescription,
+                      description:
+                          l10n.generalSettingsAutoOpenChangesDescription,
                       value: IdeAgentChanges.enabledBy(
                         settings?[IdeAgentChanges.enabledSetting],
                       ),
