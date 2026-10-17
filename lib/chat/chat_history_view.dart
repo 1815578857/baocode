@@ -2385,46 +2385,41 @@ class _BottomAnchoredScrollPosition extends ScrollPositionWithSingleContext {
 
   final _BottomAnchoredScrollController controller;
 
-  /// Mouse wheels arrive as small per-notch deltas that make a long
-  /// transcript slow to move through. Trackpads keep their native 1:1 feel,
-  /// whether they arrive as pan gestures or (on the web) as scroll signals.
-  static const wheelSpeed = 2.2;
-
-  /// How long a wheel's notch takes to move the list: eased over a few
-  /// frames, as browsers and editors do, not in one jump a notch.
-  static const wheelDuration = Duration(milliseconds: 160);
-
-  /// Where the wheel's notches are taking the list, while it moves there.
-  double? _wheelTarget;
-
+  /// A mouse wheel's notch moves the list as Chrome's smooth scrolling
+  /// does (its `ScrollOffsetAnimationCurve`): by the distance the system
+  /// gives, as Chrome takes it, not sped up; eased in
+  /// and out, in 200 ms for a notch down to 100 ms for a long way; the next
+  /// notch takes the list on from where it is, at the speed it has, to
+  /// where the last was going and further. A trackpad's is as it comes.
   @override
   void pointerScroll(double delta) {
     if (controller.signalKind != PointerDeviceKind.mouse || delta == 0) {
       super.pointerScroll(delta);
       return;
     }
-    // The next notch adds to where the last was going.
-    final from = activity is DrivenScrollActivity
-        ? _wheelTarget ?? pixels
-        : pixels;
-    final target = (from + delta * wheelSpeed).clamp(
-      minScrollExtent,
-      maxScrollExtent,
-    );
+    final going = activity;
+    final from = going is _WheelScrollActivity ? going.to : pixels;
+    final target = (from + delta).clamp(minScrollExtent, maxScrollExtent);
     if (target == pixels) return;
-    _wheelTarget = target;
+    final distance = target - pixels;
+    final duration = _WheelScrollActivity.durationFor(distance);
+    // The speed it has, as the new curve's at its start.
+    final slope = going is _WheelScrollActivity
+        ? going.velocity * duration.inMicroseconds / 1e6 / distance
+        : 0.0;
     // The user's, as a jump would be (the history reads it to anchor).
     updateUserScrollDirection(
       delta > 0 ? ScrollDirection.reverse : ScrollDirection.forward,
     );
-    unawaited(
-      animateTo(
-        target,
-        duration: wheelDuration,
-        curve: Curves.easeOutCubic,
-      ).whenComplete(() {
-        if (_wheelTarget == target) _wheelTarget = null;
-      }),
+    beginActivity(
+      _WheelScrollActivity(
+        this,
+        vsync: context.vsync,
+        from: pixels,
+        to: target,
+        duration: duration,
+        slope: slope,
+      ),
     );
   }
 
@@ -3331,5 +3326,152 @@ class _RenderBeforeLayout extends RenderProxyBox {
   void performLayout() {
     if (child case final child?) onLayout(child);
     super.performLayout();
+  }
+}
+
+/// A mouse wheel's scrolling from [from] to [to] in [duration], on Chrome's
+/// curve for it: ease-in-out (`cubic-bezier(0.42, 0, 0.58, 1)`), its first
+/// control point raised to start at [slope] (the speed the list had,
+/// relative to this move's), as Chrome's `EaseInOutWithInitialSlope`.
+class _WheelScrollActivity extends ScrollActivity {
+  _WheelScrollActivity(
+    super.delegate, {
+    required TickerProvider vsync,
+    required this.from,
+    required this.to,
+    required this.duration,
+    required double slope,
+  }) : _curve = _ChromeEaseInOut(slope.clamp(-1000.0, 1000.0)),
+       _shownAt = SchedulerBinding.instance.currentSystemFrameTimeStamp {
+    _ticker = vsync.createTicker(_tick)..start();
+  }
+
+  final double from;
+  final double to;
+  final Duration duration;
+  final _ChromeEaseInOut _curve;
+  late final Ticker _ticker;
+
+  /// The frame shown as it began, and when it is timed from: that frame,
+  /// or one before the first it moves the list in, if that was long ago.
+  /// As Chrome times it, so a notch taken up mid-way never holds the list
+  /// still for a frame.
+  final Duration _shownAt;
+  Duration? _startedAt;
+
+  static const _frame = Duration(microseconds: 16667);
+
+  /// How far through its time it is, 0 to 1.
+  double _x = 0;
+
+  /// How long Chrome takes to move [distance] for a wheel: from 12 frames
+  /// (at 60 a second) for 120 pixels or less, down to 6 for 480 or more
+  /// (its `kInverseDelta` duration).
+  static Duration durationFor(double distance) {
+    final frames = (14 - distance.abs() / 60).clamp(6.0, 12.0);
+    return Duration(microseconds: (frames / 60 * 1e6).round());
+  }
+
+  void _tick(Duration _) {
+    final now = SchedulerBinding.instance.currentSystemFrameTimeStamp;
+    final started = _startedAt ??= now - _frame > _shownAt
+        ? now - _frame
+        : _shownAt;
+    _x = ((now - started).inMicroseconds / duration.inMicroseconds).clamp(
+      0.0,
+      1.0,
+    );
+    final value = from + (to - from) * _curve.transform(_x);
+    if (delegate.setPixels(value).abs() > precisionErrorTolerance) {
+      delegate.goIdle();
+      return;
+    }
+    if (_x >= 1) delegate.goBallistic(0);
+  }
+
+  @override
+  void dispatchOverscrollNotification(
+    ScrollMetrics metrics,
+    BuildContext context,
+    double overscroll,
+  ) {
+    OverscrollNotification(
+      metrics: metrics,
+      context: context,
+      overscroll: overscroll,
+      velocity: velocity,
+    ).dispatch(context);
+  }
+
+  @override
+  bool get shouldIgnorePointer => false;
+
+  @override
+  bool get isScrolling => true;
+
+  /// Pixels a second, now.
+  @override
+  double get velocity {
+    final seconds = duration.inMicroseconds / 1e6;
+    if (seconds == 0 || _x >= 1) return 0;
+    return (to - from) * _curve.slopeAt(_x) / seconds;
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+}
+
+/// `cubic-bezier(0.42, y1, 0.58, 1)`, y1 = 0.42 × [slope]: ease-in-out
+/// starting at [slope], with its slope (dy/dx) anywhere.
+class _ChromeEaseInOut {
+  _ChromeEaseInOut(double slope) : _y1 = _x1 * slope;
+
+  static const _x1 = 0.42;
+  static const _x2 = 0.58;
+  final double _y1;
+  static const _y2 = 1.0;
+
+  static double _bezier(double a, double b, double t) =>
+      3 * (1 - t) * (1 - t) * t * a + 3 * (1 - t) * t * t * b + t * t * t;
+
+  static double _derivative(double a, double b, double t) =>
+      3 * (1 - t) * (1 - t) * a +
+      6 * (1 - t) * t * (b - a) +
+      3 * t * t * (1 - b);
+
+  /// The curve's parameter where its x is [x].
+  static double _solve(double x) {
+    var low = 0.0;
+    var high = 1.0;
+    var t = x;
+    // Newton's, kept between the bounds bisection narrows.
+    for (var i = 0; i < 12; i++) {
+      final error = _bezier(_x1, _x2, t) - x;
+      if (error.abs() < 1e-7) return t;
+      if (error > 0) {
+        high = t;
+      } else {
+        low = t;
+      }
+      final slope = _derivative(_x1, _x2, t);
+      final next = slope.abs() < 1e-6 ? (low + high) / 2 : t - error / slope;
+      t = next <= low || next >= high ? (low + high) / 2 : next;
+    }
+    return t;
+  }
+
+  double transform(double x) {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    return _bezier(_y1, _y2, _solve(x));
+  }
+
+  double slopeAt(double x) {
+    final t = _solve(x.clamp(0.0, 1.0));
+    final dx = _derivative(_x1, _x2, t);
+    return dx == 0 ? 0 : _derivative(_y1, _y2, t) / dx;
   }
 }
