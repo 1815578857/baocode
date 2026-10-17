@@ -8587,6 +8587,28 @@ class AppLocalizationsEn extends AppLocalizations {
       'Has AI make the selection clearer, in your words, without adding structure';
 
   @override
+  String get composerPolish => 'Polish';
+
+  @override
+  String get composerPolishing => 'Polishing…';
+
+  @override
+  String get composerPolishHint =>
+      'Polish: the auxiliary model makes the message clearer, in your words; pictures, files, code and links stay as they are; Undo takes it back';
+
+  @override
+  String composerPolishFailed(String error) {
+    return 'Could not polish: $error';
+  }
+
+  @override
+  String get generalSettingsComposerPolish => 'Polish button';
+
+  @override
+  String get generalSettingsComposerPolishDescription =>
+      'A button in the message box that has the auxiliary model make what you wrote clearer before you send it';
+
+  @override
   String stashPolishFailed(String error) {
     return 'Could not polish: $error';
   }

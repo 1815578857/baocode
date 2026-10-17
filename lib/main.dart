@@ -41,6 +41,7 @@ import 'kernel/claude_code/claude_path_setting.dart';
 import 'kernel/claude_code/process_transport.dart';
 import 'kernel/commit_attribution.dart';
 import 'kernel/prompt_suggestions.dart';
+import 'chat/composer/composer_polish.dart' show ComposerPolishSetting;
 import 'kernel/queued_messages.dart';
 import 'keybindings/keybindings_sync.dart';
 import 'link/link_host.dart';
@@ -158,6 +159,11 @@ Future<void> main(List<String> arguments) async {
     // Read as each agent starts, and as each message is sent.
     PromptSuggestions.current = () =>
         PromptSuggestions.enabled(files.settings[PromptSuggestions.settingKey]);
+    // The composer's Polish button, shown or not as it changes.
+    ComposerPolishSetting.current = () => ComposerPolishSetting.enabled(
+      files.settings[ComposerPolishSetting.settingKey],
+    );
+    ComposerPolishSetting.changes = files.settings;
     // Settings → General → Claude Code: the build to run, read as each
     // agent starts.
     ClaudePathSetting.current = () =>
