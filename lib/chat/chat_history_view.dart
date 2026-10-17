@@ -1876,6 +1876,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
           status.label,
           whimsical: status.whimsical,
           visible: status.visible,
+          cue: status.cue,
         ),
       ),
       top: _gapBetween(previous, status) - _gapBefore(index),

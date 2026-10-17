@@ -612,6 +612,7 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
         whimsical: true,
         visible: _statusVisible,
         output: output,
+        cue: MusingCue.after(_last),
       ),
     };
   }
