@@ -1162,32 +1162,41 @@ class _CustomizationEditorState extends State<_CustomizationEditor> {
                   const SizedBox(width: 8),
                   Icon(_item.kind.icon, size: 15, color: AppColors.textMuted),
                   const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      _item.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  // The name and its save state take the rest of the row
+                  // together, so the actions sit flush right: a loose
+                  // Flexible next to a Spacer would leave half the slack
+                  // after them.
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _item.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        if (_item.editable)
+                          Text(
+                            _dirty
+                                ? l10n.customizeUnsaved
+                                : _justSaved
+                                ? l10n.customizeSaved
+                                : '',
+                            style: TextStyle(
+                              color: AppColors.textFaint,
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  if (_item.editable)
-                    Text(
-                      _dirty
-                          ? l10n.customizeUnsaved
-                          : _justSaved
-                          ? l10n.customizeSaved
-                          : '',
-                      style: TextStyle(
-                        color: AppColors.textFaint,
-                        fontSize: 12,
-                      ),
-                    ),
-                  const Spacer(),
                   if (widget.onOpenFile case final open? when _item.editable)
                     SidebarIconButton(
                       icon: Codicons.goToFile,
@@ -1366,18 +1375,15 @@ class _McpStatusPanel extends StatelessWidget {
           Row(
             children: [
               _McpStatusBadge(status),
-              if (status.server case final server? when server.isNotEmpty) ...[
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    server,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: AppColors.textFaint, fontSize: 12),
-                  ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  status.server ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: AppColors.textFaint, fontSize: 12),
                 ),
-              ],
-              const Spacer(),
+              ),
               if (onTest case final onTest?)
                 _Button(
                   label: l10n.mcpTest,
