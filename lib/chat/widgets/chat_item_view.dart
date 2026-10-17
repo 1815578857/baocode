@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../browser/browser_steps.dart';
+import '../../images/image_steps.dart';
 import '../../l10n/l10n.dart';
 import '../chat_models.dart';
 import 'activity_row.dart';
@@ -66,6 +67,11 @@ class ChatItemView extends StatelessWidget {
       ),
       AssistantTextItem(:final text) => AssistantText(text),
       final ToolCallItem tool when tool.kind == ToolKind.browser => BrowserStep(
+        item: tool,
+        expanded: expanded,
+        onToggle: onToggle,
+      ),
+      final ToolCallItem tool when tool.kind == ToolKind.image => ImageStep(
         item: tool,
         expanded: expanded,
         onToggle: onToggle,

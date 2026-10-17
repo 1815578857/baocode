@@ -4154,6 +4154,60 @@ abstract class AppLocalizations {
   /// **'Used'**
   String get toolUsed;
 
+  /// No description provided for @toolGeneratingImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating image'**
+  String get toolGeneratingImage;
+
+  /// No description provided for @toolGeneratedImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated image'**
+  String get toolGeneratedImage;
+
+  /// No description provided for @toolImageFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Image not generated'**
+  String get toolImageFailed;
+
+  /// No description provided for @toolImageWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate image'**
+  String get toolImageWaiting;
+
+  /// No description provided for @imagePickTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the model to generate it with'**
+  String get imagePickTitle;
+
+  /// No description provided for @imagePickGenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate'**
+  String get imagePickGenerate;
+
+  /// No description provided for @imagePickDecline.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get imagePickDecline;
+
+  /// No description provided for @imageSetDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Set as default'**
+  String get imageSetDefault;
+
+  /// No description provided for @imageDefaultSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Set as default image model'**
+  String get imageDefaultSet;
+
   /// No description provided for @toolProposingGoal.
   ///
   /// In en, this message translates to:
@@ -11060,6 +11114,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Does not take images'**
   String get modelsNoImages;
+
+  /// No description provided for @modelsKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Used for'**
+  String get modelsKind;
+
+  /// No description provided for @modelsKindChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversations'**
+  String get modelsKindChat;
+
+  /// No description provided for @modelsKindImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image generation (Images API)'**
+  String get modelsKindImage;
+
+  /// No description provided for @modelsKindImageChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Image generation (in a conversation)'**
+  String get modelsKindImageChat;
+
+  /// No description provided for @modelsKindDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Image models are not offered in the model picker: agents make pictures with them through the generate_image tool.'**
+  String get modelsKindDescription;
+
+  /// No description provided for @modelsImageBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get modelsImageBadge;
+
+  /// No description provided for @modelsImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image model'**
+  String get modelsImage;
+
+  /// No description provided for @modelsImageDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'What agents make pictures with (the generate_image tool), unless you ask them for another; asked each time, you pick it in the conversation. Turn on image models in an upstream\'s list.'**
+  String get modelsImageDescription;
+
+  /// No description provided for @modelsImageFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask each time'**
+  String get modelsImageFirst;
+
+  /// No description provided for @modelsImageNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None turned on'**
+  String get modelsImageNone;
 
   /// No description provided for @modelsSave.
   ///

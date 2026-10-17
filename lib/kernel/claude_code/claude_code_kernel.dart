@@ -2617,19 +2617,18 @@ class ClaudeCodeKernel
   /// Each name [provider]'s models are asked for by, with each effort
   /// through the proxy.
   static List<String> _requestedModels(ModelProvider provider) => {
-    for (final info in provider.models)
-      if (info.enabled) ...[
-        requestedModel(provider, info),
-        if (provider.protocol.proxied)
-          for (final effort in info.effortLevels)
-            requestedModel(provider, info, effort: effort),
-        if (provider.protocol == ProviderProtocol.openaiResponses ||
-            provider.protocol == ProviderProtocol.codex) ...[
-          requestedModel(provider, info, fast: true),
-          for (final effort in info.effortLevels)
-            requestedModel(provider, info, effort: effort, fast: true),
-        ],
+    for (final info in provider.enabledModels) ...[
+      requestedModel(provider, info),
+      if (provider.protocol.proxied)
+        for (final effort in info.effortLevels)
+          requestedModel(provider, info, effort: effort),
+      if (provider.protocol == ProviderProtocol.openaiResponses ||
+          provider.protocol == ProviderProtocol.codex) ...[
+        requestedModel(provider, info, fast: true),
+        for (final effort in info.effortLevels)
+          requestedModel(provider, info, effort: effort, fast: true),
       ],
+    ],
   }.toList();
 
   /// The efforts Claude Code itself takes (`--effort`, `effortLevel`).

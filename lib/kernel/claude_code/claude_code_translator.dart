@@ -782,7 +782,13 @@ class ClaudeTranslator {
   ) {
     final known = _tools[id];
     // The streamed start has no input yet; the whole message fills it in.
-    final tool = _Tool(name, input, known?.parent ?? parent, known?.startedAt);
+    final tool = _Tool(
+      id,
+      name,
+      input,
+      known?.parent ?? parent,
+      known?.startedAt,
+    );
     _tools[id] = tool;
     if (tool.parent == null && _isPlanCall(name, input)) {
       return _planCall(id, name, input);
@@ -882,11 +888,13 @@ class ClaudeTranslator {
       :final name,
       :final kind?,
       :final summary,
+      :final files,
     )) {
       final said = _string(input['description'])?.trim() ?? '';
       return ToolCallItem(
         kind: kind,
         tool: name,
+        callId: tool.id,
         input: input,
         // Said by the agent, it is the line, whole.
         label: said.isEmpty ? null : '',
@@ -894,7 +902,10 @@ class ClaudeTranslator {
         status: status,
         output: output,
         images: images,
-        imageFiles: imageFiles,
+        imageFiles: switch ((files, output)) {
+          (final files?, final output?) => files(output),
+          _ => imageFiles,
+        },
       );
     }
     if (name.startsWith('mcp__')) {
@@ -1845,9 +1856,11 @@ class ClaudeTranslator {
 enum _Outcome { running, done, failed, denied }
 
 class _Tool {
-  _Tool(this.name, this.input, this.parent, DateTime? startedAt)
+  _Tool(this.id, this.name, this.input, this.parent, DateTime? startedAt)
     : startedAt = startedAt ?? DateTime.now();
 
+  /// Its tool use's.
+  final String id;
   final String name;
   final Map<String, Object?> input;
 

@@ -2229,6 +2229,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get toolUsed => '已使用';
 
   @override
+  String get toolGeneratingImage => '正在生成图片';
+
+  @override
+  String get toolGeneratedImage => '已生成图片';
+
+  @override
+  String get toolImageFailed => '图片未生成';
+
+  @override
+  String get toolImageWaiting => '生成图片';
+
+  @override
+  String get imagePickTitle => '选择用来生成的模型';
+
+  @override
+  String get imagePickGenerate => '生成';
+
+  @override
+  String get imagePickDecline => '不生成';
+
+  @override
+  String get imageSetDefault => '设为默认';
+
+  @override
+  String get imageDefaultSet => '已设为默认图片模型';
+
+  @override
   String get toolProposingGoal => '正在提议目标';
 
   @override
@@ -6382,6 +6409,38 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modelsNoImages => '不支持图片';
+
+  @override
+  String get modelsKind => '用途';
+
+  @override
+  String get modelsKindChat => '对话';
+
+  @override
+  String get modelsKindImage => '图片生成（Images API）';
+
+  @override
+  String get modelsKindImageChat => '图片生成（对话接口）';
+
+  @override
+  String get modelsKindDescription =>
+      '图片模型不出现在模型选择器里：agent 通过 generate_image 工具用它们生成图片。';
+
+  @override
+  String get modelsImageBadge => '图片';
+
+  @override
+  String get modelsImage => '图片生成模型';
+
+  @override
+  String get modelsImageDescription =>
+      'agent 生成图片（generate_image 工具）时用的模型，除非你让它换一个；选「每次询问」时在对话里选。图片模型在上游的模型列表里启用。';
+
+  @override
+  String get modelsImageFirst => '每次询问';
+
+  @override
+  String get modelsImageNone => '未启用图片模型';
 
   @override
   String get modelsSave => '保存';

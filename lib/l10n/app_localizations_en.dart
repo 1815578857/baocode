@@ -2304,6 +2304,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toolUsed => 'Used';
 
   @override
+  String get toolGeneratingImage => 'Generating image';
+
+  @override
+  String get toolGeneratedImage => 'Generated image';
+
+  @override
+  String get toolImageFailed => 'Image not generated';
+
+  @override
+  String get toolImageWaiting => 'Generate image';
+
+  @override
+  String get imagePickTitle => 'Pick the model to generate it with';
+
+  @override
+  String get imagePickGenerate => 'Generate';
+
+  @override
+  String get imagePickDecline => 'Skip';
+
+  @override
+  String get imageSetDefault => 'Set as default';
+
+  @override
+  String get imageDefaultSet => 'Set as default image model';
+
+  @override
   String get toolProposingGoal => 'Proposing a goal';
 
   @override
@@ -6801,6 +6828,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelsNoImages => 'Does not take images';
+
+  @override
+  String get modelsKind => 'Used for';
+
+  @override
+  String get modelsKindChat => 'Conversations';
+
+  @override
+  String get modelsKindImage => 'Image generation (Images API)';
+
+  @override
+  String get modelsKindImageChat => 'Image generation (in a conversation)';
+
+  @override
+  String get modelsKindDescription =>
+      'Image models are not offered in the model picker: agents make pictures with them through the generate_image tool.';
+
+  @override
+  String get modelsImageBadge => 'Image';
+
+  @override
+  String get modelsImage => 'Image model';
+
+  @override
+  String get modelsImageDescription =>
+      'What agents make pictures with (the generate_image tool), unless you ask them for another; asked each time, you pick it in the conversation. Turn on image models in an upstream\'s list.';
+
+  @override
+  String get modelsImageFirst => 'Ask each time';
+
+  @override
+  String get modelsImageNone => 'None turned on';
 
   @override
   String get modelsSave => 'Save';

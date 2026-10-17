@@ -13,6 +13,7 @@ import 'package:path/path.dart' as p;
 import 'browser/browser_bridge.dart';
 import 'browser/browser_tools.dart';
 import 'browser/browser_welcome.dart';
+import 'images/image_tools.dart';
 import 'chat/chat_column.dart';
 import 'chat/chat_keys.dart';
 import 'chat/chat_models.dart' show FileChange, FileChangeKind;
@@ -512,6 +513,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       FileViews.registerOpener(webPageOpener);
       // The user's browsers, for agents (see browser_bridge.dart).
       unawaited(BrowserTools.start());
+      // Pictures, for agents, while an image model is turned on.
+      ImageTools.start();
       OpenRequests.listen((paths) => unawaited(_openPaths(paths)));
       _workspace.addListener(_syncRecentMenu);
       _syncRecentMenu();

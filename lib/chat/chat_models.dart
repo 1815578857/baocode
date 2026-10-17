@@ -171,6 +171,9 @@ enum ToolKind {
   /// Something done in the user's browser (see lib/browser): its [tool]
   /// says what.
   browser,
+
+  /// Pictures an image model made (see lib/images): shown as they come.
+  image,
   other,
 }
 
@@ -187,6 +190,7 @@ class ToolCallItem extends ChatItem {
     this.status = ToolStatus.succeeded,
     this.output,
     this.tool,
+    this.callId,
     this.input = const {},
     this.images = const [],
     this.imageFiles = const [],
@@ -212,6 +216,11 @@ class ToolCallItem extends ChatItem {
   /// The tool's own name (an MCP tool's, without its server's), for a
   /// kind each of whose tools shows its own way.
   final String? tool;
+
+  /// Its tool use's id, for one of the app's own tools (see
+  /// claude_sdk_tools.dart): what the call under way is known by, to answer
+  /// what it asks of the user.
+  final String? callId;
 
   /// What it was called with, for those.
   final Map<String, Object?> input;
