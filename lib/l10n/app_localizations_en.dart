@@ -3239,6 +3239,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get generalSettingsQueuedDuringTurn => 'Join the Current Task';
 
   @override
+  String get generalSettingsPromptSuggestions => 'Suggest Next Prompt';
+
+  @override
+  String get generalSettingsPromptSuggestionsDescription =>
+      'After each turn, a greyed-out suggestion for your next message, taken with Tab. Each one is an extra request with the whole conversation; turn it off to save tokens. Applies from the next message; Claude Code only.';
+
+  @override
   String generalSettingsCommitAttributionLabel(String name) {
     return 'Commit Attribution: $name';
   }

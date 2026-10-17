@@ -10,6 +10,7 @@ import '../../ide/ide_menu.dart';
 import '../../ide/ide_notifications.dart' show IdeSeverity;
 import '../../kernel/claude_code/claude_path_setting.dart';
 import '../../kernel/commit_attribution.dart';
+import '../../kernel/prompt_suggestions.dart';
 import '../../kernel/queued_messages.dart';
 import '../../l10n/l10n.dart';
 import '../../platform/app_platform.dart';
@@ -30,9 +31,11 @@ import 'settings_widgets.dart';
 /// come back and close (`window.*`), who the commits and pull requests
 /// agents write credit (`chat.commitAttribution` in settings.json), when a
 /// message sent while the agent works is taken up (`chat.queuedMessages`),
-/// the Claude Code to run (`claudeCode.path`), the `code` shell command, and
-/// Open with BaoCode in Finder's or Explorer's context menu. A choice is
-/// written at once; the default is not written.
+/// whether the next prompt is suggested after each turn
+/// (`chat.promptSuggestions`), the Claude Code to run (`claudeCode.path`),
+/// the `code` shell command, and Open with BaoCode in Finder's or
+/// Explorer's context menu. A choice is written at once; the default is not
+/// written.
 class GeneralSettingsPage extends StatelessWidget {
   const GeneralSettingsPage({
     super.key,
@@ -338,6 +341,17 @@ class GeneralSettingsPage extends StatelessWidget {
                     QueuedMessages.duringTurn.name:
                         l10n.generalSettingsQueuedDuringTurn,
                   },
+                ),
+                SettingsSwitchRow(
+                  label: l10n.generalSettingsPromptSuggestions,
+                  description: l10n.generalSettingsPromptSuggestionsDescription,
+                  value: PromptSuggestions.enabled(
+                    settings?[PromptSuggestions.settingKey],
+                  ),
+                  onChanged: (on) => _write(
+                    PromptSuggestions.settingKey,
+                    on ? null : PromptSuggestions.off,
+                  ),
                 ),
               ],
             ),

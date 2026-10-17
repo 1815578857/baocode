@@ -62,7 +62,12 @@ class ClaudeLaunch {
     this.instructions,
     this.models = const [],
     this.sdkServers = const [],
+    this.promptSuggestions = true,
   });
+
+  /// Whether it suggests the next prompt after each turn
+  /// (`--prompt-suggestions`), each a request of its own.
+  final bool promptSuggestions;
 
   /// Folders it may read without asking, its tools' work outside them
   /// aside: where the long pastes it is told of are kept (PasteStore).
@@ -164,6 +169,7 @@ class ClaudeLaunch {
     readable: readable,
     instructions: instructions,
     models: models,
+    promptSuggestions: promptSuggestions,
   );
 
   Map<String, String>? get _attribution => switch (attribution) {
@@ -240,7 +246,7 @@ class ClaudeLaunch {
     '--thinking-display',
     'summarized',
     // A prompt_suggestion message after each turn.
-    '--prompt-suggestions',
+    if (promptSuggestions) '--prompt-suggestions',
     if (permissionMode case final mode?) ...['--permission-mode', mode],
     if (model case final model? when model != 'default') ...['--model', model],
     if (effort case final effort?) ...['--effort', effort],
