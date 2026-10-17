@@ -70,6 +70,15 @@ class TurnUsage {
       : (inputTokens ?? 0) + (outputTokens ?? 0);
 }
 
+/// What the model has written so far in the turn under way, and how fast it
+/// writes now (null while it does not).
+class TurnOutput {
+  const TurnOutput({required this.tokens, this.tokensPerSecond});
+
+  final int tokens;
+  final double? tokensPerSecond;
+}
+
 /// A picture sent with a message.
 class ImageAttachment {
   const ImageAttachment({
@@ -496,6 +505,7 @@ class LiveStatusItem extends ChatItem {
     this.label, {
     this.whimsical = false,
     this.visible = true,
+    this.output,
   });
 
   final String label;
@@ -506,6 +516,10 @@ class LiveStatusItem extends ChatItem {
 
   /// Whether it shows now: it stays through the turn, and comes and goes.
   final bool visible;
+
+  /// What the model has written so far, under the row whether it shows or
+  /// not; null before it has written anything.
+  final TurnOutput? output;
 }
 
 enum FileChangeKind { added, modified, deleted }

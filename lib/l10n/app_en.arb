@@ -1490,7 +1490,18 @@
       }
     }
   },
-  "turnSpeedHint": "Output speed",
+  "turnSpeedHint": "Average output speed",
+  "turnOutputTokens": "↓ {tokens} tokens",
+  "@turnOutputTokens": {
+    "description": "The tokens the model has written so far in the turn under way, e.g. \"↓ 1.2k tokens\".",
+    "placeholders": {
+      "tokens": {
+        "type": "String"
+      }
+    }
+  },
+  "turnOutputTokensHint": "Written so far this turn",
+  "turnSpeedLiveHint": "Output speed now",
   "turnDurationHint": "Time this turn took",
   "turnCostHint": "Cost of this turn",
   "turnWorked": "Worked for {duration}",
