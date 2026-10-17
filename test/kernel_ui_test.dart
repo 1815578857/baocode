@@ -601,6 +601,42 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
+  testWidgets('Tab takes the suggested prompt past an empty composition an '
+      'input method left', (tester) async {
+    // #143: a macOS input method, its letters deleted or committed, may
+    // leave an empty composition until its next; the composer took it for
+    // one under way and Tab went in as a tab.
+    final (:session, :cli) = await pumpScripted(tester);
+    cli
+      ..push({'type': 'result', 'subtype': 'success', 'is_error': false})
+      ..push({'type': 'prompt_suggestion', 'suggestion': 'Run the tests'});
+    await tester.pump();
+    await tester.pump();
+    expect(session.promptSuggestion, 'Run the tests');
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(
+        text: '\n',
+        selection: TextSelection.collapsed(offset: 0),
+        composing: TextRange.collapsed(0),
+      ),
+    );
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    final editor = tester.widget<QuillEditor>(find.byType(QuillEditor));
+    expect(editor.controller.document.toPlainText(), 'Run the tests\n');
+    // The input method's next state ends it (Quill, disposed with it still
+    // there, sets its state as it goes).
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(
+        text: 'Run the tests\n',
+        selection: TextSelection.collapsed(offset: 13),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 5));
+  });
+
   testWidgets('a suggested prompt with a Windows path, quotes and a line '
       'break shows in the placeholder, the input still there', (tester) async {
     // Quill reads its placeholder as JSON it splices the text into: a

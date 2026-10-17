@@ -601,9 +601,15 @@ class ChatComposerState extends State<ChatComposer>
 
   // --- Editor state --------------------------------------------------------
 
+  /// An input method is composing text: a composition not empty. A macOS
+  /// one may leave an empty one (its letters deleted, or after a commit)
+  /// until its next: not composing, as Quill draws it, or the keys (Tab,
+  /// Enter) went to Quill (#143).
   bool get _isComposing {
     final state = _editorKey.currentState;
-    return state is QuillRawEditorState && state.composingRange.value.isValid;
+    if (state is! QuillRawEditorState) return false;
+    final range = state.composingRange.value;
+    return range.isValid && !range.isCollapsed;
   }
 
   void _handleFocusChanged() {
