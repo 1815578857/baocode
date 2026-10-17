@@ -3118,10 +3118,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     // its column).
     railTop: WindowControls.drawsHeader ? 12 : AppMetrics.titleBarHeight + 4,
     // Not in a narrow window, where the conversation has no room to spare
-    // (the title bar's toggle shows the panel).
+    // (the title bar's toggle shows the panel). Agents side by side have
+    // one each, over their own pane (see [_paneRail]).
     rail: switch (_agentThread ?? _workspace.current) {
-      final thread? when !_narrow && !_replacingChat && !thread.untouched =>
-        _sidePanelRail(thread),
+      final thread? when _agentThread != null || _workspace.grid.length < 2 =>
+        _railFor(thread),
       _ => null,
     },
     builder: (context) => switch (_agentThread ?? _workspace.current) {
@@ -3131,13 +3132,26 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     child: child,
   );
 
+  /// [_sidePanelRail] for [thread], where it has one: not in a narrow
+  /// window, in place of the conversations, nor for an agent not begun.
+  Widget? _railFor(AgentThread thread) =>
+      !_narrow && !_replacingChat && !thread.untouched
+      ? _sidePanelRail(thread)
+      : null;
+
   /// The side panel's quick entries for [thread]'s conversation, counting
   /// what its pages' bar counts: the changes of its repositories, its
-  /// background commands running.
+  /// background commands running. A section picked shows for [thread],
+  /// focused first.
   Widget _sidePanelRail(AgentThread thread) {
     final multi = _workspace.workspaceAt(thread.project.path);
     return SidePanelRail(
-      onSelect: _showSidePanelSection,
+      onSelect: (section) {
+        if (_agentThread == null && !identical(thread, _workspace.current)) {
+          _workspace.select(thread);
+        }
+        _showSidePanelSection(section);
+      },
       session: thread.session,
       gits: switch (multi == null
           ? _sidePanelFolderRepositories(thread)
@@ -3674,9 +3688,39 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         openEditor: openEditor ?? () => _sidePanelEditor(thread),
       ),
     );
-    // The side panel's rail is over the top right pane alone.
-    return place.topRight ? chat : ChatColumnInset(right: 0, child: chat);
+    if (place.alone || embedded) return chat;
+    return _paneRail(thread, chat);
   }
+
+  /// [chat], a pane among others, with the side panel's rail over its top
+  /// right, under its title bar (and its close button), while the panel is
+  /// hidden: the rail of its own agent, as the window's would be were it
+  /// alone, and its column clear of it.
+  Widget _paneRail(AgentThread thread, Widget chat) => ListenableBuilder(
+    listenable: _sidePanel,
+    child: chat,
+    builder: (context, chat) {
+      final rail = _sidePanel.shown && !_sidePanelHidden && !_replacingChat
+          ? null
+          : _railFor(thread);
+      return ChatColumnInset(
+        right: rail == null ? 0 : AgentSidePanelArea.railInset,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            chat!,
+            if (rail != null)
+              Positioned(
+                key: const ValueKey('rail'),
+                right: AgentSidePanelArea.railRight,
+                top: AppMetrics.titleBarHeight + 4,
+                child: rail,
+              ),
+          ],
+        ),
+      );
+    },
+  );
 
   /// The file in front on the side panel, while it shows [thread]'s: on
   /// the files page, where it is edited (its cursor and selection with
