@@ -9,6 +9,7 @@ import '../floating/hover_tooltip.dart';
 import '../side_panel/file_link.dart';
 import '../side_panel/file_link_menu.dart';
 import '../side_panel/file_open.dart';
+import 'content_image.dart';
 import 'hover_builder.dart';
 import 'step_header.dart';
 
@@ -28,6 +29,7 @@ class ToolCallRow extends StatelessWidget {
     this.label,
     this.status = ToolStatus.succeeded,
     this.output,
+    this.images = const [],
     this.expanded = false,
     this.onToggle,
     this.onSetGoal,
@@ -41,6 +43,10 @@ class ToolCallRow extends StatelessWidget {
   final String? label;
   final ToolStatus status;
   final String? output;
+
+  /// The pictures it returned (an image file read, a screenshot), shown
+  /// under what it said as they are.
+  final List<ImageAttachment> images;
   final bool expanded;
   final VoidCallback? onToggle;
 
@@ -54,7 +60,7 @@ class ToolCallRow extends StatelessWidget {
     _ => null,
   };
 
-  bool get _opens => results.isNotEmpty || _shown != null;
+  bool get _opens => results.isNotEmpty || _shown != null || images.isNotEmpty;
 
   /// The file read or written, where the chat's files open (see
   /// [FileOpenScope]) and it is in the project.
@@ -95,6 +101,10 @@ class ToolCallRow extends StatelessWidget {
         ToolKind.goal => Icon(Icons.flag_outlined, size: 15, color: _amber),
         _ => null,
       },
+      trailingGap: 0,
+      trailing: images.isEmpty || status == ToolStatus.failed
+          ? null
+          : StepThumbnails(images: images, shown: !expanded),
       action: switch ((kind, _shown, onSetGoal)) {
         (ToolKind.goal, final condition?, final set?) when !_running =>
           _SetGoalButton(onTap: () => set(condition)),
@@ -119,7 +129,7 @@ class ToolCallRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         header,
-        if (expanded && _opens)
+        if (expanded && (results.isNotEmpty || _shown != null))
           StepBody(
             child: results.isNotEmpty && files != null
                 ? _Results(results: results, files: files)
@@ -128,6 +138,8 @@ class ToolCallRow extends StatelessWidget {
                     style: stepMono,
                   ),
           ),
+        if (expanded && images.isNotEmpty)
+          ToolImages(images: images, path: kind == ToolKind.read ? path : null),
       ],
     );
   }

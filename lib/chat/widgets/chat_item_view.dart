@@ -87,6 +87,7 @@ class ChatItemView extends StatelessWidget {
         :final label,
         :final status,
         :final output,
+        :final images,
       ) =>
         ToolCallRow(
           kind: kind,
@@ -97,6 +98,7 @@ class ChatItemView extends StatelessWidget {
           label: label,
           status: status,
           output: output,
+          images: images,
           expanded: expanded,
           onToggle: onToggle,
           onSetGoal: onSetGoal,
@@ -258,7 +260,7 @@ bool isStep(ChatItem item) => switch (item) {
 
 /// Whether a step is open unless opened or closed by hand: a thought while
 /// it streams. Tool calls stay closed (opening and closing as they start
-/// and end would flicker).
+/// and end would flicker): a picture's shows small after its line.
 bool defaultExpanded(ChatItem item) => switch (item) {
   ThinkingItem(:final streaming) => streaming,
   _ => false,

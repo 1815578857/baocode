@@ -798,15 +798,22 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
     });
   }
 
-  /// The files the agent read or changed, absolute: where a file it names
-  /// by a path gone wrong (relative to some other folder) may be.
+  /// The files the agent read or changed (or was given: a picture a tool
+  /// returned, saved), absolute: what its text may link to outside the
+  /// project, and where a file it names by a path gone wrong (relative to
+  /// some other folder) may be.
   List<String> get filesSeen => _cached(
     #filesSeen,
     () => {
       for (var i = 0; i < _transcript.length; i++)
-        if (_transcript.itemAt(i) case ToolCallItem(:final path?)
-            when path.isNotEmpty)
-          _absolute(path),
+        if (_transcript.itemAt(i) case ToolCallItem(
+          :final path,
+          :final imageFiles,
+        )) ...[
+          if (path != null && path.isNotEmpty) _absolute(path),
+          // The pictures the CLI saved for it: the agent may link them.
+          for (final file in imageFiles) _absolute(file),
+        ],
       for (final edit in _transcript.edits) _absolute(edit.change.path),
     }.toList(),
   );

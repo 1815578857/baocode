@@ -1832,6 +1832,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                     WorkFoldLine(
                       worked: worked,
                       edits: turnEdits(_itemsIn(fold)),
+                      images: foldImages(_itemsIn(fold)),
                       expanded: _isFoldOpen(fold),
                       onToggle: () => _toggleFold(fold),
                     ),
@@ -1842,6 +1843,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                   if (row.steps case final fold?)
                     StepsFoldLine(
                       tally: StepTally(_itemsIn(fold)),
+                      images: foldImages(_itemsIn(fold)),
                       expanded: _isFoldOpen(fold),
                       onToggle: () => _toggleFold(fold),
                     ),

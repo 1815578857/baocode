@@ -189,6 +189,7 @@ class ToolCallItem extends ChatItem {
     this.tool,
     this.input = const {},
     this.images = const [],
+    this.imageFiles = const [],
   });
 
   final ToolKind kind;
@@ -217,6 +218,10 @@ class ToolCallItem extends ChatItem {
 
   /// The pictures it returned (a screenshot, say).
   final List<ImageAttachment> images;
+
+  /// Where they were saved (absolute, on the project's host), as the CLI
+  /// told the agent: files of the session, which its text may link to.
+  final List<String> imageFiles;
 }
 
 /// A subagent at work: its own conversation, one card in the history that
