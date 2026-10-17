@@ -103,7 +103,7 @@ class StepThumbnails extends StatelessWidget {
     this.onOpen,
   });
 
-  final List<ImageAttachment> images;
+  final List<ChatImage> images;
   final bool shown;
   final int max;
   final ValueChanged<int>? onOpen;
@@ -140,9 +140,9 @@ class StepThumbnails extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (final (i, image) in images.take(max).indexed) ...[
+          for (final (i, (:image, :file)) in images.take(max).indexed) ...[
             if (i > 0) const SizedBox(width: 3),
-            _thumbnail(context, i, image),
+            _thumbnail(context, i, image, file),
           ],
           if (rest > 0) ...[
             const SizedBox(width: 4),
@@ -156,7 +156,12 @@ class StepThumbnails extends StatelessWidget {
     );
   }
 
-  Widget _thumbnail(BuildContext context, int index, ImageAttachment image) {
+  Widget _thumbnail(
+    BuildContext context,
+    int index,
+    ImageAttachment image,
+    String? file,
+  ) {
     final radius = BorderRadius.circular(4);
     final dpr = MediaQuery.devicePixelRatioOf(context);
     // Decoded as small as it shows, by its shorter side as it fills.
@@ -187,7 +192,7 @@ class StepThumbnails extends StatelessWidget {
     );
     final open = onOpen;
     return FileLinkMenuRegion(
-      menu: ImageMenu(image),
+      menu: imageMenu(context, image, file),
       child: open == null
           ? thumbnail(false)
           : PreviewClick(
@@ -200,18 +205,94 @@ class StepThumbnails extends StatelessWidget {
   }
 }
 
-/// Shows [images] whole, from the one at [index]: the arrows go through
-/// them all.
-void showImagesWhole(
-  BuildContext context,
+/// A picture a tool returned, with the [file] it was saved to (the file
+/// read, the CLI's copy) where that is known.
+typedef ChatImage = ({ImageAttachment image, String? file});
+
+/// [images], each with its file of [files] (one each, or none known).
+List<ChatImage> chatImagesOf(
   List<ImageAttachment> images,
-  int index,
-) => showImageGallery(
-  context,
-  count: images.length,
-  index: index,
-  load: (i) => SynchronousFuture(images[i]),
-);
+  List<String> files,
+) => [
+  for (final (i, image) in images.indexed)
+    (image: image, file: files.length == images.length ? files[i] : null),
+];
+
+/// The pictures [item] returned, but for a failed one's.
+List<ChatImage> toolImages(ToolCallItem item) =>
+    item.status == ToolStatus.failed
+    ? const []
+    : chatImagesOf(
+        item.images,
+        imageFilesOf(item.kind, item.path, item.imageFiles),
+      );
+
+/// The files a tool call's pictures are: the one read, or the CLI's copies.
+List<String> imageFilesOf(ToolKind kind, String? path, List<String> saved) =>
+    kind == ToolKind.read && path != null ? [path] : saved;
+
+/// What a right click on [image] offers: its [file]'s menu where the
+/// chat's files open and it is one of theirs (to open it in the side
+/// panel, in the IDE, to copy its path), else the picture's own.
+ChatItemMenu imageMenu(
+  BuildContext context,
+  ImageAttachment image,
+  String? file, {
+  bool previewing = false,
+}) {
+  final files = FileOpenScope.maybeOf(context);
+  final path = file == null ? null : files?.resolve(file);
+  if (files == null || path == null) return ImageMenu(image);
+  return files.menuFor(
+    path,
+    () => files.onOpen(FileOpenRequest(path)),
+    context: context,
+    previewing: previewing,
+  );
+}
+
+/// Every picture the chat's tools returned, in order, for one shown whole
+/// to go on to the others (see [showChatImages]): read when asked.
+class ChatImages extends InheritedWidget {
+  const ChatImages({super.key, required this.all, required super.child});
+
+  final List<ChatImage> Function() all;
+
+  static List<ChatImage> Function()? _of(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<ChatImages>()?.all;
+
+  @override
+  bool updateShouldNotify(ChatImages oldWidget) => false;
+}
+
+/// Shows the [index]th of [images] whole: ← and → go through all the
+/// chat's (see [ChatImages]), else [images]; a right click offers each
+/// one's file's menu.
+void showChatImages(BuildContext context, List<ChatImage> images, int index) {
+  final shown = images[index].image;
+  final all = ChatImages._of(context)?.call() ?? const [];
+  final at = all.indexWhere((entry) => identical(entry.image, shown));
+  final (list, start) = at < 0 ? (images, index) : (all, at);
+  showImageGallery(
+    context,
+    count: list.length,
+    index: start,
+    load: (i) => SynchronousFuture(list[i].image),
+    // The file's; the gallery's own for a picture of none.
+    menu: (i) => switch (list[i]) {
+      (:final image, :final file?) => switch (imageMenu(
+        context,
+        image,
+        file,
+        previewing: true,
+      )) {
+        final FileLinkMenu menu => menu,
+        _ => null,
+      },
+      _ => null,
+    },
+  );
+}
 
 /// Where a picture of a size not known yet shows (an image file still
 /// being read): a 16:9 one's, as wide as they may be.
@@ -458,51 +539,28 @@ bool _exifTurned(ByteData data, int start, int length) {
 }
 
 /// What a tool returned as pictures (a screenshot, an image file read),
-/// one under the other; a click shows one whole, the arrows going to the
-/// others. [path] is the file read, when they are one: its menu is theirs.
+/// one under the other; a click shows one whole, the arrows going on to
+/// the chat's others (see [showChatImages]), a right click offers its
+/// file's menu.
 class ToolImages extends StatelessWidget {
-  const ToolImages({super.key, required this.images, this.path});
+  const ToolImages({super.key, required this.images});
 
-  final List<ImageAttachment> images;
-  final String? path;
+  final List<ChatImage> images;
 
   @override
   Widget build(BuildContext context) {
-    final files = FileOpenScope.maybeOf(context);
-    final file = switch ((files, path)) {
-      (final files?, final path?) when images.length == 1 => files.resolve(
-        path,
-      ),
-      _ => null,
-    };
-    ChatItemMenu menu(int index, {bool previewing = false}) => file == null
-        ? ImageMenu(images[index])
-        : files!.menuFor(
-            file,
-            () => files.onOpen(FileOpenRequest(file)),
-            context: context,
-            previewing: previewing,
-          );
-    void open(int index) => showImageGallery(
-      context,
-      count: images.length,
-      index: index,
-      load: (i) => SynchronousFuture(images[i]),
-      // The file's, or the gallery's own (it shows them already).
-      menu: file == null ? null : (i) => menu(i, previewing: true),
-    );
     return Padding(
       padding: const EdgeInsets.only(top: 2, bottom: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final (i, image) in images.indexed) ...[
+          for (final (i, (:image, :file)) in images.indexed) ...[
             if (i > 0) const SizedBox(height: 6),
             ContentImage(
               key: ObjectKey(image),
               image: image,
-              onOpen: () => open(i),
-              menu: menu(i),
+              onOpen: () => showChatImages(context, images, i),
+              menu: imageMenu(context, image, file),
             ),
           ],
         ],

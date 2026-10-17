@@ -30,6 +30,7 @@ class ToolCallRow extends StatelessWidget {
     this.status = ToolStatus.succeeded,
     this.output,
     this.images = const [],
+    this.imageFiles = const [],
     this.expanded = false,
     this.onToggle,
     this.onSetGoal,
@@ -47,6 +48,13 @@ class ToolCallRow extends StatelessWidget {
   /// The pictures it returned (an image file read, a screenshot), shown
   /// under what it said as they are.
   final List<ImageAttachment> images;
+
+  /// Where the CLI saved them (see [ToolCallItem.imageFiles]).
+  final List<String> imageFiles;
+
+  List<ChatImage> get _images => status == ToolStatus.failed
+      ? const []
+      : chatImagesOf(images, imageFilesOf(kind, path, imageFiles));
   final bool expanded;
   final VoidCallback? onToggle;
 
@@ -104,7 +112,7 @@ class ToolCallRow extends StatelessWidget {
       trailingGap: 0,
       trailing: images.isEmpty || status == ToolStatus.failed
           ? null
-          : StepThumbnails(images: images, shown: !expanded),
+          : StepThumbnails(images: _images, shown: !expanded),
       action: switch ((kind, _shown, onSetGoal)) {
         (ToolKind.goal, final condition?, final set?) when !_running =>
           _SetGoalButton(onTap: () => set(condition)),
@@ -138,8 +146,7 @@ class ToolCallRow extends StatelessWidget {
                     style: stepMono,
                   ),
           ),
-        if (expanded && images.isNotEmpty)
-          ToolImages(images: images, path: kind == ToolKind.read ? path : null),
+        if (expanded && images.isNotEmpty) ToolImages(images: _images),
       ],
     );
   }

@@ -52,7 +52,7 @@ class FileLinkMenu implements ChatItemMenu {
   final String root;
 
   /// Opens it where the chat's files open; none where it does not open
-  /// there (an image, not in the side panel).
+  /// there.
   final VoidCallback? onOpen;
 
   /// Whether [onOpen] opens it in the side panel.

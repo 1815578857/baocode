@@ -29,6 +29,7 @@ import 'user_message_style.dart';
 import 'widgets/chat_item_view.dart';
 import 'widgets/chat_minimap.dart';
 import 'widgets/edge_fade_mask.dart';
+import 'widgets/content_image.dart' show ChatImage, ChatImages;
 import 'widgets/fold_line.dart';
 import 'widgets/hover_builder.dart';
 import 'widgets/turn_footer.dart';
@@ -2057,26 +2058,34 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   Widget build(BuildContext context) {
     _built = null;
     final inset = _inset = ChatColumnInset.of(context);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final gutter = chatGutter(constraints.maxWidth);
-        final right = math.max(0.0, inset - gutter);
-        final minimapFits =
-            widget.minimap &&
-            ChatMinimap.besides(_columnIn(constraints.maxWidth)) != null;
-        if (_built == null ||
-            gutter != _gutter ||
-            right != _columnRight ||
-            minimapFits != _minimapFits) {
-          _gutter = gutter;
-          _columnRight = right;
-          _minimapFits = minimapFits;
-          _built = _buildHistory(context);
-        }
-        return _built!;
-      },
+    // A picture shown whole goes on to the others: ← and →.
+    return ChatImages(
+      all: _images,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final gutter = chatGutter(constraints.maxWidth);
+          final right = math.max(0.0, inset - gutter);
+          final minimapFits =
+              widget.minimap &&
+              ChatMinimap.besides(_columnIn(constraints.maxWidth)) != null;
+          if (_built == null ||
+              gutter != _gutter ||
+              right != _columnRight ||
+              minimapFits != _minimapFits) {
+            _gutter = gutter;
+            _columnRight = right;
+            _minimapFits = minimapFits;
+            _built = _buildHistory(context);
+          }
+          return _built!;
+        },
+      ),
     );
   }
+
+  /// Every picture the chat's tools returned, in order.
+  List<ChatImage> _images() =>
+      foldImages([for (var i = 0; i < _feed.itemCount; i++) _feed.itemAt(i)]);
 
   Widget _buildHistory(BuildContext context) {
     final outerBars = ScrollbarTheme.of(context);

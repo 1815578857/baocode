@@ -491,9 +491,8 @@ class FileOpenScope extends InheritedWidget {
 
   /// The right click's menu of the file at [path] (absolute), [open]
   /// opening it (in the side panel, or the IDE: see [inPanel]); in the
-  /// IDE too ([onOpenInIde]). An image shows enlarged over [context]'s
-  /// window (unless it is [previewing]), not in the side panel, and
-  /// copies.
+  /// IDE too ([onOpenInIde]). An image also shows enlarged over
+  /// [context]'s window (unless it is [previewing]), and copies.
   FileLinkMenu menuFor(
     String path,
     VoidCallback open, {
@@ -506,7 +505,7 @@ class FileOpenScope extends InheritedWidget {
       root: root,
       paths: paths,
       local: local,
-      onOpen: image && inPanel ? null : open,
+      onOpen: open,
       inPanel: inPanel,
       onOpenInIde: switch (onOpenInIde) {
         final inIde? => () => inIde(FileOpenRequest(path)),

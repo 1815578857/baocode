@@ -88,6 +88,7 @@ class ChatItemView extends StatelessWidget {
         :final status,
         :final output,
         :final images,
+        :final imageFiles,
       ) =>
         ToolCallRow(
           kind: kind,
@@ -99,6 +100,7 @@ class ChatItemView extends StatelessWidget {
           status: status,
           output: output,
           images: images,
+          imageFiles: imageFiles,
           expanded: expanded,
           onToggle: onToggle,
           onSetGoal: onSetGoal,

@@ -236,7 +236,7 @@ class BrowserStep extends StatelessWidget {
       trailingGap: 0,
       trailing: shot == null
           ? null
-          : StepThumbnails(images: item.images, shown: !expanded),
+          : StepThumbnails(images: toolImages(item), shown: !expanded),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -264,7 +264,7 @@ class BrowserStep extends StatelessWidget {
             // A request's headers before its picture.
             if (output.isNotEmpty)
               StepBody(child: Text(output, style: stepMono)),
-            ToolImages(images: item.images),
+            ToolImages(images: toolImages(item)),
           ],
         );
       }

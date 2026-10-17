@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:baocode/chat/chat_models.dart';
 import 'package:baocode/chat/composer/composer_embeds.dart' show FileImageChip;
+import 'package:baocode/chat/side_panel/file_link_menu.dart';
 import 'package:baocode/chat/side_panel/file_open.dart';
 import 'package:baocode/chat/widgets/chat_item_view.dart' show defaultExpanded;
 import 'package:baocode/chat/widgets/content_image.dart';
@@ -17,6 +17,7 @@ import 'package:baocode/kernel/claude_code/claude_code_translator.dart';
 import 'package:baocode/kernel/transcript.dart';
 import 'package:baocode/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // A 1×1 PNG.
@@ -307,7 +308,7 @@ void main() {
           ),
           const ToolCallItem(kind: ToolKind.read, target: 'a.dart'),
         ]),
-        [image],
+        [(image: image, file: null)],
       );
     });
 
@@ -321,7 +322,7 @@ void main() {
             body: WorkFoldLine(
               worked: const Duration(seconds: 15),
               edits: (files: 0, added: 0, removed: 0),
-              images: List.filled(5, image),
+              images: List.filled(5, (image: image, file: null)),
               expanded: false,
               onToggle: () => toggled++,
             ),
@@ -344,6 +345,83 @@ void main() {
 
       await tester.tap(find.textContaining('15'));
       expect(toggled, 1);
+    });
+  });
+
+  group('a tool’s picture shown whole', () {
+    final a = ImageAttachment(
+      bytes: base64Decode(_pixel),
+      mediaType: 'image/png',
+    );
+    final b = ImageAttachment(
+      bytes: base64Decode(_pixel),
+      mediaType: 'image/png',
+    );
+    final c = ImageAttachment(
+      bytes: base64Decode(_pixel),
+      mediaType: 'image/png',
+    );
+
+    testWidgets('goes on to the chat’s others', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(),
+          home: Scaffold(
+            body: ChatImages(
+              all: () => [
+                for (final image in [a, b, c]) (image: image, file: null),
+              ],
+              child: ToolImages(images: [(image: c, file: null)]),
+            ),
+          ),
+        ),
+      );
+      await _decode(tester);
+      await tester.tap(find.byType(ContentImage));
+      await tester.pumpAndSettle();
+      expect(find.text('3 / 3'), findsOneWidget, reason: 'where it is');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+      expect(find.text('2 / 3'), findsOneWidget);
+    });
+
+    testWidgets('has its file’s menu, a screenshot’s saved copy too', (
+      tester,
+    ) async {
+      const saved = '/u/.claude/tool-results/shot.png';
+      late BuildContext context;
+      final existence = FileExistence((_) async => true);
+      addTearDown(existence.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FileOpenScope(
+            root: '/p',
+            onOpen: (_) {},
+            existence: existence,
+            inPanel: true,
+            onOpenInIde: (_) {},
+            seen: const [saved],
+            readBytes: (_) async => base64Decode(_pixel),
+            child: Builder(
+              builder: (c) {
+                context = c;
+                return const SizedBox();
+              },
+            ),
+          ),
+        ),
+      );
+      final menu = imageMenu(context, a, saved);
+      expect(menu, isA<FileLinkMenu>());
+      menu as FileLinkMenu;
+      expect(menu.path, saved);
+      expect(menu.onOpen, isNotNull, reason: 'in the side panel');
+      expect(menu.onOpenInIde, isNotNull);
+      expect(
+        imageMenu(context, a, '/u/elsewhere.png'),
+        isA<ImageMenu>(),
+        reason: 'not a file of the session',
+      );
     });
   });
 

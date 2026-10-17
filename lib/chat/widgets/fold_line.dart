@@ -26,7 +26,7 @@ class StepsFoldLine extends StatelessWidget {
   final VoidCallback onToggle;
 
   /// The steps' pictures (see [foldImages]), small after the line.
-  final List<ImageAttachment> images;
+  final List<ChatImage> images;
 
   /// What the steps did, each phrase with its count in it.
   static List<(String, int)> _actions(StepTally tally, AppLocalizations l10n) {
@@ -135,7 +135,7 @@ class WorkFoldLine extends StatelessWidget {
   final VoidCallback onToggle;
 
   /// The turn's pictures (see [foldImages]), small after the line.
-  final List<ImageAttachment> images;
+  final List<ChatImage> images;
 
   /// The line as text, e.g. for copying; in [l10n]'s language (English
   /// when null).
@@ -207,7 +207,7 @@ class WorkFoldLine extends StatelessWidget {
 /// one showing them all whole; none without any.
 Widget? _thumbnails(
   BuildContext context,
-  List<ImageAttachment> images, {
+  List<ChatImage> images, {
   required bool expanded,
 }) => images.isEmpty
     ? null
@@ -215,16 +215,14 @@ Widget? _thumbnails(
         images: images,
         shown: !expanded,
         max: 4,
-        onOpen: (index) => showImagesWhole(context, images, index),
+        onOpen: (index) => showChatImages(context, images, index),
       );
 
 /// The pictures among [items] (a screenshot, an image file read), in
 /// order: what their fold shows, small, so they are not hidden in it.
-List<ImageAttachment> foldImages(Iterable<ChatItem> items) => [
+List<ChatImage> foldImages(Iterable<ChatItem> items) => [
   for (final item in items)
-    if (item case ToolCallItem(:final images, :final status)
-        when status != ToolStatus.failed)
-      ...images,
+    if (item is ToolCallItem) ...toolImages(item),
 ];
 
 /// The files a turn edited, and the lines added and removed in them.

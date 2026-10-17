@@ -154,11 +154,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(opened, ['/p/shots/new.png']);
 
-    // Where files open in the side panel, an image does not: in the IDE.
+    // Where files open in the side panel, an image does too, and in the
+    // IDE.
     await pump(tester, screenshots, inPanel: true);
     await rightClick(tester, tester.getCenter(find.text('新版截图')));
     expect(find.text('Open'), findsNothing);
-    expect(find.text('Open in Side Panel'), findsNothing);
+    expect(find.text('Open in Side Panel'), findsOneWidget);
     await tester.tap(find.text('Open in Fast Ide'));
     await tester.pumpAndSettle();
     expect(inIde, ['/p/shots/new.png']);
