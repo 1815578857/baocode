@@ -1288,16 +1288,32 @@ class ClaudeTranslator {
       ),
       parent: tool.parent,
     );
-    if (!replaying && tool.parent == null) {
+    // A subagent's too: what it edits is in the review as the agent's.
+    if (!replaying) {
       emit(
         FileEdited(
           nextSeq(),
           FileChange(path: path, added: added, removed: removed),
           turnId: turnId,
+          original: _original(result),
         ),
       );
     }
     return true;
+  }
+
+  /// What an edit's file was before, as its result tells: a file written
+  /// anew was not there, one edited is in `originalFile`.
+  static FileOriginal? _original(Map<String, Object?> result) {
+    if (result['type'] == 'create') return const OriginalText(null);
+    if (_string(result['originalFile']) case final text?) {
+      return OriginalText(text);
+    }
+    // An Edit that made the file.
+    if (result.containsKey('originalFile') && result['oldString'] == '') {
+      return const OriginalText(null);
+    }
+    return null;
   }
 
   static const _maxDiffLines = 400;

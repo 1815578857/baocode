@@ -2729,12 +2729,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Changed again since the agent left it, so Undo could not take the agent\'s change out. Undo it by hand, then keep it.';
 
   @override
-  String get stripChangeShared =>
-      'Another agent was working in this project at the same time: some of this change may be its.';
-
-  @override
   String get stripChangeUntracked =>
-      'Not in the project\'s snapshots (ignored, too large, or outside the project): it can be kept, not undone.';
+      'What it was before is not known (the agent did not tell, it is too large, or outside the project): it can be kept, not undone.';
 
   @override
   String get stripChangesDiff => 'Agent Changes';
