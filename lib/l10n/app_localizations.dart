@@ -10938,7 +10938,7 @@ abstract class AppLocalizations {
   /// No description provided for @modelsSwitchDetail.
   ///
   /// In en, this message translates to:
-  /// **'Claude Code restarts on the other upstream and resumes this conversation (--resume). Its history is sent to the new model as it is; some upstreams take it slower the first time.'**
+  /// **'Claude Code restarts on the other upstream and resumes this conversation (--resume). Its history is sent to the new model as it is; some upstreams take it slower the first time. A reply still running stops when you send the next message.'**
   String get modelsSwitchDetail;
 
   /// No description provided for @modelsSwitchConfirm.

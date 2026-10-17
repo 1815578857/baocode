@@ -6217,7 +6217,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modelsSwitchDetail =>
-      'Claude Code 会在新上游上重启，并用 --resume 接续当前对话。历史记录会原样发给新模型，部分上游首次处理会较慢。';
+      'Claude Code 会在新上游上重启，并用 --resume 接续当前对话。历史记录会原样发给新模型，部分上游首次处理会较慢。如果还有回复在进行，发送下一条消息时会先停止它。';
 
   @override
   String get modelsSwitchConfirm => '切换';

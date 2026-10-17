@@ -6633,7 +6633,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelsSwitchDetail =>
-      'Claude Code restarts on the other upstream and resumes this conversation (--resume). Its history is sent to the new model as it is; some upstreams take it slower the first time.';
+      'Claude Code restarts on the other upstream and resumes this conversation (--resume). Its history is sent to the new model as it is; some upstreams take it slower the first time. A reply still running stops when you send the next message.';
 
   @override
   String get modelsSwitchConfirm => 'Switch';
