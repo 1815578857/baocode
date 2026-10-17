@@ -154,19 +154,18 @@ class StashRowBox extends StatelessWidget {
 }
 
 /// On a stash's card: the conversation it was last worked on in (its
-/// status, title, what its agent last said; how many more there are), a
-/// click away.
+/// status, title, what its agent last said; how many more there are).
+/// Shown only: a click on it is the card's, opening the stash, not the
+/// conversation (its detail lists them, each a click away).
 class StashThreadChip extends StatelessWidget {
   const StashThreadChip({
     super.key,
     required this.controller,
     required this.note,
-    this.onOpen,
   });
 
   final StashController controller;
   final StashNote note;
-  final ValueChanged<AgentThread>? onOpen;
 
   /// The link it shows: the one whose turn ended last.
   static StashThreadLink? latest(StashNote note) {
@@ -191,7 +190,7 @@ class StashThreadChip extends StatelessWidget {
     final more = note.threads.length - 1;
     final thread = shown.thread;
     return StashRowBox(
-      onTap: thread == null || onOpen == null ? null : () => onOpen!(thread),
+      onTap: null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

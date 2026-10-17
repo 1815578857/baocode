@@ -418,7 +418,7 @@ void main() {
   });
 
   testWidgets('the card shows the conversation it was last worked on in, '
-      'what its agent said, a click away; the detail lists them all', (
+      'what its agent said; the detail lists them all, a click away', (
     tester,
   ) async {
     // Its agents' kernels started in the test's time.
@@ -471,11 +471,9 @@ void main() {
     // In place of its text (its title stays).
     expect(find.text('Uploads fail'), findsOneWidget);
     expect(find.text('They should retry on 503'), findsNothing);
+    // A click on it is the card's: the stash opens, not the conversation.
     await tester.tap(chip);
-    expect(opened, thread);
-
-    opened = null;
-    await tester.tap(find.text('Uploads fail'));
+    expect(opened, isNull);
     // Sliding in.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));

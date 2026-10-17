@@ -920,7 +920,6 @@ class StashViewState extends State<StashView>
             projectName: _projectName(note.project),
             onTap: () => _tap(note),
             onMenu: (position) => unawaited(_cardMenu(note, position)),
-            onOpenThread: widget.onOpenAgent,
           );
         },
       ),
@@ -1674,7 +1673,6 @@ class _StashCard extends StatelessWidget {
     required this.projectName,
     required this.onTap,
     required this.onMenu,
-    this.onOpenThread,
   });
 
   final StashNote note;
@@ -1687,9 +1685,6 @@ class _StashCard extends StatelessWidget {
   final String? projectName;
   final VoidCallback onTap;
   final ValueChanged<Offset> onMenu;
-
-  /// Opens the conversation its [StashThreadChip] shows.
-  final ValueChanged<AgentThread>? onOpenThread;
 
   @override
   Widget build(BuildContext context) {
@@ -1731,11 +1726,7 @@ class _StashCard extends StatelessWidget {
                 // Worked on: where, in place of its text (its title says
                 // what it is).
                 child: note.threads.isNotEmpty
-                    ? StashThreadChip(
-                        controller: store,
-                        note: note,
-                        onOpen: onOpenThread,
-                      )
+                    ? StashThreadChip(controller: store, note: note)
                     : Text(
                         note.summary,
                         maxLines: 3,
