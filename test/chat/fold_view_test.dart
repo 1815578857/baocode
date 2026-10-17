@@ -176,7 +176,7 @@ void main() {
     pointer.hover(tester.getCenter(list));
     for (var i = 0; i < 40; i++) {
       await tester.sendEventToBinding(pointer.scroll(const Offset(0, -200)));
-      // The wheel's notch eased in (see the history's wheelDuration).
+      // The wheel's notch eased in (at most 200 ms, as Chrome's).
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
     }

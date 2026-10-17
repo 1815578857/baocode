@@ -120,10 +120,9 @@ void main() {
     expect(estimated, lessThan(position.maxScrollExtent * 2));
   });
 
-  testWidgets('a mouse wheel\'s notch moves the list over a few frames, '
-      'the next adding to where it was going; a trackpad\'s at once', (
-    tester,
-  ) async {
+  testWidgets('a mouse wheel\'s notch moves the list its own distance over '
+      'a few frames, as Chrome does, the next adding to where it was going; '
+      'a trackpad\'s at once', (tester) async {
     await _pump(tester, _Feed([for (var n = 0; n < 10; n++) ..._turn(n)]));
     final position = _position(tester);
     final bottom = position.pixels;
@@ -141,7 +140,8 @@ void main() {
     wheel(-100);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 16));
-    final step = 100 * 2.2;
+    // As far as the wheel says, as Chrome's.
+    const step = 100.0;
     // On its way, not there yet.
     expect(position.pixels, lessThan(bottom));
     expect(position.pixels, greaterThan(bottom - step));
@@ -160,6 +160,50 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(position.pixels, position.maxScrollExtent);
+  });
+
+  testWidgets('as Chrome\'s: a notch takes 200 ms, eased in and out; one '
+      'more mid-way goes on at the speed it had, never stopping', (
+    tester,
+  ) async {
+    await _pump(tester, _Feed([for (var n = 0; n < 10; n++) ..._turn(n)]));
+    final position = _position(tester);
+    final bottom = position.pixels;
+    void wheel() => tester.binding.handlePointerEvent(
+      PointerScrollEvent(
+        position: tester.getCenter(find.byType(ChatHistoryView)),
+        scrollDelta: const Offset(0, -100),
+      ),
+    );
+
+    wheel();
+    await tester.pump();
+    final moved = <double>[];
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      moved.add(bottom - position.pixels);
+    }
+    // Slow, then fast, then slow: half way at half time.
+    expect(moved[0], lessThan(5));
+    expect(moved[5], closeTo(50, 6));
+    expect(moved[11], lessThan(100));
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(bottom - position.pixels, closeTo(100, 0.5));
+
+    // Mid-way, another: the list keeps moving, and gets 200 further.
+    final start = position.pixels;
+    wheel();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    wheel();
+    var last = position.pixels;
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(position.pixels, lessThan(last));
+      last = position.pixels;
+    }
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(start - position.pixels, closeTo(200, 0.5));
   });
 
   group('a turn starting while the user reads further up', () {
