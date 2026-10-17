@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 
 import 'package:bao_editor/monaco/flutter/editor_surface_controller.dart';
 
+import '../base/smooth_scroll.dart';
 import '../chat/floating/floating_placement.dart';
 import '../chat/widgets/hover_builder.dart';
 import '../ide/ide_code_editor.dart';
@@ -128,6 +129,7 @@ class CustomizeViewState extends State<CustomizeView> {
   late CustomizationKind _kind = widget.kind;
   late Project? _project = widget.project;
   final TextEditingController _query = TextEditingController();
+  final _scroll = SmoothScrollController();
 
   List<Customization>? _items;
   Object? _error;
@@ -173,6 +175,7 @@ class CustomizeViewState extends State<CustomizeView> {
   @override
   void dispose() {
     _query.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -452,6 +455,7 @@ class CustomizeViewState extends State<CustomizeView> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 760),
         child: ListView(
+          controller: _scroll,
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
           children: [
             _SearchBox(controller: _query),

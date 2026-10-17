@@ -8,6 +8,7 @@ import 'package:flutter/rendering.dart'
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
+import '../base/smooth_scroll.dart';
 import '../chat/composer/composer_files.dart';
 import '../chat/widgets/hover_builder.dart';
 import '../chat/widgets/scroll_edge_fade.dart';
@@ -125,7 +126,7 @@ class StashViewState extends State<StashView>
   };
 
   /// The cards' scrolling, to bring one into view ([reveal]).
-  final _scroll = ScrollController();
+  final _scroll = SmoothScrollController();
 
   /// Each card's, once built: where it is, to scroll to.
   final Map<int, GlobalKey> _cardKeys = {};

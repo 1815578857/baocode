@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
+import '../base/smooth_scroll.dart';
 import '../chat/composer/file_drop.dart';
 import '../chat/widgets/hover_builder.dart';
 import '../chat/widgets/scroll_edge_fade.dart';
@@ -499,7 +500,7 @@ enum _Shown { all, open, done }
 
 class _AllStashesState extends State<_AllStashes> {
   final TextEditingController _query = TextEditingController();
-  final ScrollController _scroll = ScrollController();
+  final ScrollController _scroll = SmoothScrollController();
   final GlobalKey _listKey = GlobalKey();
   _Shown _shown = _Shown.all;
 

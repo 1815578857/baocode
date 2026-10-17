@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../base/smooth_scroll.dart';
 import '../chat/chat_keys.dart';
 import '../chat/floating/floating_placement.dart';
 import '../chat/widgets/hover_builder.dart';
@@ -291,7 +292,7 @@ class _SidebarState extends State<Sidebar>
       SidebarGrouping.project;
   bool get _showArchived => _workspace.showArchived;
 
-  final ScrollController _listScroll = ScrollController();
+  final ScrollController _listScroll = SmoothScrollController();
   final FocusNode _listFocus = FocusNode();
   final IdeListSelection<AgentThread> _listSelection = IdeListSelection();
 
