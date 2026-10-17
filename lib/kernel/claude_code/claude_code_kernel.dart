@@ -20,6 +20,7 @@ import '../agent_kernel.dart';
 import '../commit_attribution.dart';
 import '../kernel_event.dart';
 import '../kernel_types.dart';
+import '../prompt_suggestions.dart';
 import '../transcript.dart';
 import '../queued_messages.dart';
 import 'claude_code_transport.dart';
@@ -360,6 +361,11 @@ class ClaudeCodeKernel
   /// at start, so another is taken up by a restart (see [_applyWindow]).
   int? _launchedWindow;
 
+  /// Whether the process was started to suggest the next prompt
+  /// ([PromptSuggestions]): taken only at start, so a change is taken up by
+  /// a restart (see [_applyWindow]).
+  bool _launchedSuggestions = true;
+
   /// The context window, as the CLI reports it: the smaller of the
   /// model's and [_window].
   int _contextWindow = 200000;
@@ -468,6 +474,7 @@ class ClaudeCodeKernel
       final workspace = _workspace;
       _launchedProvider = _providerKey;
       _launchedWindow = _autocompact;
+      _launchedSuggestions = PromptSuggestions.current();
       final sdkServers = ClaudeSdkTools.servers;
       final transport = await _start(
         ClaudeLaunch(
@@ -483,6 +490,7 @@ class ClaudeCodeKernel
               : null,
           thinking: custom != null && direct && effort == 'none' ? false : null,
           autocompact: _autocompact,
+          promptSuggestions: _launchedSuggestions,
           attribution: CommitAttribution.current(),
           env: env,
           directories: workspace?.folders ?? const [],
@@ -504,7 +512,7 @@ class ClaudeCodeKernel
       _subscription = transport.messages.listen(_receive);
       _applyInitialize(
         await control.request('initialize', {
-          'promptSuggestions': true,
+          'promptSuggestions': _launchedSuggestions,
           if (sdkServers.isNotEmpty) 'sdkMcpServers': sdkServers,
         }),
       );
@@ -678,6 +686,8 @@ class ClaudeCodeKernel
   /// compacts where it was told at start, whatever it is told after. Done
   /// only as a message is sent, so a pick leaves the conversation be.
   ///
+  /// So is the prompt suggestions' setting turned on or off since.
+  ///
   /// So is another provider, or one whose setup changed: the session goes
   /// on, resumed, on it. That even with tasks at work in the background
   /// (a server it started), which end with the process: the user agreed
@@ -685,7 +695,11 @@ class ClaudeCodeKernel
   void _applyWindow() {
     if (!_running) return;
     final otherProvider = _providerKey != _launchedProvider;
-    if (!otherProvider && _autocompact == _launchedWindow) return;
+    if (!otherProvider &&
+        _autocompact == _launchedWindow &&
+        PromptSuggestions.current() == _launchedSuggestions) {
+      return;
+    }
     if (otherProvider ? _working : _busy) return;
     _teardown();
     _translator.endTasks();
@@ -1543,7 +1557,11 @@ class ClaudeCodeKernel
         _lifecycle(message);
       case 'prompt_suggestion':
         final suggestion = (message['suggestion'] as String?)?.trim();
-        if (_turn == null && _queued.isEmpty && suggestion != _suggestion) {
+        // One turned off since the process started is not offered.
+        if (_turn == null &&
+            _queued.isEmpty &&
+            suggestion != _suggestion &&
+            PromptSuggestions.current()) {
           _suggestion = suggestion == null || suggestion.isEmpty
               ? null
               : suggestion;

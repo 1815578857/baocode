@@ -5666,6 +5666,18 @@ abstract class AppLocalizations {
   /// **'Join the Current Task'**
   String get generalSettingsQueuedDuringTurn;
 
+  /// Settings → General switch: whether Claude Code suggests the next prompt in the composer after each turn.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest Next Prompt'**
+  String get generalSettingsPromptSuggestions;
+
+  /// No description provided for @generalSettingsPromptSuggestionsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'After each turn, a greyed-out suggestion for your next message, taken with Tab. Each one is an extra request with the whole conversation; turn it off to save tokens. Applies from the next message; Claude Code only.'**
+  String get generalSettingsPromptSuggestionsDescription;
+
   /// The commit attribution dropdown, as read out: its setting and the choice in effect.
   ///
   /// In en, this message translates to:

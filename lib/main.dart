@@ -38,6 +38,7 @@ import 'kernel/claude_code/claude_onboarding.dart';
 import 'kernel/claude_code/claude_path_setting.dart';
 import 'kernel/claude_code/process_transport.dart';
 import 'kernel/commit_attribution.dart';
+import 'kernel/prompt_suggestions.dart';
 import 'kernel/queued_messages.dart';
 import 'keybindings/keybindings_sync.dart';
 import 'link/link_host.dart';
@@ -150,6 +151,9 @@ Future<void> main(List<String> arguments) async {
     // Read as each message is sent.
     QueuedMessages.current = () =>
         QueuedMessages.parse(files.settings[QueuedMessages.settingKey]);
+    // Read as each agent starts, and as each message is sent.
+    PromptSuggestions.current = () =>
+        PromptSuggestions.enabled(files.settings[PromptSuggestions.settingKey]);
     // Settings → General → Claude Code: the build to run, read as each
     // agent starts.
     ClaudePathSetting.current = () =>

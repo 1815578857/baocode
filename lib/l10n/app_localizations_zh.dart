@@ -3108,6 +3108,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get generalSettingsQueuedDuringTurn => '插入当前任务';
 
   @override
+  String get generalSettingsPromptSuggestions => '建议下一条提示';
+
+  @override
+  String get generalSettingsPromptSuggestionsDescription =>
+      '每轮结束后在输入框里给出灰色的下一条消息建议，按 Tab 采用。每条建议都会带着整段对话额外请求一次模型，关掉可以节省 token。从下一条消息起生效；目前仅支持 Claude Code。';
+
+  @override
   String generalSettingsCommitAttributionLabel(String name) {
     return '提交署名: $name';
   }
