@@ -69,6 +69,17 @@ Future<Object?> _callOn(
 
 /// The computed styles told unless others are asked for: what places an
 /// element and shows it.
+/// What says whether and how an element shows, by its box.
+const _computedBrief = [
+  'display',
+  'position',
+  'visibility',
+  'opacity',
+  'z-index',
+  'overflow',
+  'pointer-events',
+];
+
 const _computedShown = [
   'display',
   'position',
@@ -253,8 +264,9 @@ final _inspectTools = [
         "An element of a shared tab, as DevTools' Elements panel shows it: "
         'its HTML; the CSS rules that style it, highest first, each with '
         'its file and line, what they set and what is overridden (struck: '
-        '~~); inherited ones; its computed styles; its box (size, padding, '
-        'border, margin); its event listeners and where their code is '
+        '~~); inherited ones; its box (size, padding, border, margin; '
+        'display, position, visibility, opacity); its computed styles '
+        '(asked: parts "computed", or properties); its event listeners and where their code is '
         '(mapped to the sources), its ancestors\' too; its accessibility '
         '(role, name); and its component (React, Vue, Angular) with props '
         'and state. Change styles or the DOM with browser_evaluate.',
@@ -277,7 +289,7 @@ final _inspectTools = [
               'component',
             ],
           },
-          'description': 'Which (all by default).',
+          'description': 'Which (all but computed by default).',
         },
         'properties': {
           'type': 'array',
@@ -301,7 +313,12 @@ final _inspectTools = [
       final parts = {
         for (final part in (input['parts'] as List?) ?? const []) '$part',
       };
-      bool wants(String part) => parts.isEmpty || parts.contains(part);
+      // All but the computed styles by default: of those, the few that
+      // say whether and how it shows.
+      bool wants(String part) =>
+          parts.isEmpty ? part != 'computed' : parts.contains(part);
+      final computedAsked =
+          parts.contains('computed') || input['properties'] is List;
       final out = <String>['Element: ${element.name}'];
       if (wants('html')) {
         final html = await _callOn(
@@ -316,28 +333,38 @@ final _inspectTools = [
           ..add(_clip('$html', parts.contains('html') ? 20000 : 1500));
       }
       final node = await _nodeId(browser, tabId, element.objectId);
-      if (wants('rules') || wants('computed')) {
+      if (wants('rules') || wants('computed') || computedAsked) {
         await browser.cdp(tabId, 'CSS.enable');
       }
-      if (wants('box')) out.addAll(['', ...await _box(browser, tabId, node)]);
+      Map<String, String> computed = const {};
+      if (computedAsked || wants('box')) {
+        final result = await browser.cdp(tabId, 'CSS.getComputedStyleForNode', {
+          'nodeId': node,
+        });
+        computed = {
+          for (final p
+              in (result['computedStyle'] as List? ?? const []).cast<Map>())
+            p['name'] as String: p['value'] as String,
+        };
+      }
+      if (wants('box')) {
+        out.addAll([
+          '',
+          ...await _box(browser, tabId, node),
+          '  ${[for (final name in _computedBrief)
+            if (computed[name] case final v?) '$name: $v'].join('; ')}',
+        ]);
+      }
       if (wants('rules')) {
         out.addAll([
           '',
           ...await _rules(tab, node, userAgent: input['userAgent'] == true),
         ]);
       }
-      if (wants('computed')) {
+      if (computedAsked) {
         final asked = [
           for (final p in (input['properties'] as List?) ?? const []) '$p',
         ];
-        final result = await browser.cdp(tabId, 'CSS.getComputedStyleForNode', {
-          'nodeId': node,
-        });
-        final computed = {
-          for (final p
-              in (result['computedStyle'] as List? ?? const []).cast<Map>())
-            p['name'] as String: p['value'] as String,
-        };
         out
           ..add('')
           ..add('Computed:');
@@ -389,13 +416,39 @@ final _inspectTools = [
         if (value is Map && value.isNotEmpty) {
           for (final MapEntry(:key, :value) in value.entries) {
             final c = value as Map;
-            final components = (c['components'] as List? ?? const [])
-                .cast<String>();
+            final components = [
+              ...(c['components'] as List? ?? const []).cast<String>(),
+            ];
+            // React's nearest: by its name as written, and where.
+            var where = '';
+            if (key == 'react' && components.isNotEmpty) {
+              try {
+                final type = await browser.cdp(
+                  tabId,
+                  'Runtime.callFunctionOn',
+                  {
+                    'objectId': element.objectId,
+                    'functionDeclaration': _reactComponentScript,
+                  },
+                );
+                final call = await _functionPlace(
+                  tab,
+                  await _debugging(tab),
+                  (type['result'] as Map?) ?? const {},
+                );
+                if (call != null) {
+                  if (call.name.isNotEmpty) components[0] = call.name;
+                  where = ' (${call.at})';
+                }
+              } on Object {
+                // As named.
+              }
+            }
             out
               ..add('')
               ..add(
                 '${'$key'[0].toUpperCase()}${'$key'.substring(1)}: '
-                '${components.isEmpty ? '(no named component)' : components.map((n) => '<$n>').join(' in ')}',
+                '${components.isEmpty ? '(no named component)' : components.map((n) => '<$n>').join(' in ')}$where',
               );
             if (c['props'] != null) {
               out.add('  props: ${_clip(jsonEncode(c['props']), 3000)}');
@@ -620,6 +673,38 @@ Future<List<String>> _box(
   }
 }
 
+/// What [tab]'s style sheet [id] is called: its file's URL; a <style> a
+/// dev server put in by the file it holds (Vite's `data-vite-dev-id`);
+/// else a <style> of the page's.
+Future<String> _sheetName(BrowserTab tab, String id) async {
+  final sheet = BrowserRecords.instance.styleSheets(tab)[id];
+  if (sheet == null) return '<style> in the page';
+  if (sheet['baocodeName'] case final String name) return name;
+  final url = sheet['sourceURL'] as String? ?? '';
+  var name = url.isNotEmpty && sheet['isInline'] != true
+      ? url
+      : '<style> in the page';
+  if (name.startsWith('<') && sheet['ownerNode'] is int) {
+    try {
+      final described = await tab.browser.cdp(tab.tabId, 'DOM.describeNode', {
+        'backendNodeId': sheet['ownerNode'],
+      });
+      final attributes =
+          ((described['node'] as Map?)?['attributes'] as List? ?? const [])
+              .cast<String>();
+      for (var i = 0; i + 1 < attributes.length; i += 2) {
+        if (attributes[i] == 'data-vite-dev-id' && attributes[i + 1] != '') {
+          name = attributes[i + 1];
+        }
+      }
+    } on Object {
+      // Gone: as it is.
+    }
+  }
+  sheet['baocodeName'] = name;
+  return name;
+}
+
 /// The CSS rules that style [node], highest first; what each sets, and
 /// which of it is overridden.
 Future<List<String>> _rules(
@@ -632,21 +717,33 @@ Future<List<String>> _rules(
     'nodeId': node,
   });
   final sheets = BrowserRecords.instance.styleSheets(tab);
+  final names = <String, String>{};
+  for (final match in [
+    ...(matched['matchedCSSRules'] as List? ?? const []).cast<Map>(),
+    for (final entry in (matched['inherited'] as List? ?? const []).cast<Map>())
+      ...(entry['matchedCSSRules'] as List? ?? const []).cast<Map>(),
+  ]) {
+    final id = (match['rule'] as Map)['styleSheetId'] as String?;
+    if (id != null && !names.containsKey(id)) {
+      names[id] = await _sheetName(tab, id);
+    }
+  }
   String source(Map rule) {
     final style = rule['style'] as Map? ?? const {};
     final range = style['range'] as Map?;
     final sheet = sheets[rule['styleSheetId']];
+    // A <style> of the document: lines of the document's.
     final line = range == null
         ? null
         : (range['startLine'] as num).toInt() +
               ((sheet?['startLine'] as num?)?.toInt() ?? 0) +
               1;
-    final url = sheet?['sourceURL'] as String? ?? '';
     if (rule['origin'] == 'user-agent') return 'the browser\'s';
-    if (url.isEmpty || sheet?['isInline'] == true) {
-      return '<style> in the page${line == null ? '' : ', line $line'}';
+    final name = names[rule['styleSheetId']] ?? '<style> in the page';
+    if (name.startsWith('<')) {
+      return '$name${line == null ? '' : ', line $line'}';
     }
-    return '$url${line == null ? '' : ':$line'}';
+    return '$name${line == null ? '' : ':$line'}';
   }
 
   // Each declaration: (rule, name, value, important); the rules highest
@@ -777,6 +874,82 @@ Future<List<String>> _rules(
 
 /// [objectId]'s event listeners, where their code is; and its ancestors'
 /// (a framework's, delegated), by type.
+/// Where the function [value] (a RemoteObject) is, and its name as
+/// written.
+Future<({String name, String at})?> _functionPlace(
+  BrowserTab tab,
+  _Debugging debugging,
+  Map value,
+) async {
+  final id = value['objectId'] as String?;
+  if (id == null) return null;
+  final inside = await tab.browser.cdp(tab.tabId, 'Runtime.getProperties', {
+    'objectId': id,
+    'ownProperties': true,
+  });
+  final location =
+      ((inside['internalProperties'] as List? ?? const [])
+                  .cast<Map>()
+                  .where((i) => i['name'] == '[[FunctionLocation]]')
+                  .firstOrNull?['value']
+              as Map?)?['value']
+          as Map?;
+  if (location == null) return null;
+  final head = '${value['description'] ?? ''}'.split('\n').first;
+  final name =
+      RegExp(r'^(?:async\s+)?(?:function\s*\*?\s*|class\s+)([\w$]+)')
+          .firstMatch(head)?[1] ??
+      '';
+  return _locatedCall(
+    tab,
+    name,
+    debugging.scripts[location['scriptId']]?.url ?? '',
+    (location['lineNumber'] as num?)?.toInt() ?? 0,
+    (location['columnNumber'] as num?)?.toInt() ?? 0,
+    definition: true,
+  );
+}
+
+/// The function of the React component nearest an element.
+const _reactComponentScript = r'''
+function () {
+  for (let n = this; n; n = n.parentElement) {
+    const key = Object.keys(n).find((k) => k.startsWith('__reactFiber$'));
+    if (!key) continue;
+    for (let f = n[key]; f; f = f.return) {
+      let t = f.type;
+      if (t && typeof t === 'object') t = t.render || t.type;
+      if (typeof t === 'function') return t;
+    }
+    return null;
+  }
+  return null;
+}''';
+
+/// An element's handlers a framework calls: React's props (onClick…),
+/// Vue's (@click), by name.
+const _handlersScript = r'''
+function () {
+  const out = {};
+  for (const key of Object.keys(this)) {
+    if (!key.startsWith('__reactProps$')) continue;
+    const props = this[key] || {};
+    for (const k of Object.keys(props)) {
+      if (/^on[A-Z]/.test(k) && typeof props[k] === 'function') out[k + ' (React)'] = props[k];
+    }
+  }
+  const vei = this._vei;
+  if (vei) {
+    for (const k of Object.keys(vei)) {
+      const v = vei[k] && vei[k].value;
+      (Array.isArray(v) ? v : [v]).forEach((f, i) => {
+        if (typeof f === 'function') out[k + (i ? ' #' + (i + 1) : '') + ' (Vue)'] = f;
+      });
+    }
+  }
+  return out;
+}''';
+
 Future<List<String>> _listeners(BrowserTab tab, String objectId) async {
   final browser = tab.browser;
   final debugging = await _debugging(tab);
@@ -803,6 +976,33 @@ Future<List<String>> _listeners(BrowserTab tab, String objectId) async {
       '  ${l['type']}${flags.isEmpty ? '' : ' (${flags.join(', ')})'} → '
       '${await debugging.where(script?.url ?? '', (l['lineNumber'] as num?)?.toInt() ?? 0, (l['columnNumber'] as num?)?.toInt() ?? 0)}',
     );
+  }
+  // A framework's handlers (React's onClick, Vue's @click): the listener
+  // above is the framework's own, these the app's.
+  try {
+    final result = await browser.cdp(tab.tabId, 'Runtime.callFunctionOn', {
+      'objectId': objectId,
+      'functionDeclaration': _handlersScript,
+    });
+    final handlers = (result['result'] as Map?)?['objectId'] as String?;
+    if (handlers != null) {
+      final properties = await browser.cdp(tab.tabId, 'Runtime.getProperties', {
+        'objectId': handlers,
+        'ownProperties': true,
+      });
+      for (final p in (properties['result'] as List? ?? const []).cast<Map>()) {
+        final value = p['value'] as Map?;
+        final id = value?['objectId'] as String?;
+        if (id == null || value?['type'] != 'function') continue;
+        final call = await _functionPlace(tab, debugging, value!);
+        if (call == null) continue;
+        out.add(
+          '  ${p['name']} → ${call.name.isEmpty ? '' : '${call.name} at '}${call.at}',
+        );
+      }
+    }
+  } on Object {
+    // None told.
   }
   // Its ancestors', the document's and the window's: where frameworks
   // listen for all.

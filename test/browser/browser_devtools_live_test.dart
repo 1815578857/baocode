@@ -520,7 +520,7 @@ void main() {
       });
       expect(heap2, contains('Since the snapshot'));
       expect(heap2, contains('+3 — Leaky'));
-      expect(heap2, contains('2 nodes — section'));
+      expect(heap2, contains('2 elements — section'));
       final performance = await call('browser_performance', {'tabId': tabId});
       expect(performance, contains('CPU: busy'));
       expect(performance, contains('CPU profile: '));

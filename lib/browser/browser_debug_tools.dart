@@ -57,7 +57,9 @@ final _debugTools = [
           '${t.millisecond.toString().padLeft(3, '0')}';
       // The calls of the last errors and warnings, mapped; the rest with
       // where they were logged.
-      final stacked = shown.where((e) => e.stack.isNotEmpty).toList();
+      final stacked = shown
+          .where((e) => e.stack.isNotEmpty || e.thrown.isNotEmpty)
+          .toList();
       final withStacks = stacked
           .sublist(stacked.length > 15 ? stacked.length - 15 : 0)
           .toSet();
@@ -72,7 +74,22 @@ final _debugTools = [
           '${_clip(e.text, 2000)}'
           '${stack || e.url == null || e.url!.isEmpty ? '' : ' (${e.url}${e.line == null ? '' : ':${e.line}'})'}',
         );
-        if (stack) lines.addAll(await _stackLines(tab, e.stack, max: 5));
+        if (stack && e.thrown.isNotEmpty) {
+          // Where the error was thrown; where it was logged after.
+          lines
+            ..addAll(await _stackLines(tab, e.thrown, max: 5))
+            ..addAll(
+              await _stackLines(
+                tab,
+                e.stack,
+                max: 1,
+                indent: '  logged ',
+                libraries: false,
+              ),
+            );
+        } else if (stack) {
+          lines.addAll(await _stackLines(tab, e.stack, max: 5));
+        }
       }
       return lines.join('\n');
     },
@@ -627,29 +644,41 @@ Future<void> _startCoverage(BrowserTab tab) async {
 Future<String> _stopCoverage(BrowserTab tab) async {
   final browser = tab.browser;
   final css = await browser.cdp(tab.tabId, 'CSS.stopRuleUsageTracking');
-  final sheets = BrowserRecords.instance.styleSheets(tab);
   final rules = (css['ruleUsage'] as List? ?? const []).cast<Map>();
-  final sheetInfo = {
-    for (final MapEntry(:key, :value) in sheets.entries)
-      key: (
-        url: value['isInline'] == true || '${value['sourceURL'] ?? ''}'.isEmpty
-            ? '<style> in ${value['sourceURL'] ?? 'the page'}'
-            : '${value['sourceURL']}',
-        size: (value['length'] as num?)?.toInt() ?? 0,
-      ),
-  };
-  final files = await Isolate.run(() {
-    final bySheet = <String, List<Map>>{};
-    for (final r in rules) {
-      (bySheet[r['styleSheetId'] as String] ??= []).add(r);
+  final bySheet = <String, List<Map>>{};
+  for (final r in rules) {
+    (bySheet[r['styleSheetId'] as String] ??= []).add(r);
+  }
+  // Each of the page's own sheets (not the browser's, nor an extension's).
+  final sheets = [
+    for (final MapEntry(:key, :value)
+        in BrowserRecords.instance.styleSheets(tab).entries)
+      if ((value['origin'] ?? 'regular') == 'regular' &&
+          ((value['length'] as num?) ?? 0) > 0)
+        key,
+  ];
+  final inputs = <(String, String, List<Map>)>[];
+  for (final id in sheets) {
+    try {
+      final text = await browser.cdp(tab.tabId, 'CSS.getStyleSheetText', {
+        'styleSheetId': id,
+      });
+      inputs.add((
+        await _sheetName(tab, id),
+        text['text'] as String? ?? '',
+        bySheet[id] ?? const [],
+      ));
+    } on Object {
+      // Gone with its page.
     }
-    return [
-      for (final MapEntry(:key, :value) in bySheet.entries)
-        if (sheetInfo[key] case final info? when info.size > 0)
-          styleCoverage(info.url, info.size, value),
-    ];
-  });
-  if (files.isEmpty) return 'Nothing recorded: no style sheet was used.';
+  }
+  final files = await Isolate.run(
+    () => [
+      for (final (name, text, used) in inputs)
+        if (text.trim().isNotEmpty) styleCoverage(name, text, used),
+    ],
+  );
+  if (files.isEmpty) return 'Nothing recorded: the page has no style sheet.';
   files.sort((a, b) => b.unusedSize.compareTo(a.unusedSize));
   String percent(int part, int whole) =>
       whole == 0 ? '0%' : '${(part * 100 / whole).round()}%';
@@ -673,18 +702,24 @@ Future<String> _stopCoverage(BrowserTab tab) async {
             'unused': [
               for (final (start, end) in f.unused) [start, end],
             ],
+            'unusedRules': f.unusedRules,
           },
       ],
     }),
   );
   return [
-    'CSS ${_bytes(unused)} of ${_bytes(size)} unused (${percent(unused, size)}).',
+    'CSS ${_bytes(unused)} of ${_bytes(size)} unused (${percent(unused, size)}): '
+        'rules no element matched meanwhile.',
     'Most unused first:',
-    for (final f in files.take(25))
+    for (final f in files.take(25)) ...[
       '  ${percent(f.unusedSize, f.size)} unused — ${_bytes(f.unusedSize)} of '
           '${_bytes(f.size)} — ${_clip(f.url, 200)}',
+      if (f.unusedRules.isNotEmpty)
+        '    ${_clip(f.unusedRules.take(12).join(' | '), 400)}'
+            '${f.unusedRules.length > 12 ? ' | … ${f.unusedRules.length - 12} more' : ''}',
+    ],
     if (files.length > 25) '  … ${files.length - 25} more',
-    'Unused ranges (offsets in each sheet): ${file.path}',
+    'Unused ranges and rules (offsets in each sheet): ${file.path}',
     "Scripts' coverage: not through the extension (DevTools › Coverage).",
   ].join('\n');
 }
@@ -781,7 +816,7 @@ function () {
     }
     // Not a document's, a template's or a shadow root's: a tree let go of.
     if (root.nodeType === 9 || root.nodeType === 11) continue;
-    trees.set(root, (trees.get(root) || 0) + 1);
+    trees.set(root, true);
   }
   const name = (n) => {
     if (n.nodeType !== 1) return n.nodeName.toLowerCase();
@@ -791,11 +826,13 @@ function () {
     const t = (n.textContent || '').replace(/\s+/g, ' ').trim();
     return t ? s + ' "' + t.slice(0, 30) + '"' : s;
   };
-  return [...trees].sort((a, b) => b[1] - a[1]).map(([root, count]) => [name(root), count]);
+  // Its size: its elements (most of them no script holds itself).
+  const size = (n) => n.nodeType === 1 ? n.getElementsByTagName('*').length + 1 : 1;
+  return [...trees.keys()].map((root) => [name(root), size(root)]).sort((a, b) => b[1] - a[1]);
 }''';
 
 /// Each tab's last snapshot: its objects by constructor, how many, its
-/// detached nodes, and when: what the next is compared with.
+/// detached elements, and when: what the next is compared with.
 final Map<BrowserTab, (Map<String, int>, int, int, DateTime)> _lastObjects = {};
 
 Future<String> _objectSnapshot(BrowserTab tab) async {
@@ -821,9 +858,9 @@ Future<String> _objectSnapshot(BrowserTab tab) async {
     if (trees.isEmpty)
       'Detached DOM trees: none.'
     else ...[
-      'Detached DOM trees still held: ${trees.length} ($detached nodes), '
+      'Detached DOM trees still held: ${trees.length} ($detached elements), '
           'a leak if they grow:',
-      for (final [root, n] in trees.take(10)) '  $n nodes — $root',
+      for (final [root, n] in trees.take(10)) '  $n elements — $root',
     ],
   ];
   final before = _lastObjects[tab];
@@ -840,7 +877,7 @@ Future<String> _objectSnapshot(BrowserTab tab) async {
       ..add(
         'Since the snapshot ${DateTime.now().difference(at).inSeconds} s ago: '
         '${all >= 0 ? '+' : ''}${count(all)} objects, '
-        '${nodes >= 0 ? '+' : ''}$nodes detached nodes.'
+        '${nodes >= 0 ? '+' : ''}$nodes detached elements.'
         '${grew.isEmpty ? ' Nothing grew.' : ' Grew most:'}',
       )
       ..addAll([
@@ -1436,8 +1473,14 @@ class _Trace {
           'garbage collection ${ms(summary.garbage)}, the browser ${ms(summary.program)}). '
           '${functions.isEmpty ? 'No script of the page ran.' : 'Most time (self, total):'}',
       for (final f in functions.take(12))
-        '  ${ms(f.self)}, ${ms(f.total)} — ${f.function.name} '
-            '(${await _located(tab, f.function.url, f.function.line, f.function.column)})',
+        await _locatedCall(
+          tab,
+          f.function.name,
+          f.function.url,
+          f.function.line,
+          f.function.column,
+          definition: true,
+        ).then((c) => '  ${ms(f.self)}, ${ms(f.total)} — ${c.name} (${c.at})'),
     ];
   }
 

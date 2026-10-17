@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 
 import '../chat/chat_models.dart' show ToolKind;
 import '../kernel/claude_code/claude_sdk_tools.dart';
+import '../platform/data_dir.dart';
 import 'browser_analysis.dart';
 import 'browser_bridge.dart';
 import 'browser_records.dart';
@@ -18,6 +19,7 @@ import 'source_map.dart';
 
 part 'browser_actions.dart';
 part 'browser_debug_tools.dart';
+part 'browser_history.dart';
 part 'browser_inspect.dart';
 part 'browser_intercept.dart';
 part 'browser_page.dart';
@@ -60,6 +62,8 @@ abstract final class BrowserTools {
     void sync() => bridge.used ? register() : unregister();
     sync();
     bridge.addListener(sync);
+    // What the shared tabs do, kept from the moment they are shared.
+    BrowserHistory.instance.start();
     await bridge.start();
   }
 
@@ -71,6 +75,7 @@ abstract final class BrowserTools {
     ..._sourceTools,
     _interceptTool,
     _watchTool,
+    _historyTool,
   ];
 
   /// Takes the tools from the agents (Settings → Browser turned off).
@@ -136,6 +141,7 @@ abstract final class BrowserTools {
   /// in the debugger: they read what was kept, or are how it goes on.
   static const _whileStopped = {
     'browser_tabs',
+    'browser_history',
     'browser_close',
     'browser_console',
     'browser_network',

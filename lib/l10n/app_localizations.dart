@@ -2933,13 +2933,13 @@ abstract class AppLocalizations {
   /// A browser step's verb once done, by the browser tool it called; what it did it on follows (a URL, an element's name).
   ///
   /// In en, this message translates to:
-  /// **'{action, select, tabs{Listed tabs} open{Opened} navigate{Went to} back{Went back} forward{Went forward} reload{Reloaded} snapshot{Read the page} screenshot{Took a screenshot} click{Clicked} type{Typed} press{Pressed} scroll{Scrolled} evaluate{Ran} close{Closed the tab} console{Read the console} network{Listed requests} request{Read the request} performance{Profiled} recordStart{Started profiling} recordStop{Profiled} emulate{Emulated} watch{Watched you} act{Acted} inspect{Inspected} sources{Read the sources} breakpoints{Set breakpoints} debugger{Debugged} intercept{Intercepted requests} storage{Read site data} dialog{Answered the dialog} coverage{Measured coverage} memory{Measured memory} other{Used the browser}}'**
+  /// **'{action, select, tabs{Listed tabs} open{Opened} navigate{Went to} back{Went back} forward{Went forward} reload{Reloaded} snapshot{Read the page} screenshot{Took a screenshot} click{Clicked} type{Typed} press{Pressed} scroll{Scrolled} evaluate{Ran} close{Closed the tab} console{Read the console} network{Listed requests} request{Read the request} performance{Profiled} recordStart{Started profiling} recordStop{Profiled} emulate{Emulated} watch{Watched you} act{Acted} inspect{Inspected} sources{Read the sources} breakpoints{Set breakpoints} debugger{Debugged} intercept{Intercepted requests} storage{Read site data} dialog{Answered the dialog} coverage{Measured coverage} memory{Measured memory} history{Read the debugging history} other{Used the browser}}'**
   String browserStepDone(String action);
 
   /// A browser step's verb while it runs (see browserStepDone).
   ///
   /// In en, this message translates to:
-  /// **'{action, select, tabs{Listing tabs} open{Opening} navigate{Going to} back{Going back} forward{Going forward} reload{Reloading} snapshot{Reading the page} screenshot{Taking a screenshot} click{Clicking} type{Typing} press{Pressing} scroll{Scrolling} evaluate{Running} close{Closing the tab} console{Reading the console} network{Listing requests} request{Reading the request} performance{Profiling} recordStart{Starting to profile} recordStop{Profiling} emulate{Emulating} watch{Watching you} act{Acting} inspect{Inspecting} sources{Reading the sources} breakpoints{Setting breakpoints} debugger{Debugging} intercept{Intercepting requests} storage{Reading site data} dialog{Answering the dialog} coverage{Measuring coverage} memory{Measuring memory} other{Using the browser}}'**
+  /// **'{action, select, tabs{Listing tabs} open{Opening} navigate{Going to} back{Going back} forward{Going forward} reload{Reloading} snapshot{Reading the page} screenshot{Taking a screenshot} click{Clicking} type{Typing} press{Pressing} scroll{Scrolling} evaluate{Running} close{Closing the tab} console{Reading the console} network{Listing requests} request{Reading the request} performance{Profiling} recordStart{Starting to profile} recordStop{Profiling} emulate{Emulating} watch{Watching you} act{Acting} inspect{Inspecting} sources{Reading the sources} breakpoints{Setting breakpoints} debugger{Debugging} intercept{Intercepting requests} storage{Reading site data} dialog{Answering the dialog} coverage{Measuring coverage} memory{Measuring memory} history{Reading the debugging history} other{Using the browser}}'**
   String browserStepRunning(String action);
 
   /// The side panel's plan page: the plan the agent wrote in plan mode, shown while there is one.
@@ -15368,6 +15368,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Browser Settings'**
   String get browserSettingsOpen;
+
+  /// No description provided for @browserHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Debugging history'**
+  String get browserHistoryTitle;
+
+  /// No description provided for @browserHistoryDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'What the tabs shared with BaoCode do is kept as it happens, no recording needed: the pages, the requests, console errors and warnings. Agents look back at it when you ask (“it failed when I saved”). Kept on this computer; cookies and tokens are not.'**
+  String get browserHistoryDescription;
+
+  /// No description provided for @browserHistoryDetailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Detailed history'**
+  String get browserHistoryDetailed;
+
+  /// No description provided for @browserHistoryDetailedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Also keeps the request and response bodies, what you do (clicks and typing, never passwords) and every console message. Takes more space.'**
+  String get browserHistoryDetailedDescription;
+
+  /// No description provided for @browserHistorySize.
+  ///
+  /// In en, this message translates to:
+  /// **'Using {size}'**
+  String browserHistorySize(String size);
+
+  /// No description provided for @browserHistoryClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get browserHistoryClear;
+
+  /// No description provided for @browserHistoryClearConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the debugging history?'**
+  String get browserHistoryClearConfirm;
+
+  /// No description provided for @browserHistoryClearDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'The pages, requests and console messages kept are deleted. This cannot be undone.'**
+  String get browserHistoryClearDetail;
+
+  /// No description provided for @browserHistoryTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser\'s debugging history takes {size}'**
+  String browserHistoryTooLarge(String size);
+
+  /// No description provided for @browserHistoryTooLargeDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear it, or look at it in Settings → Browser.'**
+  String get browserHistoryTooLargeDetail;
+
+  /// No description provided for @browserHistoryOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Browser settings'**
+  String get browserHistoryOpenSettings;
 
   /// No description provided for @browserWelcomeTitle.
   ///

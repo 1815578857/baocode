@@ -669,12 +669,12 @@
     "placeholders": {"kind": {"type": "String"}}
   },
   "browserTraceReveal": "Show the trace in Finder (drop it into DevTools' Performance panel to look closer)",
-  "browserStepDone": "{action, select, tabs{Listed tabs} open{Opened} navigate{Went to} back{Went back} forward{Went forward} reload{Reloaded} snapshot{Read the page} screenshot{Took a screenshot} click{Clicked} type{Typed} press{Pressed} scroll{Scrolled} evaluate{Ran} close{Closed the tab} console{Read the console} network{Listed requests} request{Read the request} performance{Profiled} recordStart{Started profiling} recordStop{Profiled} emulate{Emulated} watch{Watched you} act{Acted} inspect{Inspected} sources{Read the sources} breakpoints{Set breakpoints} debugger{Debugged} intercept{Intercepted requests} storage{Read site data} dialog{Answered the dialog} coverage{Measured coverage} memory{Measured memory} other{Used the browser}}",
+  "browserStepDone": "{action, select, tabs{Listed tabs} open{Opened} navigate{Went to} back{Went back} forward{Went forward} reload{Reloaded} snapshot{Read the page} screenshot{Took a screenshot} click{Clicked} type{Typed} press{Pressed} scroll{Scrolled} evaluate{Ran} close{Closed the tab} console{Read the console} network{Listed requests} request{Read the request} performance{Profiled} recordStart{Started profiling} recordStop{Profiled} emulate{Emulated} watch{Watched you} act{Acted} inspect{Inspected} sources{Read the sources} breakpoints{Set breakpoints} debugger{Debugged} intercept{Intercepted requests} storage{Read site data} dialog{Answered the dialog} coverage{Measured coverage} memory{Measured memory} history{Read the debugging history} other{Used the browser}}",
   "@browserStepDone": {
     "description": "A browser step's verb once done, by the browser tool it called; what it did it on follows (a URL, an element's name).",
     "placeholders": {"action": {"type": "String"}}
   },
-  "browserStepRunning": "{action, select, tabs{Listing tabs} open{Opening} navigate{Going to} back{Going back} forward{Going forward} reload{Reloading} snapshot{Reading the page} screenshot{Taking a screenshot} click{Clicking} type{Typing} press{Pressing} scroll{Scrolling} evaluate{Running} close{Closing the tab} console{Reading the console} network{Listing requests} request{Reading the request} performance{Profiling} recordStart{Starting to profile} recordStop{Profiling} emulate{Emulating} watch{Watching you} act{Acting} inspect{Inspecting} sources{Reading the sources} breakpoints{Setting breakpoints} debugger{Debugging} intercept{Intercepting requests} storage{Reading site data} dialog{Answering the dialog} coverage{Measuring coverage} memory{Measuring memory} other{Using the browser}}",
+  "browserStepRunning": "{action, select, tabs{Listing tabs} open{Opening} navigate{Going to} back{Going back} forward{Going forward} reload{Reloading} snapshot{Reading the page} screenshot{Taking a screenshot} click{Clicking} type{Typing} press{Pressing} scroll{Scrolling} evaluate{Running} close{Closing the tab} console{Reading the console} network{Listing requests} request{Reading the request} performance{Profiling} recordStart{Starting to profile} recordStop{Profiling} emulate{Emulating} watch{Watching you} act{Acting} inspect{Inspecting} sources{Reading the sources} breakpoints{Setting breakpoints} debugger{Debugging} intercept{Intercepting requests} storage{Reading site data} dialog{Answering the dialog} coverage{Measuring coverage} memory{Measuring memory} history{Reading the debugging history} other{Using the browser}}",
   "@browserStepRunning": {
     "description": "A browser step's verb while it runs (see browserStepDone).",
     "placeholders": {"action": {"type": "String"}}
@@ -6719,6 +6719,19 @@
   "browserSettingsUnpackedDescription": "Unzip it into a folder you'll keep. In chrome://extensions, turn on Developer mode at the top right, click Load unpacked and choose the folder. It doesn't update automatically.",
   "browserSettingsUnpackedDownload": "Download Zip",
   "browserSettingsOpen": "Browser Settings",
+  "browserHistoryTitle": "Debugging history",
+  "browserHistoryDescription": "What the tabs shared with BaoCode do is kept as it happens, no recording needed: the pages, the requests, console errors and warnings. Agents look back at it when you ask (“it failed when I saved”). Kept on this computer; cookies and tokens are not.",
+  "browserHistoryDetailed": "Detailed history",
+  "browserHistoryDetailedDescription": "Also keeps the request and response bodies, what you do (clicks and typing, never passwords) and every console message. Takes more space.",
+  "browserHistorySize": "Using {size}",
+  "@browserHistorySize": {"placeholders": {"size": {"type": "String"}}},
+  "browserHistoryClear": "Clear",
+  "browserHistoryClearConfirm": "Clear the debugging history?",
+  "browserHistoryClearDetail": "The pages, requests and console messages kept are deleted. This cannot be undone.",
+  "browserHistoryTooLarge": "The browser's debugging history takes {size}",
+  "@browserHistoryTooLarge": {"placeholders": {"size": {"type": "String"}}},
+  "browserHistoryTooLargeDetail": "Clear it, or look at it in Settings → Browser.",
+  "browserHistoryOpenSettings": "Browser settings",
   "browserWelcomeTitle": "Agents can use your browser now",
   "browserWelcomeLead": "With BaoCode's extension, agents open pages, read them, click and type in your own Chrome, signed in as you are.",
   "browserWelcomeSharedTitle": "Only the tabs you share",

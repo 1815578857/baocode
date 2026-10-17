@@ -1549,6 +1549,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'dialog': 'Answered the dialog',
       'coverage': 'Measured coverage',
       'memory': 'Measured memory',
+      'history': 'Read the debugging history',
       'other': 'Used the browser',
     });
     return '$_temp0';
@@ -1589,6 +1590,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'dialog': 'Answering the dialog',
       'coverage': 'Measuring coverage',
       'memory': 'Measuring memory',
+      'history': 'Reading the debugging history',
       'other': 'Using the browser',
     });
     return '$_temp0';
@@ -9417,6 +9419,47 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get browserSettingsOpen => 'Browser Settings';
+
+  @override
+  String get browserHistoryTitle => 'Debugging history';
+
+  @override
+  String get browserHistoryDescription =>
+      'What the tabs shared with BaoCode do is kept as it happens, no recording needed: the pages, the requests, console errors and warnings. Agents look back at it when you ask (“it failed when I saved”). Kept on this computer; cookies and tokens are not.';
+
+  @override
+  String get browserHistoryDetailed => 'Detailed history';
+
+  @override
+  String get browserHistoryDetailedDescription =>
+      'Also keeps the request and response bodies, what you do (clicks and typing, never passwords) and every console message. Takes more space.';
+
+  @override
+  String browserHistorySize(String size) {
+    return 'Using $size';
+  }
+
+  @override
+  String get browserHistoryClear => 'Clear';
+
+  @override
+  String get browserHistoryClearConfirm => 'Clear the debugging history?';
+
+  @override
+  String get browserHistoryClearDetail =>
+      'The pages, requests and console messages kept are deleted. This cannot be undone.';
+
+  @override
+  String browserHistoryTooLarge(String size) {
+    return 'The browser\'s debugging history takes $size';
+  }
+
+  @override
+  String get browserHistoryTooLargeDetail =>
+      'Clear it, or look at it in Settings → Browser.';
+
+  @override
+  String get browserHistoryOpenSettings => 'Browser settings';
 
   @override
   String get browserWelcomeTitle => 'Agents can use your browser now';

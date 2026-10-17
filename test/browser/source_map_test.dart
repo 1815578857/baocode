@@ -110,4 +110,43 @@ void main() {
     expect(shortSource('src/x.js'), 'src/x.js');
     expect(SourceMap.parse('not json'), isNull);
   });
+
+  test('the function a place is in, by its head', () {
+    const code = r'''
+export async function saveTodo(text: string): Promise<Todo> {
+  const res = await fetch('/api', { method: 'POST' })
+  if (!res.ok) {
+    throw new Error(`failed: ${res.status}`)
+  }
+}
+const add = async () => {
+  try { await saveTodo(text) } catch (e) { console.error(e) }
+}
+class Store {
+  load(id: number): void {
+    items.forEach((item) => {
+      use(item)
+    })
+  }
+}
+''';
+    int lineOf(String text) =>
+        code.split('\n').indexWhere((l) => l.contains(text));
+    expect(enclosingFunction(code, lineOf('throw new'), 4), 'saveTodo');
+    expect(enclosingFunction(code, lineOf('const res'), 2), 'saveTodo');
+    expect(enclosingFunction(code, lineOf('console.error'), 45), 'add');
+    expect(enclosingFunction(code, lineOf('use(item)'), 6), isNull);
+    expect(enclosingFunction(code, lineOf('items.forEach'), 4), 'load');
+  });
+
+  test("an expression's variables as the minified script names them", () {
+    final names = {'res': 't', 'text': 'e'};
+    expect(renameVariables('res.status', names), 't.status');
+    expect(
+      renameVariables('{text: text, s: "res"}.text + res.text', names),
+      '{text: e, s: "res"}.text + t.text',
+    );
+    expect(renameVariables('result + res', names), 'result + t');
+    expect(renameVariables('a ? res : text', names), 'a ? t : e');
+  });
 }

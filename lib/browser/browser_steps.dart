@@ -159,6 +159,13 @@ String browserStepSummary(
       return [?text('kind'), ?text('action'), ?text('name')].join(' · ');
     case 'browser_dialog':
       return input['accept'] == true ? 'accept' : 'dismiss';
+    case 'browser_history':
+      return [
+        ?text('since'),
+        ?text('id'),
+        ?text('url'),
+        if (input['failed'] == true) 'failed',
+      ].join(' · ');
     case 'browser_coverage':
       return text('action') ?? '';
     case 'browser_memory':
@@ -238,6 +245,7 @@ bool _readable(ToolCallItem item) {
     'browser_dialog' ||
     'browser_coverage' ||
     'browser_memory' ||
+    'browser_history' ||
     'browser_watch' => true,
     // An action's answer says what it changed, past its first line.
     _ => item.output!.trim().contains('\n'),

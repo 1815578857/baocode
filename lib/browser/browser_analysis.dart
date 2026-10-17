@@ -92,9 +92,16 @@ class CpuSummary {
 }
 
 /// What of a file was used: its size, and its parts that were not
-/// ([unused], `[start, end)` offsets).
+/// ([unused], `[start, end)` offsets), the rules there ([unusedRules]:
+/// their selectors).
 class FileCoverage {
-  FileCoverage(this.url, this.kind, this.size, this.unused);
+  FileCoverage(
+    this.url,
+    this.kind,
+    this.size,
+    this.unused, [
+    this.unusedRules = const [],
+  ]);
 
   final String url;
 
@@ -102,30 +109,50 @@ class FileCoverage {
   final String kind;
   final int size;
   final List<(int, int)> unused;
+  final List<String> unusedRules;
 
   int get unusedSize => unused.fold(0, (sum, r) => sum + r.$2 - r.$1);
 }
 
-/// A style sheet's coverage: its rules' (`CSS.stopRuleUsageTracking`'s),
-/// of a sheet of [size].
-FileCoverage styleCoverage(String url, int size, List<Map> rules) {
-  final used = List<bool>.filled(size, true);
-  final sorted = [...rules]
-    ..sort(
-      (a, b) => (a['startOffset'] as num).compareTo(b['startOffset'] as num),
-    );
-  // Unused rules marked, then used ones over them (a rule in a rule).
-  for (final pass in [false, true]) {
-    for (final r in sorted) {
-      if ((r['used'] == true) != pass) continue;
-      final start = (r['startOffset'] as num).toInt();
-      final end = (r['endOffset'] as num).toInt();
-      for (var i = start; i < end && i < size; i++) {
-        used[i] = pass;
+/// A style sheet's coverage: of its [text], what its used rules
+/// (`CSS.stopRuleUsageTracking`'s) leave, but blanks.
+FileCoverage styleCoverage(String url, String text, List<Map> rules) {
+  final size = text.length;
+  final used = List<bool>.filled(size, false);
+  for (final r in rules) {
+    if (r['used'] != true) continue;
+    final start = (r['startOffset'] as num).toInt().clamp(0, size);
+    final end = (r['endOffset'] as num).toInt().clamp(0, size);
+    for (var i = start; i < end; i++) {
+      used[i] = true;
+    }
+  }
+  final blank = RegExp(r'\s');
+  final unused = <(int, int)>[];
+  final selectors = <String>[];
+  for (var (start, end) in _gaps(used)) {
+    while (start < end && blank.hasMatch(text[start])) {
+      start++;
+    }
+    while (end > start && blank.hasMatch(text[end - 1])) {
+      end--;
+    }
+    final part = text
+        .substring(start, end)
+        .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '');
+    // Nothing but what closes a block: no rule.
+    if (part.replaceAll(RegExp(r'[\s}]'), '').isEmpty) continue;
+    unused.add((start, end));
+    for (final m in RegExp(r'([^{};]+)\{').allMatches(part)) {
+      final selector = m[1]!.trim().replaceAll(RegExp(r'\s+'), ' ');
+      if (selector.isNotEmpty &&
+          !selector.startsWith('@') &&
+          !selectors.contains(selector)) {
+        selectors.add(selector);
       }
     }
   }
-  return FileCoverage(url, 'CSS', size, _gaps(used));
+  return FileCoverage(url, 'CSS', size, unused, selectors);
 }
 
 List<(int, int)> _gaps(List<bool> used) {

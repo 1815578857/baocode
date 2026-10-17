@@ -1509,6 +1509,7 @@ class AppLocalizationsZh extends AppLocalizations {
       'dialog': '已应答弹窗',
       'coverage': '已统计覆盖率',
       'memory': '已分析内存',
+      'history': '已查看调试记录',
       'other': '已使用浏览器',
     });
     return '$_temp0';
@@ -1549,6 +1550,7 @@ class AppLocalizationsZh extends AppLocalizations {
       'dialog': '正在应答弹窗',
       'coverage': '正在统计覆盖率',
       'memory': '正在分析内存',
+      'history': '正在查看调试记录',
       'other': '正在使用浏览器',
     });
     return '$_temp0';
@@ -8904,6 +8906,45 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get browserSettingsOpen => '浏览器设置';
+
+  @override
+  String get browserHistoryTitle => '调试记录';
+
+  @override
+  String get browserHistoryDescription =>
+      '共享给 BaoCode 的标签页里打开过的页面、发出的请求、控制台的错误和警告会一直记下来，不用专门录制。你说“刚才保存时报错了”这类话时，agent 会自己翻看。记录只存在这台电脑上，不保存 Cookie 和令牌。';
+
+  @override
+  String get browserHistoryDetailed => '详细记录';
+
+  @override
+  String get browserHistoryDetailedDescription =>
+      '另外记下请求体和响应体、你的操作（点击和输入，不含密码）以及全部控制台日志，占用空间更多。';
+
+  @override
+  String browserHistorySize(String size) {
+    return '已占用 $size';
+  }
+
+  @override
+  String get browserHistoryClear => '清理';
+
+  @override
+  String get browserHistoryClearConfirm => '清理全部调试记录？';
+
+  @override
+  String get browserHistoryClearDetail => '已记下的页面、请求和控制台日志都会被删除，无法恢复。';
+
+  @override
+  String browserHistoryTooLarge(String size) {
+    return '浏览器调试记录已占用 $size';
+  }
+
+  @override
+  String get browserHistoryTooLargeDetail => '可以直接清理，也可以去 设置 → 浏览器 查看。';
+
+  @override
+  String get browserHistoryOpenSettings => '浏览器设置';
 
   @override
   String get browserWelcomeTitle => 'agent 现在能用你的浏览器了';

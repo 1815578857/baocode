@@ -131,6 +131,13 @@ class AppSettings {
     ];
   }
 
+  /// What the settings dialog says above every page: the browser's
+  /// debugging history grown large.
+  Widget buildNotice(
+    BuildContext context,
+    void Function(SettingsSection section) open,
+  ) => BrowserHistoryNotice(open: () => open(SettingsSection.browser));
+
   /// [section]'s page of the settings dialog.
   Widget buildPage(BuildContext context, SettingsSection section) {
     switch (section) {

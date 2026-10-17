@@ -4,7 +4,7 @@ import 'dart:convert';
 /// minified) came from in the sources it was built of, and back. Index maps
 /// (sections) too.
 class SourceMap {
-  SourceMap._(this.sources, this._contents, this._lines);
+  SourceMap._(this.sources, this._contents, this._lines, this._ignored);
 
   /// Reads [json], the map of a script at [url] (its sources' URLs are
   /// resolved against it); null if it is not a source map.
@@ -15,8 +15,9 @@ class SourceMap {
       final sources = <String>[];
       final contents = <String?>[];
       final lines = <List<_Segment>>[];
-      _read(map, url, 0, 0, sources, contents, lines);
-      return SourceMap._(sources, contents, lines);
+      final ignored = <int>{};
+      _read(map, url, 0, 0, sources, contents, lines, ignored);
+      return SourceMap._(sources, contents, lines, ignored);
     } on Object {
       return null;
     }
@@ -30,6 +31,7 @@ class SourceMap {
     List<String> sources,
     List<String?> contents,
     List<List<_Segment>> lines,
+    Set<int> ignored,
   ) {
     if (map['sections'] case final List sections) {
       for (final section in sections.cast<Map>()) {
@@ -43,6 +45,7 @@ class SourceMap {
             sources,
             contents,
             lines,
+            ignored,
           );
         }
       }
@@ -59,6 +62,12 @@ class SourceMap {
             ? ownContents[i] as String?
             : null,
       );
+    }
+    // The libraries' (DevTools hides their calls).
+    for (final i
+        in (map['ignoreList'] ?? map['x_google_ignoreList'] ?? const [])
+            as List) {
+      if (i is int) ignored.add(first + i);
     }
     final names = (map['names'] as List? ?? const []).cast<Object?>();
     final mappings = map['mappings'] as String? ?? '';
@@ -141,6 +150,10 @@ class SourceMap {
   /// The sources' URLs, resolved.
   final List<String> sources;
   final List<String?> _contents;
+  final Set<int> _ignored;
+
+  /// Whether the map says [source] is a library's (its ignore list).
+  bool ignored(int source) => _ignored.contains(source);
 
   /// Each generated line's segments, by column.
   final List<List<_Segment>> _lines;
@@ -213,6 +226,26 @@ class SourceMap {
     return index;
   }
 
+  /// The pieces from [fromLine] to [toLine] (the script's, from 0) that
+  /// name something of the source (a variable, a function): where, and
+  /// its name there.
+  Iterable<({int line, int column, String name})> named(
+    int fromLine,
+    int toLine,
+  ) sync* {
+    for (
+      var line = fromLine.clamp(0, _lines.length);
+      line <= toLine && line < _lines.length;
+      line++
+    ) {
+      for (final s in _lines[line]) {
+        if (s.name case final name?) {
+          yield (line: line, column: s.column, name: name);
+        }
+      }
+    }
+  }
+
   /// The source whose URL ends with [path] (or has it), best first: an
   /// exact end over a part.
   int? find(String path) {
@@ -276,4 +309,128 @@ String shortSource(String url) {
   if (scheme != null) path = path.substring(scheme.end);
   path = path.replaceFirst(RegExp(r'^(\./)+'), '');
   return path.isEmpty ? url : path;
+}
+
+/// The name of the function [source] has its [line] and [column] (from 0)
+/// in, as written: what a minified script's calls are named by. Read off
+/// the blocks around it (a function's head before its `{`); null if none
+/// says, or an anonymous one's.
+String? enclosingFunction(String source, int line, int column) {
+  var offset = 0;
+  for (var i = 0; i < line; i++) {
+    final next = source.indexOf('\n', offset);
+    if (next < 0) return null;
+    offset = next + 1;
+  }
+  offset = (offset + column).clamp(0, source.length);
+  var depth = 0;
+  for (var i = offset - 1; i >= 0 && offset - i < 100000; i--) {
+    final char = source.codeUnitAt(i);
+    if (char == 0x7d) {
+      depth++;
+    } else if (char == 0x7b) {
+      if (depth > 0) {
+        depth--;
+        continue;
+      }
+      // A block around it: what opens it, back to the last statement.
+      var start = i;
+      while (start > 0 && i - start < 300) {
+        final c = source.codeUnitAt(start - 1);
+        if (c == 0x3b || c == 0x7b || c == 0x7d) break;
+        start--;
+      }
+      final head = source
+          .substring(start, i)
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      switch (_functionHead(head)) {
+        case final String name:
+          return name.isEmpty ? null : name;
+        case null:
+          continue;
+      }
+    }
+  }
+  return null;
+}
+
+const _notFunctions = {
+  'if', 'for', 'while', 'switch', 'catch', 'with', 'function', 'return', //
+  'else', 'do', 'try', 'finally', 'class', 'constructor', 'super',
+};
+
+/// A function's name, if [head] opens one (`''`: an anonymous one); null
+/// if it opens something else (an if's block, an object, a class).
+String? functionName(String head) => _functionHead(head.trim());
+
+/// A function's name, if [head] opens one (`''`: an anonymous one); null
+/// if it opens something else (an if's block, an object, a class).
+String? _functionHead(String head) {
+  const params = r'\((?:[^()]|\([^()]*\))*\)';
+  const type = r'(?:\s*:\s*[^=]+?)?';
+  const name = r'([\w$]+)';
+  final patterns = [
+    RegExp('function\\s*\\*?\\s*$name\\s*(?:<[^>]*>)?\\s*$params$type\$'),
+    RegExp('$name\\s*[=:]\\s*(?:async\\s+)?function\\b[^=]*\$'),
+    RegExp(
+      '$name\\s*[=:]\\s*(?:async\\s*)?(?:$params|[\\w\$]+)$type\\s*=>\\s*\$',
+    ),
+  ];
+  for (final pattern in patterns) {
+    if (pattern.firstMatch(head) case final m?) return m[1];
+  }
+  // A method: `async save(a, b) {`.
+  final method = RegExp(
+    '(?:^|[\\s,(])(?:(?:async|static|get|set|public|private|protected)\\s+)*'
+    '\\*?$name\\s*(?:<[^>]*>)?\\s*$params$type\$',
+  ).firstMatch(head);
+  if (method != null && !_notFunctions.contains(method[1])) return method[1];
+  if (RegExp('(?:=>|\\bfunction\\s*\\*?\\s*$params$type)\\s*\$')
+      .hasMatch(head)) {
+    return '';
+  }
+  return null;
+}
+
+/// [expression] with its variables' names ([names]: as written, to the
+/// script's) as the script has them: what is evaluated in a minified
+/// script's call. Strings and properties (`a.name`, `{name: 1}`) are kept.
+String renameVariables(String expression, Map<String, String> names) {
+  if (names.isEmpty) return expression;
+  final out = StringBuffer();
+  final identifier = RegExp(r'[A-Za-z_$][\w$]*');
+  var i = 0;
+  while (i < expression.length) {
+    final char = expression[i];
+    if (char == '"' || char == "'" || char == '`') {
+      var end = i + 1;
+      while (end < expression.length && expression[end] != char) {
+        if (expression[end] == r'\') end++;
+        end++;
+      }
+      end = (end + 1).clamp(0, expression.length);
+      out.write(expression.substring(i, end));
+      i = end;
+      continue;
+    }
+    final match = identifier.matchAsPrefix(expression, i);
+    if (match == null ||
+        (i > 0 && RegExp(r'[\w$]').hasMatch(expression[i - 1]))) {
+      out.write(char);
+      i++;
+      continue;
+    }
+    final name = match[0]!;
+    final before = expression.substring(0, i).trimRight();
+    final after = expression.substring(match.end).trimLeft();
+    final property =
+        before.endsWith('.') ||
+        (after.startsWith(':') &&
+            !after.startsWith('::') &&
+            RegExp(r'[{,]$').hasMatch(before));
+    out.write(property ? name : names[name] ?? name);
+    i = match.end;
+  }
+  return out.toString();
 }

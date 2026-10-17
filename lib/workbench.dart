@@ -2315,6 +2315,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         pageBuilder: (context, section) =>
             widget.settings?.buildPage(context, section) ??
             const SizedBox.shrink(),
+        noticeBuilder: widget.settings?.buildNotice,
       );
     } finally {
       if (mounted) {

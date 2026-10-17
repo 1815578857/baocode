@@ -247,11 +247,52 @@ class _Debugging {
   }
 
   /// [url]'s [line] and [column] (from 0) as an agent reads them: the
-  /// source's place first, if a map tells it; the script's.
-  Future<String> where(String url, int line, int column) async {
-    final at = '${url.isEmpty ? '(no url)' : url}:${line + 1}:${column + 1}';
-    final original = await this.original(url, line, column);
-    return original == null ? at : '$original ($at)';
+  /// source's place, if a map tells it, else the script's.
+  Future<String> where(String url, int line, int column) async =>
+      (await place(url, line, column)).text;
+
+  /// Where [url]'s [line] and [column] (from 0) are, and the library
+  /// (package) they are of, if one's: its calls are run together, as
+  /// DevTools hides them. With the name of the [function] there as the
+  /// source has it, where the script's is minified: the one it is in, or
+  /// the one it is the start of ([definition]: a profile's, a listener's).
+  Future<({String text, String? library, String? function})> place(
+    String url,
+    int line,
+    int column, {
+    String? function,
+    bool definition = false,
+  }) async {
+    SourceMap? map;
+    if (url.isNotEmpty) {
+      try {
+        map = await mapOf(url).timeout(const Duration(seconds: 5));
+      } on Object {
+        // Unmapped.
+      }
+    }
+    final original = map?.original(line, column);
+    if (original != null) {
+      return (
+        text: '$original',
+        library: map!.ignored(original.source)
+            ? _libraryOf(original.url) ?? 'a library'
+            : _libraryOf(original.url),
+        function: function == null
+            ? null
+            : _sourceName(
+                function,
+                map.content(original.source),
+                original,
+                definition: definition,
+              ),
+      );
+    }
+    return (
+      text: '${url.isEmpty ? '(no url)' : url}:${line + 1}:${column + 1}',
+      library: _libraryOf(url),
+      function: function,
+    );
   }
 
   Future<SourcePosition?> original(String url, int line, int column) async {
@@ -555,28 +596,49 @@ class _Debugging {
         lines.add(_clip(text, 1500));
       }
     }
-    lines.add('Calls:');
-    for (final (i, f) in frames.take(20).indexed) {
-      final name = f['functionName'] as String? ?? '';
-      lines.add(
-        '  #$i ${name.isEmpty ? '(anonymous)' : name} at ${await _frameWhere(f)}',
+    lines
+      ..add('Calls:')
+      ..addAll(
+        await _callLines(
+          this,
+          [
+            for (final f in frames)
+              ScriptFrame(
+                f['functionName'] as String? ?? '',
+                scripts[(f['location'] as Map)['scriptId']]?.url ??
+                    f['url'] as String? ??
+                    '',
+                ((f['location'] as Map)['lineNumber'] as num).toInt(),
+                ((f['location'] as Map)['columnNumber'] as num?)?.toInt() ?? 0,
+              ),
+          ],
+          max: 20,
+          call: (i, name, at) => '  #$i $name at $at',
+          library: (from, to, library) =>
+              '  #$from${to > from ? '–#$to' : ''}: ${to - from + 1} '
+              'call${to > from ? 's' : ''} in $library',
+        ),
       );
-    }
-    if (frames.length > 20) lines.add('  … ${frames.length - 20} more');
     // What scheduled them: a timer's, a promise's.
     var async = params['asyncStackTrace'] as Map?;
     var shown = 0;
     while (async != null && shown < 8) {
       final described = async['description'] as String? ?? 'async';
-      lines.add('  ($described)');
-      for (final f in (async['callFrames'] as List? ?? const []).cast<Map>()) {
-        if (shown++ >= 8) break;
-        final name = f['functionName'] as String? ?? '';
-        lines.add(
-          '    ${name.isEmpty ? '(anonymous)' : name} at '
-          '${await where(f['url'] as String? ?? '', (f['lineNumber'] as num).toInt(), (f['columnNumber'] as num?)?.toInt() ?? 0)}',
-        );
-      }
+      final called = ScriptFrame.stackOf({
+        'callFrames': async['callFrames'],
+      }, max: 30);
+      final listed = await _callLines(
+        this,
+        called,
+        max: 8 - shown,
+        call: (_, name, at) => '    $name at $at',
+        library: (from, to, library) =>
+            '    … ${to - from + 1} call${to > from ? 's' : ''} in $library',
+      );
+      shown += listed.length;
+      lines
+        ..add('  ($described)')
+        ..addAll(listed);
       async = async['parent'] as Map?;
     }
     if (frame < frames.length) {
@@ -638,8 +700,99 @@ class _Debugging {
     return out;
   }
 
+  /// The variables of [scope] (a call frame's) named otherwise in the
+  /// source than in the minified script: theirs (the script's) to the
+  /// source's, as its map's names at them say.
+  Future<Map<String, String>> sourceNames(
+    Map scope,
+    Iterable<String> variables,
+  ) async {
+    final start = scope['startLocation'] as Map?;
+    final end = scope['endLocation'] as Map?;
+    // A module's are read off too far apart to be told right.
+    if (start == null ||
+        end == null ||
+        scope['type'] == 'module' ||
+        scope['type'] == 'global') {
+      return const {};
+    }
+    final script = scripts[start['scriptId']];
+    if (script == null) return const {};
+    final map = await mapOf(script.url).catchError((Object _) => null);
+    final text = map == null ? null : await sourceOf(script.id);
+    if (map == null || text == null) return const {};
+    final lines = text.split('\n');
+    final wanted = variables.toSet();
+    final from = (
+      line: start['lineNumber'] as int,
+      column: start['columnNumber'] as int? ?? 0,
+    );
+    final to = (
+      line: end['lineNumber'] as int,
+      column: end['columnNumber'] as int? ?? 1 << 30,
+    );
+    final out = <String, String>{};
+    final identifier = RegExp(r'[\w$]+');
+    for (final n in map.named(from.line, to.line)) {
+      if ((n.line == from.line && n.column < from.column) ||
+          (n.line == to.line && n.column > to.column) ||
+          n.line >= lines.length) {
+        continue;
+      }
+      final id = identifier.matchAsPrefix(lines[n.line], n.column)?[0];
+      if (id == null || !wanted.contains(id) || out.containsKey(id)) continue;
+      out[id] = n.name;
+    }
+    out.removeWhere((generated, original) => generated == original);
+    return out;
+  }
+
+  /// The source's names of [frame]'s variables, to the script's: the
+  /// innermost scope's first.
+  Future<Map<String, String>> variablesOf(Map frame) async {
+    final names = <String, String>{};
+    for (final scope
+        in (frame['scopeChain'] as List? ?? const []).cast<Map>()) {
+      final id = (scope['object'] as Map?)?['objectId'] as String?;
+      if (id == null ||
+          scope['type'] == 'global' ||
+          scope['type'] == 'module') {
+        continue;
+      }
+      try {
+        final result = await tab.browser.cdp(
+          tab.tabId,
+          'Runtime.getProperties',
+          {'objectId': id, 'ownProperties': true},
+        );
+        final variables = [
+          for (final p in (result['result'] as List? ?? const []).cast<Map>())
+            '${p['name']}',
+        ];
+        for (final MapEntry(:key, :value) in (await sourceNames(
+          scope,
+          variables,
+        )).entries) {
+          names.putIfAbsent(value, () => key);
+        }
+      } on Object {
+        // Not readable.
+      }
+    }
+    return names;
+  }
+
   Future<List<String>> _scopes(Map frame, int index) async {
     final out = <String>['Variables (#$index):'];
+    // Its function's name as written (a minified script's is not).
+    final function = frame['functionName'] as String? ?? '';
+    final location = frame['location'] as Map;
+    final written = (await place(
+      scripts[location['scriptId']]?.url ?? '',
+      (location['lineNumber'] as num).toInt(),
+      (location['columnNumber'] as num?)?.toInt() ?? 0,
+      function: function,
+    )).function;
     for (final scope
         in (frame['scopeChain'] as List? ?? const []).cast<Map>()) {
       final type = scope['type'] as String? ?? '';
@@ -654,19 +807,39 @@ class _Debugging {
           {'objectId': id, 'ownProperties': true, 'generatePreview': true},
         );
         final properties = (result['result'] as List? ?? const []).cast<Map>();
-        final name = scope['name'] as String?;
+        // A minified script's: by the source's names, theirs after.
+        final renamed = await sourceNames(scope, [
+          for (final p in properties) '${p['name']}',
+        ]);
+        String named(Map p) => switch (renamed['${p['name']}']) {
+          final original? => '$original (${p['name']})',
+          _ => '${p['name']}',
+        };
+        final name = function.isNotEmpty && scope['name'] == function
+            ? written ?? function
+            : scope['name'] as String?;
         out.add(
           '  ${type[0].toUpperCase()}${type.substring(1)}'
           '${name == null || name.isEmpty ? '' : ' ($name)'}:',
         );
         if (properties.isEmpty) out.add('    (none)');
-        for (final p in properties.take(30)) {
+        // The values first; a module's or a closure's functions after,
+        // by name.
+        final values = properties
+            .where((p) => (p['value'] as Map?)?['type'] != 'function')
+            .toList();
+        final functions = [
+          for (final p in properties)
+            if ((p['value'] as Map?)?['type'] == 'function') named(p),
+        ];
+        for (final p in values.take(30)) {
           out.add(
-            '    ${p['name']} = ${_clip(_remoteText(p['value'] as Map?), 300)}',
+            '    ${named(p)} = ${_clip(_remoteText(p['value'] as Map?), 300)}',
           );
         }
-        if (properties.length > 30) {
-          out.add('    … ${properties.length - 30} more');
+        if (values.length > 30) out.add('    … ${values.length - 30} more');
+        if (functions.isNotEmpty) {
+          out.add('    functions: ${_clip(functions.join(', '), 400)}');
         }
       } on Object {
         // Not readable.
@@ -696,6 +869,14 @@ String _remoteText(Map? value) {
   }
   if (value['unserializableValue'] case final String v) return v;
   if (value['type'] == 'undefined') return 'undefined';
+  if (value['type'] == 'function') {
+    // Its head, not its body.
+    final head = '${value['description'] ?? 'function'}'
+        .split('\n')
+        .first
+        .replaceFirst(RegExp(r'\s*\{.*$'), '');
+    return 'ƒ ${_clip(head.replaceFirst(RegExp(r'^(async )?function\s*'), r'$1'), 120)}';
+  }
   if (value['preview'] case final Map preview
       when value['type'] == 'object' && value['subtype'] != 'node') {
     final prefix = switch (value['className']) {
@@ -726,35 +907,166 @@ Future<_Debugging> _debugging(BrowserTab tab) async {
   return debugging;
 }
 
-/// [url]'s [line] and [column] (from 0) in [tab], as an agent reads them,
-/// with its source's place where a map says: for stacks, profiles.
-Future<String> _located(
+/// [function] at [url]'s [line] and [column] (from 0) in [tab], as an agent
+/// reads them: its name as written, where.
+Future<({String name, String at})> _locatedCall(
   BrowserTab tab,
+  String function,
   String url,
   int line,
-  int column,
-) async {
+  int column, {
+  bool definition = false,
+}) async {
   try {
     final debugging = await _debugging(tab).timeout(const Duration(seconds: 5));
-    return await debugging
-        .where(url, line, column)
+    final place = await debugging
+        .place(url, line, column, function: function, definition: definition)
         .timeout(const Duration(seconds: 6));
+    return (name: place.function ?? function, at: place.text);
   } on Object {
-    return '${url.isEmpty ? '(no url)' : url}:${line + 1}:${column + 1}';
+    return (
+      name: function,
+      at: '${url.isEmpty ? '(no url)' : url}:${line + 1}:${column + 1}',
+    );
   }
 }
 
-/// [frames] as lines: `at fn (src/App.tsx:12:5 (app.js:1:2345))`.
+/// [frames] as lines: `at fn (src/App.tsx:12:5)`; a library's calls run
+/// together.
 Future<List<String>> _stackLines(
   BrowserTab tab,
   List<ScriptFrame> frames, {
   String indent = '    ',
   int max = 6,
-}) async => [
-  for (final f in frames.take(max))
-    '${indent}at ${f.function.isEmpty ? '(anonymous)' : f.function} '
-        '(${await _located(tab, f.url, f.line, f.column)})',
-];
+  bool libraries = true,
+}) async {
+  try {
+    final debugging = await _debugging(tab).timeout(const Duration(seconds: 5));
+    return await _callLines(
+      debugging,
+      frames,
+      max: max,
+      call: (_, name, at) => '${indent}at $name ($at)',
+      library: libraries
+          ? (from, to, library) =>
+                '$indent… ${to - from + 1} call${to > from ? 's' : ''} in $library'
+          : null,
+    );
+  } on Object {
+    return [
+      for (final f in frames.take(max))
+        '${indent}at ${f.function.isEmpty ? '(anonymous)' : f.function} ($f)',
+    ];
+  }
+}
+
+/// [frames] as [call] lines, up to [max] of them; a library's calls in a
+/// row as one [library] line (the first call shown still: where it is),
+/// or left out without [library].
+Future<List<String>> _callLines(
+  _Debugging debugging,
+  List<ScriptFrame> frames, {
+  required int max,
+  required String Function(int index, String function, String at) call,
+  required String Function(int from, int to, String library)? library,
+}) async {
+  final out = <String>[];
+  var shown = 0;
+  (int, int, String)? run;
+  void flush() {
+    if (run case (final from, final to, final name) when library != null) {
+      out.add(library(from, to, name));
+    }
+    run = null;
+  }
+
+  for (final (i, f) in frames.indexed) {
+    final place = await debugging
+        .place(f.url, f.line, f.column, function: f.function)
+        .timeout(
+          const Duration(seconds: 6),
+          onTimeout: () => (
+            text: '${f.url}:${f.line + 1}:${f.column + 1}',
+            library: null,
+            function: f.function,
+          ),
+        );
+    if (place.library case final name? when i > 0 || library == null) {
+      if (run case (final from, _, final was) when was == name) {
+        run = (from, i, name);
+      } else {
+        flush();
+        run = (i, i, name);
+      }
+      continue;
+    }
+    flush();
+    if (shown >= max) {
+      if (library != null) {
+        out.add(call(i, '…', '${frames.length - i} more calls'));
+      }
+      return out;
+    }
+    final name = place.function ?? f.function;
+    out.add(call(i, name.isEmpty ? '(anonymous)' : name, place.text));
+    shown++;
+  }
+  flush();
+  return out;
+}
+
+/// A minified [function]'s name as [source] (its text, if the map has it)
+/// writes it, around [at]: the function's there, if the minified one is
+/// nowhere in it.
+String _sourceName(
+  String function,
+  String? source,
+  SourcePosition at, {
+  bool definition = false,
+}) {
+  final bare = function.split('.').last;
+  // An anonymous one's stays so.
+  if (source == null || bare.isEmpty) return function;
+  if (bare.isNotEmpty &&
+      RegExp(r'(^|[^\w$])' + RegExp.escape(bare) + r'($|[^\w$])')
+          .hasMatch(source)) {
+    return function;
+  }
+  if (definition) {
+    // Its head: from its line's start to its body.
+    final lines = source.split('\n');
+    if (at.line < lines.length) {
+      final text = lines[at.line];
+      final body = text.indexOf(RegExp(r'\{|=>'), at.column);
+      final head = body < 0
+          ? text
+          : text.substring(0, text.startsWith('=>', body) ? body + 2 : body);
+      if (functionName(head) case final name? when name.isNotEmpty) {
+        return name;
+      }
+    }
+    if (at.name case final name? when name.isNotEmpty) return name;
+  }
+  return enclosingFunction(source, at.line, at.column) ?? function;
+}
+
+/// The library (its package) [url] (a script's, or a source's) is of: a
+/// path in node_modules, a dev server's own; null for the app's.
+String? _libraryOf(String url) {
+  final modules = url.lastIndexOf('node_modules/');
+  if (modules >= 0) {
+    final parts = url.substring(modules + 13).split('/');
+    return parts.first.startsWith('@') && parts.length > 1
+        ? '${parts[0]}/${parts[1]}'
+        : parts.first;
+  }
+  if (url.contains('/.vite/deps/')) return 'a dependency';
+  if (RegExp(r'(^|/)@(vite|react-refresh)\b').hasMatch(url)) return 'vite';
+  if (url.startsWith('webpack/') || url.contains('://webpack/')) {
+    return 'webpack';
+  }
+  return null;
+}
 
 final _sourceTools = [
   ClaudeSdkTool(
@@ -1006,15 +1318,21 @@ final _sourceTools = [
           }
           final frames = debugging.callFrames;
           if (frame >= frames.length) throw BrowserError('No call #$frame.');
-          final result = await browser.cdp(
-            tab.tabId,
-            'Debugger.evaluateOnCallFrame',
-            {
-              'callFrameId': frames[frame]['callFrameId'],
-              'expression': expression,
-              'generatePreview': true,
-            },
+          Future<Map<String, Object?>> evaluate(String expression) =>
+              browser.cdp(tab.tabId, 'Debugger.evaluateOnCallFrame', {
+                'callFrameId': frames[frame]['callFrameId'],
+                'expression': expression,
+                'generatePreview': true,
+              });
+          // In a minified script, by the source's names too.
+          final renamed = renameVariables(
+            expression,
+            await debugging.variablesOf(frames[frame]),
           );
+          var result = await evaluate(renamed);
+          if (renamed != expression && result['exceptionDetails'] != null) {
+            result = await evaluate(expression);
+          }
           if (result['exceptionDetails'] case final Map details) {
             final exception = details['exception'] as Map?;
             throw BrowserError(
@@ -1127,20 +1445,18 @@ Future<String> _readSource(
   String? text;
   String? name;
   final script = debugging.scriptFor(url);
-  if (script != null &&
-      (script.url == url || script.url.endsWith(url) || !url.contains('/'))) {
+  // A script's URL whole: that script; else what was written (a map's
+  // source) over what was served of it (a dev server's own build of it).
+  if (script != null && script.url == url) {
     text = await debugging.sourceOf(script.id);
     name = script.url;
   }
+  String? textless;
   if (text == null) {
     if (await debugging.originalFor(url) case (_, final map, final index)?) {
       text = map.content(index);
       name = shortSource(map.sources[index]);
-      if (text == null) {
-        throw BrowserError(
-          '$name: its source map does not carry its text (sourcesContent).',
-        );
-      }
+      if (text == null) textless = name;
     }
   }
   if (text == null && script != null) {
@@ -1149,7 +1465,10 @@ Future<String> _readSource(
   }
   if (text == null) {
     throw BrowserError(
-      'No script or source has "$url": list them with browser_sources.',
+      textless != null
+          ? '$textless: its source map does not carry its text '
+                '(sourcesContent).'
+          : 'No script or source has "$url": list them with browser_sources.',
     );
   }
   final lines = text.split('\n');

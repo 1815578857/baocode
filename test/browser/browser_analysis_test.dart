@@ -48,12 +48,21 @@ void main() {
     expect(byName['b']!.self, 1);
   });
 
-  test("a style sheet's coverage: its rules never used", () {
-    final coverage = styleCoverage('app.css', 100, [
-      {'startOffset': 0, 'endOffset': 40, 'used': true},
-      {'startOffset': 40, 'endOffset': 90, 'used': false},
+  test("a style sheet's coverage: what its used rules leave", () {
+    const css =
+        '.a { color: red }\n'
+        '/* card */\n'
+        '.never, .not { display: grid }\n'
+        '@media (min-width: 9px) { .wide { gap: 1px } }\n'
+        '.b { color: blue }\n';
+    final b = css.indexOf('.b');
+    final coverage = styleCoverage('app.css', css, [
+      {'startOffset': 0, 'endOffset': 17, 'used': true},
+      {'startOffset': css.indexOf('.never'), 'endOffset': b - 1, 'used': false},
+      {'startOffset': b, 'endOffset': css.length - 1, 'used': true},
     ]);
-    expect(coverage.unused, [(40, 90)]);
+    expect(coverage.unusedRules, ['.never, .not', '.wide']);
+    expect(coverage.unused.single.$1, css.indexOf('/*'));
     expect(coverage.kind, 'CSS');
   });
 }

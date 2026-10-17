@@ -84,6 +84,13 @@ typedef SettingsPageBuilder = Widget Function(
   SettingsSection section,
 );
 
+/// Builds what the dialog says above every page (a store grown large):
+/// [open] goes to a section.
+typedef SettingsNoticeBuilder = Widget Function(
+  BuildContext context,
+  void Function(SettingsSection section) open,
+);
+
 /// Opens the settings, the same in the chat and the IDE: a modal dialog,
 /// its pages listed at the left, [section] shown first. Completes when it
 /// closes.
@@ -91,6 +98,7 @@ Future<void> showSettingsDialog(
   BuildContext context, {
   SettingsSection section = SettingsSection.general,
   required SettingsPageBuilder pageBuilder,
+  SettingsNoticeBuilder? noticeBuilder,
 }) => showGeneralDialog<void>(
   context: context,
   barrierLabel: 'Dismiss',
@@ -98,8 +106,11 @@ Future<void> showSettingsDialog(
   transitionDuration: const Duration(milliseconds: 120),
   transitionBuilder: (context, animation, _, child) =>
       FadeTransition(opacity: animation, child: child),
-  pageBuilder: (context, _, _) =>
-      SettingsDialog(section: section, pageBuilder: pageBuilder),
+  pageBuilder: (context, _, _) => SettingsDialog(
+    section: section,
+    pageBuilder: pageBuilder,
+    noticeBuilder: noticeBuilder,
+  ),
 );
 
 /// What [showSettingsDialog] shows, over the whole window: the pages
@@ -114,10 +125,12 @@ class SettingsDialog extends StatefulWidget {
     super.key,
     this.section = SettingsSection.general,
     required this.pageBuilder,
+    this.noticeBuilder,
   });
 
   final SettingsSection section;
   final SettingsPageBuilder pageBuilder;
+  final SettingsNoticeBuilder? noticeBuilder;
 
   /// The pages' list: at first, and the least and most it is dragged to.
   static const navWidth = 240.0;
@@ -430,6 +443,8 @@ class SettingsDialogState extends State<SettingsDialog> {
                   : null,
             ),
           ),
+        if (widget.noticeBuilder case final notice?)
+          notice(context, (section) => setState(() => _section = section)),
         Expanded(
           child: KeyedSubtree(
             key: ValueKey(_section),

@@ -1,21 +1,32 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 
 import '../../browser/browser_bridge.dart';
+import '../../browser/browser_tools.dart' show BrowserHistory;
 import '../../browser/extension_store.dart';
 import '../../ide/ide_button.dart';
+import '../../ide/ide_dialog.dart';
 import '../../l10n/l10n.dart';
 import '../../theme/codicons.dart';
+import '../../theme/workbench_theme.dart' show themeColors;
 import '../user_settings.dart';
+import 'data_dir_page.dart';
 import 'settings_widgets.dart';
 
 /// Settings → Browser: whether the agents may use the user's browsers
 /// (settings.json's `browser.enabled`, see [BrowserBridge.enabled]), which
-/// are connected, and the extension to get: from the Chrome Web Store, or
-/// as a zip to load unpacked (see [ExtensionStore]).
+/// are connected, the debugging history kept of the shared tabs (see
+/// [BrowserHistory]), and the extension to get: from the Chrome Web Store,
+/// or as a zip to load unpacked (see [ExtensionStore]).
 class BrowserSettingsPage extends StatelessWidget {
-  const BrowserSettingsPage({super.key, this.settings, this.browsers});
+  const BrowserSettingsPage({
+    super.key,
+    this.settings,
+    this.browsers,
+    this.history,
+  });
 
   /// settings.json; none under test, where the choice is not kept.
   final UserSettings? settings;
@@ -23,6 +34,38 @@ class BrowserSettingsPage extends StatelessWidget {
   /// The bridge to the browsers; the app's by default.
   final BrowserBridge? browsers;
   BrowserBridge get bridge => browsers ?? BrowserBridge.instance;
+
+  /// The debugging history; the app's by default.
+  final BrowserHistory? history;
+  BrowserHistory get kept => history ?? BrowserHistory.instance;
+
+  void _detailed(bool on) {
+    kept.detailed = on;
+    final settings = this.settings;
+    if (settings == null) return;
+    unawaited(
+      settings.update(BrowserHistory.detailedKey, on ? true : null).catchError((
+        Object error,
+      ) {
+        debugPrint('${BrowserHistory.detailedKey} not kept: $error');
+      }),
+    );
+  }
+
+  /// Asks, then deletes the history.
+  static Future<void> clearHistory(
+    BuildContext context,
+    BrowserHistory history,
+  ) async {
+    final l10n = context.l10n;
+    final chosen = await showIdeDialog(
+      context,
+      message: l10n.browserHistoryClearConfirm,
+      detail: l10n.browserHistoryClearDetail,
+      buttons: [l10n.browserHistoryClear],
+    );
+    if (chosen == 0) await history.clear();
+  }
 
   void _enable(bool on) {
     bridge.enabled = on;
@@ -41,7 +84,7 @@ class BrowserSettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: bridge,
+    listenable: Listenable.merge([bridge, kept]),
     builder: (context, _) => _page(context),
   );
 
@@ -73,6 +116,47 @@ class BrowserSettingsPage extends StatelessWidget {
               children: [
                 for (final (label, description) in status(l10n, bridge))
                   SettingsRow(label: label, description: description),
+              ],
+            ),
+          if (bridge.enabled)
+            SettingsGroup(
+              title: l10n.browserHistoryTitle,
+              description: l10n.browserHistoryDescription,
+              children: [
+                SettingsSwitchRow(
+                  label: l10n.browserHistoryDetailed,
+                  description: l10n.browserHistoryDetailedDescription,
+                  value: kept.detailed,
+                  onChanged: _detailed,
+                ),
+                SettingsRow(
+                  label: l10n.browserHistorySize(
+                    BrowserHistory.sizeText(kept.size ?? 0),
+                  ),
+                  description: kept.folder,
+                  trailing: SettingsButtons(
+                    children: [
+                      if (DataDirectoryPage.canReveal)
+                        IdeButton(
+                          label: DataDirectoryPage.revealLabel(l10n),
+                          secondary: true,
+                          onPressed: () {
+                            Directory(kept.folder).createSync(recursive: true);
+                            unawaited(
+                              DataDirectoryPage.revealFolder(kept.folder),
+                            );
+                          },
+                        ),
+                      IdeButton(
+                        label: l10n.browserHistoryClear,
+                        secondary: true,
+                        onPressed: (kept.size ?? 0) == 0
+                            ? null
+                            : () => unawaited(clearHistory(context, kept)),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
         ],
@@ -141,5 +225,91 @@ class BrowserSettingsPage extends StatelessWidget {
               : l10n.browserSettingsAppOld,
         ),
     ];
+  }
+}
+
+/// Said above every settings page while the debugging history is over
+/// [BrowserHistory.warnSize]: how much it takes, to clear it, or to open
+/// [open] (Settings → Browser).
+class BrowserHistoryNotice extends StatelessWidget {
+  const BrowserHistoryNotice({super.key, required this.open, this.history});
+
+  final VoidCallback open;
+
+  /// The debugging history; the app's by default.
+  final BrowserHistory? history;
+
+  @override
+  Widget build(BuildContext context) {
+    final kept = history ?? BrowserHistory.instance;
+    return ListenableBuilder(
+      listenable: kept,
+      builder: (context, _) {
+        if (!kept.tooLarge) return const SizedBox.shrink();
+        final l10n = context.l10n;
+        final colors = themeColors;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(10, 6, 6, 6),
+            decoration: BoxDecoration(
+              color: colors['inputValidation.warningBackground'],
+              border: Border.all(
+                color: colors['inputValidation.warningBorder'],
+              ),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Codicons.warning,
+                  size: 14,
+                  color: colors['editorWarning.foreground'],
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        l10n.browserHistoryTooLarge(
+                          BrowserHistory.sizeText(kept.size ?? 0),
+                        ),
+                        style: TextStyle(
+                          color: colors['foreground'],
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        l10n.browserHistoryTooLargeDetail,
+                        style: TextStyle(
+                          color: colors['descriptionForeground'],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IdeButton(
+                  label: l10n.browserHistoryOpenSettings,
+                  secondary: true,
+                  onPressed: open,
+                ),
+                const SizedBox(width: 6),
+                IdeButton(
+                  label: l10n.browserHistoryClear,
+                  onPressed: () => unawaited(
+                    BrowserSettingsPage.clearHistory(context, kept),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }

@@ -12,6 +12,7 @@ import 'package:bao_editor/textmate/textmate_syntax.dart';
 import 'package:bao_editor/monaco/flutter/language_assets.dart';
 
 import 'browser/browser_bridge.dart';
+import 'browser/browser_tools.dart' show BrowserHistory;
 import 'chat/composer/composer_files.dart' show ComposerFile, pastedAsPicture;
 import 'chat/chat_width.dart';
 import 'chat/user_message_style.dart';
@@ -203,6 +204,11 @@ Future<void> main(List<String> arguments) async {
     BrowserBridge.instance.follow(
       files.settings,
       () => files.settings[BrowserBridge.settingKey],
+    );
+    // Settings → Browser: whether the history keeps bodies and steps too.
+    BrowserHistory.instance.follow(
+      files.settings,
+      () => files.settings[BrowserHistory.detailedKey],
     );
     // Settings → Appearance: the code's font, size and ligatures, and the
     // window's text size.

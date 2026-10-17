@@ -43,6 +43,18 @@ class BrowserRecords {
 
   final Map<BrowserTab, _TabRecords> _tabs = {};
 
+  /// What is kept, as it is: a console entry ([ConsoleEntry]), a request
+  /// done ([NetworkRequest]: finished or failed, its body kept first), a
+  /// dialog, a download. For the history.
+  Stream<(BrowserTab, Object)> get added => _added.stream;
+  final _added = StreamController<(BrowserTab, Object)>.broadcast(sync: true);
+
+  /// Whether [tab]'s are kept (its domains on).
+  bool watching(BrowserTab tab) => _tabs[tab]?.watching != null;
+
+  /// Whether an agent acts in [tab] now (see [acting]).
+  bool isActing(BrowserTab tab) => (_tabs[tab]?.acting ?? 0) > 0;
+
   /// Starts keeping [tab]'s, if not yet: before what an agent does there.
   Future<void> watch(BrowserTab tab) async {
     final records = _tabs.putIfAbsent(tab, _TabRecords.new);
@@ -226,6 +238,8 @@ class BrowserRecords {
       );
     } on Object {
       // The browser has none (a redirect's, a 204's) or let it go already.
+    } finally {
+      _added.add((tab, request));
     }
   }
 
@@ -290,11 +304,23 @@ class BrowserRecords {
       case 'Target.detachedFromTarget':
         records.sessions.remove(params['sessionId']);
       case 'Runtime.consoleAPICalled':
-        records.log(ConsoleEntry.fromConsole(params, records.where(session)));
+        _log(
+          tab,
+          records,
+          ConsoleEntry.fromConsole(params, records.where(session)),
+        );
       case 'Runtime.exceptionThrown':
-        records.log(ConsoleEntry.fromException(params, records.where(session)));
+        _log(
+          tab,
+          records,
+          ConsoleEntry.fromException(params, records.where(session)),
+        );
       case 'Log.entryAdded':
-        records.log(ConsoleEntry.fromLog(params, records.where(session)));
+        _log(
+          tab,
+          records,
+          ConsoleEntry.fromLog(params, records.where(session)),
+        );
       case 'Network.requestWillBeSent':
         final id = params['requestId'] as String;
         final redirected = records.requests[id];
@@ -308,6 +334,7 @@ class BrowserRecords {
             ..end = (params['timestamp'] as num?)?.toDouble();
           records.requests.remove(id);
           records.add(redirected..id = '$id.r${records.redirects++}');
+          _added.add((tab, redirected));
         }
         final request = NetworkRequest.fromSent(params, session);
         if (records.extraRequest.remove(id) case final headers?) {
@@ -350,10 +377,14 @@ class BrowserRecords {
         if (_keptTypes.contains(request.type) &&
             (request.size ?? 0) <= _maxBody) {
           unawaited(_keep(tab, records, request, id));
+        } else {
+          _added.add((tab, request));
         }
       case 'Network.loadingFailed':
-        records.requests[params['requestId']]
-          ?..finished = true
+        final request = records.requests[params['requestId']];
+        if (request == null) return;
+        request
+          ..finished = true
           ..end = (params['timestamp'] as num?)?.toDouble()
           ..failure = params['canceled'] == true
               ? 'canceled'
@@ -362,6 +393,7 @@ class BrowserRecords {
               : params['corsErrorStatus'] is Map
               ? 'CORS (${(params['corsErrorStatus'] as Map)['corsError']})'
               : params['errorText'] as String? ?? 'failed';
+        _added.add((tab, request));
       case 'Network.webSocketCreated':
         records.add(
           NetworkRequest.socket(
@@ -406,9 +438,12 @@ class BrowserRecords {
           ),
         );
       case 'Network.webSocketClosed':
-        records.requests[params['requestId']]
-          ?..finished = true
+        final socket = records.requests[params['requestId']];
+        if (socket == null) return;
+        socket
+          ..finished = true
           ..end = (params['timestamp'] as num?)?.toDouble();
+        _added.add((tab, socket));
       case 'Network.eventSourceMessageReceived':
         records.requests[params['requestId']]?.addFrame(
           NetworkFrame(
@@ -435,6 +470,7 @@ class BrowserRecords {
           ),
         );
         if (records.downloads.length > 50) records.downloads.removeAt(0);
+        _added.add((tab, records.downloads.last));
       case 'Page.downloadProgress':
         for (final download in records.downloads) {
           if (download.guid != params['guid']) continue;
@@ -452,6 +488,11 @@ class BrowserRecords {
     }
   }
 
+  void _log(BrowserTab tab, _TabRecords records, ConsoleEntry entry) {
+    records.log(entry);
+    _added.add((tab, entry));
+  }
+
   void _dialogOpened(
     BrowserTab tab,
     _TabRecords records,
@@ -465,6 +506,7 @@ class BrowserRecords {
     );
     records.dialogs.add(dialog);
     if (records.dialogs.length > 50) records.dialogs.removeAt(0);
+    _added.add((tab, dialog));
     final asked = records.answer;
     if (asked != null && !asked.always) records.answer = null;
     // Asked how, else while an agent acts; else the user's to answer.
@@ -610,6 +652,26 @@ class ScriptFrame {
     return frames;
   }
 
+  /// The calls of an error's stack (V8's text: `    at fn (url:12:5)`).
+  static List<ScriptFrame> parse(String stack, {int max = 10}) {
+    final frames = <ScriptFrame>[];
+    final call = RegExp(r'^\s+at (?:(.+?) \()?(.+?):(\d+):(\d+)\)?$');
+    for (final line in stack.split('\n')) {
+      final m = call.firstMatch(line);
+      if (m == null) continue;
+      frames.add(
+        ScriptFrame(
+          (m[1] ?? '').replaceFirst('async ', ''),
+          m[2]!,
+          int.parse(m[3]!) - 1,
+          int.parse(m[4]!) - 1,
+        ),
+      );
+      if (frames.length >= max) break;
+    }
+    return frames;
+  }
+
   /// `fetchData (https://site/app.js:12:5)`, lines from 1.
   @override
   String toString() =>
@@ -627,6 +689,7 @@ class ConsoleEntry {
     this.line,
     required this.time,
     this.stack = const [],
+    this.thrown = const [],
     this.from,
   });
 
@@ -639,6 +702,9 @@ class ConsoleEntry {
 
   /// Where it was logged from (an error's, a warning's): the calls.
   final List<ScriptFrame> stack;
+
+  /// Where an error it logged was thrown (`console.error(e)`): its calls.
+  final List<ScriptFrame> thrown;
 
   /// A frame of another site's or a worker's (`worker https://…`); null
   /// for the page's own.
@@ -663,9 +729,13 @@ class ConsoleEntry {
       'info' => 'info',
       _ => 'log',
     };
+    final error = args.where((a) => a['subtype'] == 'error').firstOrNull;
     return ConsoleEntry(
       level: level,
       text: args.map(_remote).join(' '),
+      thrown: error == null
+          ? const []
+          : ScriptFrame.parse('${error['description'] ?? ''}'),
       url: frames?.firstOrNull?['url'] as String?,
       line: _line(frames?.firstOrNull?['lineNumber']),
       time: _time(params['timestamp']),
@@ -721,6 +791,12 @@ class ConsoleEntry {
 
   /// A logged value, as the console writes it in a line.
   static String _remote(Map arg) {
+    // An error as it says itself, its calls apart (see [thrown]).
+    if (arg['subtype'] == 'error' && arg['description'] is String) {
+      final text = arg['description'] as String;
+      final at = text.indexOf(RegExp(r'\n\s+at '));
+      return at > 0 ? text.substring(0, at) : text;
+    }
     if (arg.containsKey('value')) {
       final value = arg['value'];
       return value is String ? value : '$value';
