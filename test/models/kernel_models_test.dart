@@ -4,6 +4,7 @@ import 'package:baocode/kernel/agent_kernel.dart';
 import 'package:baocode/kernel/claude_code/claude_code_kernel.dart';
 import 'package:baocode/kernel/claude_code/claude_code_transport.dart';
 import 'package:baocode/kernel/claude_code/claude_code_translator.dart';
+import 'package:baocode/kernel/kernel_event.dart';
 import 'package:baocode/kernel/kernel_types.dart';
 import 'package:baocode/kernel/transcript.dart';
 import 'package:baocode/kernel/mock/mock_kernels.dart';
@@ -623,6 +624,58 @@ void main() {
     await pumpEventQueue();
     kernel.release();
     expect(clis.last.closed, isTrue);
+    kernel.dispose();
+  });
+
+  test('another provider picked while a turn retries is taken up with the '
+      'next message: the turn stops, the messages queued go along', () async {
+    final (:kernel, :launches, :clis, environments: _) = start(providers, {
+      'model': 'default',
+    });
+    final ended = <String>[];
+    kernel.events.listen((event) {
+      if (event case TurnEnded(:final turnId, interrupted: true)) {
+        ended.add(turnId);
+      }
+    });
+    kernel.send(const KernelTurn(id: 'u1', text: 'fix it'));
+    await pumpEventQueue();
+    // Out of its usage, Claude Code retries for minutes: the turn runs.
+    final first = clis.last
+      ..push({'type': 'system', 'subtype': 'init', 'session_id': 's1'});
+    await pumpEventQueue();
+    kernel.send(const KernelTurn(id: 'u2', text: 'and this'));
+    await pumpEventQueue();
+    expect(first.users.map((u) => u['uuid']), ['u1', 'u2']);
+
+    kernel.model.select('@other/m');
+    await pumpEventQueue();
+    kernel.send(const KernelTurn(id: 'u3', text: 'go on'));
+    await pumpEventQueue();
+    expect(ended, ['u1']);
+    expect(first.closed, isTrue);
+    expect(first.users.map((u) => u['uuid']), ['u1', 'u2']);
+    expect(launches, hasLength(2));
+    expect(launches.last.resume, 's1');
+    expect(launches.last.model, 'm');
+    expect(clis.last.users.map((u) => u['uuid']), ['u2', 'u3']);
+    kernel.dispose();
+  });
+
+  test('a message sent mid-turn on the same provider waits for the turn, '
+      'on the same process', () async {
+    final (:kernel, :launches, :clis, environments: _) = start(providers, {
+      'model': '@other/m',
+    });
+    kernel.send(const KernelTurn(id: 'u1', text: 'fix it'));
+    await pumpEventQueue();
+    clis.last.push({'type': 'system', 'subtype': 'init', 'session_id': 's1'});
+    await pumpEventQueue();
+    kernel.send(const KernelTurn(id: 'u2', text: 'and this'));
+    await pumpEventQueue();
+    expect(launches, hasLength(1));
+    expect(clis.single.closed, isFalse);
+    expect(clis.single.users.map((u) => u['uuid']), ['u1', 'u2']);
     kernel.dispose();
   });
 

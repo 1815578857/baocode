@@ -748,6 +748,29 @@ class ClaudeCodeKernel
       }
     }
     _sent[turn.id] = turn;
+    if (_turn != null && _running && _providerKey != _launchedProvider) {
+      // Another upstream picked while a turn runs (one retrying a provider
+      // out of its usage, say): the message is for it, not for the process
+      // on the one before, behind that turn. The turn stops, and the process
+      // with it (as the switch's confirmation says it restarts); the
+      // messages queued go again after, on the new one.
+      final queued = [..._queued];
+      cancel();
+      _queued.clear();
+      _held.clear();
+      _teardown();
+      _translator.endTasks();
+      _setHealth(KernelHealth.idle);
+      for (final id in [...queued, turn.id]) {
+        if (_sent[id] case final queuedTurn?) _submit(queuedTurn);
+      }
+      return;
+    }
+    _submit(turn);
+  }
+
+  /// Starts a turn with [turn], or queues it behind the one running.
+  void _submit(KernelTurn turn) {
     final busy = _turn != null;
     final hold = busy && _holds;
     if (busy) {
