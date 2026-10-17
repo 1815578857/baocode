@@ -1421,6 +1421,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cmdToggleSidePanel => 'Toggle Side Panel';
 
   @override
+  String get cmdToggleSidePanelPosition => 'Toggle Side Panel Position';
+
+  @override
   String get cmdSidePanelChanges => 'Show Agent Changes';
 
   @override
@@ -1622,6 +1625,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sidePanelHide => 'Hide side panel';
+
+  @override
+  String get sidePanelMoveLeft => 'Move to the Left of the Conversation';
+
+  @override
+  String get sidePanelMoveRight => 'Move to the Right of the Conversation';
 
   @override
   String get sidePanelChanges => 'Changes';

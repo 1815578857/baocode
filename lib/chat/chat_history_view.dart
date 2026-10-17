@@ -1504,6 +1504,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                       child: ChatColumn(
                         maxWidth: widget.maxContentWidth,
                         right: _columnRight,
+                        left: _columnLeft,
                         room: _room,
                         roomFrom: ChatMinimap.roomFrom,
                         child: UserMessageBubble(
@@ -1552,6 +1553,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                   child: ChatColumn(
                     maxWidth: widget.maxContentWidth,
                     right: _columnRight,
+                    left: _columnLeft,
                     room: _room,
                     roomFrom: ChatMinimap.roomFrom,
                     // Opening, the message's frame grows into the editor's;
@@ -1741,6 +1743,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
       ChatColumn(
         maxWidth: widget.maxContentWidth,
         right: _columnRight,
+        left: _columnLeft,
         room: _room,
         roomFrom: ChatMinimap.roomFrom,
         child: Padding(
@@ -1771,6 +1774,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     final made = (
       widget.maxContentWidth,
       _columnRight,
+      _columnLeft,
       _room,
       ChatMinimap.roomFrom,
       _insetOf(index),
@@ -2022,6 +2026,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
       width - 2 * gutter,
       maxWidth: widget.maxContentWidth,
       right: math.max(0.0, _inset - gutter),
+      left: math.max(0.0, _insetLeft - gutter),
       room: _roomAt(gutter),
       roomFrom: ChatMinimap.roomFrom,
     );
@@ -2054,6 +2059,11 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   /// [ChatColumnInset]).
   double _inset = 0;
 
+  /// As [_columnRight] and [_inset], at the left (the side panel at the
+  /// conversations' left).
+  double _columnLeft = 0;
+  double _insetLeft = 0;
+
   /// The room the column keeps either side of it for the minimap, within
   /// the margin of [gutter] (see [ChatColumn.room]).
   double _roomAt(double gutter) =>
@@ -2079,6 +2089,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   Widget build(BuildContext context) {
     _built = null;
     final inset = _inset = ChatColumnInset.of(context);
+    final insetLeft = _insetLeft = ChatColumnInset.leftOf(context);
     // A picture shown whole goes on to the others: ← and →.
     return ChatImages(
       all: _images,
@@ -2086,15 +2097,18 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
         builder: (context, constraints) {
           final gutter = chatGutter(constraints.maxWidth);
           final right = math.max(0.0, inset - gutter);
+          final left = math.max(0.0, insetLeft - gutter);
           final minimapFits =
               widget.minimap &&
               ChatMinimap.besides(_columnIn(constraints.maxWidth)) != null;
           if (_built == null ||
               gutter != _gutter ||
               right != _columnRight ||
+              left != _columnLeft ||
               minimapFits != _minimapFits) {
             _gutter = gutter;
             _columnRight = right;
+            _columnLeft = left;
             _minimapFits = minimapFits;
             _built = _buildHistory(context);
           }

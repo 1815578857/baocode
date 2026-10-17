@@ -636,6 +636,7 @@
     "description": "Tooltip of the chat window's terminal panel close button."
   },
   "cmdToggleSidePanel": "Toggle Side Panel",
+  "cmdToggleSidePanelPosition": "Toggle Side Panel Position",
   "@cmdToggleSidePanel": {
     "description": "Command title: shows or hides the agent window's side panel."
   },
@@ -697,6 +698,8 @@
     "description": "Tooltip of the title bar button that shows the side panel."
   },
   "sidePanelHide": "Hide side panel",
+  "sidePanelMoveLeft": "Move to the Left of the Conversation",
+  "sidePanelMoveRight": "Move to the Right of the Conversation",
   "@sidePanelHide": {
     "description": "Tooltip of the button that hides the side panel."
   },

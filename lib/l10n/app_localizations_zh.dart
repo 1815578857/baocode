@@ -1384,6 +1384,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cmdToggleSidePanel => '切换侧栏';
 
   @override
+  String get cmdToggleSidePanelPosition => '切换侧栏位置';
+
+  @override
   String get cmdSidePanelChanges => '显示智能体变更';
 
   @override
@@ -1582,6 +1585,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sidePanelHide => '隐藏侧栏';
+
+  @override
+  String get sidePanelMoveLeft => '移到对话左侧';
+
+  @override
+  String get sidePanelMoveRight => '移到对话右侧';
 
   @override
   String get sidePanelChanges => '变更';

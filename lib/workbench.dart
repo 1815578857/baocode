@@ -1208,6 +1208,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       ),
       ?action(ChatCommandIds.openIde, Codicons.code),
       ?action(ChatCommandIds.toggleSidePanel, Codicons.layoutSidebarRight),
+      ?action(ChatCommandIds.toggleSidePanelPosition, Codicons.arrowSwap),
       for (final section in alwaysShownSections)
         ?action(section.command!, section.icon),
       ?action(toggleTerminalCommand, Codicons.terminal),
@@ -3165,6 +3166,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
 
   Map<String, VoidCallback> _sidePanelCommands() => {
     ChatCommandIds.toggleSidePanel: _toggleSidePanel,
+    ChatCommandIds.toggleSidePanelPosition: () =>
+        _sidePanel.atLeft = !_sidePanel.atLeft,
     if (_sidePanel.focusNode.hasFocus)
       ChatCommandIds.sidePanelCloseTab: _closeSidePanelTab,
     for (final section in alwaysShownSections)
@@ -3814,7 +3817,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   }
 
   /// [chat], a pane among others, with the side panel's rail over its top
-  /// right, under its title bar (and its close button), while the panel is
+  /// right (left, the panel at the left), under its title bar (and its close button), while the panel is
   /// hidden: the rail of its own agent, as the window's would be were it
   /// alone, and its column clear of it.
   Widget _paneRail(AgentThread thread, Widget chat) => ListenableBuilder(
@@ -3824,8 +3827,12 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       final rail = _sidePanel.shown && !_sidePanelHidden && !_replacingChat
           ? null
           : _railFor(thread);
+      // On the side the panel is.
+      final atLeft = _sidePanel.atLeft;
+      final inset = rail == null ? 0.0 : AgentSidePanelArea.railInset;
       return ChatColumnInset(
-        right: rail == null ? 0 : AgentSidePanelArea.railInset,
+        right: atLeft ? 0 : inset,
+        left: atLeft ? inset : 0,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -3833,7 +3840,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
             if (rail != null)
               Positioned(
                 key: const ValueKey('rail'),
-                right: AgentSidePanelArea.railRight,
+                left: atLeft ? AgentSidePanelArea.railRight : null,
+                right: atLeft ? null : AgentSidePanelArea.railRight,
                 top: AppMetrics.titleBarHeight + 4,
                 child: rail,
               ),

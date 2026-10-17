@@ -2792,6 +2792,12 @@ abstract class AppLocalizations {
   /// **'Toggle Side Panel'**
   String get cmdToggleSidePanel;
 
+  /// No description provided for @cmdToggleSidePanelPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle Side Panel Position'**
+  String get cmdToggleSidePanelPosition;
+
   /// No description provided for @cmdSidePanelChanges.
   ///
   /// In en, this message translates to:
@@ -2995,6 +3001,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hide side panel'**
   String get sidePanelHide;
+
+  /// No description provided for @sidePanelMoveLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to the Left of the Conversation'**
+  String get sidePanelMoveLeft;
+
+  /// No description provided for @sidePanelMoveRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to the Right of the Conversation'**
+  String get sidePanelMoveRight;
 
   /// The side panel's tab listing the files the agent changed.
   ///
