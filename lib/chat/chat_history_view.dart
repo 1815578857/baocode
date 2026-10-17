@@ -1573,6 +1573,11 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                               child: child,
                             ),
                       child: _SizeReporter(
+                        // Its own for each message opened: the one before's
+                        // editor (closed by the same press) is still here;
+                        // were it as tall as this one, its height reported
+                        // already, the placeholder would keep the message's.
+                        key: ObjectKey(_editComposerKey),
                         onSize: (size) => _setEditorHeight(size.height),
                         // Closing, it is only to be seen.
                         child: IgnorePointer(
@@ -3005,7 +3010,7 @@ class _RenderStickyFollower extends RenderProxyBox {
 
 /// Reports [child]'s size after layout whenever it changes.
 class _SizeReporter extends SingleChildRenderObjectWidget {
-  const _SizeReporter({required this.onSize, required super.child});
+  const _SizeReporter({super.key, required this.onSize, required super.child});
 
   final ValueChanged<Size> onSize;
 
