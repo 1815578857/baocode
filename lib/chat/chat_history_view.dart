@@ -2077,6 +2077,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   }
 
   Widget _buildHistory(BuildContext context) {
+    final outerBars = ScrollbarTheme.of(context);
     return Shortcuts(
       shortcuts: _selectionShortcuts,
       // Sees every press and wheel event, the scrollbar's too.
@@ -2094,8 +2095,10 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
         child: MouseRegion(
           onEnter: (_) => _setPointerInside(true),
           onExit: (_) => _setPointerInside(false),
+          // The list's own bar, shown while the pointer is in and the minimap
+          // is not.
           child: ScrollbarTheme(
-            data: ScrollbarTheme.of(context).copyWith(
+            data: outerBars.copyWith(
               thumbColor: WidgetStateProperty.resolveWith((states) {
                 if (!_isPointerInside || _minimapShown) {
                   return Colors.transparent;
@@ -2119,118 +2122,122 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                   controller: _scrollController,
                   thumbVisibility: true,
                   interactive: !_minimapShown,
-                  child: SelectionArea(
-                    focusNode: _selectionFocusNode,
-                    contextMenuBuilder: _contextMenu,
-                    // Focus on click rather than hover so the composer keeps
-                    // focus while the pointer passes over the history.
-                    child: SelectionContainer(
-                      delegate: _selectionDelegate,
-                      // Items register their text with the selection delegate
-                      // themselves (see [_ItemSelectionScope]); nothing else in
-                      // here is selectable, and the list's own selection handling
-                      // (which can only see built items) stays out of the way.
-                      child: SelectionContainer.disabled(
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            NotificationListener<ScrollMetricsNotification>(
-                              onNotification: _handleMetricsChanged,
-                              // Soft fades where content continues past an edge
-                              // (none when nothing is there, e.g. pinned to the
-                              // bottom).
-                              child: EdgeFadeMask(
-                                top: _contentAbove,
-                                bottom: _contentBelow,
-                                // Hidden under the stuck message, fading in
-                                // below it.
-                                topCover: _stickyCover,
-                                coverFade: _stickyFade,
-                                topFadeAmount: _listTopFade,
-                                repaint: Listenable.merge([
-                                  _scrollController,
-                                  _editorMoved,
-                                ]),
-                                // Its bar is the one around the selection, above; not a second
-                                // one of the platform's own.
-                                child: ScrollConfiguration(
-                                  behavior: ScrollConfiguration.of(context)
-                                      .copyWith(scrollbars: false),
-                                  child: ChatFindScope(
-                                    find: _find,
-                                    child: _BeforeLayout(
-                                      key: _listKey,
-                                      onLayout: _forgetRowsLaidOut,
-                                      child: SuperListView.builder(
-                                        controller: _scrollController,
-                                        listController: _listController,
-                                        itemCount: _feed.itemCount,
-                                        extentEstimation: _estimateExtent,
-                                        cacheExtent: 900,
-                                        padding: EdgeInsets.fromLTRB(
-                                          _gutter,
-                                          _chatTopPadding +
-                                              (_earlierRoom
-                                                  ? _earlierBarHeight
-                                                  : 0),
-                                          _gutter,
-                                          24,
+                  // What is in the list keeps the bars it had (a table's).
+                  child: ScrollbarTheme(
+                    data: outerBars,
+                    child: SelectionArea(
+                      focusNode: _selectionFocusNode,
+                      contextMenuBuilder: _contextMenu,
+                      // Focus on click rather than hover so the composer keeps
+                      // focus while the pointer passes over the history.
+                      child: SelectionContainer(
+                        delegate: _selectionDelegate,
+                        // Items register their text with the selection delegate
+                        // themselves (see [_ItemSelectionScope]); nothing else in
+                        // here is selectable, and the list's own selection handling
+                        // (which can only see built items) stays out of the way.
+                        child: SelectionContainer.disabled(
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              NotificationListener<ScrollMetricsNotification>(
+                                onNotification: _handleMetricsChanged,
+                                // Soft fades where content continues past an edge
+                                // (none when nothing is there, e.g. pinned to the
+                                // bottom).
+                                child: EdgeFadeMask(
+                                  top: _contentAbove,
+                                  bottom: _contentBelow,
+                                  // Hidden under the stuck message, fading in
+                                  // below it.
+                                  topCover: _stickyCover,
+                                  coverFade: _stickyFade,
+                                  topFadeAmount: _listTopFade,
+                                  repaint: Listenable.merge([
+                                    _scrollController,
+                                    _editorMoved,
+                                  ]),
+                                  // Its bar is the one around the selection, above; not a second
+                                  // one of the platform's own.
+                                  child: ScrollConfiguration(
+                                    behavior: ScrollConfiguration.of(context)
+                                        .copyWith(scrollbars: false),
+                                    child: ChatFindScope(
+                                      find: _find,
+                                      child: _BeforeLayout(
+                                        key: _listKey,
+                                        onLayout: _forgetRowsLaidOut,
+                                        child: SuperListView.builder(
+                                          controller: _scrollController,
+                                          listController: _listController,
+                                          itemCount: _feed.itemCount,
+                                          extentEstimation: _estimateExtent,
+                                          cacheExtent: 900,
+                                          padding: EdgeInsets.fromLTRB(
+                                            _gutter,
+                                            _chatTopPadding +
+                                                (_earlierRoom
+                                                    ? _earlierBarHeight
+                                                    : 0),
+                                            _gutter,
+                                            24,
+                                          ),
+                                          itemBuilder: (context, index) =>
+                                              _isHidden(index) &&
+                                                  index != _editingIndex
+                                              ? _hiddenRow(index)
+                                              : _row(
+                                                  index,
+                                                  gap: _gapBefore(index),
+                                                  child: _buildItem(index),
+                                                ),
                                         ),
-                                        itemBuilder: (context, index) =>
-                                            _isHidden(index) &&
-                                                index != _editingIndex
-                                            ? _hiddenRow(index)
-                                            : _row(
-                                                index,
-                                                gap: _gapBefore(index),
-                                                child: _buildItem(index),
-                                              ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                            _earlierBar(),
-                            // Built in layout, after the list: the copy of
-                            // the message at the top is there in the very frame
-                            // the list is laid out (a conversation just opened
-                            // has it from its first frame).
-                            Positioned.fill(
-                              child: LayoutBuilder(
-                                builder: (context, _) => Stack(
-                                  children: [
-                                    for (final index in {
-                                      ..._stickyIndices,
-                                      ?_topTurnMessage(),
-                                    })
-                                      if (index != _editingIndex &&
-                                          index < _feed.itemCount &&
-                                          _feed.itemAt(index)
-                                              is UserMessageItem)
-                                        Positioned.fill(
-                                          key: ValueKey(('sticky', index)),
-                                          child: _buildSticky(index),
-                                        ),
-                                  ],
+                              _earlierBar(),
+                              // Built in layout, after the list: the copy of
+                              // the message at the top is there in the very frame
+                              // the list is laid out (a conversation just opened
+                              // has it from its first frame).
+                              Positioned.fill(
+                                child: LayoutBuilder(
+                                  builder: (context, _) => Stack(
+                                    children: [
+                                      for (final index in {
+                                        ..._stickyIndices,
+                                        ?_topTurnMessage(),
+                                      })
+                                        if (index != _editingIndex &&
+                                            index < _feed.itemCount &&
+                                            _feed.itemAt(index)
+                                                is UserMessageItem)
+                                          Positioned.fill(
+                                            key: ValueKey(('sticky', index)),
+                                            child: _buildSticky(index),
+                                          ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                            if (_editingIndex ?? _closingIndex
-                                case final index?)
-                              _buildEditorLayer(index),
-                            Positioned(
-                              right: 0,
-                              left: 0,
-                              bottom: 12,
-                              child: Center(
-                                child: _JumpToBottomButton(
-                                  visible: !_shownAtBottom,
-                                  onTap: _jumpToBottom,
+                              if (_editingIndex ?? _closingIndex
+                                  case final index?)
+                                _buildEditorLayer(index),
+                              Positioned(
+                                right: 0,
+                                left: 0,
+                                bottom: 12,
+                                child: Center(
+                                  child: _JumpToBottomButton(
+                                    visible: !_shownAtBottom,
+                                    onTap: _jumpToBottom,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
