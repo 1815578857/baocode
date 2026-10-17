@@ -38,6 +38,9 @@ import 'kernel_option_text.dart';
 import 'file_drop.dart';
 import 'suggestion_menu.dart';
 import '../../ide/ide_hover.dart';
+import '../../ide/file_service.dart' show IdeFileService;
+import '../../ide/ide_notifications.dart';
+import 'remote_drops.dart';
 
 /// An open query: a /command's, the slash starting the message, or a
 /// mention's (an @ starting a word: a file, a folder or a conversation);
@@ -90,6 +93,7 @@ class ChatComposer extends StatefulWidget {
     this.tapRegionGroupId,
     this.draft,
     this.openEditor,
+    this.hostFiles,
   });
 
   final ChatSession session;
@@ -115,6 +119,11 @@ class ChatComposer extends StatefulWidget {
 
   /// The file open in the editor beside the chat (see [ChatSession.send]).
   final OpenEditor? Function()? openEditor;
+
+  /// A remote project's host's files, where files of this machine's put
+  /// in (let go from another app, pasted, picked) are copied first, for its
+  /// agent to read (see [RemoteDrops]); null for a local project.
+  final IdeFileService? hostFiles;
 
   @override
   State<ChatComposer> createState() => ChatComposerState();
@@ -265,7 +274,7 @@ class ChatComposerState extends State<ChatComposer>
     final files = await WindowControls.readPasteboardFiles();
     if (!mounted) return false;
     if (files.isNotEmpty) {
-      await insertFiles(files);
+      await insertFiles(files, here: true);
       return true;
     }
     final text = (await Clipboard.getData(Clipboard.kTextPlain))?.text;
@@ -449,8 +458,15 @@ class ChatComposerState extends State<ChatComposer>
 
   /// Puts [files] in at [at] (in place of the selection when null), in
   /// their order: each a tag of its path, from the project's root when it
-  /// is in it, or, for an image the conversation takes, the image.
-  Future<void> insertFiles(List<ComposerFile> files, {int? at}) async {
+  /// is in it, or, for an image the conversation takes, the image. [here],
+  /// they are this machine's: a remote project's agent is given copies on
+  /// its host ([ChatComposer.hostFiles]), those that could not be copied
+  /// left out.
+  Future<void> insertFiles(
+    List<ComposerFile> files, {
+    int? at,
+    bool here = false,
+  }) async {
     if (files.isEmpty) return;
     var images = <ImageAttachment?>[for (final _ in files) null];
     if (widget.session.acceptsImages) {
@@ -464,17 +480,80 @@ class ChatComposerState extends State<ChatComposer>
       );
     }
     if (!mounted) return;
+    // The pictures go with the message as they are; the rest are copied.
+    final List<ComposerFile?> paths = [
+      for (final (index, file) in files.indexed)
+        images[index] == null ? file : null,
+    ];
+    if (here && widget.hostFiles != null && paths.nonNulls.isNotEmpty) {
+      final copies = await _copyToHost(paths.nonNulls.toList());
+      if (!mounted) return;
+      final copied = copies?.iterator;
+      for (var i = 0; i < paths.length; i++) {
+        if (paths[i] == null) continue;
+        paths[i] = copied != null && copied.moveNext() ? copied.current : null;
+      }
+    }
     final root = widget.session.root;
     _insertTags([
       for (final (index, file) in files.indexed)
         if (images[index] case final image?)
           ComposerImageEmbed.of(image.number!)
-        else
+        else if (paths[index] case final path?)
           ComposerTokenEmbed.file(
-            displayPath(file.path, root),
+            displayPath(path.path, root),
             directory: file.directory,
           ),
     ], at: at);
+  }
+
+  /// [files], this machine's, copied onto the remote project's host, how
+  /// far told in a notification once it takes a moment; null when they
+  /// could not be, as a notification says.
+  Future<List<ComposerFile>?> _copyToHost(List<ComposerFile> files) async {
+    final notifications = IdeNotificationsScope.maybeOf(context);
+    final l10n = context.l10n;
+    var done = 0;
+    var total = files.length;
+    IdeNotification? shown;
+    IdeNotificationProgress progress() =>
+        IdeNotificationProgress(done.toDouble(), total: total.toDouble());
+    final timer = notifications == null
+        ? null
+        : Timer(const Duration(milliseconds: 300), () {
+            shown = notifications.notify(
+              IdeSeverity.info,
+              l10n.explorerUploading(done, total),
+              progress: progress(),
+              sticky: true,
+            );
+          });
+    try {
+      return await RemoteDrops.copy(
+        widget.hostFiles!,
+        files,
+        onProgress: (worked, of) {
+          done = worked;
+          total = of;
+          if (shown case final shown?) {
+            notifications!.update(
+              shown,
+              message: l10n.explorerUploading(done, total),
+              progress: progress(),
+            );
+          }
+        },
+      );
+    } on Object catch (error) {
+      notifications?.notify(
+        IdeSeverity.error,
+        l10n.composerCopyToHostFailed('$error'),
+      );
+      return null;
+    } finally {
+      timer?.cancel();
+      if (shown case final shown?) notifications!.close(shown);
+    }
   }
 
   /// [text]'s `@paths` of pictures that go in as such ([pastedAsPicture]:
@@ -1053,7 +1132,7 @@ class ChatComposerState extends State<ChatComposer>
   Future<void> _attachContext() async {
     final files = await WindowControls.pickFiles();
     if (!mounted) return;
-    await insertFiles(files);
+    await insertFiles(files, here: true);
     _focusNode.requestFocus();
   }
 
@@ -1177,12 +1256,22 @@ class ChatComposerState extends State<ChatComposer>
   @override
   void fileDragLeave() => _hideGhost();
 
+  /// From another app: this machine's files.
   @override
-  void fileDrop(Offset position, List<ComposerFile> files) {
+  void fileDrop(Offset position, List<ComposerFile> files) =>
+      _dropFiles(position, files, here: true);
+
+  /// [files] let go at [position]; [here], this machine's (else the
+  /// project's, dragged from the IDE).
+  void _dropFiles(
+    Offset position,
+    List<ComposerFile> files, {
+    required bool here,
+  }) {
     if (!mounted) return;
     final at = _ghostAt ?? _dropOffset(position);
     _hideGhost();
-    unawaited(insertFiles(files, at: at));
+    unawaited(insertFiles(files, at: at, here: here));
   }
 
   // --- Prompt history ------------------------------------------------------
@@ -1385,7 +1474,7 @@ class ChatComposerState extends State<ChatComposer>
             onMove: (details) => _showGhost(details.offset, details.data.files),
             onLeave: (_) => _hideGhost(),
             onAcceptWithDetails: (details) =>
-                fileDrop(details.offset, details.data.files),
+                _dropFiles(details.offset, details.data.files, here: false),
             builder: (context, candidates, rejected) => _buildBox(
               focused: focused || _ghostAt != null || stashes.isNotEmpty,
             ),

@@ -2205,6 +2205,13 @@
     }
   },
   "explorerPreparingTransfer": "Preparing files...",
+  "composerCopyToHostFailed": "Couldn't copy the files to the remote host: {error}",
+  "@composerCopyToHostFailed": {
+    "description": "Files of this computer put in a remote project's composer could not be copied to its host, for its agent to read.",
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
   "explorerNewFile": "New File...",
   "explorerNewFolder": "New Folder...",
   "explorerRevealInFinder": "Reveal in Finder",

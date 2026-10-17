@@ -3150,6 +3150,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get explorerPreparingTransfer => '正在准备文件…';
 
   @override
+  String composerCopyToHostFailed(String error) {
+    return '无法把文件复制到远程主机：$error';
+  }
+
+  @override
   String get explorerNewFile => '新建文件...';
 
   @override

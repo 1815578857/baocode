@@ -915,6 +915,7 @@
   "explorerUploading": "正在上传文件… {done}/{total}",
   "explorerDownloading": "正在下载文件… {done}/{total}",
   "explorerPreparingTransfer": "正在准备文件…",
+  "composerCopyToHostFailed": "无法把文件复制到远程主机：{error}",
   "explorerNewFile": "新建文件...",
   "explorerNewFolder": "新建文件夹...",
   "explorerRevealInFinder": "在访达中显示",

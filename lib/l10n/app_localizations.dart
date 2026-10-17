@@ -5588,6 +5588,12 @@ abstract class AppLocalizations {
   /// **'Preparing files...'**
   String get explorerPreparingTransfer;
 
+  /// Files of this computer put in a remote project's composer could not be copied to its host, for its agent to read.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t copy the files to the remote host: {error}'**
+  String composerCopyToHostFailed(String error);
+
   /// No description provided for @explorerNewFile.
   ///
   /// In en, this message translates to:
