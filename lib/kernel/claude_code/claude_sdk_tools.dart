@@ -44,6 +44,7 @@ class ClaudeSdkTool {
     this.kind,
     this.summary,
     this.files,
+    this.alwaysLoad = false,
   });
 
   final String name;
@@ -63,6 +64,11 @@ class ClaudeSdkTool {
   /// The files its pictures were saved to, one each, from what it answered
   /// ([ToolCallItem.imageFiles]): in place of the CLI's copies.
   final List<String> Function(String output)? files;
+
+  /// Always in the model's prompt, never deferred behind Claude Code's tool
+  /// search (where it would see only its name): for a tool it should think
+  /// of unprompted.
+  final bool alwaysLoad;
 }
 
 /// An image as MCP content, for a tool's answer.
@@ -135,6 +141,7 @@ abstract final class ClaudeSdkTools {
                 'name': tool.name,
                 'description': tool.description,
                 'inputSchema': tool.inputSchema,
+                if (tool.alwaysLoad) '_meta': {'anthropic/alwaysLoad': true},
               },
           ],
         });

@@ -62,6 +62,7 @@ abstract final class ImageTools {
     kind: ToolKind.image,
     summary: (input, output) => imageStepSummary(input),
     files: savedImageFiles,
+    alwaysLoad: true,
     run: (input, call) => _run(input, call),
   );
 
@@ -78,9 +79,12 @@ abstract final class ImageTools {
         'image is for the project (e.g. "assets/hero.png"); otherwise it '
         "is kept in the app's folder, and its path is given. An existing "
         'file is never replaced: a numbered name is used instead. To edit '
-        'images or work from them, give them as `reference_images`. Prefer '
-        'code (SVG, CSS, canvas) for simple shapes, diagrams and icon sets '
-        'that should match existing vector assets.\n\n'
+        'images or work from them, give them as `reference_images`.\n\n'
+        'When the user asks for a picture (an image, poster, illustration, '
+        'photo, logo, cover, wallpaper...), make it with this tool: do not '
+        'draw it with code (HTML, SVG, canvas) and screenshot or render it, '
+        'unless they ask for that. Use code only for diagrams, simple '
+        'shapes and icons that must match existing vector assets.\n\n'
         'Unless the user has picked a default image model, they are asked to '
         'pick the model when you call this: the call waits on them.\n\n'
         'Models:\n$list';
