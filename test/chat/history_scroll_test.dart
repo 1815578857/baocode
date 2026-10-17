@@ -120,6 +120,48 @@ void main() {
     expect(estimated, lessThan(position.maxScrollExtent * 2));
   });
 
+  testWidgets('a mouse wheel\'s notch moves the list over a few frames, '
+      'the next adding to where it was going; a trackpad\'s at once', (
+    tester,
+  ) async {
+    await _pump(tester, _Feed([for (var n = 0; n < 10; n++) ..._turn(n)]));
+    final position = _position(tester);
+    final bottom = position.pixels;
+    expect(bottom, position.maxScrollExtent);
+
+    void wheel(double by, {PointerDeviceKind kind = PointerDeviceKind.mouse}) =>
+        tester.binding.handlePointerEvent(
+          PointerScrollEvent(
+            position: tester.getCenter(find.byType(ChatHistoryView)),
+            scrollDelta: Offset(0, by),
+            kind: kind,
+          ),
+        );
+
+    wheel(-100);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    final step = 100 * 2.2;
+    // On its way, not there yet.
+    expect(position.pixels, lessThan(bottom));
+    expect(position.pixels, greaterThan(bottom - step));
+    wheel(-100);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(position.pixels, closeTo(bottom - 2 * step, 0.5));
+
+    final before = position.pixels;
+    wheel(-100, kind: PointerDeviceKind.trackpad);
+    await tester.pump();
+    expect(position.pixels, closeTo(before - 100, 0.5));
+
+    // Back down past the end: at the end, anchored again.
+    wheel(1000);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(position.pixels, position.maxScrollExtent);
+  });
+
   group('a turn starting while the user reads further up', () {
     final history = [for (var n = 0; n < 3; n++) ..._turn(n)];
 

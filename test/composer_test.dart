@@ -1712,6 +1712,7 @@ void main() {
       wheel.hover(tester.getCenter(composer));
       await tester.sendEventToBinding(wheel.scroll(const Offset(0, -30)));
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
       expect(position.pixels, lessThan(position.maxScrollExtent));
 
       // Back: in place again.

@@ -317,6 +317,8 @@ void main() {
     pointer.hover(tester.getCenter(list));
     await tester.sendEventToBinding(pointer.scroll(const Offset(0, -40)));
     await tester.pump();
+    // The wheel's notches eased in (see the history's wheelDuration).
+    await tester.pump(const Duration(milliseconds: 200));
     // Faster than the raw 40px delta (the exact factor is a tuning knob).
     expect(marker.localToGlobal(Offset.zero).dy - before, greaterThan(40));
   });
@@ -502,6 +504,8 @@ void main() {
       await tester.sendEventToBinding(wheel.scroll(const Offset(0, -40)));
       await tester.pump(const Duration(milliseconds: 16));
     }
+    // The wheel's notches eased in (see the history's wheelDuration).
+    await tester.pump(const Duration(milliseconds: 200));
     // End on a line of the list's own text, clear of the user message
     // stuck at its top (a point over that copy is a case of its own).
     final end = middle + const Offset(0, 150);
@@ -606,6 +610,8 @@ void main() {
           await tester.sendEventToBinding(wheel.scroll(const Offset(0, -60)));
           await tester.pump(const Duration(milliseconds: 16));
         }
+        // The wheel's notches eased in (see the history's wheelDuration).
+        await tester.pump(const Duration(milliseconds: 200));
         // A terminal line on screen (cached items above are built too);
         // scroll on until one is.
         final visible = tester.getRect(find.byType(SuperListView));
@@ -618,7 +624,8 @@ void main() {
             .firstOrNull;
         while (onScreen() == null) {
           await tester.sendEventToBinding(wheel.scroll(const Offset(0, -60)));
-          await tester.pump(const Duration(milliseconds: 16));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 200));
         }
         final targetBox = onScreen()!;
         final targetTopLeft = topLeftOf(targetBox);
