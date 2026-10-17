@@ -2390,12 +2390,43 @@ class _BottomAnchoredScrollPosition extends ScrollPositionWithSingleContext {
   /// whether they arrive as pan gestures or (on the web) as scroll signals.
   static const wheelSpeed = 2.2;
 
+  /// How long a wheel's notch takes to move the list: eased over a few
+  /// frames, as browsers and editors do, not in one jump a notch.
+  static const wheelDuration = Duration(milliseconds: 160);
+
+  /// Where the wheel's notches are taking the list, while it moves there.
+  double? _wheelTarget;
+
   @override
-  void pointerScroll(double delta) => super.pointerScroll(
-    controller.signalKind == PointerDeviceKind.mouse
-        ? delta * wheelSpeed
-        : delta,
-  );
+  void pointerScroll(double delta) {
+    if (controller.signalKind != PointerDeviceKind.mouse || delta == 0) {
+      super.pointerScroll(delta);
+      return;
+    }
+    // The next notch adds to where the last was going.
+    final from = activity is DrivenScrollActivity
+        ? _wheelTarget ?? pixels
+        : pixels;
+    final target = (from + delta * wheelSpeed).clamp(
+      minScrollExtent,
+      maxScrollExtent,
+    );
+    if (target == pixels) return;
+    _wheelTarget = target;
+    // The user's, as a jump would be (the history reads it to anchor).
+    updateUserScrollDirection(
+      delta > 0 ? ScrollDirection.reverse : ScrollDirection.forward,
+    );
+    unawaited(
+      animateTo(
+        target,
+        duration: wheelDuration,
+        curve: Curves.easeOutCubic,
+      ).whenComplete(() {
+        if (_wheelTarget == target) _wheelTarget = null;
+      }),
+    );
+  }
 
   @override
   void jumpTo(double value) {
