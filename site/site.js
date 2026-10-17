@@ -100,6 +100,21 @@ for (const button of document.querySelectorAll('[data-sound]')) {
   } catch {}
 })();
 
+// The browser extension's version, from its own manifest. Its links stay
+// /dl/browser-extension and /dl/chrome-web-store: the zip is too small to
+// be worth a size, and the store's page is the Worker's to know.
+(async () => {
+  if (!document.querySelector('[data-extension-version]')) return;
+  try {
+    const ctl = new AbortController();
+    setTimeout(() => ctl.abort(), 4000);
+    const res = await fetch('https://dl.baocode.dev/releases/extension/latest.json', { signal: ctl.signal, cache: 'no-store' });
+    const m = await res.json();
+    const zh = document.documentElement.lang.startsWith('zh');
+    for (const el of document.querySelectorAll('[data-extension-version]')) el.textContent = zh ? `版本 ${m.version}` : `Version ${m.version}`;
+  } catch {}
+})();
+
 // Each download's link and size, as a manifest gives them.
 function showDownloads(downloads, v) {
   for (const [os, file] of Object.entries(downloads || {})) {
