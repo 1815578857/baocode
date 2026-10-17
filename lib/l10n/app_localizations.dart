@@ -4718,6 +4718,30 @@ abstract class AppLocalizations {
   /// **'Keep file'**
   String get agentKeepFile;
 
+  /// Over the editor's tabs while its file has an agent's change pending: puts the whole file back as it was before the agent changed it.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo file'**
+  String get agentUndoFile;
+
+  /// No description provided for @agentPreviousChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous change'**
+  String get agentPreviousChange;
+
+  /// No description provided for @agentNextChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Next change'**
+  String get agentNextChange;
+
+  /// No description provided for @agentMoreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get agentMoreActions;
+
   /// No description provided for @stripChangeAdded.
   ///
   /// In en, this message translates to:

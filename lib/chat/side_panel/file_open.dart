@@ -30,6 +30,7 @@ class FileOpenRequest {
     this.local = false,
     this.readOnly = false,
     this.preview = false,
+    this.agentChange = false,
   });
 
   /// Absolute, on the project's host (on this machine when [local]).
@@ -53,6 +54,11 @@ class FileOpenRequest {
 
   /// Its changes rather than its text, where they are known.
   final bool diff;
+
+  /// The agent's change pending in the file, shown in its text (each part
+  /// to keep or undo) rather than as its changes: scrolled to, the part at
+  /// [range] (else the first), the lines not marked.
+  final bool agentChange;
 
   /// The change [diff] shows, when the session lists it.
   final FileChange? change;
@@ -79,6 +85,7 @@ class FileOpenRequest {
     local: local,
     readOnly: readOnly,
     preview: preview,
+    agentChange: agentChange,
   );
 
   @override
@@ -86,7 +93,7 @@ class FileOpenRequest {
       'FileOpenRequest($path${range == null ? '' : ', $range'}'
       '${diff ? ', diff' : ''}${plan ? ', plan' : ''}'
       '${local ? ', local' : ''}${readOnly ? ', read-only' : ''}'
-      '${preview ? ', preview' : ''})';
+      '${preview ? ', preview' : ''}${agentChange ? ', agent change' : ''})';
 }
 
 /// Where a chat's files open (the agent window's side panel, the IDE's

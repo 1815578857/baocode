@@ -25,8 +25,6 @@ import 'package:bao_editor/monaco/flutter/selection_adapter.dart';
 import 'package:bao_editor/monaco/flutter/theme_assets.dart';
 import 'package:bao_editor/monaco/vs/editor/common/core/cursor_columns.dart';
 import 'package:bao_editor/monaco/vs/editor/common/core/position.dart';
-import 'package:bao_editor/monaco/vs/editor/common/diff/range_mapping.dart'
-    show LineRangeMapping;
 import 'package:bao_editor/monaco/vs/editor/contrib/find/browser/replace_pattern.dart';
 import 'package:bao_editor/monaco/vs/editor/contrib/gotoError/browser/marker_navigation.dart';
 import 'package:bao_editor/monaco/vs/editor/common/model/search/piece_tree_search.dart';
@@ -50,6 +48,7 @@ import 'ide_commands.dart';
 import 'ide_find_widget.dart';
 import 'ide_menu.dart';
 import 'ide_notifications.dart';
+import 'ide_original_diff.dart';
 import 'ide_status_bar.dart' show IdeLanguageNames, ideEolEdits;
 import 'ide_workspace.dart';
 import 'lsp/language_features.dart';
@@ -200,10 +199,10 @@ class IdeEditorState extends State<IdeEditor> {
   final Map<IdeDocument, SemanticTokensSource> _semanticSources = {};
 
   /// Each open diff tab's diff and original side.
-  final Map<IdeDocument, _DiffOriginal> _diffs = {};
+  final Map<IdeDocument, IdeOriginalDiff> _diffs = {};
 
   /// Each open file's agent change, shown in it ([IdeEditor.agentEdits]).
-  final Map<IdeDocument, _AgentDiff> _agentDiffs = {};
+  final Map<IdeDocument, IdeAgentDiff> _agentDiffs = {};
 
   /// Bumped as the text scrolls or is laid out again: the agent changes'
   /// buttons follow it.
@@ -1180,11 +1179,15 @@ class IdeEditorState extends State<IdeEditor> {
   }
 
   /// [doc]'s diff and original side, where it is a diff tab.
-  _DiffOriginal? _diffOf(IdeDocument doc) {
+  IdeOriginalDiff? _diffOf(IdeDocument doc) {
     final original = doc.diff;
     if (original == null) return null;
     return _diffs.putIfAbsent(doc, () {
-      final diff = _DiffOriginal(original, doc.model, onChanged: _rebuildSoon);
+      final diff = IdeOriginalDiff(
+        original,
+        doc.model,
+        onChanged: _rebuildSoon,
+      );
       if (_textMateDocuments[doc]?.$2.languageId case final language?) {
         diff.highlight(_textMate, language);
       }
@@ -1193,7 +1196,7 @@ class IdeEditorState extends State<IdeEditor> {
   }
 
   /// [doc]'s agent change, where it has one to show (a file's own tab).
-  _AgentDiff? _agentDiffOf(IdeDocument doc) {
+  IdeAgentDiff? _agentDiffOf(IdeDocument doc) {
     final edit = doc.diff == null && !doc.readOnly
         ? widget.agentEdits?.of(doc.path)
         : null;
@@ -1202,10 +1205,22 @@ class IdeEditorState extends State<IdeEditor> {
       return null;
     }
     if (_agentDiffs[doc] case final shown?) return shown..edit = edit;
-    final diff = _agentDiffs[doc] = _AgentDiff(
+    final controller = _nativeControllers[doc];
+    if (controller == null) return null;
+    final diff = _agentDiffs[doc] = IdeAgentDiff(
       edit,
-      doc.model,
+      controller,
       onChanged: _rebuildSoon,
+      save: () async {
+        if (doc.dirty) await widget.workspace.save(doc);
+      },
+      view: () => identical(widget.active, doc)
+          ? switch (_surfaceKey.currentState) {
+              final EditorSurfaceView view => view,
+              _ => null,
+            }
+          : null,
+      hunks: widget.agentEdits!.hunksOf(doc.path),
     );
     if (_textMateDocuments[doc]?.$2.languageId case final language?) {
       diff.diff.highlight(_textMate, language);
@@ -1213,58 +1228,11 @@ class IdeEditorState extends State<IdeEditor> {
     return diff;
   }
 
-  /// Keeps [change] of [doc]'s agent change: what the file is held against
-  /// takes it in. Saved first, as Undo saves.
-  Future<void> _keepAgentChange(
-    IdeDocument doc,
-    _AgentDiff agent,
-    LineRangeMapping change,
-  ) async {
-    final original = agent.diff.model.originalSnapshot;
-    if (original == null) return;
-    final base = agentHunkKept(change, original, doc.model.snapshot);
-    // Shown kept at once: the review takes it in after.
-    agent.show(base);
+  /// Keeps or undoes a part of an agent change (see [IdeAgentDiff]),
+  /// telling of what failed.
+  Future<void> _actOnAgentChange(Future<void> Function() act) async {
     try {
-      if (doc.dirty) await widget.workspace.save(doc);
-      await agent.edit.keepPart(base);
-    } catch (error) {
-      agent.reread();
-      if (mounted) widget.onError(error);
-    }
-  }
-
-  /// Undoes [change] of [doc]'s agent change in its text (an undo step of
-  /// its own), and saves it.
-  Future<void> _undoAgentChange(
-    IdeDocument doc,
-    _AgentDiff agent,
-    LineRangeMapping change,
-  ) async {
-    final original = agent.diff.model.originalSnapshot;
-    final controller = _nativeControllers[doc];
-    if (original == null || controller == null) return;
-    final modified = doc.model.snapshot;
-    final spans = agentHunkSpans(change, original, modified);
-    final text = original.text.substring(
-      spans.originalStart,
-      spans.originalEnd,
-    );
-    // A file the agent made, with nothing of it left: gone, as it was.
-    if (agent.edit.base.isEmpty &&
-        spans.modifiedEnd - spans.modifiedStart == modified.text.length &&
-        text.isEmpty) {
-      agent.edit.undoFile();
-      return;
-    }
-    controller.applyEdits([
-      EditorOffsetEdit(spans.modifiedStart, spans.modifiedEnd, text),
-    ]);
-    // Shown undone at once, not after the edit's debounce.
-    agent.diff.model.refresh();
-    try {
-      await widget.workspace.save(doc);
-      await agent.edit.settle();
+      await act();
     } catch (error) {
       if (mounted) widget.onError(error);
     }
@@ -2197,7 +2165,7 @@ class IdeEditorState extends State<IdeEditor> {
 
   /// Undo and Keep by each part of [agent], the active document's agent
   /// change; null without one.
-  Widget? _agentHunkActions(_AgentDiff? agent) {
+  Widget? _agentHunkActions(IdeAgentDiff? agent) {
     final changes = agent?.diff.model.mappings;
     if (agent == null || changes == null || changes.isEmpty) return null;
     final doc = widget.active;
@@ -2213,13 +2181,15 @@ class IdeEditorState extends State<IdeEditor> {
         _ => null,
       },
       repaint: _viewTick,
-      onUndo: (change) => unawaited(_undoAgentChange(doc, agent, change)),
-      onKeep: (change) => unawaited(_keepAgentChange(doc, agent, change)),
+      onUndo: (change) =>
+          unawaited(_actOnAgentChange(() => agent.undo(change))),
+      onKeep: (change) =>
+          unawaited(_actOnAgentChange(() => agent.keep(change))),
     );
   }
 
   /// A diff tab's editors: the original, read-only, and the document.
-  Widget _diffEditor(WorkbenchColors colors, _DiffOriginal diff) {
+  Widget _diffEditor(WorkbenchColors colors, IdeOriginalDiff diff) {
     final theme = EditorViewTheme.fromColors(colors.get);
     final type = getThemeTypeSelector(_themes.colorTheme.type);
     return DiffEditor(
@@ -2426,163 +2396,3 @@ String languageNameForFile(String path) =>
       '.sh' || '.bash' => 'Shell',
       _ => 'Plain Text',
     };
-
-/// A diff tab's original side in the editor: its text as a read-only
-/// document, highlighted as the modified is, and the diff between them.
-class _DiffOriginal {
-  _DiffOriginal(
-    this.original,
-    EditorDocumentModel modified, {
-    required this.onChanged,
-    bool ignoreTrimWhitespace = true,
-  }) : model = DiffEditorModel(
-         original: original.text,
-         modified: modified,
-         ignoreTrimWhitespace: ignoreTrimWhitespace,
-       ) {
-    original.text.addListener(_textChanged);
-    _textChanged();
-  }
-
-  final IdeDiffOriginal original;
-  final DiffEditorModel model;
-  final VoidCallback onChanged;
-
-  EditorDocumentModel? _document;
-  EditorSurfaceController? controller;
-  TextMateDocument? textMate;
-
-  /// The highlighting asked for before the text was read.
-  (TextMateSyntax, String)? _highlightLater;
-
-  void _textChanged() {
-    final text = original.text.value;
-    if (text == null || text == _document?.text) return;
-    controller?.dispose();
-    _document?.dispose();
-    final document = _document = EditorDocumentModel(text);
-    controller = EditorSurfaceController(document: document);
-    textMate?.update(document.snapshot);
-    if (_highlightLater case (final syntax, final languageId)) {
-      _highlightLater = null;
-      highlight(syntax, languageId);
-    }
-    onChanged();
-  }
-
-  /// Highlights the original as [languageId], as the modified is; once it
-  /// is read.
-  void highlight(TextMateSyntax syntax, String languageId) {
-    final document = _document;
-    if (document == null) {
-      _highlightLater = (syntax, languageId);
-      return;
-    }
-    if (textMate?.languageId == languageId) return;
-    textMate?.dispose();
-    textMate = syntax.open(languageId, document.snapshot)
-      ?..addListener(onChanged);
-    onChanged();
-  }
-
-  void dispose() {
-    original.text.removeListener(_textChanged);
-    model.dispose();
-    textMate?.dispose();
-    controller?.dispose();
-    _document?.dispose();
-  }
-}
-
-/// A file's agent change shown in its editor: the diff of its text against
-/// what it is held against ([IdeAgentEdit.base]), read anew as part of the
-/// change is kept (the last text shown until then).
-class _AgentDiff {
-  _AgentDiff(
-    IdeAgentEdit edit,
-    EditorDocumentModel modified, {
-    required VoidCallback onChanged,
-  }) : _edit = edit,
-       _base = edit.base {
-    original = IdeDiffOriginal(() => _edit.readBase());
-    // Every change counts: one hidden could be neither kept nor undone.
-    diff = _DiffOriginal(
-      original,
-      modified,
-      onChanged: onChanged,
-      ignoreTrimWhitespace: false,
-    );
-    // Shown anew as it is computed again (an edit, a part kept).
-    diff.model.addListener(onChanged);
-    unawaited(_read());
-  }
-
-  IdeAgentEdit _edit;
-  String _base;
-  bool _disposed = false;
-  late final IdeDiffOriginal original;
-  late final _DiffOriginal diff;
-
-  IdeAgentEdit get edit => _edit;
-  set edit(IdeAgentEdit edit) {
-    _edit = edit;
-    if (edit.base == _base) return;
-    _base = edit.base;
-    unawaited(_read());
-  }
-
-  /// Shows the change held against [text], before the review has it.
-  void show(String text) => original.text.value = text;
-
-  /// Shows it against what the review holds it against (what [show] showed
-  /// did not take).
-  void reread() => unawaited(_read());
-
-  Future<void> _read() async {
-    final base = _base;
-    try {
-      final text = await _edit.readBase();
-      if (!_disposed && base == _base) original.text.value = text;
-    } on Object {
-      // Shown as it was; read again as it changes.
-    }
-  }
-
-  Object? _key;
-  ({List<EditorViewZone> zones, List<EditorDecoration> decorations})? _parts;
-
-  /// What the editor shows of it (see [inlineDiffParts]), the same while
-  /// the diff is.
-  ({List<EditorViewZone> zones, List<EditorDecoration> decorations}) parts({
-    required DiffEditorColors colors,
-    required TextStyle style,
-    required TextScaler textScaler,
-  }) {
-    final model = diff.model;
-    final styledLines = diff.textMate?.styledLines;
-    final key = (
-      model.mappings,
-      model.originalSnapshot,
-      model.modified.snapshot,
-      styledLines,
-      colors,
-      style,
-      textScaler,
-    );
-    if (_parts case final parts? when key == _key) return parts;
-    _key = key;
-    return _parts = inlineDiffParts(
-      model,
-      colors: colors,
-      style: style,
-      textScaler: textScaler,
-      originalStyledLines: styledLines,
-    );
-  }
-
-  void dispose() {
-    _disposed = true;
-    diff.dispose();
-    original.dispose();
-  }
-}

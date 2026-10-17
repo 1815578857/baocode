@@ -2611,6 +2611,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agentKeepFile => '保留当前';
 
   @override
+  String get agentUndoFile => '撤销当前';
+
+  @override
+  String get agentPreviousChange => '上一处更改';
+
+  @override
+  String get agentNextChange => '下一处更改';
+
+  @override
+  String get agentMoreActions => '更多操作';
+
+  @override
   String get stripChangeAdded => '新增';
 
   @override

@@ -17,6 +17,7 @@ import '../../ide/git/scm_host.dart';
 import '../../ide/ide_button.dart';
 import '../../ide/ide_dialog.dart';
 import '../../ide/ide_explorer.dart';
+import '../../ide/ide_agent_edits.dart' show IdeAgentEdit;
 import '../../ide/ide_code_editor.dart' show IdeTextFormatter;
 import '../../ide/ide_hover.dart';
 import '../../ide/file_views.dart';
@@ -478,6 +479,8 @@ class AgentSidePanelView extends StatelessWidget {
     listenable: Listenable.merge([
       panel,
       session,
+      // A file's change kept or undone, part by part.
+      ?session.changeReview,
       ..._gits,
       ?terminals,
       BrowserBridge.instance,
@@ -1188,6 +1191,14 @@ class AgentSidePanelView extends StatelessWidget {
     reveal: tab.reveal,
     edit: tab.edit,
     onEdit: (edit) => panel.keepEdit(tab, edit),
+    agentEdit: tab.diff || tab.request.local || tab.request.readOnly
+        ? null
+        : IdeAgentEdit.inSession(session, tab.path),
+    // In the tab of what was looked at last: one done, the next in its place.
+    onOpenAgentChange: (path) => panel.open(
+      session,
+      FileOpenRequest(path, agentChange: true, preview: true),
+    ),
     highlights: panel.highlights,
     formatter: tab.request.local ? null : formatter,
     // Shown as a file, on this machine (see FileOpenScope.showLocal).

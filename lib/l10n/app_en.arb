@@ -1647,6 +1647,13 @@
   "@agentKeepFile": {
     "description": "Over the editor's tabs while its file has an agent's change pending: keeps the whole change to this file."
   },
+  "agentUndoFile": "Undo file",
+  "@agentUndoFile": {
+    "description": "Over the editor's tabs while its file has an agent's change pending: puts the whole file back as it was before the agent changed it."
+  },
+  "agentPreviousChange": "Previous change",
+  "agentNextChange": "Next change",
+  "agentMoreActions": "More actions",
   "stripChangeAdded": "Added",
   "stripChangeModified": "Modified",
   "stripChangeDeleted": "Deleted",

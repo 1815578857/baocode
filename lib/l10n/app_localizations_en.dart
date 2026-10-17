@@ -2704,6 +2704,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agentKeepFile => 'Keep file';
 
   @override
+  String get agentUndoFile => 'Undo file';
+
+  @override
+  String get agentPreviousChange => 'Previous change';
+
+  @override
+  String get agentNextChange => 'Next change';
+
+  @override
+  String get agentMoreActions => 'More actions';
+
+  @override
   String get stripChangeAdded => 'Added';
 
   @override

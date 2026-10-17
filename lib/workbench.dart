@@ -3437,8 +3437,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       open: embedded
           ? (request) => _openRequestInIde(thread, request)
           // From the conversation: the file alone, its list out of the way.
-          : (request) =>
-                _sidePanel.open(thread.session, request, listAway: true),
+          : (request) => _sidePanel.open(
+              thread.session,
+              _agentChangeIn(thread.session, request),
+              listAway: true,
+            ),
       inPanel: !embedded,
       openInIde: embedded
           ? null
@@ -3461,6 +3464,34 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       roots: () =>
           _workspace.workspaceAt(thread.project.path)?.folders ?? const [],
     );
+  }
+
+  /// [request] for a file's changes as the file itself where [session]'s
+  /// change to it is pending: shown in its text, each part to keep or
+  /// undo, as the IDE shows it.
+  FileOpenRequest _agentChangeIn(ChatSession session, FileOpenRequest request) {
+    if (!request.diff ||
+        request.local ||
+        request.change?.kind == FileChangeKind.deleted ||
+        session.changeReview?.baseOf(request.path) == null) {
+      return request;
+    }
+    return FileOpenRequest(
+      request.path,
+      range: request.range,
+      change: request.change,
+      agentChange: true,
+    );
+  }
+
+  /// The first part of [thread]'s change pending in [path] scrolled to, once
+  /// the IDE's editor shows the file.
+  void _revealAgentChange(AgentThread thread, String path) {
+    if (thread.session.changeReview?.baseOf(path) == null) return;
+    _ideAgentEdits
+        .putIfAbsent(thread.project.path, IdeAgentEdits.new)
+        .hunksOf(path)
+        .reveal();
   }
 
   /// Opens [request] in the IDE of [thread]'s project: a file's changes,
@@ -3496,6 +3527,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     if (request.range case final range?) {
       return _openCode(thread, request.path, range.start, range.end);
     }
+    if (request.diff) _revealAgentChange(thread, request.path);
     _inIdeOf(thread, (ide) => ide.open(request.path));
   }
 
@@ -3869,6 +3901,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     if (lines != null) {
       return _openCode(thread, change.path, lines.start, lines.end);
     }
+    _revealAgentChange(thread, change.path);
     _inIdeOf(thread, (ide) => ide.open(change.path));
   }
 

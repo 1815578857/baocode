@@ -1043,6 +1043,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     FocusManager.instance.addLateKeyEventHandler(_onLateKey);
     KeybindingService.instance.addListener(_keybindingsChanged);
     _registerCommandKeybindings();
+    widget.agentEdits?.open = _openAgentChange;
     widget.settings?.addListener(_settingsChanged);
     widget.remote?.addListener(_remoteChanged);
     if (widget.terminalBackend.supported) {
@@ -1403,6 +1404,12 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   @override
   void didUpdateWidget(IdeWorkbench oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.agentEdits, widget.agentEdits)) {
+      if (oldWidget.agentEdits?.open == _openAgentChange) {
+        oldWidget.agentEdits?.open = null;
+      }
+      widget.agentEdits?.open = _openAgentChange;
+    }
     if (!identical(oldWidget.commands, widget.commands)) {
       _registerCommandKeybindings();
     }
@@ -1430,6 +1437,9 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
 
   @override
   void dispose() {
+    if (widget.agentEdits?.open == _openAgentChange) {
+      widget.agentEdits?.open = null;
+    }
     FocusManager.instance.removeEarlyKeyEventHandler(_onChordKey);
     FocusManager.instance.removeLateKeyEventHandler(_onLateKey);
     KeybindingService.instance.removeListener(_keybindingsChanged);
@@ -1572,6 +1582,9 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   }
 
   // --- Editors ---------------------------------------------------------------
+
+  /// The next file with an agent's change pending, once one is done.
+  void _openAgentChange(String path) => unawaited(_open(path));
 
   Future<void> _open(
     String path, {
@@ -3868,7 +3881,10 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                     listenable: edits,
                     builder: (context, _) => switch (edits.of(active.path)) {
                       final edit? when active.diff == null =>
-                        IdeAgentEditActions(edit: edit),
+                        IdeAgentEditActions(
+                          edit: edit,
+                          hunks: edits.hunksOf(active.path),
+                        ),
                       _ => const SizedBox.shrink(),
                     },
                   ),

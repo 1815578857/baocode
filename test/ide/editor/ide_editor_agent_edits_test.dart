@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bao_editor/monaco/flutter/editor_surface.dart';
+import 'package:baocode/chat/chat_models.dart' show FileChange;
 import 'package:baocode/chat/chat_session.dart';
 import 'package:baocode/chat/review/change_review.dart';
 import 'package:baocode/chat/review/review_store.dart';
@@ -10,6 +11,7 @@ import 'package:baocode/ide/ide_editor.dart';
 import 'package:baocode/ide/ide_workspace.dart';
 import 'package:baocode/kernel/agent_kernel.dart' show KernelContext;
 import 'package:baocode/kernel/mock/mock_kernels.dart';
+import 'package:baocode/theme/codicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -47,10 +49,14 @@ class _NoStore implements ReviewStore {
 /// A review of one file, held against [base], recording what the editor
 /// asks of it.
 class _Review extends ChangeReview {
-  _Review(String root, this.file, this.base) : super(_NoStore(root));
+  _Review(String root, this.file, this.base, {this.others = const []})
+    : super(_NoStore(root));
 
   final String file;
   String base;
+
+  /// Other files with a change pending, after [file].
+  final List<String> others;
   int _version = 0;
   final kept = <String>[];
   final settled = <String>[];
@@ -65,7 +71,17 @@ class _Review extends ChangeReview {
   Future<void> observe({bool full = true}) async {}
 
   @override
-  String? baseOf(String path) => path == file ? 'v$_version' : null;
+  List<FileChange> get changes => [
+    for (final path in [file, ...others])
+      FileChange(path: path, added: 1, removed: 1),
+  ];
+
+  @override
+  String? baseOf(String path) => path == file
+      ? 'v$_version'
+      : others.contains(path)
+      ? 'v0'
+      : null;
 
   @override
   Future<String> Function()? original(String path) =>
@@ -116,20 +132,44 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: IdeEditor(
-            workspace: workspace,
-            active: workspace.active!,
-            nativeEditorEnabled: true,
-            onError: (error) => fail('$error'),
-            onLspStatus: (_) {},
-            onPositionChanged: (_) {},
-            agentEdits: edits,
+          body: Column(
+            children: [
+              // As over the IDE's tabs.
+              ListenableBuilder(
+                listenable: edits,
+                builder: (context, _) => switch (edits.of(_file)) {
+                  final edit? => IdeAgentEditActions(
+                    edit: edit,
+                    hunks: edits.hunksOf(_file),
+                  ),
+                  null => const SizedBox.shrink(),
+                },
+              ),
+              Expanded(
+                child: IdeEditor(
+                  workspace: workspace,
+                  active: workspace.active!,
+                  nativeEditorEnabled: true,
+                  onError: (error) => fail('$error'),
+                  onLspStatus: (_) {},
+                  onPositionChanged: (_) {},
+                  agentEdits: edits,
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
     await settle(tester);
   }
+
+  int caret(WidgetTester tester) => tester
+      .widget<EditorSurface>(find.byType(EditorSurface))
+      .controller
+      .value
+      .selection
+      .extentOffset;
 
   String text(WidgetTester tester) => tester
       .widget<EditorSurface>(find.byType(EditorSurface))
@@ -187,6 +227,75 @@ void main() {
     expect(review.kept, ['one\n2\n3\n4\n5\n']);
     expect(review.settled, [_file]);
     expect(find.text('Undo'), findsNothing);
+  });
+
+  testWidgets('after a part is kept or undone, the caret goes to the next', (
+    tester,
+  ) async {
+    review = _Review(_root, _file, '1\n2\n3\n4\n5\n6\n7\n');
+    await pump(tester, now: 'one\n2\n3\nfour\n5\n6\nseven\n');
+    expect(find.text('Keep'), findsNWidgets(3));
+
+    await tester.tap(find.text('Keep').first);
+    await settle(tester);
+    expect(caret(tester), text(tester).indexOf('four'));
+    expect(find.text('1/2'), findsOneWidget);
+
+    await tester.tap(find.text('Undo').first);
+    await settle(tester);
+    expect(text(tester), 'one\n2\n3\n4\n5\n6\nseven\n');
+    expect(caret(tester), text(tester).indexOf('seven'));
+    expect(find.text('1/1'), findsOneWidget);
+  });
+
+  testWidgets('the bar over the editor steps through the parts', (
+    tester,
+  ) async {
+    review = _Review(_root, _file, '1\n2\n3\n4\n5\n');
+    await pump(tester, now: 'one\n2\n3\n4\nfive\n');
+    final now = text(tester);
+    await tester.tap(find.byIcon(Codicons.arrowDown));
+    await settle(tester);
+    expect(caret(tester), now.indexOf('one'));
+    expect(find.text('1/2'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Codicons.arrowDown));
+    await settle(tester);
+    expect(caret(tester), now.indexOf('five'));
+    expect(find.text('2/2'), findsOneWidget);
+
+    // Past the last, the first again; before the first, the last.
+    await tester.tap(find.byIcon(Codicons.arrowDown));
+    await settle(tester);
+    expect(caret(tester), now.indexOf('one'));
+    await tester.tap(find.byIcon(Codicons.arrowUp));
+    await settle(tester);
+    expect(caret(tester), now.indexOf('five'));
+  });
+
+  testWidgets('the first part is scrolled to when asked for', (tester) async {
+    review = _Review(_root, _file, '1\n2\n3\n4\n5\n');
+    await pump(tester, now: '1\n2\nthree\n4\n5\n');
+    expect(caret(tester), isNot(text(tester).indexOf('three')));
+    final edits = tester.widget<IdeEditor>(find.byType(IdeEditor)).agentEdits!;
+    edits.hunksOf(_file).reveal();
+    await settle(tester);
+    expect(caret(tester), text(tester).indexOf('three'));
+  });
+
+  testWidgets('the file done, the IDE opens the next with a change pending', (
+    tester,
+  ) async {
+    final other = p.join(_root, 'b.txt');
+    review = _Review(_root, _file, '1\n2\n', others: [other]);
+    await pump(tester, now: 'one\n2\n');
+    final edits = tester.widget<IdeEditor>(find.byType(IdeEditor)).agentEdits!;
+    final opened = <String>[];
+    edits.open = opened.add;
+
+    await tester.tap(find.text('Keep'));
+    await settle(tester);
+    expect(opened, [other]);
   });
 
   testWidgets('shows nothing in a file with no change pending', (tester) async {
