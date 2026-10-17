@@ -167,6 +167,7 @@ class StashViewState extends State<StashView>
     super.initState();
     _open = widget.initial;
     _lastShown = widget.initial;
+    _restoreFilters();
     _shown.addListener(_shownChanged);
     _query.addListener(() => setState(() {}));
     _controller.addListener(_changed);
@@ -295,6 +296,33 @@ class StashViewState extends State<StashView>
   }
 
   // --- What shows ---------------------------------------------------------------
+
+  /// The filters as last picked ([_filter]), the page's own without.
+  void _restoreFilters() {
+    final kept = _controller.filters;
+    if (kept == null) return;
+    _time = _Time.values.asNameMap()[kept['time']] ?? _Time.all;
+    if (kept['projects'] case final List<Object?> projects) {
+      _projects.addAll(projects.whereType<String>());
+    }
+    if (kept['statuses'] case final List<Object?> statuses) {
+      final byName = StashStatus.values.asNameMap();
+      _statuses
+        ..clear()
+        ..addAll([for (final name in statuses) ?byName[name]]);
+    }
+  }
+
+  /// Changes the filters as the user picks them, kept for the next time
+  /// the page shows; not those widened to show a stash ([reveal]).
+  void _filter(VoidCallback change) {
+    setState(change);
+    _controller.filters = {
+      'time': _time.name,
+      'projects': [..._projects],
+      'statuses': [for (final status in _statuses) status.name],
+    };
+  }
 
   bool _timeOk(StashNote note, DateTime now) {
     final today = DateTime(now.year, now.month, now.day);
@@ -949,7 +977,7 @@ class StashViewState extends State<StashView>
             for (final status in StashStatus.values)
               if (_statuses.contains(status)) stashStatusLabel(l10n, status),
           ].join(l10n.stashFilterJoiner);
-    void toggle<T>(Set<T> set, T value) => setState(() {
+    void toggle<T>(Set<T> set, T value) => _filter(() {
       if (!set.remove(value)) set.add(value);
     });
     return Wrap(
@@ -971,7 +999,7 @@ class StashViewState extends State<StashView>
                 IdeMenuAction(
                   label,
                   checked: _time == time,
-                  onSelected: () => setState(() => _time = time),
+                  onSelected: () => _filter(() => _time = time),
                 ),
             ]),
           ),
@@ -986,7 +1014,7 @@ class StashViewState extends State<StashView>
               IdeMenuAction(
                 l10n.stashFilterAnyProject,
                 checkedNow: () => _projects.isEmpty,
-                onSelected: () => setState(_projects.clear),
+                onSelected: () => _filter(_projects.clear),
               ),
               const IdeMenuSeparator(),
               IdeMenuAction(
@@ -1017,7 +1045,7 @@ class StashViewState extends State<StashView>
                 checkedNow: () =>
                     _statuses.isEmpty ||
                     _statuses.length == StashStatus.values.length,
-                onSelected: () => setState(_statuses.clear),
+                onSelected: () => _filter(_statuses.clear),
               ),
               const IdeMenuSeparator(),
               for (final status in StashStatus.values)
@@ -1026,7 +1054,7 @@ class StashViewState extends State<StashView>
                   keepOpen: true,
                   checkedNow: () =>
                       _statuses.isEmpty || _statuses.contains(status),
-                  onSelected: () => setState(() {
+                  onSelected: () => _filter(() {
                     // From all: all but it.
                     if (_statuses.isEmpty) {
                       _statuses.addAll(StashStatus.values);

@@ -299,9 +299,7 @@ void main() {
   });
 
   testWidgets('cards by their number, the newest first; those done hidden '
-      'at first; statuses and projects picked several at once', (
-    tester,
-  ) async {
+      'at first; statuses and projects picked several at once', (tester) async {
     final ids = (await tester.runAsync(() async {
       final ids = <int>[];
       for (final (title, project) in [
@@ -358,12 +356,21 @@ void main() {
     expect(card('Alpha'), findsNothing);
     expect(card('Beta'), findsOneWidget);
 
-    // Shown from elsewhere: the filters let it be seen.
+    // Kept for the next time the page shows.
+    await unmount(tester);
+    await pumpView(tester);
+    expect(find.text('2 projects'), findsOneWidget);
+    expect(find.text('Any status'), findsOneWidget);
+    expect(card('Alpha'), findsNothing);
+    expect(card('Beta'), findsOneWidget);
+
+    // Shown from elsewhere: the filters let it be seen, those picked kept.
     tester.state<StashViewState>(find.byType(StashView)).show(ids[0]);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(card('Alpha'), findsOneWidget);
     expect(find.text('Any project'), findsOneWidget);
+    expect(controller.filters?['projects'], hasLength(2));
     await unmount(tester);
   });
 

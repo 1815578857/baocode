@@ -95,6 +95,23 @@ class StashController extends ChangeNotifier {
     );
   }
 
+  static const filtersKey = 'stash.filters';
+
+  /// The Stash page's filters, as last picked (its time, projects and
+  /// statuses, by name; see StashView); null for its own.
+  Map<String, Object?>? get filters =>
+      _filters ?? storage?.get<Map<String, Object?>>(filtersKey);
+  Map<String, Object?>? _filters;
+
+  set filters(Map<String, Object?>? filters) {
+    _filters = filters;
+    unawaited(
+      storage
+          ?.set(filtersKey, filters)
+          .catchError((Object error) => debugPrint('$error')),
+    );
+  }
+
   static const welcomedKey = 'stash.welcomed';
 
   /// Whether the Stash page has said what it is (the first time it shows,
