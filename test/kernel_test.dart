@@ -508,6 +508,93 @@ void main() {
       expect(transcript.edits, hasLength(3));
     });
 
+    test("an edit tells what its file was before, a subagent's too", () {
+      final events = <KernelEvent>[];
+      var seq = 0;
+      final translator = ClaudeTranslator(
+        emit: events.add,
+        nextSeq: () => ++seq,
+      );
+      void edit(
+        String id,
+        String name,
+        Map<String, Object?> result, {
+        String? parent,
+      }) {
+        translator
+          ..translate({
+            'type': 'assistant',
+            'parent_tool_use_id': parent,
+            'message': {
+              'id': 'msg-$id',
+              'role': 'assistant',
+              'content': [
+                {
+                  'type': 'tool_use',
+                  'id': id,
+                  'name': name,
+                  'input': {'file_path': result['filePath']},
+                },
+              ],
+            },
+          })
+          ..translate({
+            'type': 'user',
+            'parent_tool_use_id': parent,
+            'message': {
+              'role': 'user',
+              'content': [
+                {'type': 'tool_result', 'tool_use_id': id, 'content': 'ok'},
+              ],
+            },
+            'tool_use_result': {
+              ...result,
+              'structuredPatch': [
+                {
+                  'oldStart': 1,
+                  'oldLines': 1,
+                  'newStart': 1,
+                  'newLines': 1,
+                  'lines': ['-a', '+b'],
+                },
+              ],
+            },
+          });
+      }
+
+      edit('e1', 'Edit', {
+        'filePath': '/p/a.txt',
+        'oldString': 'a',
+        'originalFile': 'a\n',
+      });
+      edit('w1', 'Write', {
+        'type': 'create',
+        'filePath': '/p/new.txt',
+        'content': 'b\n',
+        'originalFile': null,
+      });
+      edit('e2', 'Edit', {
+        'filePath': '/p/sub.txt',
+        'oldString': 'a',
+        'originalFile': 'a\n',
+      }, parent: 'agent-1');
+      edit('e3', 'Edit', {'filePath': '/p/untold.txt', 'oldString': 'a'});
+      final edits = {
+        for (final event in events.whereType<FileEdited>())
+          event.change.path: event.original,
+      };
+      expect(edits.keys, [
+        '/p/a.txt',
+        '/p/new.txt',
+        '/p/sub.txt',
+        '/p/untold.txt',
+      ]);
+      expect((edits['/p/a.txt']! as OriginalText).text, 'a\n');
+      expect((edits['/p/new.txt']! as OriginalText).text, isNull);
+      expect((edits['/p/sub.txt']! as OriginalText).text, 'a\n');
+      expect(edits['/p/untold.txt'], isNull);
+    });
+
     test('each round of planning is one card; a plan sent back gives way '
         'to the next', () {
       final transcript = Transcript();
@@ -2201,48 +2288,51 @@ void main() {
           if (item is UserMessageItem) item.text,
       ];
 
-      test('replays the first page, and the earlier ones go before it', () async {
-        final asked = <(int, String?)>[];
-        final kernel = open((session, {required turns, before}) async {
-          asked.add((turns, before));
-          return before == null
-              ? ClaudeHistoryPage([
-                  prompt('u3'),
-                  answer('u3', 300),
-                  prompt('u4'),
-                  answer('u4', 400),
-                ], earlier: 'u3')
-              : ClaudeHistoryPage([
-                  prompt('u1'),
-                  answer('u1', 100),
-                  prompt('u2'),
-                  answer('u2', 200),
-                ]);
-        });
-        final transcript = Transcript();
-        kernel.events.listen(transcript.apply);
-        await pumpEventQueue();
-        expect(asked, [(10, null)]);
-        expect(prompts(transcript), ['u3', 'u4']);
-        expect(kernel.hasEarlierHistory, isTrue);
-        expect(transcript.stats!.cache!.conversation.written, 700);
-        final lastSeq = transcript.lastSeq;
+      test(
+        'replays the first page, and the earlier ones go before it',
+        () async {
+          final asked = <(int, String?)>[];
+          final kernel = open((session, {required turns, before}) async {
+            asked.add((turns, before));
+            return before == null
+                ? ClaudeHistoryPage([
+                    prompt('u3'),
+                    answer('u3', 300),
+                    prompt('u4'),
+                    answer('u4', 400),
+                  ], earlier: 'u3')
+                : ClaudeHistoryPage([
+                    prompt('u1'),
+                    answer('u1', 100),
+                    prompt('u2'),
+                    answer('u2', 200),
+                  ]);
+          });
+          final transcript = Transcript();
+          kernel.events.listen(transcript.apply);
+          await pumpEventQueue();
+          expect(asked, [(10, null)]);
+          expect(prompts(transcript), ['u3', 'u4']);
+          expect(kernel.hasEarlierHistory, isTrue);
+          expect(transcript.stats!.cache!.conversation.written, 700);
+          final lastSeq = transcript.lastSeq;
 
-        await kernel.loadEarlier();
-        await pumpEventQueue();
-        expect(asked.last, (20, 'u3'));
-        expect(prompts(transcript), ['u1', 'u2', 'u3', 'u4']);
-        expect(transcript.lastSeq, greaterThan(lastSeq));
-        expect(kernel.hasEarlierHistory, isFalse);
-        expect(kernel.loadingEarlier, isFalse);
-        // Counted once each, not again for the page read later.
-        expect(transcript.stats!.cache!.conversation.written, 1000);
+          await kernel.loadEarlier();
+          await pumpEventQueue();
+          expect(asked.last, (20, 'u3'));
+          expect(prompts(transcript), ['u1', 'u2', 'u3', 'u4']);
+          expect(transcript.lastSeq, greaterThan(lastSeq));
+          expect(kernel.hasEarlierHistory, isFalse);
+          expect(kernel.loadingEarlier, isFalse);
+          // Counted once each, not again for the page read later.
+          expect(transcript.stats!.cache!.conversation.written, 1000);
 
-        // Nothing before: nothing is read.
-        await kernel.loadEarlier();
-        expect(asked, hasLength(2));
-        kernel.dispose();
-      });
+          // Nothing before: nothing is read.
+          await kernel.loadEarlier();
+          expect(asked, hasLength(2));
+          kernel.dispose();
+        },
+      );
 
       test('asked again while it is read, it is the same reading', () async {
         final read = Completer<ClaudeHistoryPage>();
@@ -4771,8 +4861,44 @@ exec /usr/bin/env "\$@"
         'turn': {'id': 'st1', 'status': 'completed'},
       });
       expect(events.last, isA<TurnEnded>());
-      final edited = events.whereType<FileEdited>().single.change;
-      expect((edited.path, edited.added, edited.removed), ('lib/a.dart', 1, 1));
+      final edited = events.whereType<FileEdited>().single;
+      expect(
+        (edited.change.path, edited.change.added, edited.change.removed),
+        ('lib/a.dart', 1, 1),
+      );
+      // What it was, by the patch taken back out.
+      expect(
+        (edited.original! as OriginalByPatch).diff,
+        '@@ -3 +3 @@\n a\n-b\n+c',
+      );
+    });
+
+    test('a file added or deleted tells what it was', () async {
+      kernel.send(const KernelTurn(id: 't1', text: 'hi'));
+      await pumpEventQueue();
+      notify('item/completed', {
+        'item': {
+          'type': 'fileChange',
+          'id': 'f',
+          'changes': [
+            {
+              'path': 'new.txt',
+              'kind': {'type': 'add'},
+              'diff': 'new\n',
+            },
+            {
+              'path': 'old.txt',
+              'kind': {'type': 'delete'},
+              'diff': 'old\n',
+            },
+          ],
+        },
+      });
+      final originals = [
+        for (final event in events.whereType<FileEdited>())
+          (event.original! as OriginalText).text,
+      ];
+      expect(originals, [null, 'old\n']);
     });
 
     test('a command running when the turn stops shows as failed', () async {

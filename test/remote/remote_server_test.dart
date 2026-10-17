@@ -840,31 +840,31 @@ printf '%s\n' "$line"
   });
 
   group('review', () {
-    test('snapshots, diffs and restores a project there', () async {
+    test('keeps, counts and restores what a session kept there', () async {
       File(at('a.txt')).writeAsStringSync('one\n');
       final store = (await client().openReview(root))!;
       expect(store.root, root);
-      final before = await store.snapshot();
+      final old = (await store.take('s1', 'a.txt'))!;
       File(at('a.txt')).writeAsStringSync('one\ntwo\n');
       File(at('b.txt')).writeAsStringSync('new\n');
-      final after = await store.snapshot();
-      final changes = await store.diff(before, after);
-      expect([for (final c in changes) c.path], ['a.txt', 'b.txt']);
-      final counts = await store.lineCounts(before, after);
+      expect(await store.current('a.txt'), isNot(old));
+      final counts = await store.lineCounts('s1', {
+        'a.txt': old,
+        'b.txt': null,
+      });
       expect(counts['a.txt'], (added: 1, removed: 0));
-      final old = changes.first.before!;
-      expect(utf8.decode(await store.read(old)), 'one\n');
-      await store.restore('a.txt', old);
+      expect(counts['b.txt'], (added: 1, removed: 0));
+      expect(utf8.decode(await store.read('s1', old)), 'one\n');
+      await store.restore('s1', 'a.txt', old);
       expect(File(at('a.txt')).readAsStringSync(), 'one\n');
-      await store.restore('b.txt', null);
+      await store.restore('s1', 'b.txt', null);
       expect(File(at('b.txt')).existsSync(), isFalse);
       expect(await store.exists('a.txt'), isTrue);
-      expect(await store.contains(after, 'b.txt'), isTrue);
-      await store.save('s1', 'data', trees: [before], blobs: [old]);
+      await store.save('s1', 'data', blobs: [old]);
       expect(await store.load('s1'), 'data');
       await store.forget('s1');
       expect(await store.load('s1'), isNull);
-      // Its repository is the server's, not the project's.
+      // Kept in the server's data folder, not the project.
       expect(Directory(at('.git')).existsSync(), isFalse);
       expect(
         Directory(p.join(remote.dataDir.path, 'checkpoints')).existsSync(),

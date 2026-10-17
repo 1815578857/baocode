@@ -3,7 +3,8 @@ import 'dart:convert';
 import '../../models/launch_environment.dart';
 import '../commit_attribution.dart';
 
-export 'package:bao_remote/claude.dart' show ClaudeFolderGone, ClaudeUnavailable;
+export 'package:bao_remote/claude.dart'
+    show ClaudeFolderGone, ClaudeUnavailable;
 
 /// Claude Code's side of the adapter (the Adaptee): the messages of
 /// `claude -p --input-format stream-json --output-format stream-json`, one

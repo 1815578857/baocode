@@ -862,6 +862,7 @@ class ClaudeTranslator {
     _Outcome outcome, {
     String? output,
     List<ImageAttachment> images = const [],
+    List<String> imageFiles = const [],
   }) {
     final input = tool.input;
     final status = switch (outcome) {
@@ -893,6 +894,7 @@ class ClaudeTranslator {
         status: status,
         output: output,
         images: images,
+        imageFiles: imageFiles,
       );
     }
     if (name.startsWith('mcp__')) {
@@ -905,6 +907,8 @@ class ClaudeTranslator {
         target: _summary(input),
         status: status,
         output: output,
+        images: images,
+        imageFiles: imageFiles,
       );
     }
     return switch (name) {
@@ -918,6 +922,9 @@ class ClaudeTranslator {
         },
         status: status,
         output: outcome == _Outcome.done ? null : output,
+        // An image file, as the agent saw it.
+        images: images,
+        imageFiles: imageFiles,
       ),
       'Grep' => ToolCallItem(
         kind: ToolKind.grep,
@@ -1065,6 +1072,8 @@ class ClaudeTranslator {
         target: _summary(input),
         status: status,
         output: output,
+        images: images,
+        imageFiles: imageFiles,
       ),
     };
   }
@@ -1201,6 +1210,7 @@ class ClaudeTranslator {
         outcome,
         output: outcome == _Outcome.done ? _short(text) : _tail(text),
         images: _resultImages(block['content']),
+        imageFiles: _savedImages(block['content']),
       ),
       parent: tool.parent,
     );
@@ -1288,16 +1298,32 @@ class ClaudeTranslator {
       ),
       parent: tool.parent,
     );
-    if (!replaying && tool.parent == null) {
+    // A subagent's too: what it edits is in the review as the agent's.
+    if (!replaying) {
       emit(
         FileEdited(
           nextSeq(),
           FileChange(path: path, added: added, removed: removed),
           turnId: turnId,
+          original: _original(result),
         ),
       );
     }
     return true;
+  }
+
+  /// What an edit's file was before, as its result tells: a file written
+  /// anew was not there, one edited is in `originalFile`.
+  static FileOriginal? _original(Map<String, Object?> result) {
+    if (result['type'] == 'create') return const OriginalText(null);
+    if (_string(result['originalFile']) case final text?) {
+      return OriginalText(text);
+    }
+    // An Edit that made the file.
+    if (result.containsKey('originalFile') && result['oldString'] == '') {
+      return const OriginalText(null);
+    }
+    return null;
   }
 
   static const _maxDiffLines = 400;
@@ -1699,10 +1725,35 @@ class ClaudeTranslator {
     final String text => text,
     final List<Object?> blocks => [
       for (final block in blocks)
-        if (_map(block)['text'] case final String text) text,
+        if (_map(block)['text'] case final String text)
+          ?_withoutImageSaved(text),
     ].join('\n'),
     _ => '',
   };
+
+  /// [text] without the lines where the CLI says it saved a picture a tool
+  /// returned (`[Image: source: /…/tool-results/….png]`, for the agent):
+  /// the picture shows. Null when that is all it says.
+  static String? _withoutImageSaved(String text) {
+    if (!text.contains('[Image: source: ')) return text;
+    final lines = text.split('\n').where((line) => !_imageSaved.hasMatch(line));
+    return lines.isEmpty ? null : lines.join('\n');
+  }
+
+  static final _imageSaved = RegExp(r'^\s*\[Image: source: ([^\]\n]*)\]\s*$');
+
+  /// Where the CLI saved the pictures in a tool's result (see
+  /// [_withoutImageSaved]).
+  static List<String> _savedImages(Object? content) => [
+    if (content is List)
+      for (final block in content.map(_map))
+        if (block['text'] case final String text
+            when text.contains('[Image: source: '))
+          for (final line in text.split('\n'))
+            if (_imageSaved.firstMatch(line)?[1]?.trim() case final path?
+                when path.isNotEmpty)
+              path,
+  ];
 
   /// The pictures in a tool's result: as the CLI has them (an MCP tool's
   /// made image blocks), or as the tool gave them.

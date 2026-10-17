@@ -2,15 +2,15 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../chat/chat_models.dart';
+import '../chat/side_panel/file_link_menu.dart';
 import '../chat/side_panel/file_open.dart';
 import '../chat/widgets/hover_builder.dart';
-import '../chat/widgets/image_thumbnails.dart' show showImagePreview;
+import '../chat/widgets/content_image.dart';
 import '../chat/widgets/step_header.dart';
 import '../ide/ide_button.dart';
-import '../ide/ide_hover.dart';
+import '../ide/ide_menu.dart';
 import '../l10n/l10n.dart';
 import '../theme/app_theme.dart';
-import '../theme/codicons.dart';
 import '../workspace/window_controls.dart';
 import 'browser_bridge.dart';
 import 'browser_tools.dart';
@@ -182,9 +182,9 @@ bool _readable(ToolCallItem item) {
 
 /// A browser tool's call as a step: "Clicked “Sign in”", or what the agent
 /// said it does. It opens to what it found, each its own way: a
-/// screenshot, the console's lines by level, the requests as a table, a
-/// performance report's Web Vitals; a button at its end, on hover, shows
-/// the tab in the side panel. While it watches the user (browser_watch),
+/// screenshot (small after its line while it is closed), the console's
+/// lines by level, the requests as a table, a performance report's Web
+/// Vitals; its right click shows the tab in the side panel. While it watches the user (browser_watch),
 /// it shows what they are asked and do, and their buttons to finish.
 class BrowserStep extends StatelessWidget {
   const BrowserStep({
@@ -216,7 +216,10 @@ class BrowserStep extends StatelessWidget {
         show != null &&
         BrowserBridge.instance.browsers.isNotEmpty;
     final running = item.status == ToolStatus.running;
-    Widget header(bool hovered) => StepHeader(
+    final shot = item.status == ToolStatus.failed
+        ? null
+        : item.images.firstOrNull;
+    final header = StepHeader(
       verb:
           item.label ??
           browserVerb(item.tool, item.input, status: item.status, l10n: l10n),
@@ -230,27 +233,19 @@ class BrowserStep extends StatelessWidget {
         height: 14,
         colorFilter: ColorFilter.mode(AppColors.textMuted, BlendMode.srcIn),
       ),
-      // Kept in place while away: the line does not move as it comes.
-      action: reveal
-          ? Visibility.maintain(
-              visible: hovered,
-              child: IdeActionButton(
-                icon: Codicons.layoutSidebarRight,
-                tooltip: l10n.browserShowInPanel,
-                size: 20,
-                iconSize: 14,
-                onPressed: () => show(tabId),
-              ),
-            )
-          : null,
+      trailingGap: 0,
+      trailing: shot == null
+          ? null
+          : StepThumbnails(images: item.images, shown: !expanded),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (reveal)
-          HoverBuilder(builder: (context, hovered) => header(hovered))
-        else
-          header(false),
+        // Its tab shows in the side panel from its right click.
+        FileLinkMenuRegion(
+          menu: reveal ? _TabMenu(() => show(tabId)) : null,
+          child: header,
+        ),
         if (running && item.tool == 'browser_watch')
           const _WatchCard()
         else if (expanded && opens)
@@ -263,19 +258,14 @@ class BrowserStep extends StatelessWidget {
     final output = item.output?.trimRight() ?? '';
     if (item.status != ToolStatus.failed) {
       if (item.images.isNotEmpty) {
-        return StepBody(
-          maxHeight: 360,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // A request's headers before its picture.
-              if (output.isNotEmpty) ...[
-                Text(output, style: stepMono),
-                const SizedBox(height: 8),
-              ],
-              for (final image in item.images) _Shot(image: image),
-            ],
-          ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // A request's headers before its picture.
+            if (output.isNotEmpty)
+              StepBody(child: Text(output, style: stepMono)),
+            ToolImages(images: item.images),
+          ],
         );
       }
       switch (item.tool) {
@@ -292,6 +282,22 @@ class BrowserStep extends StatelessWidget {
     }
     return StepBody(child: Text(output, style: stepMono));
   }
+}
+
+/// A browser step's right click: to show its tab in the side panel.
+class _TabMenu implements ChatItemMenu {
+  const _TabMenu(this.onShow);
+
+  final VoidCallback onShow;
+
+  @override
+  Future<void> show(BuildContext context, Offset position) => showIdeMenu(
+    context,
+    position: position,
+    entries: [
+      IdeMenuAction(context.l10n.browserShowInPanel, onSelected: onShow),
+    ],
+  );
 }
 
 /// What BaoCode watches the user do (see [BrowserWatching]): the task they
@@ -404,39 +410,6 @@ class _WatchCard extends StatelessWidget {
       _ => step.target,
     };
     return '${l10n.browserWatchedStep(step.kind)} $what';
-  }
-}
-
-/// A screenshot, as big as the step lets it; a click shows it whole.
-class _Shot extends StatelessWidget {
-  const _Shot({required this.image});
-
-  final ImageAttachment image;
-
-  @override
-  Widget build(BuildContext context) {
-    return HoverBuilder(
-      cursor: SystemMouseCursors.click,
-      builder: (context, hovered) => GestureDetector(
-        onTap: () => showImagePreview(context, image),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 320, maxWidth: 480),
-          child: DecoratedBox(
-            position: DecorationPosition.foreground,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                color: hovered ? AppColors.borderStrong : AppColors.border,
-              ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: Image.memory(image.bytes, fit: BoxFit.contain),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 

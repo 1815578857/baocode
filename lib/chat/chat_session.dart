@@ -172,9 +172,6 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
   Future<ChangeReviews?>? _reviewOpening;
   ChangeReviews? _review;
 
-  /// Gives the edits reported a moment to settle before a look.
-  Timer? _lookTimer;
-
   /// The review, while it holds: null before it opened, or once it failed
   /// (the changes are then those the kernel reported).
   ChangeReviews? get _activeReview => switch (_review) {
@@ -183,8 +180,7 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
   };
 
   /// Opens the review of the project (each of its folders, in a
-  /// multi-folder workspace), the first time; and snapshots it, so that
-  /// the first message need not wait.
+  /// multi-folder workspace), the first time.
   void _startReview() {
     if (_reviewOpening != null) return;
     final open = _openReview;
@@ -203,10 +199,8 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
           }
           _review = review
             ..session = sessionId
-            // A message sent while it opened.
-            ..working = isStreaming
             ..addListener(_reviewChanged);
-          unawaited(review.begin());
+          unawaited(review.refresh());
           notifyListeners();
           return review;
         }, onError: (Object _) => null);
@@ -221,19 +215,10 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
     if (review == null) return;
     review.session = sessionId;
     switch (event) {
-      case TurnStarted():
-        review.working = true;
       case TurnEnded():
-        review.working = isStreaming;
-        _lookTimer?.cancel();
-        unawaited(review.observe());
-      case FileEdited(:final change):
-        review.report(change);
-        _lookTimer?.cancel();
-        _lookTimer = Timer(
-          const Duration(milliseconds: 400),
-          () => unawaited(review.observe(full: false)),
-        );
+        unawaited(review.refresh());
+      case FileEdited(:final change, :final original):
+        review.report(change, original: original);
       default:
     }
   }
@@ -813,15 +798,22 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
     });
   }
 
-  /// The files the agent read or changed, absolute: where a file it names
-  /// by a path gone wrong (relative to some other folder) may be.
+  /// The files the agent read or changed (or was given: a picture a tool
+  /// returned, saved), absolute: what its text may link to outside the
+  /// project, and where a file it names by a path gone wrong (relative to
+  /// some other folder) may be.
   List<String> get filesSeen => _cached(
     #filesSeen,
     () => {
       for (var i = 0; i < _transcript.length; i++)
-        if (_transcript.itemAt(i) case ToolCallItem(:final path?)
-            when path.isNotEmpty)
-          _absolute(path),
+        if (_transcript.itemAt(i) case ToolCallItem(
+          :final path,
+          :final imageFiles,
+        )) ...[
+          if (path != null && path.isNotEmpty) _absolute(path),
+          // The pictures the CLI saved for it: the agent may link them.
+          for (final file in imageFiles) _absolute(file),
+        ],
       for (final edit in _transcript.edits) _absolute(edit.change.path),
     }.toList(),
   );
@@ -982,21 +974,10 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
       now: now,
       notes: editor == null ? const [] : _editorNotes(editor()),
     );
-    // A turn about to start, not one queued behind another: the project
-    // is snapshotted, so that what the agent does is told apart. Not
-    // waited on: the agent takes a while before it edits anything, and
-    // the looks its edits bring on are queued behind this one. (A review
-    // still opening takes its own snapshot as it opens.)
+    // A turn about to start: what was put back since the last is no
+    // longer pending.
     if (_review case final review? when !isStreaming) {
-      review.working = true;
-      // Taken late, it would count some of the agent's work as what was
-      // there: the review gives way to what the kernel reports.
-      unawaited(
-        review.begin().timeout(
-          const Duration(seconds: 30),
-          onTimeout: () => review.abandon('The snapshot took too long.'),
-        ),
-      );
+      unawaited(review.refresh());
     }
     _kernel.send(turn);
   }
@@ -1095,7 +1076,6 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
   void dispose() {
     _disposed = true;
     _quietTimer?.cancel();
-    _lookTimer?.cancel();
     _review
       ?..removeListener(_reviewChanged)
       ..dispose();

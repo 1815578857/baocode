@@ -33,10 +33,7 @@ class _Review extends ChangeReview {
 
   // Never looks at the store (a no-op), so it never fails.
   @override
-  Future<void> begin() async {}
-
-  @override
-  Future<void> observe({bool full = true}) async {}
+  Future<void> refresh() async {}
 
   @override
   Future<String> Function()? original(String path) =>

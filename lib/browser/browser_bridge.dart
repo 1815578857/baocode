@@ -89,8 +89,7 @@ class BrowserBridge extends ChangeNotifier {
 
   /// Whether a browser has connected, in this run or one before (a mark of
   /// its in the data folder).
-  bool get connectedBefore =>
-      _used ??= supported && File(_mark).existsSync();
+  bool get connectedBefore => _used ??= supported && File(_mark).existsSync();
   bool? _used;
 
   String get _mark => p.join(DataDirectory.current.browserDir, 'connected');

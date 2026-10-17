@@ -67,8 +67,7 @@ class TurnFooter extends StatelessWidget {
           text: AgentStep.formatDuration(worked, l10n: l10n),
           hint: l10n.turnDurationHint,
         ),
-      if (cost != null)
-        _Stat(text: formatCost(cost), hint: l10n.turnCostHint),
+      if (cost != null) _Stat(text: formatCost(cost), hint: l10n.turnCostHint),
     ];
     return SelectionContainer.disabled(
       child: Padding(
@@ -77,10 +76,7 @@ class TurnFooter extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (answer case final answer?) _CopyButton(text: answer),
-            for (final stat in stats) ...[
-              const SizedBox(width: 12),
-              stat,
-            ],
+            for (final stat in stats) ...[const SizedBox(width: 12), stat],
           ],
         ),
       ),
