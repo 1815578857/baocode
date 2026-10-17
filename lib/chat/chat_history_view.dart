@@ -178,7 +178,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   /// Row [index] as text, as it shows: the lines of the folds it begins,
   /// and its item unless folded away.
   String _plainTextOf(int index) {
-    final item = _feed.itemAt(index);
+    final item = _shownAt(index);
     final row = _folds.rowAt(index, item, _isFoldOpen);
     final l10n = context.l10n;
     return [
@@ -568,7 +568,10 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   }
 
   bool _isExpanded(int index) =>
-      _expanded[index] ?? defaultExpanded(_feed.itemAt(index));
+      _expanded[index] ?? defaultExpanded(_shownAt(index));
+
+  /// What row [index] shows: a run of thoughts as one (see [StepFolds]).
+  ChatItem _shownAt(int index) => _folds.shownAt(index, _feed.itemAt(index));
 
   void _toggle(int index) {
     // A thought opens with its own motion.
@@ -1771,7 +1774,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
       _feed.itemAt(index) is UserMessageItem ? 0 : UserMessageBubble.radius;
 
   Widget _buildItem(int index) {
-    final item = _feed.itemAt(index);
+    final item = _shownAt(index);
     if (index == _editingIndex) {
       return AnimatedBuilder(
         animation: _editorReveal,
@@ -1897,7 +1900,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
 
   /// Row [index] as the minimap samples it.
   ChatMinimapRow _minimapRow(int index) {
-    final item = _feed.itemAt(index);
+    final item = _shownAt(index);
     final row = _folds.rowAt(index, item, _isFoldOpen);
     final hidden = row.work == null && row.steps == null && !row.item;
     return (

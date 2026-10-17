@@ -200,6 +200,73 @@ void main() {
     });
   });
 
+  group('thoughts one after another', () {
+    const empty = ThinkingItem(text: '', tokens: 0, seconds: 12);
+    const titled = ThinkingItem(
+      text: '**Plan**\nFirst.',
+      tokens: 5,
+      seconds: 3,
+    );
+
+    test('show as one, in the first one\'s row', () {
+      final items = <ChatItem>[_prompt(null), _read, empty, titled, empty];
+      final folds = _fold(items);
+      expect(
+        [
+          for (var i = 1; i < items.length; i++)
+            folds.rowAt(i, items[i], (_) => true).item,
+        ],
+        [true, true, false, false],
+      );
+      final shown = folds.shownAt(2, items[2]) as ThinkingItem;
+      expect(shown.text, '**Plan**\nFirst.');
+      expect(shown.seconds, 27);
+      expect(shown.tokens, 5);
+      // The others are as they are.
+      expect(folds.shownAt(1, items[1]), same(_read));
+      expect(folds.shownAt(3, items[3]), same(titled));
+    });
+
+    test('anything between them keeps them apart', () {
+      final items = <ChatItem>[_prompt(null), empty, _read, empty];
+      final folds = _fold(items);
+      expect(folds.shownAt(1, items[1]), same(empty));
+      expect(folds.rowAt(3, items[3], (_) => true).item, isTrue);
+    });
+
+    test('streaming while the last is, its time counting from the first', () {
+      final now = DateTime(2026, 10, 17, 12);
+      final live = ThinkingItem(text: '', tokens: 0, startedAt: now);
+      final merged = mergeThoughts([empty, empty, live]);
+      expect(merged.streaming, isTrue);
+      expect(merged.startedAt, now.subtract(const Duration(seconds: 24)));
+    });
+
+    test('a closed run under way shows them as it goes', () {
+      final live = ThinkingItem(text: '', tokens: 0, startedAt: DateTime(2026));
+      final items = <ChatItem>[
+        _prompt(null),
+        _read,
+        _grep,
+        empty,
+        live,
+        const LiveStatusItem('Planning next move', visible: false),
+      ];
+      final folds = _fold(items, live: true);
+      bool shown(int i) => folds.rowAt(i, items[i], (_) => false).item;
+      expect(
+        [for (var i = 1; i < 5; i++) shown(i)],
+        [false, false, true, false],
+      );
+    });
+
+    test('a turn ending in them ends at their row', () {
+      final items = [_prompt(), _read, empty, empty];
+      expect(_fold(items).turnEndingAt(2), 0);
+      expect(_fold(items).turnEndingAt(3), isNull);
+    });
+  });
+
   test('a run counts what its steps did; commands by their words', () {
     final tally = StepTally([
       _thought,
@@ -246,9 +313,10 @@ void main() {
       const queued = UserMessageItem(text: 'Next', queued: true);
       final items = [_prompt(), _read, _answer, _prompt(), _read, queued];
       final folds = _fold(items);
-      expect([
-        for (var i = 0; i < items.length; i++) folds.turnEndingAt(i),
-      ], [null, null, 0, null, 3, null]);
+      expect(
+        [for (var i = 0; i < items.length; i++) folds.turnEndingAt(i)],
+        [null, null, 0, null, 3, null],
+      );
     });
 
     test('the turn under way, and one not timed, end nowhere', () {
