@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:path/path.dart' as p;
 
 import '../chat/chat_models.dart';
 import '../chat/side_panel/file_link_menu.dart';
@@ -62,6 +63,9 @@ String browserStepSummary(
     case 'browser_evaluate':
       return _clip(text('expression')?.split('\n').first ?? '', 80);
     case 'browser_act':
+      // A kept script: its name.
+      final file = text('file');
+      if (input['steps'] == null && file != null) return p.basename(file);
       // Each step's aim: “Reply” → “Great point” → Enter.
       return [
         for (final step

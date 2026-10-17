@@ -219,7 +219,8 @@ final _actionTools = [
         'it) | ms}; {action: "navigate", url | back | forward | reload: '
         'true}; {action: "upload", files (paths), ref | text | selector: a '
         'file input, or what opens the file chooser}. Elements may be aimed '
-        'by selector (CSS) too.',
+        'by selector (CSS) too. Or file: a .json of steps kept to do again '
+        '(a recording\'s, from browser_watch), its paths beside it.',
     inputSchema: {
       'type': 'object',
       'properties': {
@@ -245,19 +246,43 @@ final _actionTools = [
             'required': ['action'],
           },
         },
+        'file': {
+          'type': 'string',
+          'description':
+              'Instead of steps: a .json file of them (an array, or '
+              '{steps: [...]}).',
+        },
         'screenshot': _screenshotProperty,
       },
-      'required': ['tabId', 'steps'],
+      'required': ['tabId'],
     },
-    run: (input, call) => _acting(input, [
-      for (final step in (input['steps'] as List? ?? const []).cast<Map>())
-        {
-          ...step.cast<String, Object?>(),
-          // Files from the agent's folder.
-          if (step['files'] case final List files)
-            'files': [for (final f in files) _path('$f', call.cwd)],
-        },
-    ]),
+    run: (input, call) async {
+      var steps = input['steps'] as List? ?? const [];
+      // Files from the agent's folder, or from beside the steps' file.
+      var folder = call.cwd;
+      if (input['file'] case final String name when steps.isEmpty) {
+        final file = File(_path(name, call.cwd));
+        if (!file.existsSync()) throw BrowserError('No file ${file.path}.');
+        try {
+          steps = switch (jsonDecode(await file.readAsString())) {
+            final List list => list,
+            {'steps': final List list} => list,
+            _ => throw const FormatException('neither an array nor {steps}'),
+          };
+        } on FormatException catch (error) {
+          throw BrowserError('${file.path} is not steps: ${error.message}');
+        }
+        folder = file.parent.path;
+      }
+      return _acting(input, [
+        for (final step in steps.cast<Map>())
+          {
+            ...step.cast<String, Object?>(),
+            if (step['files'] case final List files)
+              'files': [for (final f in files) _path('$f', folder)],
+          },
+      ]);
+    },
   ),
 ];
 

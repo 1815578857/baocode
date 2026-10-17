@@ -300,7 +300,7 @@ class BrowserWatching extends ChangeNotifier {
         'browser_network save.',
       );
     }
-    // As something to do again: browser_act's steps, and a Playwright test.
+    // As something to do again: browser_act's steps.
     final act = _actSteps();
     if (act.length > 1) {
       lines
@@ -308,17 +308,6 @@ class BrowserWatching extends ChangeNotifier {
         ..add(
           'To do it again: browser_act with steps ${_clip(jsonEncode(act), 6000)}',
         );
-      try {
-        final folder = Directory(
-          p.join(Directory.systemTemp.path, 'baocode-recordings'),
-        )..createSync(recursive: true);
-        final stamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-        final test = File(p.join(folder.path, 'recording-$stamp.spec.ts'));
-        await test.writeAsString(_playwright());
-        lines.add('As a Playwright test: ${test.path}');
-      } on Object {
-        // Steps alone.
-      }
     }
     // Pictures: of what went wrong first, then of the last; four at most.
     final shot = [
@@ -380,63 +369,6 @@ class BrowserWatching extends ChangeNotifier {
           _ => null,
         },
     ];
-  }
-
-  /// The steps as a Playwright test.
-  String _playwright() {
-    const roles = {
-      'button',
-      'link',
-      'textbox',
-      'searchbox',
-      'checkbox',
-      'radio',
-      'combobox',
-      'menuitem',
-      'tab',
-      'option',
-      'switch',
-    };
-    String quote(String? text) => jsonEncode(text ?? '');
-    String locate(WatchedStep s) =>
-        s.label != null && s.label!.isNotEmpty && roles.contains(s.role)
-        ? 'page.getByRole(${quote(s.role)}, { name: ${quote(s.label)} })'
-        : 'page.locator(${quote(s.selector)})';
-    final lines = [
-      "import { test, expect } from '@playwright/test';",
-      '',
-      '// Recorded by BaoCode: ${task.replaceAll('\n', ' ')}',
-      "test('recorded', async ({ page }) => {",
-    ];
-    for (final (i, s) in _steps.indexed) {
-      final line = switch (s.kind) {
-        'page' => 'await page.goto(${quote(s.value)});',
-        'navigate' when _followed(i) =>
-          'await expect(page).toHaveURL(${quote(s.value)});',
-        'navigate' => 'await page.goto(${quote(s.value)});',
-        'click' => 'await ${locate(s)}.click();',
-        'input' => switch ((s.role, s.value)) {
-          ('checkbox' || 'radio' || 'switch', 'checked') =>
-            'await ${locate(s)}.check();',
-          ('checkbox' || 'radio' || 'switch', _) =>
-            'await ${locate(s)}.uncheck();',
-          ('combobox', final value) =>
-            'await ${locate(s)}.selectOption({ label: ${quote(value)} });',
-          ('file', final value) =>
-            '// await ${locate(s)}.setInputFiles([${quote(value)}]);',
-          (_, '(hidden)') =>
-            "await ${locate(s)}.fill(process.env.PASSWORD ?? '');",
-          (_, final value) => 'await ${locate(s)}.fill(${quote(value)});',
-        },
-        'key' => 'await page.keyboard.press(${quote(s.value)});',
-        'scroll' when s.target == 'page' =>
-          'await page.mouse.wheel(0, ${int.tryParse(s.value ?? '') ?? 0}); // scrolled to y=${s.value}',
-        _ => null,
-      };
-      if (line != null) lines.add('  $line');
-    }
-    lines.add('});');
-    return '${lines.join('\n')}\n';
   }
 
   /// The page's listeners: what the user does, told through the binding.
@@ -642,9 +574,11 @@ final _watchTool = ClaudeSdkTool(
       'records their clicks, what they type (never passwords), keys, '
       'scrolls, the pages they go to; under each step, the requests it '
       'made (ids for browser_request) and the errors; pictures of what '
-      'some steps led to; and the steps to do it again (browser_act\'s, '
-      'and a Playwright test saved). Waits until they say they are done; '
-      'they see your task. Open '
+      'some steps led to; and browser_act\'s steps to do it again, in '
+      'their own browser. To keep it as a script, write those steps to a '
+      '.json file in the project (an array; edit it as wanted), done again '
+      'with browser_act\'s file. Waits until they say they are done; they see '
+      'your task. Open '
       'or pick the tab first (browser_open, browser_tabs). If the call '
       'answers that the user is still at it, call it again with the same '
       'tab to keep waiting.',

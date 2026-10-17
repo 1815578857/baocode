@@ -558,19 +558,22 @@ void main() {
       expect(report, contains('clicked button "Save" (#save)'));
       expect(report, contains('→ POST http://127.0.0.1:'));
       expect(report, contains('browser_act with steps'));
-      final test = RegExp(r'As a Playwright test: (\S+)')
+      expect(report, contains('"action":"type","text":"Ann","into":"Name"'));
+      expect(report, isNot(contains('Playwright')));
+
+      // Kept as a script, and done again from it.
+      final steps = RegExp(r'To do it again: browser_act with steps (.+)')
           .firstMatch(report)![1]!;
-      final spec = File(test).readAsStringSync();
-      expect(
-        spec,
-        contains(
-          "page.getByRole(\"textbox\", { name: \"Name\" }).fill(\"Ann\")",
-        ),
-      );
-      expect(
-        spec,
-        contains("page.getByRole(\"button\", { name: \"Save\" }).click()"),
-      );
+      File(p.join(profile.path, 'scripts', 'save.json'))
+        ..createSync(recursive: true)
+        ..writeAsStringSync(steps);
+      await evaluate("document.getElementById('name').value = ''");
+      final again = await call('browser_act', {
+        'tabId': tabId,
+        'file': 'scripts/save.json',
+      });
+      expect(again, contains('Typed into textbox "Name"'));
+      expect(await evaluate("document.getElementById('name').value"), 'Ann');
 
       await call('browser_close', {'tabId': tabId});
     },

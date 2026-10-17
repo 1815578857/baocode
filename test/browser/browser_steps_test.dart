@@ -208,6 +208,13 @@ void main() {
       '“Reply” → “yo” → Enter',
     );
     expect(
+      browserStepSummary('browser_act', {
+        'tabId': 1,
+        'file': 'scripts/baidu-weather.json',
+      }, null),
+      'baidu-weather.json',
+    );
+    expect(
       browserStepSummary('browser_scroll', {'tabId': 1, 'deltaY': -300}, null),
       '↑ 300',
     );
