@@ -47,6 +47,7 @@ class GitReviewStore implements ReviewStore {
 
   /// The store for [root], its repository under [checkpoints] (made the
   /// first time); null when Git cannot run or [root] is not a folder.
+  /// [checkpoints] is tidied from then on ([scheduleTidy]).
   static Future<GitReviewStore?> open(
     String root, {
     required String checkpoints,
@@ -59,6 +60,7 @@ class GitReviewStore implements ReviewStore {
         ? p.relative(checkpoints, from: root)
         : null;
     final store = GitReviewStore._(root, gitDir, own);
+    _opened.add(gitDir);
     try {
       if (!await File(p.join(gitDir, 'HEAD')).exists()) {
         await _initialize(gitDir, root);
@@ -81,6 +83,7 @@ class GitReviewStore implements ReviewStore {
     } on Object {
       return null;
     }
+    scheduleTidy(checkpoints);
     return store;
   }
 
@@ -838,4 +841,135 @@ class GitReviewStore implements ReviewStore {
   @override
   Future<void> forget(String session) =>
       _git(['update-ref', '-d', _ref(session)], ok: null);
+
+  // --- Tidying ---------------------------------------------------------------
+
+  /// How long a session's snapshots are kept after it last saved them:
+  /// past it, its changes can no longer be reviewed or undone.
+  static Duration keepFor = const Duration(days: 30);
+
+  /// How long objects no session keeps stay, for a conversation at work
+  /// that has taken snapshots but not saved them yet.
+  static const _grace = Duration(days: 2);
+
+  /// The repositories of the stores [open] gave in this process: never
+  /// deleted from under them.
+  static final Set<String> _opened = {};
+
+  /// Where [tidy] notes when it last ran, in the checkpoints folder.
+  static const _tidiedFile = '.tidied';
+
+  /// Clears out [checkpoints] (the folder [open] keeps the projects'
+  /// repositories in), at most once a [every]: the sessions not saved for
+  /// [keepFor] go, a repository with none left and unused as long is
+  /// deleted, and one that lost some is repacked without the objects no
+  /// session keeps. Never throws; what it cannot read or delete is left.
+  static Future<void> tidy(
+    String checkpoints, {
+    Duration every = const Duration(days: 1),
+    DateTime? now,
+  }) async {
+    now ??= DateTime.now();
+    checkpoints = p.normalize(p.absolute(checkpoints));
+    try {
+      final folder = Directory(checkpoints);
+      if (!await folder.exists() || !await _gitUsable) return;
+      final tidied = File(p.join(checkpoints, _tidiedFile));
+      if (await tidied.exists() &&
+          now.difference(await tidied.lastModified()) < every) {
+        return;
+      }
+      await tidied.writeAsString('${now.toIso8601String()}\n');
+      final cutoff = now.subtract(keepFor);
+      await for (final entry in folder.list(followLinks: false)) {
+        if (entry is! Directory) continue;
+        final gitDir = entry.path;
+        if (!await File(p.join(gitDir, 'HEAD')).exists()) continue;
+        // After whatever a store open on it does in this process.
+        final done = (_locks[gitDir] ?? Future.value()).then(
+          (_) => _tidyRepository(gitDir, cutoff),
+        );
+        _locks[gitDir] = done.then((_) {}, onError: (Object _) {});
+        await done.catchError((Object _) {});
+      }
+    } on Object {
+      // Tried again next time.
+    }
+  }
+
+  static final Map<String, Timer> _tidying = {};
+
+  /// Has [tidy] run on [checkpoints] a minute from now, then every few
+  /// hours (it does its work once a day), for as long as the process runs.
+  static void scheduleTidy(String checkpoints) {
+    checkpoints = p.normalize(p.absolute(checkpoints));
+    if (_tidying.containsKey(checkpoints)) return;
+    _tidying[checkpoints] = Timer(const Duration(minutes: 1), () {
+      unawaited(tidy(checkpoints));
+      _tidying[checkpoints] = Timer.periodic(
+        const Duration(hours: 6),
+        (_) => unawaited(tidy(checkpoints)),
+      );
+    });
+  }
+
+  static Future<void> _tidyRepository(String gitDir, DateTime cutoff) async {
+    Future<ProcessResult> git(List<String> arguments, {String? input}) async {
+      if (input == null) {
+        return Process.run('git', ['--git-dir=$gitDir', ...arguments]);
+      }
+      final process = await Process.start('git', [
+        '--git-dir=$gitDir',
+        ...arguments,
+      ]);
+      final out = process.stdout.drain<void>();
+      final err = process.stderr.drain<void>();
+      process.stdin.write(input);
+      await process.stdin.close();
+      final code = await process.exitCode;
+      await Future.wait([out, err]);
+      return ProcessResult(process.pid, code, '', '');
+    }
+
+    final listed = await git([
+      'for-each-ref',
+      '--format=%(committerdate:unix) %(refname)',
+      'refs/baocode/sessions/',
+    ]);
+    if (listed.exitCode != 0) return;
+    final stale = <String>[];
+    var kept = 0;
+    for (final line in LineSplitter.split('${listed.stdout}')) {
+      final space = line.indexOf(' ');
+      if (space < 0) continue;
+      final saved = int.tryParse(line.substring(0, space));
+      if (saved == null) continue;
+      if (DateTime.fromMillisecondsSinceEpoch(saved * 1000).isBefore(cutoff)) {
+        stale.add(line.substring(space + 1));
+      } else {
+        kept++;
+      }
+    }
+    if (kept == 0) {
+      // Its index is written with each snapshot: one as old is of a project
+      // no agent has worked in since (one at work may not have saved yet).
+      final index = File(p.join(gitDir, 'index'));
+      final used = await index.exists()
+          ? await index.lastModified()
+          : await Directory(gitDir).stat().then((stat) => stat.modified);
+      if (used.isBefore(cutoff) && !_opened.contains(gitDir)) {
+        await Directory(gitDir).delete(recursive: true);
+        return;
+      }
+    }
+    if (stale.isEmpty) return;
+    final deleted = await git([
+      'update-ref',
+      '--stdin',
+    ], input: stale.map((ref) => 'delete $ref\n').join());
+    if (deleted.exitCode != 0) return;
+    // Their snapshots out of the packs; the rest packed (`gc --auto`, as
+    // the sessions save, only packs).
+    await git(['gc', '--quiet', '--prune=${_grace.inDays}.days.ago']);
+  }
 }
