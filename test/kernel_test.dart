@@ -1139,6 +1139,11 @@ void main() {
         ]);
         // Only the message that starts it says so.
         kernel.send(const KernelTurn(id: 'u3', text: 'And test it'));
+        cli.push({
+          'type': 'command_lifecycle',
+          'command_uuid': 'u2',
+          'state': 'started',
+        });
         await pumpEventQueue();
         expect((cli.users.last['message'] as Map)['content'], [
           {'type': 'text', 'text': 'And test it'},
@@ -1453,14 +1458,17 @@ void main() {
       kernel
         ..send(const KernelTurn(id: 'u1', text: 'first'))
         ..send(const KernelTurn(id: 'u2', text: 'second'))
-        ..send(const KernelTurn(id: 'u3', text: 'third'));
+        ..send(const KernelTurn(id: 'u3', text: 'third'))
+        ..send(const KernelTurn(id: 'u4', text: 'fourth'));
       await pumpEventQueue();
-      expect(cli.users.map((m) => m['uuid']), ['u1', 'u2', 'u3']);
+      // One waits in the CLI at a time: it takes up all it queued as one
+      // turn.
+      expect(cli.users.map((m) => m['uuid']), ['u1', 'u2']);
       // Each after the turn before it, not folded into it.
       expect(cli.users.map((m) => m['priority']), everyElement('later'));
       List<String> queued() => [for (final (id, _) in transcript.queued) id];
       // Waiting apart, not in the conversation yet.
-      expect(queued(), ['u2', 'u3']);
+      expect(queued(), ['u2', 'u3', 'u4']);
       expect(transcript.indexOf('u2'), isNull);
       cli.push({
         'type': 'assistant',
@@ -1474,9 +1482,10 @@ void main() {
       });
       await pumpEventQueue();
 
-      expect(await kernel.cancelQueued('u3'), isTrue);
-      expect(cli.requests('cancel_async_message').single['message_uuid'], 'u3');
-      expect(queued(), ['u2']);
+      // Not given the CLI yet: taken back here.
+      expect(await kernel.cancelQueued('u4'), isTrue);
+      expect(cli.requests('cancel_async_message'), isEmpty);
+      expect(queued(), ['u2', 'u3']);
 
       cli
         ..push({'type': 'result', 'subtype': 'success', 'is_error': false})
@@ -1486,11 +1495,17 @@ void main() {
           'state': 'started',
         });
       await pumpEventQueue();
-      expect(queued(), isEmpty);
+      expect(queued(), ['u3']);
+      // The next given the CLI once the one before it is taken up.
+      expect(cli.users.map((m) => m['uuid']), ['u1', 'u2', 'u3']);
       // Taken up: after what the turn before it said while it waited.
       expect(transcript.indexOf('u2'), 2);
       expect(transcript.length, 3);
       expect(transcript.activeTurn, 'u2');
+
+      expect(await kernel.cancelQueued('u3'), isTrue);
+      expect(cli.requests('cancel_async_message').single['message_uuid'], 'u3');
+      expect(queued(), isEmpty);
 
       kernel
         ..cancel()
@@ -1533,11 +1548,13 @@ void main() {
         ..send(const KernelTurn(id: 'u3', text: 'third'));
       await pumpEventQueue();
 
-      // The next anyway: only the turn running is stopped.
+      // The next anyway, the one after it held: only the turn running is
+      // stopped, and it is taken up alone.
       kernel.sendQueuedNow('u2');
       await pumpEventQueue();
       expect(cli.requests('interrupt'), hasLength(1));
       expect(cli.requests('cancel_async_message'), isEmpty);
+      expect(cli.users.map((m) => m['uuid']), ['u1', 'u2']);
 
       cli.push({
         'type': 'command_lifecycle',
@@ -1545,21 +1562,24 @@ void main() {
         'state': 'started',
       });
       await pumpEventQueue();
+      expect(cli.users.map((m) => m['uuid']), ['u1', 'u2', 'u3']);
       kernel.send(const KernelTurn(id: 'u4', text: 'fourth'));
       await pumpEventQueue();
       kernel.sendQueuedNow('u4');
       await pumpEventQueue();
+      // Held, it is taken back here; the one in the CLI there.
       expect(
         cli.requests('cancel_async_message').map((r) => r['message_uuid']),
-        ['u4', 'u3'],
+        ['u3'],
       );
-      // Sent again, in its new place: it first, the turn stopped for it.
-      expect(cli.users.skip(4).map((m) => (m['message'] as Map)['content']), [
+      // Sent again, in its new place: it first, the turn stopped for it,
+      // the other held until it is taken up.
+      List<Object?> contents() => [
+        for (final m in cli.users.skip(3)) (m['message'] as Map)['content'],
+      ];
+      expect(contents(), [
         [
           {'type': 'text', 'text': 'fourth'},
-        ],
-        [
-          {'type': 'text', 'text': 'third'},
         ],
       ]);
       expect(cli.requests('interrupt'), hasLength(2));
@@ -1567,6 +1587,22 @@ void main() {
         [for (final (_, item) in transcript.queued) item.text],
         ['fourth', 'third'],
       );
+
+      cli.push({
+        'type': 'command_lifecycle',
+        'command_uuid': cli.users.last['uuid'],
+        'state': 'started',
+      });
+      await pumpEventQueue();
+      expect(contents(), [
+        [
+          {'type': 'text', 'text': 'fourth'},
+        ],
+        [
+          {'type': 'text', 'text': 'third'},
+        ],
+      ]);
+      expect([for (final (_, item) in transcript.queued) item.text], ['third']);
       kernel.dispose();
     });
 
@@ -2988,6 +3024,12 @@ void main() {
       expect(modesSent(), ['plan', 'acceptEdits', 'acceptEdits']);
       kernel.send(const KernelTurn(id: 'u2', text: 'fix it'));
       kernel.send(const KernelTurn(id: 'u3', text: 'and test it'));
+      // Given the CLI once the one before it is taken up.
+      cli.push({
+        'type': 'command_lifecycle',
+        'command_uuid': 'u2',
+        'state': 'started',
+      });
       await pumpEventQueue();
       expect(notes(1), [contains('left Ask mode')]);
       expect(notes(2), isEmpty);

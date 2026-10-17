@@ -735,6 +735,7 @@ class ClaudeCodeKernel
     }
     _sent[turn.id] = turn;
     final busy = _turn != null;
+    final hold = busy && _holds;
     if (busy) {
       _queued.add(turn.id);
     } else {
@@ -753,8 +754,42 @@ class ClaudeCodeKernel
         UserMessageItem(text: turn.text, queued: busy, images: turn.images),
       ),
     );
-    // Taken now: the message may wait for the CLI to start.
+    // Taken now, as the message was sent.
     final ask = _work == 'ask';
+    if (hold) {
+      _held[turn.id] = ask;
+    } else {
+      _write(turn, ask: ask);
+    }
+  }
+
+  /// Queued messages not given to the CLI yet, with whether each was sent
+  /// to be answered only ([_askNote]). The CLI takes up all it queued as one
+  /// turn: one of them waits there at a time (see [_holds]), the rest here.
+  final Map<String, bool> _held = {};
+
+  /// Whether a message queued now waits in [_held]: while another waits in
+  /// the CLI, unless messages join the turn running (then all wait there,
+  /// but for one sent now, to be taken up alone).
+  bool get _holds {
+    final waiting = _queued.where((id) => !_held.containsKey(id));
+    return waiting.any((id) => _sent[id]?.now ?? false) ||
+        (waiting.isNotEmpty &&
+            QueuedMessages.current() == QueuedMessages.afterTurn);
+  }
+
+  /// Gives the CLI the messages held for it, as far as [_holds] lets it: one
+  /// waiting there was taken up, or taken back.
+  void _release() {
+    while (_held.isNotEmpty && !_holds) {
+      final MapEntry(key: id, value: ask) = _held.entries.first;
+      _held.remove(id);
+      if (_sent[id] case final turn?) _write(turn, ask: ask);
+    }
+  }
+
+  void _write(KernelTurn turn, {required bool ask}) {
+    // The message may wait for the CLI to start.
     final askEnded = _inAsk && !ask;
     _inAsk = ask;
     _whenReady((transport) {
@@ -858,7 +893,13 @@ class ClaudeCodeKernel
 
   @override
   Future<bool> cancelQueued(String turnId) async {
-    if (!_queued.contains(turnId) || !_running) return false;
+    if (!_queued.contains(turnId)) return false;
+    if (_held.remove(turnId) != null) {
+      _queued.remove(turnId);
+      emit(ItemRemoved(nextSeq, turnId));
+      return true;
+    }
+    if (!_running) return false;
     try {
       final response = await _control!.request('cancel_async_message', {
         'message_uuid': turnId,
@@ -870,26 +911,36 @@ class ClaudeCodeKernel
     // The CLI tells of it as cancelled before it answers: then already
     // taken out (see _lifecycle).
     if (_queued.remove(turnId)) emit(ItemRemoved(nextSeq, turnId));
+    _release();
     return true;
   }
 
   @override
   void sendQueuedNow(String turnId) {
     if (!_queued.contains(turnId) || !_running) return;
-    final ahead = _queued.takeWhile((id) => id != turnId).toList();
-    // Next anyway: only the turn running is in the way.
-    if (ahead.isEmpty) {
+    final others = [
+      for (final id in _queued)
+        if (id != turnId) id,
+    ];
+    // The only one in the CLI, the others held: next anyway, only the turn
+    // running is in the way.
+    if (!_held.containsKey(turnId) && others.every(_held.containsKey)) {
       cancel();
       return;
     }
-    // The CLI runs what it queued in the order sent: those ahead are taken
-    // back, and sent again after it.
+    // The CLI takes up all it queued as one turn, in the order sent: the
+    // others are taken back too, and sent again after it, held until it is
+    // taken up. Those held first, for none to be given the CLI meanwhile.
+    final order = [turnId, ...others];
     unawaited(() async {
-      final taken = [
-        for (final id in [turnId, ...ahead])
+      final taken = {
+        for (final id in [
+          ...order.where(_held.containsKey),
+          ...order.where((id) => !_held.containsKey(id)),
+        ])
           if (await cancelQueued(id)) id,
-      ];
-      for (final id in taken) {
+      };
+      for (final id in order.where(taken.contains)) {
         final turn = _sent[id]!;
         send(
           KernelTurn(
@@ -1595,8 +1646,10 @@ class ClaudeCodeKernel
             !_stoppedTurns.contains(id)) {
           _beginTurn(id);
         }
+        _release();
       case 'cancelled':
         if (_queued.remove(id)) emit(ItemRemoved(nextSeq, id));
+        _release();
     }
   }
 
@@ -2082,6 +2135,7 @@ class ClaudeCodeKernel
       emit(ItemRemoved(nextSeq, id));
     }
     _queued.clear();
+    _held.clear();
     _translator.endTasks();
     if (_disposed) return;
     if (code == 0 && wasReady) {
