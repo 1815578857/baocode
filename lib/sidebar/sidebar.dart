@@ -1198,7 +1198,8 @@ class _SidebarState extends State<Sidebar>
   static const _listSlot = #list;
 
   Widget _buildList() {
-    if (_listedCurrent != _current) _rowsDirty = true;
+    final switched = !identical(_listedCurrent, _current);
+    if (switched) _rowsDirty = true;
     if (_rowsDirty) {
       _listedCurrent = _current;
       final groups = [
@@ -1250,6 +1251,13 @@ class _SidebarState extends State<Sidebar>
       _threadIndices = {
         for (final (index, row) in rows.indexed) ?row.thread: index,
       };
+      // Another agent shown, opened from wherever (a new one, the search,
+      // a shortcut): the rows picked follow it, not left on the one before.
+      if (switched && !_listSelection.values.contains(_current)) {
+        _listSelection.select(
+          _onPage || !_threadIndices.containsKey(_current) ? null : _current,
+        );
+      }
       _listSelection.values.retainWhere(_threadIndices.containsKey);
       if (!_threadIndices.containsKey(_listSelection.focused)) {
         _listSelection.focused = null;

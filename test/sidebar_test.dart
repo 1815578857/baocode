@@ -723,6 +723,36 @@ void main() {
     expect(outline?.border, isNotNull);
   });
 
+  testWidgets('the selection follows the agent opened from elsewhere, a new '
+      'one too', (tester) async {
+    final workspace = await pumpKept(
+      tester,
+      KeptCatalog([kept('a1', '/tmp/a', 1), kept('a2', '/tmp/a', 2)]),
+    );
+    IdeListRow rowOf(Finder title) => tester.widget<IdeListRow>(
+      find.ancestor(of: title, matching: find.byType(IdeListRow)),
+    );
+    final a1 = inSidebar(find.text('Chat a1'));
+    final a2 = inSidebar(find.text('Chat a2'));
+    await tester.tap(a1);
+    await tester.pumpAndSettle();
+    expect(rowOf(a1).selected, isTrue);
+
+    workspace.select(keptThread(workspace, 'a2'));
+    await tester.pumpAndSettle();
+    expect(rowOf(a1).selected, isFalse);
+    expect(rowOf(a2).selected, isTrue);
+
+    final created = workspace.create(project: workspace.selected.project);
+    await tester.pumpAndSettle();
+    expect(workspace.selected, same(created));
+    expect(rowOf(a2).selected, isFalse);
+    final rows = tester.widgetList<IdeListRow>(
+      inSidebar(find.byType(IdeListRow)),
+    );
+    expect(rows.where((row) => row.selected), hasLength(1));
+  });
+
   testWidgets('selected rows use the explorer colors as focus moves and '
       'Escape clears the highlight', (tester) async {
     final workspace = await pumpKept(
