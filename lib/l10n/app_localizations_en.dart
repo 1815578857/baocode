@@ -3285,6 +3285,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get explorerPreparingTransfer => 'Preparing files...';
 
   @override
+  String composerCopyToHostFailed(String error) {
+    return 'Couldn\'t copy the files to the remote host: $error';
+  }
+
+  @override
   String get explorerNewFile => 'New File...';
 
   @override
