@@ -1500,6 +1500,15 @@ class AppLocalizationsZh extends AppLocalizations {
       'emulate': '已模拟',
       'watch': '已看完你的操作',
       'act': '已执行',
+      'inspect': '已检查元素',
+      'sources': '已查看源码',
+      'breakpoints': '已设置断点',
+      'debugger': '已调试',
+      'intercept': '已拦截请求',
+      'storage': '已查看站点数据',
+      'dialog': '已应答弹窗',
+      'coverage': '已统计覆盖率',
+      'memory': '已分析内存',
       'other': '已使用浏览器',
     });
     return '$_temp0';
@@ -1531,6 +1540,15 @@ class AppLocalizationsZh extends AppLocalizations {
       'emulate': '正在模拟',
       'watch': '正在看你操作',
       'act': '正在执行',
+      'inspect': '正在检查元素',
+      'sources': '正在查看源码',
+      'breakpoints': '正在设置断点',
+      'debugger': '正在调试',
+      'intercept': '正在拦截请求',
+      'storage': '正在查看站点数据',
+      'dialog': '正在应答弹窗',
+      'coverage': '正在统计覆盖率',
+      'memory': '正在分析内存',
       'other': '正在使用浏览器',
     });
     return '$_temp0';

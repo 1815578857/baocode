@@ -136,6 +136,14 @@ class BrowserWatching extends ChangeNotifier {
   }
 
   void _add(WatchedStep step) {
+    // Typing on in a field, scrolling on: one step, its last.
+    final last = _steps.lastOrNull;
+    if (last != null &&
+        (step.kind == 'input' || step.kind == 'scroll') &&
+        last.kind == step.kind &&
+        last.selector == step.selector) {
+      _steps.removeLast();
+    }
     _steps.add(step);
     notifyListeners();
   }
@@ -150,7 +158,8 @@ class BrowserWatching extends ChangeNotifier {
       _add(WatchedStep(kind: 'closed', at: _now, target: ''));
       return finish();
     }
-    if (event.event != 'cdp') return;
+    // The page's own: not its frames' of other sites.
+    if (event.event != 'cdp' || event.message['sessionId'] != null) return;
     final params = (event.message['params'] as Map?) ?? const {};
     switch (event.message['method']) {
       case 'Runtime.bindingCalled' when params['name'] == _watchBinding:
@@ -160,12 +169,22 @@ class BrowserWatching extends ChangeNotifier {
         } on Object {
           return;
         }
+        // When the page says (the requests it made are told sooner than
+        // the step).
+        var at = _now;
+        if (step['time'] case final num time) {
+          final then = DateTime.fromMillisecondsSinceEpoch(time.round())
+              .difference(started);
+          if (then >= Duration.zero && then < at) at = then;
+        }
         final watched = WatchedStep(
           kind: step['type'] as String? ?? 'click',
-          at: _now,
+          at: at,
           target: step['target'] as String? ?? '',
           selector: step['selector'] as String?,
           value: step['value'] as String?,
+          role: step['role'] as String?,
+          label: step['label'] as String?,
         );
         _add(watched);
         if (watched.kind == 'click' || watched.kind == 'submit') {
@@ -207,6 +226,13 @@ class BrowserWatching extends ChangeNotifier {
   Future<List<Object?>> report({required bool finished}) async {
     final records = BrowserRecords.instance;
     final start = started;
+    const calls = {'XHR', 'Fetch', 'WebSocket', 'EventSource', 'Document'};
+    final requests = [
+      for (final r in records.requests(tab))
+        if (r.wall * 1000 >= start.millisecondsSinceEpoch &&
+            calls.contains(r.type))
+          r,
+    ];
     final errors = [
       for (final entry in records.console(tab))
         if (!entry.time.isBefore(start) &&
@@ -219,6 +245,7 @@ class BrowserWatching extends ChangeNotifier {
           ),
       for (final request in records.requests(tab))
         if (request.wall * 1000 >= start.millisecondsSinceEpoch &&
+            !calls.contains(request.type) &&
             (request.failure != null || (request.status ?? 0) >= 400))
           (
             time: DateTime.fromMillisecondsSinceEpoch(
@@ -230,14 +257,24 @@ class BrowserWatching extends ChangeNotifier {
           ),
     ]..sort((a, b) => a.time.compareTo(b.time));
     // Each after the step it followed.
-    final after = <int, List<String>>{};
-    for (final error in errors) {
-      final at = error.time.difference(start);
+    int stepAt(DateTime time) {
+      final at = time.difference(start);
       var index = 0;
       for (var i = 0; i < _steps.length; i++) {
         if (_steps[i].at <= at) index = i;
       }
-      (after[index] ??= []).add(error.text);
+      return index;
+    }
+
+    final after = <int, List<String>>{};
+    for (final error in errors) {
+      (after[stepAt(error.time)] ??= []).add(error.text);
+    }
+    // The requests to the server each step made: what it did.
+    final made = <int, List<NetworkRequest>>{};
+    for (final r in requests) {
+      final time = DateTime.fromMillisecondsSinceEpoch((r.wall * 1000).round());
+      (made[stepAt(time)] ??= []).add(r);
     }
     String seconds(Duration d) =>
         '${(d.inMilliseconds / 1000).toStringAsFixed(1)}s';
@@ -248,9 +285,41 @@ class BrowserWatching extends ChangeNotifier {
       'Steps (time since watching began):',
       for (final (i, step) in _steps.indexed) ...[
         '${i + 1}. [${seconds(step.at)}] ${step.describe()}',
+        for (final r in (made[i] ?? const <NetworkRequest>[]).take(8))
+          '   ${r.failure != null || (r.status ?? 0) >= 400 ? '!' : '→'} '
+              '${r.method} ${_clip(r.url, 160)} ${r.status ?? r.failure ?? 'pending'} '
+              '(${r.type}, ${r.id})',
+        if ((made[i]?.length ?? 0) > 8)
+          '   … ${made[i]!.length - 8} more (browser_network)',
         for (final error in after[i] ?? const <String>[]) '   ! $error',
       ],
     ];
+    if (requests.isNotEmpty) {
+      lines.add(
+        'Read a request with browser_request (its id); all of them: '
+        'browser_network save.',
+      );
+    }
+    // As something to do again: browser_act's steps, and a Playwright test.
+    final act = _actSteps();
+    if (act.length > 1) {
+      lines
+        ..add('')
+        ..add(
+          'To do it again: browser_act with steps ${_clip(jsonEncode(act), 6000)}',
+        );
+      try {
+        final folder = Directory(
+          p.join(Directory.systemTemp.path, 'baocode-recordings'),
+        )..createSync(recursive: true);
+        final stamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+        final test = File(p.join(folder.path, 'recording-$stamp.spec.ts'));
+        await test.writeAsString(_playwright());
+        lines.add('As a Playwright test: ${test.path}');
+      } on Object {
+        // Steps alone.
+      }
+    }
     // Pictures: of what went wrong first, then of the last; four at most.
     final shot = [
       for (final (i, step) in _steps.indexed)
@@ -277,20 +346,130 @@ class BrowserWatching extends ChangeNotifier {
     return blocks;
   }
 
+  /// Whether [i]'s navigation followed from the step before it (a click, a
+  /// key): not one to do again.
+  bool _followed(int i) {
+    if (i == 0) return false;
+    final before = _steps[i - 1];
+    return const {'click', 'key', 'submit', 'input'}.contains(before.kind) &&
+        _steps[i].at - before.at < const Duration(seconds: 4);
+  }
+
+  /// The steps as browser_act's, to do again.
+  List<Map<String, Object?>> _actSteps() {
+    Map<String, Object?> aim(WatchedStep s, {String key = 'text'}) =>
+        s.label != null && s.label!.isNotEmpty && s.role != null
+        ? {key: s.label, 'role': s.role}
+        : {'selector': s.selector};
+    return [
+      for (final (i, s) in _steps.indexed)
+        ?switch (s.kind) {
+          'page' => {'action': 'navigate', 'url': s.value},
+          'navigate' when !_followed(i) => {
+            'action': 'navigate',
+            'url': s.value,
+          },
+          'click' => {'action': 'click', ...aim(s)},
+          'input' when s.role == 'textbox' || s.role == 'searchbox' => {
+            'action': 'type',
+            'text': s.value == '(hidden)' ? '<the password>' : s.value,
+            ...aim(s, key: 'into'),
+          },
+          'input' => {'action': 'click', ...aim(s)},
+          'key' => {'action': 'press', 'key': s.value},
+          _ => null,
+        },
+    ];
+  }
+
+  /// The steps as a Playwright test.
+  String _playwright() {
+    const roles = {
+      'button',
+      'link',
+      'textbox',
+      'searchbox',
+      'checkbox',
+      'radio',
+      'combobox',
+      'menuitem',
+      'tab',
+      'option',
+      'switch',
+    };
+    String quote(String? text) => jsonEncode(text ?? '');
+    String locate(WatchedStep s) =>
+        s.label != null && s.label!.isNotEmpty && roles.contains(s.role)
+        ? 'page.getByRole(${quote(s.role)}, { name: ${quote(s.label)} })'
+        : 'page.locator(${quote(s.selector)})';
+    final lines = [
+      "import { test, expect } from '@playwright/test';",
+      '',
+      '// Recorded by BaoCode: ${task.replaceAll('\n', ' ')}',
+      "test('recorded', async ({ page }) => {",
+    ];
+    for (final (i, s) in _steps.indexed) {
+      final line = switch (s.kind) {
+        'page' => 'await page.goto(${quote(s.value)});',
+        'navigate' when _followed(i) =>
+          'await expect(page).toHaveURL(${quote(s.value)});',
+        'navigate' => 'await page.goto(${quote(s.value)});',
+        'click' => 'await ${locate(s)}.click();',
+        'input' => switch ((s.role, s.value)) {
+          ('checkbox' || 'radio' || 'switch', 'checked') =>
+            'await ${locate(s)}.check();',
+          ('checkbox' || 'radio' || 'switch', _) =>
+            'await ${locate(s)}.uncheck();',
+          ('combobox', final value) =>
+            'await ${locate(s)}.selectOption({ label: ${quote(value)} });',
+          ('file', final value) =>
+            '// await ${locate(s)}.setInputFiles([${quote(value)}]);',
+          (_, '(hidden)') =>
+            "await ${locate(s)}.fill(process.env.PASSWORD ?? '');",
+          (_, final value) => 'await ${locate(s)}.fill(${quote(value)});',
+        },
+        'key' => 'await page.keyboard.press(${quote(s.value)});',
+        'scroll' when s.target == 'page' =>
+          'await page.mouse.wheel(0, ${int.tryParse(s.value ?? '') ?? 0}); // scrolled to y=${s.value}',
+        _ => null,
+      };
+      if (line != null) lines.add('  $line');
+    }
+    lines.add('});');
+    return '${lines.join('\n')}\n';
+  }
+
   /// The page's listeners: what the user does, told through the binding.
   /// Their own doings alone (trusted events), a password never.
   static const _watchScript = r'''
 (() => {
   if (window.__baoWatch || typeof window.__baoWatchStep !== 'function') return;
-  const send = (step) => { try { window.__baoWatchStep(JSON.stringify(step)); } catch (e) {} };
+  const send = (step) => { try { window.__baoWatchStep(JSON.stringify({ ...step, time: Date.now() })); } catch (e) {} };
   const clip = (t, n) => { t = (t || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n) + '…' : t; };
   const field = (e) => ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.tagName);
-  const name = (e) => {
-    const kind = e.getAttribute('role') || (e.tagName === 'INPUT' ? `input[${e.type}]` : e.tagName.toLowerCase());
-    const label = clip(e.getAttribute('aria-label') ||
+  const labelOf = (e) => clip(e.getAttribute('aria-label') ||
       (field(e) ? (e.labels && e.labels[0] && e.labels[0].innerText) || e.getAttribute('placeholder') || e.getAttribute('name') : e.innerText) ||
       e.getAttribute('title') || e.getAttribute('alt') || '', 60);
+  const name = (e) => {
+    const kind = e.getAttribute('role') || (e.tagName === 'INPUT' ? `input[${e.type}]` : e.tagName.toLowerCase());
+    const label = labelOf(e);
     return label ? `${kind} ${JSON.stringify(label)}` : kind;
+  };
+  // Its ARIA role, as a test finds it.
+  const roleOf = (e) => {
+    const r = e.getAttribute('role');
+    if (r) return r;
+    const tag = e.tagName.toLowerCase();
+    if (tag === 'input') {
+      if (['checkbox', 'radio', 'file'].includes(e.type)) return e.type;
+      if (['button', 'submit', 'reset', 'image'].includes(e.type)) return 'button';
+      return e.type === 'search' ? 'searchbox' : 'textbox';
+    }
+    if (tag === 'textarea' || e.isContentEditable) return 'textbox';
+    if (tag === 'select') return 'combobox';
+    if (tag === 'a') return 'link';
+    if (tag === 'button' || tag === 'summary') return 'button';
+    return tag;
   };
   const selector = (e) => {
     if (e.id) return '#' + CSS.escape(e.id);
@@ -312,40 +491,84 @@ class BrowserWatching extends ChangeNotifier {
   };
   const actionable = 'a, button, input, select, textarea, label, summary, [role], [onclick], [contenteditable=""], [contenteditable=true]';
   const target = (e) => (e && e.closest && e.closest(actionable)) || e;
+  const about = (e) => ({ target: name(e), selector: selector(e), role: roleOf(e), label: labelOf(e) });
+  // What is typed, told once the typing stops (or something else is done).
+  const typed = (e) => field(e) && !['checkbox', 'radio', 'file'].includes(e.type) && e.tagName !== 'SELECT';
+  const editable = (e) => { while (e.parentElement && e.parentElement.isContentEditable) e = e.parentElement; return e; };
+  const pending = new Map();
+  const valueOf = (e) => e.isContentEditable ? clip(e.innerText, 300) : e.type === 'password' ? '(hidden)' : clip(e.value, 300);
+  const flush = (e) => {
+    if (!pending.has(e)) return;
+    clearTimeout(pending.get(e));
+    pending.delete(e);
+    send({ type: 'input', ...about(e), value: valueOf(e) });
+  };
+  const flushAll = () => { for (const e of Array.from(pending.keys())) flush(e); };
+  const scrolls = new Map();
   const listeners = {
+    input: (ev) => {
+      if (!ev.isTrusted || !(ev.target instanceof Element)) return;
+      let e = ev.target;
+      if (e.isContentEditable) e = editable(e);
+      else if (!typed(e)) return;
+      clearTimeout(pending.get(e));
+      pending.set(e, setTimeout(() => flush(e), 800));
+    },
     click: (ev) => {
       if (!ev.isTrusted || !(ev.target instanceof Element)) return;
+      flushAll();
       const e = target(ev.target);
       // A field's own click: what is typed in it says more.
       if (field(e) && !['checkbox', 'radio', 'submit', 'button', 'file'].includes(e.type)) return;
-      send({ type: 'click', target: name(e), selector: selector(e) });
+      if (e.isContentEditable) return;
+      send({ type: 'click', ...about(e) });
     },
     change: (ev) => {
       const e = ev.target;
       if (!ev.isTrusted || !(e instanceof Element) || !field(e)) return;
-      const value = e.type === 'password' ? '(hidden)'
-        : e.type === 'checkbox' || e.type === 'radio' ? (e.checked ? 'checked' : 'unchecked')
+      if (typed(e)) return flush(e);
+      const value = e.type === 'checkbox' || e.type === 'radio' ? (e.checked ? 'checked' : 'unchecked')
         : e.tagName === 'SELECT' ? (e.selectedOptions[0] ? e.selectedOptions[0].text : '')
         : e.type === 'file' ? Array.from(e.files || []).map((f) => f.name).join(', ')
         : clip(e.value, 300);
-      send({ type: 'input', target: name(e), selector: selector(e), value });
+      send({ type: 'input', ...about(e), value });
     },
+    scroll: (ev) => {
+      if (!ev.isTrusted) return;
+      const e = ev.target instanceof Element && ev.target !== document.scrollingElement ? ev.target : null;
+      const key = e || document;
+      clearTimeout(scrolls.get(key));
+      scrolls.set(key, setTimeout(() => {
+        scrolls.delete(key);
+        send(e ? { type: 'scroll', target: name(e), selector: selector(e), value: String(Math.round(e.scrollTop)) }
+          : { type: 'scroll', target: 'page', selector: 'page', value: String(Math.round(scrollY)) });
+      }, 600));
+    },
+    drop: (ev) => {
+      if (!ev.isTrusted || !(ev.target instanceof Element)) return;
+      const files = ev.dataTransfer && ev.dataTransfer.files ? Array.from(ev.dataTransfer.files).map((f) => f.name).join(', ') : '';
+      send({ type: 'drop', ...about(target(ev.target)), value: files });
+    },
+    pagehide: () => flushAll(),
     keydown: (ev) => {
       if (!ev.isTrusted || ev.repeat) return;
       const special = ['Enter', 'Escape', 'Tab'].includes(ev.key);
       const command = (ev.metaKey || ev.ctrlKey) && ev.key.length === 1;
       if (!special && !command) return;
+      flushAll();
       const key = [ev.ctrlKey && 'Control', ev.altKey && 'Alt', ev.metaKey && 'Meta', ev.shiftKey && 'Shift', ev.key.length === 1 ? ev.key.toUpperCase() : ev.key].filter(Boolean).join('+');
       send({ type: 'key', value: key, target: ev.target instanceof Element ? name(ev.target) : '' });
     },
     submit: (ev) => {
       if (!ev.isTrusted || !(ev.target instanceof Element)) return;
-      send({ type: 'submit', target: name(ev.target), selector: selector(ev.target) });
+      flushAll();
+      send({ type: 'submit', ...about(ev.target) });
     },
   };
   for (const [type, listener] of Object.entries(listeners)) window.addEventListener(type, listener, true);
   window.__baoWatch = {
     stop() {
+      flushAll();
       for (const [type, listener] of Object.entries(listeners)) window.removeEventListener(type, listener, true);
       delete window.__baoWatch;
     },
@@ -363,10 +586,12 @@ class WatchedStep {
     required this.target,
     this.selector,
     this.value,
+    this.role,
+    this.label,
   });
 
-  /// `page` (where it began), `click`, `input`, `key`, `submit`,
-  /// `navigate`, `closed`.
+  /// `page` (where it began), `click`, `input`, `key`, `submit`, `scroll`,
+  /// `drop`, `navigate`, `closed`.
   final String kind;
 
   /// When, since watching began.
@@ -378,8 +603,13 @@ class WatchedStep {
   /// How to find the element again, CSS.
   final String? selector;
 
-  /// What was typed or picked, the key pressed, the URL gone to.
+  /// What was typed or picked, the key pressed, the URL gone to, how far
+  /// it was scrolled.
   final String? value;
+
+  /// The element's ARIA role and its words: how a test finds it again.
+  final String? role;
+  final String? label;
 
   /// What the page showed after it (an MCP image), if taken.
   Map<String, Object?>? screenshot;
@@ -393,6 +623,10 @@ class WatchedStep {
       'input' => 'set $target$where to ${jsonEncode(value ?? '')}',
       'key' => 'pressed ${value ?? ''}${target.isEmpty ? '' : ' in $target'}',
       'submit' => 'submitted $target$where',
+      'scroll' =>
+        'scrolled ${target == 'page' ? 'the page' : '$target$where'} to ${value ?? '?'}',
+      'drop' =>
+        'dropped ${value == null || value!.isEmpty ? 'something' : value} onto $target$where',
       'navigate' => 'went to ${value ?? ''}',
       'closed' => 'closed the tab',
       _ => '$kind $target$where',
@@ -404,10 +638,13 @@ final _watchTool = ClaudeSdkTool(
   name: 'browser_watch',
   description:
       'Watches the user do something in a shared tab, to see it done '
-      '(reproducing a bug, showing a flow): records their clicks, what they '
-      'type (never passwords), keys, the pages they go to, and the errors '
-      'and failed requests meanwhile, with pictures of what some steps led '
-      'to. Waits until they say they are done; they see your task. Open '
+      '(reproducing a bug, showing a flow), as DevTools\' Recorder: '
+      'records their clicks, what they type (never passwords), keys, '
+      'scrolls, the pages they go to; under each step, the requests it '
+      'made (ids for browser_request) and the errors; pictures of what '
+      'some steps led to; and the steps to do it again (browser_act\'s, '
+      'and a Playwright test saved). Waits until they say they are done; '
+      'they see your task. Open '
       'or pick the tab first (browser_open, browser_tabs). If the call '
       'answers that the user is still at it, call it again with the same '
       'tab to keep waiting.',

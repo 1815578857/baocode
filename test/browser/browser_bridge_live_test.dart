@@ -300,6 +300,28 @@ void main() {
       });
       expect(request.first['text'], contains('{"q":"baocode"}'));
       expect(request.first['text'], contains('"echo"'));
+      final document = RegExp(
+        r'^(\S+) GET 200 Document',
+        multiLine: true,
+      ).firstMatch(network.first['text'] as String)![1]!;
+      final both = await call('browser_request', {
+        'tabId': tabId,
+        'ids': [api[1], document],
+      });
+      expect(both.first['text'], contains('"echo"'));
+      expect(both.first['text'], contains('Hello from the page.'));
+      final har = p.join(profile.path, 'network.har');
+      final saved = await call('browser_network', {
+        'tabId': tabId,
+        'save': har,
+      });
+      expect(saved.first['text'], contains('Saved'));
+      final entries =
+          (jsonDecode(File(har).readAsStringSync())['log']['entries'] as List)
+              .cast<Map>();
+      final post = entries.firstWhere((e) => e['request']['method'] == 'POST');
+      expect(post['request']['postData']['text'], '{"q":"baocode"}');
+      expect(post['response']['content']['text'], contains('"echo"'));
       final image = await call('browser_network', {
         'tabId': tabId,
         'type': 'Image',
@@ -390,15 +412,16 @@ void main() {
       final sharedTabs = await connection.call('tabs.query', [{}]) as List;
       // The window's first tab, about:blank, is not shared: left out.
       expect([for (final Map tab in sharedTabs) tab['id']], [tabId]);
-      final windows =
-          await connection.call('windows.getAll', [
-                {'populate': true},
-              ])
-              as List;
-      expect([
-        for (final Map window in windows)
-          for (final Map tab in window['tabs'] as List) tab['id'],
-      ], [tabId]);
+      final windows = await connection.call('windows.getAll', [
+        {'populate': true},
+      ]) as List;
+      expect(
+        [
+          for (final Map window in windows)
+            for (final Map tab in window['tabs'] as List) tab['id'],
+        ],
+        [tabId],
+      );
       await expectLater(
         connection.call('tabs.remove', [999999]),
         throwsA(isA<Object>()),
@@ -427,14 +450,21 @@ void main() {
           )
           .first;
       await call('browser_navigate', {'tabId': tabId, 'url': '${page}frames'});
+      // The page before's API answer, kept though the browser let it go.
+      final before = await call('browser_request', {
+        'tabId': tabId,
+        'id': api[1],
+      });
+      expect(before.first['text'], contains('"echo"'));
       await connection.cdp(tabId, 'Target.setAutoAttach', {
         'autoAttach': true,
         'waitForDebuggerOnStart': false,
         'flatten': true,
       });
-      final frame = (await attachedFrame.timeout(
-        const Duration(seconds: 10),
-      )).message['params'] as Map;
+      final frame =
+          (await attachedFrame.timeout(const Duration(seconds: 10)))
+                  .message['params']
+              as Map;
       // Asked through its session, the frame answers, not the page.
       final inner = await connection.cdp(
         tabId,
@@ -448,8 +478,7 @@ void main() {
       final popped = bridge.events
           .where(
             (e) =>
-                e.event == 'tab' &&
-                (e.message['tab'] as Map)['tabId'] != tabId,
+                e.event == 'tab' && (e.message['tab'] as Map)['tabId'] != tabId,
           )
           .first;
       await call('browser_click', {'tabId': tabId, 'text': 'Pop out'});

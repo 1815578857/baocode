@@ -88,6 +88,7 @@ String browserStepSummary(
         ?text('url'),
         ?text('type'),
         if (input['failed'] == true) 'failed',
+        if (text('save') case final save?) '→ ${save.split('/').last}',
       ].join(' · ');
     case 'browser_request':
       // Its first line: the method and the URL.
@@ -107,7 +108,61 @@ String browserStepSummary(
           'CPU ${cpu is int || cpu == cpu.roundToDouble() ? cpu.round() : cpu}×',
         if (text('network') case final network? when network != 'none') network,
         if (text('device') case final device? when device != 'none') device,
+        if (text('colorScheme') case final scheme? when scheme != 'none')
+          scheme,
+        ?text('locale'),
+        ?text('timezone'),
+        if (input['cache'] == false) 'no cache',
+        if (text('vision') case final vision? when vision != 'none') vision,
       ].join(' · ');
+    case 'browser_inspect':
+      return [
+        if (text('selector') case final selector?) selector else _aim(input),
+        if (input['parts'] case final List parts when parts.isNotEmpty)
+          parts.join(', '),
+      ].where((s) => s.isNotEmpty).join(' · ');
+    case 'browser_sources':
+      return [
+        ?text('action'),
+        ?text('url'),
+        ?text('query'),
+        ?text('filter'),
+      ].join(' · ');
+    case 'browser_breakpoints':
+      final where = text('url') == null
+          ? null
+          : '${text('url')!.split('/').last}${input['line'] == null ? '' : ':${input['line']}'}';
+      return [
+        ?text('action'),
+        ?where,
+        if (text('exceptions') case final exceptions?)
+          'exceptions: $exceptions',
+        if (text('xhr') case final xhr?) 'xhr $xhr',
+        ?text('event'),
+        ?text('dom'),
+        if (text('log') != null) 'logpoint',
+        ?text('id'),
+      ].join(' · ');
+    case 'browser_debugger':
+      // Where it is paused, as its first line says.
+      final paused = RegExp(
+        r'^Paused: (.*)$',
+        multiLine: true,
+      ).firstMatch(answer)?[1];
+      return [
+        ?text('action'),
+        if (paused != null) _clip(paused, 80),
+      ].join(' · ');
+    case 'browser_intercept':
+      return [?text('action'), ?text('url'), ?text('id')].join(' · ');
+    case 'browser_storage':
+      return [?text('kind'), ?text('action'), ?text('name')].join(' · ');
+    case 'browser_dialog':
+      return input['accept'] == true ? 'accept' : 'dismiss';
+    case 'browser_coverage':
+      return text('action') ?? '';
+    case 'browser_memory':
+      return [?text('action'), ?text('of')].join(' · ');
   }
   return '';
 }
@@ -174,6 +229,15 @@ bool _readable(ToolCallItem item) {
     'browser_request' ||
     'browser_performance' ||
     'browser_emulate' ||
+    'browser_inspect' ||
+    'browser_sources' ||
+    'browser_breakpoints' ||
+    'browser_debugger' ||
+    'browser_intercept' ||
+    'browser_storage' ||
+    'browser_dialog' ||
+    'browser_coverage' ||
+    'browser_memory' ||
     'browser_watch' => true,
     // An action's answer says what it changed, past its first line.
     _ => item.output!.trim().contains('\n'),
@@ -537,7 +601,7 @@ class PerformanceReport {
     final lines = <String>[];
     String? trace;
     final vital = RegExp(
-      r'^  (LCP|CLS|FCP|TTFB): (.+?)(?: \((good|needs improvement|poor)\))?(?: — .*)?$',
+      r'^  (LCP|CLS|INP|FCP|TTFB): (.+?)(?: \((good|needs improvement|poor)\))?(?: — .*)?$',
     );
     final traced = RegExp(r'^Trace: (\S+)');
     for (final line in output.split('\n')) {

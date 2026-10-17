@@ -1540,6 +1540,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'emulate': 'Emulated',
       'watch': 'Watched you',
       'act': 'Acted',
+      'inspect': 'Inspected',
+      'sources': 'Read the sources',
+      'breakpoints': 'Set breakpoints',
+      'debugger': 'Debugged',
+      'intercept': 'Intercepted requests',
+      'storage': 'Read site data',
+      'dialog': 'Answered the dialog',
+      'coverage': 'Measured coverage',
+      'memory': 'Measured memory',
       'other': 'Used the browser',
     });
     return '$_temp0';
@@ -1571,6 +1580,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'emulate': 'Emulating',
       'watch': 'Watching you',
       'act': 'Acting',
+      'inspect': 'Inspecting',
+      'sources': 'Reading the sources',
+      'breakpoints': 'Setting breakpoints',
+      'debugger': 'Debugging',
+      'intercept': 'Intercepting requests',
+      'storage': 'Reading site data',
+      'dialog': 'Answering the dialog',
+      'coverage': 'Measuring coverage',
+      'memory': 'Measuring memory',
       'other': 'Using the browser',
     });
     return '$_temp0';

@@ -10,7 +10,9 @@ final _debugTools = [
     description:
         "A shared tab's console since BaoCode first used it: console calls, "
         'uncaught exceptions, and the browser\'s own messages (blocked '
-        'requests, CORS, CSP), oldest first.',
+        'requests, CORS, CSP), oldest first; of its frames and workers '
+        'too. Errors and warnings with where they came from, mapped to '
+        'the sources (source maps).',
     inputSchema: {
       'type': 'object',
       'properties': {
@@ -53,13 +55,26 @@ final _debugTools = [
           '${t.minute.toString().padLeft(2, '0')}:'
           '${t.second.toString().padLeft(2, '0')}.'
           '${t.millisecond.toString().padLeft(3, '0')}';
-      return [
+      // The calls of the last errors and warnings, mapped; the rest with
+      // where they were logged.
+      final stacked = shown.where((e) => e.stack.isNotEmpty).toList();
+      final withStacks = stacked
+          .sublist(stacked.length > 15 ? stacked.length - 15 : 0)
+          .toSet();
+      final lines = <String>[
         if (shown.length < entries.length)
           'The last ${shown.length} of ${entries.length}:',
-        for (final e in shown)
-          '[${time(e.time)}] ${e.level}: ${_clip(e.text, 2000)}'
-              '${e.url == null || e.url!.isEmpty ? '' : ' (${e.url}${e.line == null ? '' : ':${e.line}'})'}',
-      ].join('\n');
+      ];
+      for (final e in shown) {
+        final stack = withStacks.contains(e);
+        lines.add(
+          '[${time(e.time)}] ${e.level}${e.from == null ? '' : ' (${_clip(e.from!, 120)})'}: '
+          '${_clip(e.text, 2000)}'
+          '${stack || e.url == null || e.url!.isEmpty ? '' : ' (${e.url}${e.line == null ? '' : ':${e.line}'})'}',
+        );
+        if (stack) lines.addAll(await _stackLines(tab, e.stack, max: 5));
+      }
+      return lines.join('\n');
     },
   ),
   ClaudeSdkTool(
@@ -67,7 +82,10 @@ final _debugTools = [
     description:
         "Lists the requests of a shared tab's page since BaoCode first used "
         'it, oldest first: id, method, status, type, size, time, URL. Read '
-        'one with browser_request.',
+        'them with browser_request, or save them all, with their headers '
+        'and bodies, as a HAR file (save) to go through with jq or a '
+        'script. The bodies of Document, XHR and Fetch responses are kept '
+        'as they finish; the others only while the browser still has them.',
     inputSchema: {
       'type': 'object',
       'properties': {
@@ -84,6 +102,12 @@ final _debugTools = [
           'description': 'Those that failed or got a status of 400 or more.',
         },
         'limit': {'type': 'integer', 'description': 'The last n. Default 50.'},
+        'save': {
+          'type': 'string',
+          'description':
+              'A path (.har) to save those found to, all of them (limit is '
+              'not applied), instead of listing them.',
+        },
         'clear': {
           'type': 'boolean',
           'description': 'Forget them after reading.',
@@ -106,13 +130,27 @@ final _debugTools = [
                 (!failed || r.failure != null || (r.status ?? 0) >= 400),
           )
           .toList();
+      if (requests.isEmpty) {
+        if (input['clear'] == true) records.clearRequests(tab);
+        return 'No request.';
+      }
+      if (input['save'] case final String save) {
+        final saved = await _saveHar(tab, requests, _path(save, call.cwd));
+        if (input['clear'] == true) records.clearRequests(tab);
+        return saved;
+      }
       if (input['clear'] == true) records.clearRequests(tab);
-      if (requests.isEmpty) return 'No request.';
       final limit = input['limit'] as int? ?? 50;
       final shown = requests.length > limit
           ? requests.sublist(requests.length - limit)
           : requests;
+      final all = records.requests(tab);
+      final since = records.since(tab);
       return [
+        if (since != null && !all.any((r) => r.type == 'Document'))
+          'The page\'s load is not among them: they are kept from '
+              '${since.toIso8601String().substring(11, 19)}, when BaoCode '
+              'first used the tab (browser_navigate reload records it).',
         if (shown.length < requests.length)
           'The last ${shown.length} of ${requests.length}:',
         for (final r in shown)
@@ -132,83 +170,89 @@ final _debugTools = [
   ClaudeSdkTool(
     name: 'browser_request',
     description:
-        'A request of a shared tab (its id, from browser_network): its '
-        'headers, body, and the response: status, headers, body (text, '
-        'or the image).',
+        'Requests of a shared tab (their ids, from browser_network): what '
+        'made them (the code, mapped to the sources), their headers as '
+        'sent (cookies too), body, and the response: status, headers, '
+        'timing, body (text, or the image); a WebSocket\'s or an '
+        "EventSource's messages. as: \"curl\" or \"fetch\" writes it as a "
+        'command to run again. replay: sends it again from the page (its '
+        'cookies), changed by changes {url, method, headers, body}, and '
+        'answers what came back.',
     inputSchema: {
       'type': 'object',
       'properties': {
         'tabId': BrowserTools._tabId,
         'id': {'type': 'string'},
+        'ids': {
+          'type': 'array',
+          'items': {'type': 'string'},
+          'description':
+              'Several at once, instead of id. For many, browser_network '
+              'saves them as a HAR file.',
+        },
+        'as': {
+          'type': 'string',
+          'enum': ['curl', 'fetch'],
+        },
+        'replay': {'type': 'boolean'},
+        'changes': {
+          'type': 'object',
+          'description':
+              'replay: url, method, headers (null takes one out), body.',
+        },
       },
-      'required': ['tabId', 'id'],
+      'required': ['tabId'],
     },
     run: (input, call) async {
-      final browser = BrowserTools._browser();
-      final tabId = input['tabId'] as int;
-      final id = input['id'] as String;
-      final r = BrowserRecords.instance.request(BrowserTab(browser, tabId), id);
-      if (r == null) {
-        throw StateError('No request $id: list them with browser_network.');
-      }
-      String headers(Map<String, Object?>? map) => map == null || map.isEmpty
-          ? '  (none)'
-          : [for (final e in map.entries) '  ${e.key}: ${e.value}'].join('\n');
-      var postData = r.postData;
-      if (r.hasPostData && postData == null) {
-        try {
-          final result = await browser.cdp(
-            tabId,
-            'Network.getRequestPostData',
-            {'requestId': id},
+      final tab = BrowserTab(BrowserTools._browser(), input['tabId'] as int);
+      if (input['as'] != null || input['replay'] == true) {
+        final id = input['id'] as String? ?? '';
+        final r = BrowserRecords.instance.request(tab, id);
+        if (r == null) {
+          throw BrowserError('No request $id: list them with browser_network.');
+        }
+        if (input['replay'] == true) {
+          return _replay(
+            tab,
+            r,
+            ((input['changes'] as Map?) ?? const {}).cast<String, Object?>(),
           );
-          postData = result['postData'] as String?;
-        } on Object {
-          postData = '(not kept)';
         }
+        final body = await BrowserRecords.instance.requestBody(tab, r);
+        return input['as'] == 'fetch' ? _asFetch(r, body) : _asCurl(r, body);
       }
-      final text = [
-        '${r.method} ${r.url}',
-        'Type: ${r.type}',
-        'Request headers:',
-        headers(r.requestHeaders),
-        if (postData != null) 'Request body:\n${_clip(postData, 20000)}',
-        '',
-        if (r.failure != null) 'Failed: ${r.failure}',
-        if (r.status != null) 'Status: ${r.status} ${r.statusText ?? ''}',
-        if (r.duration case final ms?) 'Time: $ms ms, ${_bytes(r.size)}',
-        if (r.responseHeaders != null) 'Response headers:',
-        if (r.responseHeaders != null) headers(r.responseHeaders),
+      final ids = [
+        if (input['id'] case final String id) id,
+        ...?(input['ids'] as List?)?.map((id) => '$id'),
       ];
-      if (r.failure != null || r.status == null || !r.finished) {
-        return text.join('\n');
-      }
-      try {
-        final body = await browser.cdp(tabId, 'Network.getResponseBody', {
-          'requestId': id,
-        });
-        final data = body['body'] as String? ?? '';
-        if (body['base64Encoded'] == true) {
-          final mime = r.mimeType ?? '';
-          if (const [
-            'image/png',
-            'image/jpeg',
-            'image/gif',
-            'image/webp',
-          ].contains(mime)) {
-            return [
-              claudeSdkText('${text.join('\n')}\nResponse body:'),
-              claudeSdkImage(data, mime),
-            ];
+      if (ids.isEmpty) throw StateError('Give the id of a request, or ids.');
+      // Several share what one would say.
+      final clip = ids.length == 1
+          ? 30000
+          : (60000 ~/ ids.length).clamp(2000, 30000);
+      final answer = <Object?>[];
+      final texts = StringBuffer();
+      for (final id in ids) {
+        final r = BrowserRecords.instance.request(tab, id);
+        final described = r == null
+            ? ['No request $id: list them with browser_network.']
+            : await _describeRequest(tab, r, clip);
+        for (final part in described) {
+          if (part is String) {
+            if (texts.isNotEmpty) texts.write('\n\n');
+            texts.write(part);
+          } else {
+            // A picture after its request's lines.
+            answer
+              ..add(claudeSdkText('$texts'))
+              ..add(part);
+            texts.clear();
           }
-          text.add('Response body: binary, ${_bytes(data.length * 3 ~/ 4)}.');
-        } else {
-          text.add('Response body:\n${_clip(data, 30000)}');
         }
-      } on Object {
-        text.add('Response body: not kept by the browser.');
       }
-      return text.join('\n');
+      if (answer.isEmpty) return '$texts';
+      if (texts.isNotEmpty) answer.add(claudeSdkText('$texts'));
+      return answer;
     },
   ),
   ClaudeSdkTool(
@@ -217,10 +261,13 @@ final _debugTools = [
         "Records a shared tab's performance, as DevTools' Performance panel "
         'does: "reload" (the default) reloads the page and records its '
         'load; "start" begins a recording and "stop" ends it, for what you '
-        'do in between. Returns Web Vitals (LCP, CLS, FCP, TTFB), the main '
-        "thread's busy time by kind, its long tasks and what ran in them, "
-        'the slowest requests, and the path of the trace saved, which the '
-        'user can open in DevTools.',
+        'do in between. Returns Web Vitals (LCP and its element, CLS and '
+        'what shifted, INP and the slowest interactions, FCP, TTFB), the '
+        "long animation frames and the scripts in them, the main thread's "
+        'busy time by kind, its long tasks and what ran in them, the '
+        'functions that took the most CPU (mapped to the sources), the '
+        'slowest requests, and the paths of the trace and the CPU profile '
+        'saved, which DevTools opens.',
     inputSchema: {
       'type': 'object',
       'properties': {
@@ -261,7 +308,10 @@ final _debugTools = [
     name: 'browser_emulate',
     description:
         'Makes a shared tab run as on a slower machine or network, or a '
-        'phone: kept while BaoCode uses the tab. "none" undoes each.',
+        'phone, or for another user: dark mode, reduced motion, print, '
+        'another language, time zone or place, user agent; its cache off; '
+        'its scripts off; as one with a vision deficiency sees it. Kept '
+        'while BaoCode uses the tab. "none" (or "") undoes each.',
     inputSchema: {
       'type': 'object',
       'properties': {
@@ -278,13 +328,142 @@ final _debugTools = [
           'type': 'string',
           'enum': ['none', 'phone', 'tablet'],
         },
+        'viewport': {
+          'type': 'object',
+          'description':
+              'Instead of device: {width, height, scale, mobile}, CSS pixels.',
+        },
+        'colorScheme': {
+          'type': 'string',
+          'enum': ['none', 'light', 'dark'],
+        },
+        'reducedMotion': {'type': 'boolean'},
+        'media': {
+          'type': 'string',
+          'enum': ['none', 'print', 'screen'],
+        },
+        'locale': {'type': 'string', 'description': 'e.g. en-US, zh-CN.'},
+        'timezone': {'type': 'string', 'description': 'e.g. America/New_York.'},
+        'geolocation': {
+          'type': 'object',
+          'description': '{latitude, longitude, accuracy}; {} to undo.',
+        },
+        'userAgent': {'type': 'string'},
+        'cache': {
+          'type': 'boolean',
+          'description': 'false: the cache off, as DevTools\' Disable cache.',
+        },
+        'javascript': {'type': 'boolean'},
+        'vision': {
+          'type': 'string',
+          'enum': [
+            'none',
+            'blurredVision',
+            'reducedContrast',
+            'achromatopsia',
+            'deuteranopia',
+            'protanopia',
+            'tritanopia',
+          ],
+        },
       },
       'required': ['tabId'],
     },
     run: (input, call) async {
       final browser = BrowserTools._browser();
       final tabId = input['tabId'] as int;
+      final tab = BrowserTab(browser, tabId);
       final done = <String>[];
+      final media = _media.putIfAbsent(tab, () => {});
+      var mediaChanged = false;
+      if (input['colorScheme'] case final String scheme) {
+        media['prefers-color-scheme'] = scheme == 'none' ? '' : scheme;
+        mediaChanged = true;
+        done.add('Color scheme: $scheme');
+      }
+      if (input['reducedMotion'] case final bool reduced) {
+        media['prefers-reduced-motion'] = reduced ? 'reduce' : '';
+        mediaChanged = true;
+        done.add('Reduced motion: ${reduced ? 'on' : 'off'}');
+      }
+      if (input['media'] case final String type) {
+        media[''] = type == 'none' ? '' : type;
+        mediaChanged = true;
+        done.add('Media: $type');
+      }
+      if (mediaChanged) {
+        await browser.cdp(tabId, 'Emulation.setEmulatedMedia', {
+          'media': media[''] ?? '',
+          'features': [
+            for (final MapEntry(:key, :value) in media.entries)
+              if (key.isNotEmpty) {'name': key, 'value': value},
+          ],
+        });
+      }
+      if (input['locale'] case final String locale) {
+        await browser.cdp(tabId, 'Emulation.setLocaleOverride', {
+          if (locale.isNotEmpty && locale != 'none') 'locale': locale,
+        });
+        done.add('Locale: ${locale.isEmpty ? 'as is' : locale}');
+      }
+      if (input['timezone'] case final String zone) {
+        await browser.cdp(tabId, 'Emulation.setTimezoneOverride', {
+          'timezoneId': zone == 'none' ? '' : zone,
+        });
+        done.add(
+          'Time zone: ${zone.isEmpty || zone == 'none' ? 'as is' : zone}',
+        );
+      }
+      if (input['geolocation'] case final Map place) {
+        if (place['latitude'] is num && place['longitude'] is num) {
+          await browser.cdp(tabId, 'Emulation.setGeolocationOverride', {
+            'latitude': place['latitude'],
+            'longitude': place['longitude'],
+            'accuracy': place['accuracy'] ?? 50,
+          });
+          done.add('Place: ${place['latitude']}, ${place['longitude']}');
+        } else {
+          await browser.cdp(tabId, 'Emulation.clearGeolocationOverride');
+          done.add('Place: as is');
+        }
+      }
+      if (input['userAgent'] case final String agent) {
+        await browser.cdp(tabId, 'Emulation.setUserAgentOverride', {
+          'userAgent': agent == 'none' ? '' : agent,
+        });
+        done.add(
+          'User agent: ${agent.isEmpty || agent == 'none' ? 'as is' : agent}',
+        );
+      }
+      if (input['cache'] case final bool cache) {
+        await browser.cdp(tabId, 'Network.setCacheDisabled', {
+          'cacheDisabled': !cache,
+        });
+        done.add('Cache: ${cache ? 'on' : 'off'}');
+      }
+      if (input['javascript'] case final bool on) {
+        await browser.cdp(tabId, 'Emulation.setScriptExecutionDisabled', {
+          'value': !on,
+        });
+        done.add(
+          'JavaScript: ${on ? 'on' : 'off (reload to see the page without)'}',
+        );
+      }
+      if (input['vision'] case final String vision) {
+        await browser.cdp(tabId, 'Emulation.setEmulatedVisionDeficiency', {
+          'type': vision,
+        });
+        done.add('Vision: $vision');
+      }
+      if (input['viewport'] case final Map view) {
+        await browser.cdp(tabId, 'Emulation.setDeviceMetricsOverride', {
+          'width': (view['width'] as num?)?.toInt() ?? 0,
+          'height': (view['height'] as num?)?.toInt() ?? 0,
+          'deviceScaleFactor': view['scale'] ?? 0,
+          'mobile': view['mobile'] == true,
+        });
+        done.add('Viewport: ${view['width']}×${view['height']}');
+      }
       if (input['cpu'] case final num rate) {
         await browser.cdp(tabId, 'Emulation.setCPUThrottlingRate', {
           'rate': rate < 1 ? 1 : rate,
@@ -331,7 +510,345 @@ final _debugTools = [
       return done.isEmpty ? 'Nothing asked.' : done.join('\n');
     },
   ),
+  ClaudeSdkTool(
+    name: 'browser_coverage',
+    description:
+        "What of a shared tab's style sheets was used, as DevTools' "
+        'Coverage panel shows: "reload" (the default) reloads the page and '
+        'records its load; "start" and "stop" around what you do. Returns '
+        "each sheet's size and how much of it no element used (its rules "
+        'never matched), the most unused first; the unused ranges saved to a '
+        "file. Scripts' coverage the extension cannot record (DevTools › "
+        'Coverage can).',
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'tabId': BrowserTools._tabId,
+        'action': {
+          'type': 'string',
+          'enum': ['reload', 'start', 'stop'],
+        },
+      },
+      'required': ['tabId'],
+    },
+    run: (input, call) async {
+      final browser = BrowserTools._browser();
+      final tab = BrowserTab(browser, input['tabId'] as int);
+      switch (input['action'] as String? ?? 'reload') {
+        case 'start':
+          await _startCoverage(tab);
+          _covering.add(tab);
+          return 'Recording coverage. Stop with action "stop".';
+        case 'stop':
+          if (!_covering.remove(tab)) {
+            throw const BrowserError('Not recording: start first.');
+          }
+          return _stopCoverage(tab);
+        default:
+          await _startCoverage(tab);
+          await BrowserTools._loading(
+            browser,
+            tab.tabId,
+            () => browser.cdp(tab.tabId, 'Page.reload'),
+            timeout: const Duration(seconds: 30),
+          );
+          await Future<void>.delayed(const Duration(seconds: 2));
+          return _stopCoverage(tab);
+      }
+    },
+  ),
+  ClaudeSdkTool(
+    name: 'browser_memory',
+    description:
+        "A shared tab's memory, as DevTools' Memory panel: \"usage\" (the "
+        'default): its JS heap, DOM nodes, listeners, documents; '
+        '"snapshot": its live objects (garbage collected first) counted by '
+        'constructor, the detached DOM trees still held, and what grew '
+        'since the last snapshot (take one, do the thing a few times, take '
+        'another: what leaks grows by about as many); "count": the live '
+        'objects of a class (`of`: an expression, e.g. "MyStore" or '
+        '"HTMLDivElement"); "gc" collects garbage. Sizes and retainers the '
+        "extension cannot read (DevTools' heap snapshots can).",
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'tabId': BrowserTools._tabId,
+        'action': {
+          'type': 'string',
+          'enum': ['usage', 'snapshot', 'count', 'gc'],
+        },
+        'of': {
+          'type': 'string',
+          'description':
+              '"count": a class (constructor) or prototype, as the page '
+              'names it.',
+        },
+      },
+      'required': ['tabId'],
+    },
+    run: (input, call) async {
+      final browser = BrowserTools._browser();
+      final tab = BrowserTab(browser, input['tabId'] as int);
+      switch (input['action'] as String? ?? 'usage') {
+        case 'gc':
+          await _queryObjects(tab, '({})', 'function () { return 0; }');
+          return 'Collected garbage.\n${await _memoryUsage(tab)}';
+        case 'snapshot':
+          return _objectSnapshot(tab);
+        case 'count':
+          final of = (input['of'] as String?)?.trim() ?? '';
+          if (of.isEmpty) throw const BrowserError('"count" needs `of`.');
+          final count = await _queryObjects(
+            tab,
+            '(() => { const v = ($of); return typeof v === "function" ? v.prototype : v; })()',
+            'function () { return this.length; }',
+          );
+          return 'Live objects of $of: $count (after collecting garbage).';
+        default:
+          return _memoryUsage(tab);
+      }
+    },
+  ),
 ];
+
+/// The emulated media (`''`: its type) of each tab.
+final Map<BrowserTab, Map<String, String>> _media = {};
+
+/// The tabs whose coverage is recorded.
+final Set<BrowserTab> _covering = {};
+
+Future<void> _startCoverage(BrowserTab tab) async {
+  final browser = tab.browser;
+  await browser.cdp(tab.tabId, 'DOM.enable');
+  await browser.cdp(tab.tabId, 'CSS.enable');
+  await browser.cdp(tab.tabId, 'CSS.startRuleUsageTracking');
+}
+
+Future<String> _stopCoverage(BrowserTab tab) async {
+  final browser = tab.browser;
+  final css = await browser.cdp(tab.tabId, 'CSS.stopRuleUsageTracking');
+  final sheets = BrowserRecords.instance.styleSheets(tab);
+  final rules = (css['ruleUsage'] as List? ?? const []).cast<Map>();
+  final sheetInfo = {
+    for (final MapEntry(:key, :value) in sheets.entries)
+      key: (
+        url: value['isInline'] == true || '${value['sourceURL'] ?? ''}'.isEmpty
+            ? '<style> in ${value['sourceURL'] ?? 'the page'}'
+            : '${value['sourceURL']}',
+        size: (value['length'] as num?)?.toInt() ?? 0,
+      ),
+  };
+  final files = await Isolate.run(() {
+    final bySheet = <String, List<Map>>{};
+    for (final r in rules) {
+      (bySheet[r['styleSheetId'] as String] ??= []).add(r);
+    }
+    return [
+      for (final MapEntry(:key, :value) in bySheet.entries)
+        if (sheetInfo[key] case final info? when info.size > 0)
+          styleCoverage(info.url, info.size, value),
+    ];
+  });
+  if (files.isEmpty) return 'Nothing recorded: no style sheet was used.';
+  files.sort((a, b) => b.unusedSize.compareTo(a.unusedSize));
+  String percent(int part, int whole) =>
+      whole == 0 ? '0%' : '${(part * 100 / whole).round()}%';
+  final size = files.fold(0, (sum, f) => sum + f.size);
+  final unused = files.fold(0, (sum, f) => sum + f.unusedSize);
+
+  final folder = Directory(
+    p.join(Directory.systemTemp.path, 'baocode-coverage'),
+  )..createSync(recursive: true);
+  final stamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+  final file = File(p.join(folder.path, 'coverage-$stamp.json'));
+  await file.writeAsString(
+    jsonEncode({
+      'files': [
+        for (final f in files)
+          {
+            'url': f.url,
+            'kind': f.kind,
+            'size': f.size,
+            'unusedSize': f.unusedSize,
+            'unused': [
+              for (final (start, end) in f.unused) [start, end],
+            ],
+          },
+      ],
+    }),
+  );
+  return [
+    'CSS ${_bytes(unused)} of ${_bytes(size)} unused (${percent(unused, size)}).',
+    'Most unused first:',
+    for (final f in files.take(25))
+      '  ${percent(f.unusedSize, f.size)} unused — ${_bytes(f.unusedSize)} of '
+          '${_bytes(f.size)} — ${_clip(f.url, 200)}',
+    if (files.length > 25) '  … ${files.length - 25} more',
+    'Unused ranges (offsets in each sheet): ${file.path}',
+    "Scripts' coverage: not through the extension (DevTools › Coverage).",
+  ].join('\n');
+}
+
+Future<String> _memoryUsage(BrowserTab tab) async {
+  final result = await tab.browser.cdp(tab.tabId, 'Performance.getMetrics');
+  final metrics = {
+    for (final m in (result['metrics'] as List? ?? const []).cast<Map>())
+      m['name'] as String: m['value'] as num,
+  };
+  return [
+    'JS heap: ${_bytes(metrics['JSHeapUsedSize']?.toInt())} used of '
+        '${_bytes(metrics['JSHeapTotalSize']?.toInt())}',
+    'DOM nodes: ${metrics['Nodes']?.toInt() ?? '?'}, '
+        'listeners: ${metrics['JSEventListeners']?.toInt() ?? '?'}, '
+        'documents: ${metrics['Documents']?.toInt() ?? '?'}, '
+        'frames: ${metrics['Frames']?.toInt() ?? '?'}',
+  ].join('\n');
+}
+
+/// The live objects whose prototype chain has what [prototype] (an
+/// expression) is, as [function] (called on their array) sees them.
+/// Garbage is collected first.
+Future<Object?> _queryObjects(
+  BrowserTab tab,
+  String prototype,
+  String function,
+) async {
+  final browser = tab.browser;
+  const group = 'baocode-memory';
+  try {
+    final found = await browser.cdp(tab.tabId, 'Runtime.evaluate', {
+      'expression': prototype,
+      'objectGroup': group,
+    });
+    if (found['exceptionDetails'] case final Map details) {
+      throw BrowserError(
+        '${(details['exception'] as Map?)?['description'] ?? details['text']}',
+      );
+    }
+    final id = (found['result'] as Map?)?['objectId'] as String?;
+    if (id == null) throw const BrowserError('Not an object.');
+    final objects = await browser.cdp(tab.tabId, 'Runtime.queryObjects', {
+      'prototypeObjectId': id,
+      'objectGroup': group,
+    }, const Duration(minutes: 2));
+    final result = await browser.cdp(tab.tabId, 'Runtime.callFunctionOn', {
+      'objectId': (objects['objects'] as Map)['objectId'],
+      'functionDeclaration': function,
+      'returnByValue': true,
+      'objectGroup': group,
+    }, const Duration(minutes: 2));
+    if (result['exceptionDetails'] case final Map details) {
+      throw BrowserError(
+        '${(details['exception'] as Map?)?['description'] ?? details['text']}',
+      );
+    }
+    return (result['result'] as Map?)?['value'];
+  } finally {
+    await browser
+        .cdp(tab.tabId, 'Runtime.releaseObjectGroup', {'objectGroup': group})
+        .catchError((Object _) => const <String, Object?>{});
+  }
+}
+
+/// Counts objects by their constructor.
+const _countByConstructor = r'''
+function () {
+  const counts = new Map();
+  for (const o of this) {
+    let name = typeof o === 'function' ? 'Function' : '(object)';
+    try {
+      const proto = Object.getPrototypeOf(o);
+      const c = proto && Object.prototype.hasOwnProperty.call(proto, 'constructor') ? proto.constructor : null;
+      if (typeof c === 'function' && c.name) name = c.name;
+    } catch (e) {}
+    counts.set(name, (counts.get(name) || 0) + 1);
+  }
+  return [this.length, [...counts].sort((a, b) => b[1] - a[1]).slice(0, 2000)];
+}''';
+
+/// The detached DOM trees: each one's root and how many nodes.
+const _detachedTrees = r'''
+function () {
+  const trees = new Map();
+  for (const n of this) {
+    let root;
+    try {
+      // (The prototypes, Element.prototype and the like, are no nodes.)
+      if (n.isConnected) continue;
+      root = n.getRootNode();
+    } catch (e) {
+      continue;
+    }
+    // Not a document's, a template's or a shadow root's: a tree let go of.
+    if (root.nodeType === 9 || root.nodeType === 11) continue;
+    trees.set(root, (trees.get(root) || 0) + 1);
+  }
+  const name = (n) => {
+    if (n.nodeType !== 1) return n.nodeName.toLowerCase();
+    let s = n.tagName.toLowerCase();
+    if (n.id) s += '#' + n.id;
+    else if (n.classList.length) s += '.' + Array.from(n.classList).slice(0, 2).join('.');
+    const t = (n.textContent || '').replace(/\s+/g, ' ').trim();
+    return t ? s + ' "' + t.slice(0, 30) + '"' : s;
+  };
+  return [...trees].sort((a, b) => b[1] - a[1]).map(([root, count]) => [name(root), count]);
+}''';
+
+/// Each tab's last snapshot: its objects by constructor, how many, its
+/// detached nodes, and when: what the next is compared with.
+final Map<BrowserTab, (Map<String, int>, int, int, DateTime)> _lastObjects = {};
+
+Future<String> _objectSnapshot(BrowserTab tab) async {
+  final [total as int, counted as List] =
+      await _queryObjects(tab, 'Object.prototype', _countByConstructor) as List;
+  final trees = (await _queryObjects(
+    tab,
+    'Node.prototype',
+    _detachedTrees,
+  ) as List).cast<List>();
+  final counts = {for (final [name, n] in counted) name as String: n as int};
+  final detached = trees.fold(0, (sum, t) => sum + (t[1] as int));
+  String count(int n) => n.toString().replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (_) => ',',
+  );
+  final lines = [
+    '${count(total)} live objects (after collecting garbage).',
+    await _memoryUsage(tab),
+    'By constructor:',
+    for (final MapEntry(:key, :value) in counts.entries.take(25))
+      '  ${count(value)} — $key',
+    if (trees.isEmpty)
+      'Detached DOM trees: none.'
+    else ...[
+      'Detached DOM trees still held: ${trees.length} ($detached nodes), '
+          'a leak if they grow:',
+      for (final [root, n] in trees.take(10)) '  $n nodes — $root',
+    ],
+  ];
+  final before = _lastObjects[tab];
+  _lastObjects[tab] = (counts, total, detached, DateTime.now());
+  if (before != null) {
+    final (old, oldTotal, oldDetached, at) = before;
+    final grew = [
+      for (final key in {...counts.keys, ...old.keys})
+        (key, (counts[key] ?? 0) - (old[key] ?? 0)),
+    ].where((c) => c.$2 > 0).toList()..sort((a, b) => b.$2.compareTo(a.$2));
+    final all = total - oldTotal;
+    final nodes = detached - oldDetached;
+    lines
+      ..add(
+        'Since the snapshot ${DateTime.now().difference(at).inSeconds} s ago: '
+        '${all >= 0 ? '+' : ''}${count(all)} objects, '
+        '${nodes >= 0 ? '+' : ''}$nodes detached nodes.'
+        '${grew.isEmpty ? ' Nothing grew.' : ' Grew most:'}',
+      )
+      ..addAll([
+        for (final (name, n) in grew.take(15)) '  +${count(n)} — $name',
+      ]);
+  }
+  return lines.join('\n');
+}
 
 String _clip(String text, int max) => text.length > max
     ? '${text.substring(0, max)}… (${text.length} chars)'
@@ -343,6 +860,414 @@ String _bytes(int? bytes) => switch (bytes) {
   < 1024 * 1024 => '${(bytes / 1024).toStringAsFixed(1)} kB',
   _ => '${(bytes / 1024 / 1024).toStringAsFixed(1)} MB',
 };
+
+/// [path] as an agent gave it: from its working directory, or `~/`.
+String _path(String path, String? cwd) {
+  final home =
+      Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+  if (home != null && (path == '~' || path.startsWith('~/'))) {
+    return p.join(home, path.substring(path.length < 2 ? 1 : 2));
+  }
+  return p.isAbsolute(path) || cwd == null ? path : p.join(cwd, path);
+}
+
+const _pictures = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+
+/// [r] as browser_request says it: its lines, and its response's picture
+/// if it is one. Its bodies clipped to [clip].
+Future<List<Object>> _describeRequest(
+  BrowserTab tab,
+  NetworkRequest r,
+  int clip,
+) async {
+  final records = BrowserRecords.instance;
+  String headers(Map<String, Object?>? map) => map == null || map.isEmpty
+      ? '  (none)'
+      : [for (final e in map.entries) '  ${e.key}: ${e.value}'].join('\n');
+  final postData = r.hasPostData
+      ? await records.requestBody(tab, r) ?? '(not kept)'
+      : null;
+  final text = [
+    '${r.method} ${r.url}',
+    'Id: ${r.id}, type: ${r.type}'
+        '${r.protocol == null ? '' : ', ${r.protocol}'}'
+        '${r.remoteAddress == null ? '' : ', from ${r.remoteAddress}'}'
+        '${r.fromServiceWorker ? ', from the service worker' : ''}',
+    ...await _initiator(tab, r),
+    'Request headers${r.wireRequestHeaders == null ? '' : ' (as sent)'}:',
+    headers(r.sentHeaders),
+    if (postData != null) 'Request body:\n${_clip(postData, clip)}',
+    '',
+    if (r.failure != null) 'Failed: ${r.failure}',
+    if (r.status != null) 'Status: ${r.status} ${r.statusText ?? ''}',
+    if (r.duration case final ms?)
+      'Time: $ms ms, ${_bytes(r.size)}${_phases(r)}',
+    if (r.receivedHeaders != null) 'Response headers:',
+    if (r.receivedHeaders != null) headers(r.receivedHeaders),
+  ];
+  if (r.type == 'WebSocket' || r.type == 'EventSource') {
+    text.addAll(_frames(r, clip));
+    return [text.join('\n')];
+  }
+  if (r.failure != null || r.status == null || !r.finished) {
+    return [text.join('\n')];
+  }
+  final body = await records.responseBody(tab, r);
+  if (body == null) {
+    text.add('Response body: not kept by the browser.');
+  } else if (!body.base64) {
+    text.add('Response body:\n${_clip(body.data, clip)}');
+  } else if (_pictures.contains(r.mimeType)) {
+    return [
+      '${text.join('\n')}\nResponse body:',
+      claudeSdkImage(body.data, r.mimeType!),
+    ];
+  } else {
+    text.add('Response body: binary, ${_bytes(body.data.length * 3 ~/ 4)}.');
+  }
+  return [text.join('\n')];
+}
+
+/// What made [r]: the parser (a tag of a page), or a script (its calls,
+/// mapped to the sources).
+Future<List<String>> _initiator(BrowserTab tab, NetworkRequest r) async {
+  final initiator = r.initiator;
+  if (initiator == null) return const [];
+  final type = initiator['type'] as String? ?? 'other';
+  final stack = ScriptFrame.stackOf(initiator['stack'], max: 8);
+  if (stack.isNotEmpty) {
+    return [
+      'Made by a script${type == 'script' ? '' : ' ($type)'}:',
+      ...await _stackLines(tab, stack, indent: '  ', max: 8),
+    ];
+  }
+  final url = initiator['url'] as String?;
+  if (url == null || url.isEmpty) return ['Made by: $type'];
+  final line = (initiator['lineNumber'] as num?)?.toInt();
+  return ['Made by: $type, $url${line == null ? '' : ':${line + 1}'}'];
+}
+
+/// [r]'s phases, as DevTools' Timing tab has them.
+String _phases(NetworkRequest r) {
+  final t = r.timing;
+  if (t == null) return '';
+  double at(String key) => (t[key] as num?)?.toDouble() ?? -1;
+  String span(String name, String start, String end) {
+    final from = at(start);
+    final to = at(end);
+    if (from < 0 || to < 0 || to <= from) return '';
+    return '$name ${(to - from).round()}';
+  }
+
+  final phases = [
+    span('DNS', 'dnsStart', 'dnsEnd'),
+    span('connect', 'connectStart', 'connectEnd'),
+    span('TLS', 'sslStart', 'sslEnd'),
+    span('waiting (TTFB)', 'sendEnd', 'receiveHeadersEnd'),
+  ].where((s) => s.isNotEmpty).toList();
+  final headers = at('receiveHeadersEnd');
+  if (r.duration case final total? when headers >= 0) {
+    // The browser's request started at requestTime; the record's at its own.
+    final started = ((t['requestTime'] as num? ?? r.start) - r.start) * 1000;
+    final download = total - started - headers;
+    if (download > 0) phases.add('download ${download.round()}');
+  }
+  return phases.isEmpty ? '' : ' (${phases.join(', ')} ms)';
+}
+
+/// A WebSocket's or an EventSource's messages, the last of them.
+List<String> _frames(NetworkRequest r, int clip) {
+  if (r.frames.isEmpty) return ['', 'No message yet.'];
+  final shown = r.frames.length > 100
+      ? r.frames.sublist(r.frames.length - 100)
+      : r.frames;
+  final each = (clip ~/ shown.length).clamp(200, 2000);
+  final first = r.frames.first.timestamp;
+  return [
+    '',
+    'Messages (${r.frames.length + r.framesDropped}'
+        '${shown.length < r.frames.length + r.framesDropped ? ', the last ${shown.length}' : ''}; '
+        '↑ sent, ↓ received; seconds from the first):',
+    for (final f in shown)
+      '  ${f.sent ? '↑' : '↓'} ${(f.timestamp - first).toStringAsFixed(3)}s '
+          '${switch (f.opcode) {
+            -1 => 'error: ${f.error}',
+            2 => 'binary ${_bytes(f.length * 3 ~/ 4)}',
+            8 => 'close',
+            9 => 'ping',
+            10 => 'pong',
+            _ => '${f.event == null ? '' : '[${f.event}] '}${_clip(f.payload, each)}',
+          }}',
+  ];
+}
+
+/// The headers a page's fetch may not set: the browser's own.
+const _forbidden = {
+  'accept-charset',
+  'accept-encoding',
+  'access-control-request-headers',
+  'access-control-request-method',
+  'connection',
+  'content-length',
+  'cookie',
+  'cookie2',
+  'date',
+  'dnt',
+  'expect',
+  'host',
+  'keep-alive',
+  'origin',
+  'referer',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+  'via',
+};
+
+bool _forbiddenHeader(String name) {
+  final lower = name.toLowerCase();
+  return _forbidden.contains(lower) ||
+      lower.startsWith(':') ||
+      lower.startsWith('sec-') ||
+      lower.startsWith('proxy-');
+}
+
+/// Sends [r] again from its page (its cookies, its origin), changed by
+/// [changes]: what came back.
+Future<String> _replay(
+  BrowserTab tab,
+  NetworkRequest r,
+  Map<String, Object?> changes,
+) async {
+  final body = changes.containsKey('body')
+      ? changes['body'] as String?
+      : await BrowserRecords.instance.requestBody(tab, r);
+  final method = (changes['method'] as String? ?? r.method).toUpperCase();
+  final headers = <String, String>{};
+  final dropped = <String>[];
+  for (final MapEntry(:key, :value) in r.sentHeaders.entries) {
+    if (_forbiddenHeader(key)) {
+      dropped.add(key);
+    } else {
+      headers[key] = '$value';
+    }
+  }
+  if (changes['headers'] case final Map changed) {
+    for (final MapEntry(:key, :value) in changed.entries) {
+      headers.removeWhere((k, _) => k.toLowerCase() == '$key'.toLowerCase());
+      if (value != null) headers['$key'] = '$value';
+    }
+  }
+  final url = changes['url'] as String? ?? r.url;
+  final script =
+      '''
+(async () => {
+  const started = performance.now();
+  const response = await fetch(${jsonEncode(url)}, {
+    method: ${jsonEncode(method)},
+    headers: ${jsonEncode(headers)},
+    ${method == 'GET' || method == 'HEAD' || body == null ? '' : 'body: ${jsonEncode(body)},'}
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  const text = await response.text();
+  return {
+    status: response.status,
+    statusText: response.statusText,
+    headers: Array.from(response.headers.entries()),
+    body: text,
+    ms: Math.round(performance.now() - started),
+  };
+})()''';
+  final value =
+      await BrowserTools._evaluate(tab.browser, tab.tabId, script) as Map;
+  return [
+    '$method $url',
+    if (dropped.isNotEmpty)
+      '(the browser sets ${dropped.join(', ')} itself: its cookies are sent)',
+    'Status: ${value['status']} ${value['statusText']} in ${value['ms']} ms',
+    'Response headers:',
+    for (final h in (value['headers'] as List).cast<List>())
+      '  ${h[0]}: ${h[1]}',
+    'Response body:',
+    _clip('${value['body']}', 30000),
+    '(browser_network lists it too.)',
+  ].join('\n');
+}
+
+String _shellQuote(String text) => "'${text.replaceAll("'", r"'\''")}'";
+
+/// [r] as a curl command, as DevTools' Copy as cURL writes it.
+String _asCurl(NetworkRequest r, String? body) => [
+  'curl ${_shellQuote(r.url)}',
+  if (r.method != 'GET' && !(r.method == 'POST' && body != null))
+    '-X ${r.method}',
+  for (final MapEntry(:key, :value) in r.sentHeaders.entries)
+    if (!key.startsWith(':') && key.toLowerCase() != 'content-length')
+      for (final line in '$value'.split('\n'))
+        '-H ${_shellQuote('$key: $line')}',
+  if (body != null) '--data-raw ${_shellQuote(body)}',
+  if (r.sentHeaders.keys.any((k) => k.toLowerCase() == 'accept-encoding'))
+    '--compressed',
+].join(' \\\n  ');
+
+/// [r] as a fetch call, as DevTools' Copy as fetch writes it.
+String _asFetch(NetworkRequest r, String? body) {
+  final headers = {
+    for (final MapEntry(:key, :value) in r.sentHeaders.entries)
+      if (!_forbiddenHeader(key)) key: '$value',
+  };
+  return 'fetch(${jsonEncode(r.url)}, '
+      '${const JsonEncoder.withIndent('  ').convert({'method': r.method, 'headers': headers, 'body': ?body, 'credentials': 'include'})});';
+}
+
+/// Saves [requests] to [path] as a HAR file (1.2), as DevTools' Network
+/// panel exports them: with their bodies, those the browser still has.
+Future<String> _saveHar(
+  BrowserTab tab,
+  List<NetworkRequest> requests,
+  String path,
+) async {
+  final records = BrowserRecords.instance;
+  // A header the protocol joins with new lines (Set-Cookie): one each.
+  List<Map<String, String>> headers(Map<String, Object?>? map) => [
+    for (final MapEntry(:key, :value) in (map ?? const {}).entries)
+      for (final line in '$value'.split('\n')) {'name': key, 'value': line},
+  ];
+  String? header(Map<String, Object?>? map, String name) {
+    for (final MapEntry(:key, :value) in (map ?? const {}).entries) {
+      if (key.toLowerCase() == name) return '$value';
+    }
+    return null;
+  }
+
+  var bodies = 0;
+  var lost = 0;
+  final entries = <Map<String, Object?>>[];
+  for (final r in requests) {
+    final postData = await records.requestBody(tab, r);
+    final body = r.finished && r.failure == null && r.status != null
+        ? await records.responseBody(tab, r)
+        : null;
+    if (body != null) {
+      bodies++;
+    } else if (r.finished && r.failure == null && r.status != null) {
+      lost++;
+    }
+    final uri = Uri.tryParse(r.url);
+    entries.add({
+      'startedDateTime': DateTime.fromMillisecondsSinceEpoch(
+        (r.wall * 1000).round(),
+      ).toUtc().toIso8601String(),
+      'time': r.duration ?? 0,
+      'request': {
+        'method': r.method,
+        'url': r.url,
+        'httpVersion': r.protocol ?? '',
+        'cookies': const [],
+        'headers': headers(r.sentHeaders),
+        'queryString': [
+          if (uri != null)
+            for (final MapEntry(:key, :value) in uri.queryParametersAll.entries)
+              for (final v in value) {'name': key, 'value': v},
+        ],
+        if (postData != null)
+          'postData': {
+            'mimeType': header(r.sentHeaders, 'content-type') ?? '',
+            'text': postData,
+          },
+        'headersSize': -1,
+        'bodySize': postData == null ? 0 : utf8.encode(postData).length,
+      },
+      'response': {
+        'status': r.status ?? 0,
+        'statusText': r.statusText ?? r.failure ?? '',
+        'httpVersion': r.protocol ?? '',
+        'cookies': const [],
+        'headers': headers(r.receivedHeaders),
+        'content': {
+          'size': body == null
+              ? -1
+              : body.base64
+              ? body.data.length * 3 ~/ 4
+              : utf8.encode(body.data).length,
+          'mimeType': r.mimeType ?? '',
+          if (body != null) 'text': body.data,
+          if (body != null && body.base64) 'encoding': 'base64',
+        },
+        'redirectURL': header(r.responseHeaders, 'location') ?? '',
+        'headersSize': -1,
+        'bodySize': r.size ?? -1,
+        if (r.failure != null) '_error': r.failure,
+      },
+      'cache': const {},
+      'timings': _harTimings(r),
+      if (r.remoteAddress case final address?)
+        'serverIPAddress': address.substring(0, address.lastIndexOf(':')),
+      '_resourceType': r.type.toLowerCase(),
+      '_requestId': r.id,
+      '_initiator': ?r.initiator,
+      if (r.frames.isNotEmpty)
+        '_webSocketMessages': [
+          for (final f in r.frames)
+            {
+              'type': f.sent ? 'send' : 'receive',
+              'time': r.wallOf(f),
+              'opcode': f.opcode,
+              'data': f.payload,
+              'event': ?f.event,
+            },
+        ],
+    });
+  }
+  final file = File(path);
+  await file.parent.create(recursive: true);
+  await file.writeAsString(
+    jsonEncode({
+      'log': {
+        'version': '1.2',
+        'creator': {'name': 'BaoCode', 'version': '1'},
+        'pages': const [],
+        'entries': entries,
+      },
+    }),
+  );
+  return [
+    'Saved ${entries.length} requests to ${file.path} '
+        '(${_bytes(file.lengthSync())}).',
+    'Response bodies: $bodies saved'
+        '${lost == 0 ? '' : ', $lost no longer kept by the browser'}.',
+    'Entries: .log.entries[] {request: {method, url, headers, postData}, '
+        'response: {status, headers, content: {mimeType, text, encoding}}, '
+        '_resourceType, _requestId}.',
+  ].join('\n');
+}
+
+/// [r]'s phases as a HAR's timings: -1 for those it did not go through.
+Map<String, num> _harTimings(NetworkRequest r) {
+  final t = r.timing;
+  final total = r.duration ?? 0;
+  if (t == null) return {'send': 0, 'wait': total, 'receive': 0};
+  num span(String start, String end) {
+    final from = (t[start] as num?) ?? -1;
+    final to = (t[end] as num?) ?? -1;
+    return from < 0 || to < 0 ? -1 : (to - from).clamp(0, 1 << 31);
+  }
+
+  final send = span('sendStart', 'sendEnd');
+  final wait = span('sendEnd', 'receiveHeadersEnd');
+  final headers = (t['receiveHeadersEnd'] as num?) ?? 0;
+  return {
+    'blocked': (t['dnsStart'] as num? ?? -1) > 0 ? t['dnsStart'] as num : -1,
+    'dns': span('dnsStart', 'dnsEnd'),
+    'connect': span('connectStart', 'connectEnd'),
+    'ssl': span('sslStart', 'sslEnd'),
+    'send': send < 0 ? 0 : send,
+    'wait': wait < 0 ? 0 : wait,
+    'receive': (total - headers).clamp(0, 1 << 31),
+  };
+}
 
 /// A recording of a tab's: its trace events as they come, then what they
 /// say.
@@ -416,9 +1341,39 @@ class _Trace {
     }
   }
 
+  /// The CPU profile in the trace (its `ProfileChunk`s): the busiest
+  /// thread's, as one profile.
+  Map? _cpuProfile() {
+    final profiles =
+        <String, ({List<Map> nodes, List<int> samples, List<num> deltas})>{};
+    for (final e in _events.whereType<Map>()) {
+      if (e['name'] != 'ProfileChunk') continue;
+      final data = ((e['args'] as Map?)?['data'] as Map?) ?? const {};
+      final cpu = data['cpuProfile'] as Map? ?? const {};
+      final p = profiles['${e['pid']}:${e['id']}'] ??= (
+        nodes: [],
+        samples: [],
+        deltas: [],
+      );
+      p.nodes.addAll((cpu['nodes'] as List? ?? const []).cast<Map>());
+      p.samples.addAll((cpu['samples'] as List? ?? const []).cast<int>());
+      p.deltas.addAll((data['timeDeltas'] as List? ?? const []).cast<num>());
+    }
+    if (profiles.isEmpty) return null;
+    final busiest = profiles.values.reduce(
+      (a, b) => a.samples.length >= b.samples.length ? a : b,
+    );
+    return {
+      'nodes': busiest.nodes,
+      'samples': busiest.samples,
+      'timeDeltas': busiest.deltas,
+    };
+  }
+
   Future<String> stop() async {
     _recording.remove(tab);
     await _end();
+    final profile = _cpuProfile();
     final browser = tab.browser;
     final metrics = await browser.cdp(tab.tabId, 'Performance.getMetrics');
     final vitals = await BrowserTools._evaluate(
@@ -426,29 +1381,64 @@ class _Trace {
       tab.tabId,
       _vitalsScript,
     );
-    final file = await _save();
+    final file = await _save('trace', {'traceEvents': _events});
+    final cpu = profile == null
+        ? null
+        : await _save('cpu', profile, '.cpuprofile');
     return [
-      ..._summarizeVitals(vitals),
+      ...await _summarizeVitals(vitals),
       '',
       ..._summarizeMetrics(metrics),
       '',
       ..._summarizeMainThread(),
+      if (profile != null) ...['', ...await _summarizeCpu(profile)],
       '',
       ..._summarizeRequests(),
       '',
       'Trace: ${file.path} (${_bytes(file.lengthSync())}; DevTools ›'
           ' Performance › Load profile opens it)',
+      if (cpu != null) 'CPU profile: ${cpu.path}',
     ].join('\n');
   }
 
-  Future<File> _save() async {
+  Future<File> _save(
+    String kind,
+    Object? data, [
+    String extension = '.json',
+  ]) async {
     final folder = Directory(
       p.join(Directory.systemTemp.path, 'baocode-traces'),
     )..createSync(recursive: true);
     final stamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-    final file = File(p.join(folder.path, 'trace-$stamp.json'));
-    await file.writeAsString(jsonEncode({'traceEvents': _events}));
+    final file = File(p.join(folder.path, '$kind-$stamp$extension'));
+    await file.writeAsString(jsonEncode(data));
     return file;
+  }
+
+  /// The functions that took the CPU's time, by their own (self) and with
+  /// what they called (total).
+  Future<List<String>> _summarizeCpu(Map profile) async {
+    final summary = CpuSummary.of(profile);
+    final busy = summary.all - summary.idle;
+    // The page's own: not the browser's (no URL) nor its extensions'.
+    final functions = summary.functions
+        .where(
+          (f) =>
+              f.function.url.isNotEmpty &&
+              !f.function.url.startsWith('chrome-extension://') &&
+              f.total > 0,
+        )
+        .toList();
+    String ms(double v) =>
+        v < 10 ? '${v.toStringAsFixed(1)} ms' : '${v.round()} ms';
+    return [
+      'CPU: busy ${ms(busy)} (scripts ${ms(busy - summary.garbage - summary.program)}, '
+          'garbage collection ${ms(summary.garbage)}, the browser ${ms(summary.program)}). '
+          '${functions.isEmpty ? 'No script of the page ran.' : 'Most time (self, total):'}',
+      for (final f in functions.take(12))
+        '  ${ms(f.self)}, ${ms(f.total)} — ${f.function.name} '
+            '(${await _located(tab, f.function.url, f.function.line, f.function.column)})',
+    ];
   }
 
   static const _vitalsScript = r'''
@@ -461,30 +1451,77 @@ new Promise((done) => {
       if (last) { out.lcp = last.startTime; out.lcpElement = last.element ? last.element.tagName.toLowerCase() + (last.element.id ? '#' + last.element.id : '') : (last.url || ''); }
     }).observe({ type: 'largest-contentful-paint', buffered: true });
   } catch (e) {}
+  const name = (n) => {
+    if (!n || n.nodeType !== 1) return n && n.nodeName ? n.nodeName.toLowerCase() : '';
+    let s = n.tagName.toLowerCase();
+    if (n.id) s += '#' + n.id;
+    else if (n.classList && n.classList.length) s += '.' + Array.from(n.classList).slice(0, 2).join('.');
+    const t = (n.innerText || n.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
+    return t ? s + ' "' + t.slice(0, 40) + '"' : s;
+  };
   let cls = 0;
+  const shifts = [];
   try {
     new PerformanceObserver((list) => {
-      for (const e of list.getEntries()) if (!e.hadRecentInput) cls += e.value;
+      for (const e of list.getEntries()) {
+        if (e.hadRecentInput) continue;
+        cls += e.value;
+        shifts.push({ value: e.value, at: e.startTime, nodes: (e.sources || []).map((s) => name(s.node)).filter(Boolean).slice(0, 3) });
+      }
     }).observe({ type: 'layout-shift', buffered: true });
+  } catch (e) {}
+  // Interactions: each one's slowest event (its time to the next paint).
+  const interactions = new Map();
+  try {
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries()) {
+        if (!e.interactionId) continue;
+        const old = interactions.get(e.interactionId);
+        if (!old || e.duration > old.duration) interactions.set(e.interactionId, {
+          duration: e.duration, type: e.name, target: name(e.target), at: e.startTime,
+          input: e.processingStart - e.startTime, processing: e.processingEnd - e.processingStart,
+          presentation: e.startTime + e.duration - e.processingEnd,
+        });
+      }
+    }).observe({ type: 'event', buffered: true, durationThreshold: 16 });
+  } catch (e) {}
+  const frames = [];
+  try {
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries()) frames.push({
+        duration: e.duration, blocking: e.blockingDuration, at: e.startTime,
+        scripts: (e.scripts || []).sort((a, b) => b.duration - a.duration).slice(0, 3).map((s) => ({
+          duration: s.duration, invoker: s.invoker, source: s.sourceURL, fn: s.sourceFunctionName, char: s.sourceCharPosition,
+        })),
+      });
+    }).observe({ type: 'long-animation-frame', buffered: true });
   } catch (e) {}
   const nav = performance.getEntriesByType('navigation')[0];
   const fcp = performance.getEntriesByName('first-contentful-paint')[0];
-  setTimeout(() => done({
-    lcp: out.lcp, lcpElement: out.lcpElement, cls,
-    fcp: fcp && fcp.startTime,
-    ttfb: nav && nav.responseStart,
-    domContentLoaded: nav && nav.domContentLoadedEventEnd,
-    load: nav && nav.loadEventEnd,
-    transferSize: nav && nav.transferSize,
-    resources: performance.getEntriesByType('resource').length,
-  }), 100);
+  setTimeout(() => {
+    const slow = Array.from(interactions.values()).sort((a, b) => b.duration - a.duration);
+    done({
+      lcp: out.lcp, lcpElement: out.lcpElement, cls,
+      shifts: shifts.sort((a, b) => b.value - a.value).slice(0, 5),
+      // INP: the worst, or near it with many.
+      inp: slow.length ? slow[Math.min(Math.floor(slow.length / 50), slow.length - 1)].duration : undefined,
+      interactions: slow.slice(0, 5), interactionCount: slow.length,
+      frames: frames.sort((a, b) => b.duration - a.duration).slice(0, 5), frameCount: frames.length,
+      fcp: fcp && fcp.startTime,
+      ttfb: nav && nav.responseStart,
+      domContentLoaded: nav && nav.domContentLoadedEventEnd,
+      load: nav && nav.loadEventEnd,
+      transferSize: nav && nav.transferSize,
+      resources: performance.getEntriesByType('resource').length,
+    });
+  }, 100);
 })
 ''';
 
   static String _ms(Object? value) =>
       value is num ? '${value.round()} ms' : '—';
 
-  static List<String> _summarizeVitals(Object? value) {
+  Future<List<String>> _summarizeVitals(Object? value) async {
     final v = (value as Map?)?.cast<String, Object?>() ?? {};
     String rate(num? value, num good, num poor) => value == null
         ? ''
@@ -494,15 +1531,36 @@ new Promise((done) => {
         ? ' (needs improvement)'
         : ' (poor)';
     final cls = v['cls'] as num?;
+    final inp = v['inp'] as num?;
+    final shifts = (v['shifts'] as List? ?? const []).cast<Map>();
+    final interactions = (v['interactions'] as List? ?? const []).cast<Map>();
+    final frames = (v['frames'] as List? ?? const []).cast<Map>();
     return [
       'Web Vitals (of the page as loaded):',
       '  LCP: ${_ms(v['lcp'])}${rate(v['lcp'] as num?, 2500, 4000)}'
           '${v['lcpElement'] is String && (v['lcpElement'] as String).isNotEmpty ? ' — ${v['lcpElement']}' : ''}',
       '  CLS: ${cls == null ? '—' : cls.toStringAsFixed(3)}${rate(cls, 0.1, 0.25)}',
+      for (final s in shifts.take(3))
+        if ((s['nodes'] as List? ?? const []).isNotEmpty)
+          '    shifted ${(s['value'] as num).toStringAsFixed(3)} at ${_ms(s['at'])}: '
+              '${(s['nodes'] as List).join(', ')}',
+      if (inp != null)
+        '  INP: ${_ms(inp)}${rate(inp, 200, 500)} — of ${v['interactionCount']} interactions',
+      for (final i in interactions.take(3))
+        '    ${i['type']} on ${i['target']} at ${_ms(i['at'])}: ${_ms(i['duration'])} '
+            '(input delay ${_ms(i['input'])}, handlers ${_ms(i['processing'])}, '
+            'to paint ${_ms(i['presentation'])})',
       '  FCP: ${_ms(v['fcp'])}${rate(v['fcp'] as num?, 1800, 3000)}',
       '  TTFB: ${_ms(v['ttfb'])}${rate(v['ttfb'] as num?, 800, 1800)}',
       '  DOMContentLoaded: ${_ms(v['domContentLoaded'])}, load: ${_ms(v['load'])}',
       '  Resources: ${v['resources'] ?? '—'}',
+      if (frames.isNotEmpty) ...[
+        '',
+        'Long animation frames (${v['frameCount']}; the longest, and what ran in them):',
+        for (final f in frames)
+          '  at ${_ms(f['at'])}: ${_ms(f['duration'])} (blocking ${_ms(f['blocking'])})'
+              '${[for (final s in (f['scripts'] as List? ?? const []).cast<Map>()) ' — ${_ms(s['duration'])} ${s['invoker'] ?? ''}${'${s['fn'] ?? ''}'.isEmpty ? '' : ' ${s['fn']}'}${'${s['source'] ?? ''}'.isEmpty ? '' : ' (${_clip('${s['source']}', 120)}, char ${s['char']})'}'].join(';')}',
+      ],
     ];
   }
 

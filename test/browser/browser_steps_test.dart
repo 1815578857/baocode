@@ -219,6 +219,14 @@ void main() {
       'POST 127.0.0.1:8080/api',
     );
     expect(
+      browserStepSummary('browser_network', {
+        'tabId': 1,
+        'type': 'XHR',
+        'save': '/tmp/baidu.har',
+      }, null),
+      'XHR · → baidu.har',
+    );
+    expect(
       browserStepSummary('browser_emulate', {
         'tabId': 1,
         'cpu': 4,

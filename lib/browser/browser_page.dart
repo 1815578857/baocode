@@ -60,7 +60,7 @@ String _elementName(Map<String, Object?> e) => [
 /// words (text, role, near, nth); null for none.
 Map<String, Object?>? _targetOf(Map<String, Object?> input) {
   final target = {
-    for (final key in ['ref', 'text', 'role', 'near', 'nth'])
+    for (final key in ['ref', 'selector', 'text', 'role', 'near', 'nth'])
       if (input[key] case final value?
           when value is! String || value.isNotEmpty)
         key: value,
@@ -97,8 +97,14 @@ const _targetProperties = {
   'nth': {
     'type': 'integer',
     'description':
-        'With text: which of the matches (1 the first), when several are '
-        'alike.',
+        'With text or selector: which of the matches (1 the first), when '
+        'several are alike.',
+  },
+  'selector': {
+    'type': 'string',
+    'description':
+        'Instead of a ref or text: a CSS selector (its first match shown, '
+        'else its first), e.g. input[type=file].',
   },
 };
 
@@ -155,6 +161,11 @@ Future<Map<String, Object?>> _find(
 
 /// The page's state now; null between pages.
 Future<_PageState?> _stateOf(BrowserConnection browser, int tabId) async {
+  final tab = BrowserTab(browser, tabId);
+  if (_Debugging.pausedNow(tab) ||
+      BrowserRecords.instance.openDialog(tab) != null) {
+    return null;
+  }
   try {
     return _PageState(await _bao(browser, tabId, 'state()') as Map);
   } on Object {
@@ -175,6 +186,11 @@ Future<void> _settle(
   final tab = BrowserTab(browser, tabId);
   var limit = const Duration(seconds: 2);
   while (DateTime.now().difference(since) < limit) {
+    // Stopped: nothing settles till it goes on.
+    if (_Debugging.pausedNow(tab) ||
+        BrowserRecords.instance.openDialog(tab) != null) {
+      return;
+    }
     try {
       final state =
           await _bao(browser, tabId, 'settling()') as List? ?? const [];
@@ -217,7 +233,11 @@ String _changes(
   final lines = <String>[];
   String bare(String url) => url.split('#').first;
   if (after == null) {
-    lines.add('The page is still loading.');
+    // Stopped (the debugger, a dialog): said below.
+    if (!_Debugging.pausedNow(tab) &&
+        BrowserRecords.instance.openDialog(tab) == null) {
+      lines.add('The page is still loading.');
+    }
   } else if (before == null || bare(before.url) != bare(after.url)) {
     lines.addAll(_overview(after));
   } else {
@@ -304,27 +324,51 @@ List<String> _overview(_PageState page, {int elements = 40, int words = 25}) =>
             '${page.lines.length > words ? ' …' : ''}',
     ];
 
-/// What went wrong in [tab] [since]: errors logged, requests failed.
+/// What happened in [tab] [since] besides the screen: the requests to its
+/// server (XHR, fetch, sockets), errors logged, requests failed, dialogs,
+/// downloads; and the debugger paused.
 List<String> _troubles(BrowserTab tab, DateTime since) {
   final records = BrowserRecords.instance;
-  return [
-    for (final entry in records.console(tab))
-      if (!entry.time.isBefore(since) && entry.level == 'error')
-        'Console error: ${_clip(entry.text.split('\n').first, 200)}',
+  final after = since.millisecondsSinceEpoch;
+  final requests = [
     for (final r in records.requests(tab))
-      if (r.wall * 1000 >= since.millisecondsSinceEpoch &&
-          (r.failure != null || (r.status ?? 0) >= 400))
-        'Request failed: ${r.method} ${r.status ?? r.failure} '
-            '${_clip(r.url, 150)}',
-  ].take(6).toList();
+      if (r.wall * 1000 >= after) r,
+  ];
+  final calls = [
+    for (final r in requests)
+      if (const {'XHR', 'Fetch', 'WebSocket', 'EventSource'}.contains(r.type))
+        r,
+  ];
+  return [
+    if (calls.isNotEmpty)
+      'Requests: ${calls.take(6).map((r) => '${r.method} ${_clip(r.url.split('?').first, 100)} ${r.status ?? r.failure ?? 'pending'} (${r.id})').join('; ')}'
+          '${calls.length > 6 ? '; and ${calls.length - 6} more' : ''}',
+    ...[
+      for (final entry in records.console(tab))
+        if (!entry.time.isBefore(since) && entry.level == 'error')
+          'Console error: ${_clip(entry.text.split('\n').first, 200)}',
+      for (final r in requests)
+        if (!calls.contains(r) && (r.failure != null || (r.status ?? 0) >= 400))
+          'Request failed: ${r.method} ${r.status ?? r.failure} '
+              '${_clip(r.url, 150)}',
+    ].take(6),
+    for (final dialog in records.dialogs(tab))
+      if (!dialog.time.isBefore(since))
+        '${dialog.describe()}${dialog.answer == 'dismissed' && dialog.by == 'BaoCode' ? ' To accept it: browser_dialog accept, then again.' : ''}',
+    for (final download in records.downloads(tab))
+      if (!download.time.isBefore(since))
+        'Download: ${download.name} (${_clip(download.url, 120)}): '
+            '${download.state == 'completed' ? 'done, ${_bytes(download.total)}, in the browser\'s download folder' : download.state}.',
+    ?_Debugging.pausedNote(tab),
+  ];
 }
 
 /// The page helper, put in a page once (window.__bao).
 const _pageScript = r'''
-if (!window.__bao || window.__bao.v !== 2) (() => {
+if (!window.__bao || window.__bao.v !== 3) (() => {
   let next = 0;
   for (const e of document.querySelectorAll('[data-bao-ref]')) next = Math.max(next, Number(e.getAttribute('data-bao-ref')) || 0);
-  const B = window.__bao = { v: 2, next, changed: Date.now() };
+  const B = window.__bao = { v: 3, next, changed: Date.now() };
   try {
     new MutationObserver((records) => {
       for (const r of records) {
@@ -360,7 +404,7 @@ if (!window.__bao || window.__bao.v !== 2) (() => {
     if (role) return role;
     const tag = e.tagName.toLowerCase();
     if (tag === 'input') {
-      if (e.type === 'checkbox' || e.type === 'radio') return e.type;
+      if (e.type === 'checkbox' || e.type === 'radio' || e.type === 'file') return e.type;
       if (['button', 'submit', 'reset', 'image'].includes(e.type)) return 'button';
       return e.type === 'range' ? 'slider' : 'textbox';
     }
@@ -492,6 +536,13 @@ if (!window.__bao || window.__bao.v !== 2) (() => {
       return e && e.isConnected
         ? { found: describe(e) }
         : { error: `No element [${spec.ref}] on the page now: it went, or the page changed. Look again (browser_snapshot), or aim by text.` };
+    }
+    if (spec.selector) {
+      let list;
+      try { list = Array.from(document.querySelectorAll(spec.selector)); } catch (e) { return { error: `Not a CSS selector: ${spec.selector}` }; }
+      if (spec.nth) list = list.slice(Number(spec.nth) - 1, Number(spec.nth));
+      if (!list.length) return { error: `Nothing on the page matches ${spec.selector}.` };
+      return { found: describe(list.find(shown) || list[0]) };
     }
     const want = norm(spec.text).toLowerCase();
     const role = spec.role ? String(spec.role).toLowerCase() : null;

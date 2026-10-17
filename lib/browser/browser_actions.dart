@@ -217,7 +217,9 @@ final _actionTools = [
         'near, clear, submit}; {action: "press", key}; {action: "scroll", '
         'deltaY | ref | text}; {action: "wait", text (until the page says '
         'it) | ms}; {action: "navigate", url | back | forward | reload: '
-        'true}.',
+        'true}; {action: "upload", files (paths), ref | text | selector: a '
+        'file input, or what opens the file chooser}. Elements may be aimed '
+        'by selector (CSS) too.',
     inputSchema: {
       'type': 'object',
       'properties': {
@@ -236,6 +238,7 @@ final _actionTools = [
                   'scroll',
                   'wait',
                   'navigate',
+                  'upload',
                 ],
               },
             },
@@ -248,7 +251,12 @@ final _actionTools = [
     },
     run: (input, call) => _acting(input, [
       for (final step in (input['steps'] as List? ?? const []).cast<Map>())
-        step.cast<String, Object?>(),
+        {
+          ...step.cast<String, Object?>(),
+          // Files from the agent's folder.
+          if (step['files'] case final List files)
+            'files': [for (final f in files) _path('$f', call.cwd)],
+        },
     ]),
   ),
 ];
@@ -271,7 +279,18 @@ Future<Object> _acting(
   for (final (i, step) in steps.indexed) {
     final at = DateTime.now();
     try {
-      final did = await _step(browser, tabId, step);
+      // A breakpoint the step runs into stops it there: the browser holds
+      // its input till the page goes on.
+      final doing = _step(browser, tabId, step);
+      final paused = _Debugging.whenPaused(tab).then((_) => null);
+      final did = await Future.any<String?>([doing, paused]);
+      if (did == null) {
+        doing.ignore();
+        said.add(
+          '${many ? '${i + 1}. ' : ''}${step['action']}: paused in the debugger.',
+        );
+        break;
+      }
       said.add(many ? '${i + 1}. $did' : did);
       if (step['action'] != 'wait') {
         await _settle(browser, tabId, at, url: before?.url);
@@ -311,8 +330,84 @@ Future<String> _step(
   'scroll' => _scroll(browser, tabId, step),
   'wait' => _wait(browser, tabId, step),
   'navigate' => _navigate(browser, tabId, step),
+  'upload' => _upload(browser, tabId, step),
   final action => throw BrowserError('No action ${jsonEncode(action)}.'),
 };
+
+/// Gives a file input [step]'s files: the input itself, or what opens the
+/// file chooser (a button), the chooser caught and answered.
+Future<String> _upload(
+  BrowserConnection browser,
+  int tabId,
+  Map<String, Object?> step,
+) async {
+  final files = [for (final f in (step['files'] as List? ?? const [])) '$f'];
+  if (files.isEmpty) throw const BrowserError('Say the files: files.');
+  for (final file in files) {
+    if (!File(file).existsSync()) throw BrowserError('No file $file.');
+  }
+  final target = _targetOf(step);
+  if (target == null) {
+    throw const BrowserError(
+      'Aim it: the file input or the button that opens the file chooser '
+      '(ref, text, selector).',
+    );
+  }
+  final element = await _find(browser, tabId, target);
+  final selector = '[data-bao-ref="${element['ref']}"]';
+  final names = files.map(p.basename).join(', ');
+  final result = await browser.cdp(tabId, 'Runtime.evaluate', {
+    'expression': 'document.querySelector(\'$selector\')',
+  });
+  final objectId = (result['result'] as Map?)?['objectId'] as String?;
+  final isInput = await BrowserTools._evaluate(
+    browser,
+    tabId,
+    '(() => { const e = document.querySelector(\'$selector\'); '
+    'return !!e && e.tagName === "INPUT" && e.type === "file"; })()',
+  );
+  if (isInput == true && objectId != null) {
+    await browser.cdp(tabId, 'DOM.setFileInputFiles', {
+      'files': files,
+      'objectId': objectId,
+    });
+    return 'Chose $names in ${_elementName(element)}.';
+  }
+  final opened = Completer<int>();
+  final subscription = BrowserBridge.instance.events.listen((event) {
+    if (event.event == 'cdp' &&
+        identical(event.connection, browser) &&
+        event.tabId == tabId &&
+        event.message['method'] == 'Page.fileChooserOpened' &&
+        !opened.isCompleted) {
+      final node = (event.message['params'] as Map?)?['backendNodeId'];
+      if (node is int) opened.complete(node);
+    }
+  });
+  await browser.cdp(tabId, 'Page.setInterceptFileChooserDialog', {
+    'enabled': true,
+  });
+  try {
+    await _click(browser, tabId, {'ref': element['ref']});
+    final node = await opened.future.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () => throw BrowserError(
+        '${_elementName(element)} opened no file chooser: aim at the file '
+        'input (selector input[type=file]).',
+      ),
+    );
+    await browser.cdp(tabId, 'DOM.setFileInputFiles', {
+      'files': files,
+      'backendNodeId': node,
+    });
+    return 'Chose $names through ${_elementName(element)}.';
+  } finally {
+    await subscription.cancel();
+    await browser
+        .cdp(tabId, 'Page.setInterceptFileChooserDialog', {'enabled': false})
+        .catchError((Object _) => <String, Object?>{});
+  }
+}
 
 Future<String> _click(
   BrowserConnection browser,

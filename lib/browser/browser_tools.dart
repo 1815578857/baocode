@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -9,13 +10,18 @@ import 'package:path/path.dart' as p;
 
 import '../chat/chat_models.dart' show ToolKind;
 import '../kernel/claude_code/claude_sdk_tools.dart';
+import 'browser_analysis.dart';
 import 'browser_bridge.dart';
 import 'browser_records.dart';
 import 'browser_steps.dart';
+import 'source_map.dart';
 
 part 'browser_actions.dart';
 part 'browser_debug_tools.dart';
+part 'browser_inspect.dart';
+part 'browser_intercept.dart';
 part 'browser_page.dart';
+part 'browser_sources.dart';
 part 'browser_watch.dart';
 
 /// The agents' tools for the user's browser (see browser_bridge.dart): the
@@ -61,6 +67,9 @@ abstract final class BrowserTools {
     ..._tools,
     ..._actionTools,
     ..._debugTools,
+    ..._inspectTools,
+    ..._sourceTools,
+    _interceptTool,
     _watchTool,
   ];
 
@@ -93,13 +102,19 @@ abstract final class BrowserTools {
           summary: (input, output) =>
               browserStepSummary(tool.name, input, output),
           run: (input, call) async {
+            final tabId = input['tabId'];
+            if (tabId is! int) return tool.run(input, call);
             // What the page logs and loads, kept from now on.
-            if (input['tabId'] case final int tabId) await _watch(tabId);
-            final answer = await tool.run(input, call);
-            if (input['tabId'] case final int tabId
-                when tool.name != 'browser_close') {
-              _used(tabId);
-            }
+            await _watch(tabId);
+            final tab = BrowserTab(_browser(), tabId);
+            _blocked(tool.name, tab);
+            // The dialogs its page opens meanwhile answered (see
+            // BrowserRecords.acting).
+            final answer = await BrowserRecords.instance.acting(
+              tab,
+              () => tool.run(input, call),
+            );
+            if (tool.name != 'browser_close') _used(tabId);
             return answer;
           },
         ),
@@ -115,6 +130,34 @@ abstract final class BrowserTools {
     } on Object {
       // Not shared, or gone: the tool says so.
     }
+  }
+
+  /// The tools that still work while a page waits on a dialog or is paused
+  /// in the debugger: they read what was kept, or are how it goes on.
+  static const _whileStopped = {
+    'browser_tabs',
+    'browser_close',
+    'browser_console',
+    'browser_network',
+    'browser_request',
+    'browser_dialog',
+    'browser_debugger',
+    'browser_breakpoints',
+    'browser_sources',
+    'browser_intercept',
+    'browser_watch',
+  };
+
+  /// Throws, saying what to do, when [tool] would wait on [tab]'s page in
+  /// vain: a dialog open, or the debugger paused there.
+  static void _blocked(String tool, BrowserTab tab) {
+    if (_whileStopped.contains(tool)) return;
+    if (BrowserRecords.instance.openDialog(tab) case final dialog?) {
+      throw BrowserError(
+        '${dialog.describe()} Answer it with browser_dialog first.',
+      );
+    }
+    if (_Debugging.pausedNote(tab) case final note?) throw BrowserError(note);
   }
 
   static void _used(int tabId) {
@@ -419,12 +462,16 @@ abstract final class BrowserTools {
     } else {
       throw const BrowserError('Give a url, or back, forward or reload.');
     }
+    if (_Debugging.pausedNow(BrowserTab(browser, tabId))) return;
     await Future<void>.delayed(const Duration(milliseconds: 300));
     await _waitForLoad(browser, tabId);
   }
 
   /// The tab, and what its page has on screen: what an agent sees first.
   static Future<String> _arrived(BrowserConnection browser, int tabId) async {
+    if (_Debugging.pausedNote(BrowserTab(browser, tabId)) case final note?) {
+      return note;
+    }
     await _settle(browser, tabId, DateTime.now());
     final tab = await _tab(browser, tabId);
     final page = await _stateOf(browser, tabId);
@@ -455,11 +502,18 @@ abstract final class BrowserTools {
     Duration timeout = const Duration(seconds: 20),
   }) async {
     final loaded = Completer<void>();
+    // Loaded, or stopped on its way: paused in the debugger (a breakpoint
+    // of its scripts'), or a dialog waiting.
     final subscription = BrowserBridge.instance.events.listen((event) {
       if (event.event == 'cdp' &&
           identical(event.connection, browser) &&
           event.tabId == tabId &&
-          event.message['method'] == 'Page.loadEventFired' &&
+          event.message['sessionId'] == null &&
+          const {
+            'Page.loadEventFired',
+            'Debugger.paused',
+            'Page.javascriptDialogOpening',
+          }.contains(event.message['method']) &&
           !loaded.isCompleted) {
         loaded.complete();
       }
