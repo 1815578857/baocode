@@ -50,13 +50,13 @@ void main() {
       );
       await tester.pump();
       expect(find.text('Chrome Web Store'), findsOneWidget);
-      expect(find.text('Developer Mode'), findsOneWidget);
+      expect(find.text('Install Manually (Developer Mode)'), findsOneWidget);
       expect(find.text('Open Store'), findsOneWidget);
       expect(find.text('Download Zip'), findsOneWidget);
       if (!Platform.isMacOS) return;
 
       // Never connected: it says to get the extension.
-      expect(find.text("The extension isn't installed"), findsOneWidget);
+      expect(find.text('No browser has connected yet'), findsOneWidget);
 
       await tester.tap(find.text('Let Agents Use the Browser'));
       await settle(tester, () => settings[BrowserBridge.settingKey] == false);

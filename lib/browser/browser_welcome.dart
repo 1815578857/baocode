@@ -6,14 +6,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../ide/ide_button.dart';
 import '../l10n/l10n.dart';
-import '../settings/pages/browser_page.dart' show BrowserSettingsPage;
 import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' show themeColors;
 import '../tips/welcome_dialog.dart';
-import '../workspace/editor_launcher.dart' show openExternal;
 import 'browser_bridge.dart';
 import 'browser_steps.dart' show browserIcon;
+import 'extension_store.dart';
 
 /// What the agents do with the user's browser: once after the update that
 /// brought it (to a user who has not connected one), and from its command
@@ -169,17 +168,15 @@ class _BrowserWelcomeState extends State<BrowserWelcome>
                           IdeButton(
                             label: l10n.browserSettingsStoreOpen,
                             icon: Codicons.linkExternal,
-                            onPressed: () => unawaited(
-                              openExternal('${BrowserSettingsPage.storeUrl}'),
-                            ),
+                            onPressed: () =>
+                                unawaited(ExtensionStore.openPage()),
                           ),
                           IdeButton(
                             label: l10n.browserWelcomeUnpacked,
                             icon: Codicons.cloudDownload,
                             secondary: true,
-                            onPressed: () => unawaited(
-                              openExternal('${BrowserSettingsPage.zipUrl}'),
-                            ),
+                            onPressed: () =>
+                                unawaited(ExtensionStore.openZip()),
                           ),
                         ]
                       : [

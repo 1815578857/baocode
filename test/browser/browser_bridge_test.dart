@@ -46,8 +46,9 @@ void main() {
       final body = utf8.encode(jsonEncode(message));
       socket
         ..add(
-          (ByteData(4)..setUint32(0, body.length, Endian.little)).buffer
-              .asUint8List(),
+          (ByteData(
+            4,
+          )..setUint32(0, body.length, Endian.little)).buffer.asUint8List(),
         )
         ..add(body);
     }
@@ -68,78 +69,70 @@ void main() {
     }
   }
 
-  test(
-    'an extension of another protocol is kept apart, and said so',
-    () async {
-      await bridge.start();
-      final current = await connect({
-        'browser': 'Google Chrome',
-        'version': '0.1.0',
-      });
-      addTearDown(current.destroy);
-      await until(() => bridge.browsers.isNotEmpty);
-      expect(bridge.browsers.single.browser, 'Google Chrome');
-      expect(bridge.browsers.single.protocol, BrowserBridge.protocol);
+  test('an extension of another protocol is kept apart, and said so', () async {
+    await bridge.start();
+    final current = await connect({
+      'browser': 'Google Chrome',
+      'version': '0.1.0',
+    });
+    addTearDown(current.destroy);
+    await until(() => bridge.browsers.isNotEmpty);
+    expect(bridge.browsers.single.browser, 'Google Chrome');
+    expect(bridge.browsers.single.protocol, BrowserBridge.protocol);
 
-      final newer = await connect({
-        'browser': 'Microsoft Edge',
-        'version': '9.0.0',
-        'protocol': BrowserBridge.protocol + 1,
-      });
-      addTearDown(newer.destroy);
-      await until(() => bridge.mismatched.isNotEmpty);
-      expect(bridge.browsers.single.browser, 'Google Chrome');
-      expect(bridge.mismatched.single.browser, 'Microsoft Edge');
+    final newer = await connect({
+      'browser': 'Microsoft Edge',
+      'version': '9.0.0',
+      'protocol': BrowserBridge.protocol + 1,
+    });
+    addTearDown(newer.destroy);
+    await until(() => bridge.mismatched.isNotEmpty);
+    expect(bridge.browsers.single.browser, 'Google Chrome');
+    expect(bridge.mismatched.single.browser, 'Microsoft Edge');
 
-      final l10n = AppLocalizationsEn();
-      expect(BrowserSettingsPage.status(l10n, bridge), [
-        (
-          l10n.browserSettingsConnected('Google Chrome'),
-          l10n.browserSettingsExtensionVersion('0.1.0'),
-        ),
-        (
-          l10n.browserSettingsConnected('Microsoft Edge'),
-          l10n.browserSettingsAppOld,
-        ),
-      ]);
-    },
-    skip: !Platform.isMacOS,
-  );
+    final l10n = AppLocalizationsEn();
+    expect(BrowserSettingsPage.status(l10n, bridge), [
+      (
+        l10n.browserSettingsConnected('Google Chrome'),
+        l10n.browserSettingsExtensionVersion('0.1.0'),
+      ),
+      (
+        l10n.browserSettingsIncompatible('Microsoft Edge'),
+        l10n.browserSettingsAppOld,
+      ),
+    ]);
+  }, skip: !Platform.isMacOS);
 
-  test(
-    'turned off, it lets the browsers go and takes the host away; on, it '
-    'listens again',
-    () async {
-      await bridge.start();
-      final socket = await connect({'browser': 'Google Chrome'});
-      addTearDown(socket.destroy);
-      await until(() => bridge.browsers.isNotEmpty);
-      expect(bridge.used, isTrue);
+  test('turned off, it lets the browsers go and takes the host away; on, it '
+      'listens again', () async {
+    await bridge.start();
+    final socket = await connect({'browser': 'Google Chrome'});
+    addTearDown(socket.destroy);
+    await until(() => bridge.browsers.isNotEmpty);
+    expect(bridge.used, isTrue);
 
-      var told = 0;
-      void listener() => told++;
-      bridge.addListener(listener);
-      addTearDown(() => bridge.removeListener(listener));
+    var told = 0;
+    void listener() => told++;
+    bridge.addListener(listener);
+    addTearDown(() => bridge.removeListener(listener));
 
-      final settings = ValueNotifier<Object?>(false);
-      bridge.follow(settings, () => settings.value);
-      expect(bridge.enabled, isFalse);
-      expect(told, greaterThan(0));
-      expect(bridge.used, isFalse, reason: 'no tools, no side panel page');
-      await until(() => bridge.browsers.isEmpty);
-      expect(bridge.browsers, isEmpty);
-      await until(() => !manifest.existsSync());
-      expect(manifest.existsSync(), isFalse);
-      expect(File(BrowserBridge.socketPath).existsSync(), isFalse);
+    final settings = ValueNotifier<Object?>(false);
+    bridge.follow(settings, () => settings.value);
+    expect(bridge.enabled, isFalse);
+    expect(told, greaterThan(0));
+    expect(bridge.used, isFalse, reason: 'no tools, no side panel page');
+    await until(() => bridge.browsers.isEmpty);
+    expect(bridge.browsers, isEmpty);
+    await until(() => !manifest.existsSync());
+    expect(manifest.existsSync(), isFalse);
+    expect(File(BrowserBridge.socketPath).existsSync(), isFalse);
 
-      settings.value = null;
-      expect(bridge.enabled, isTrue);
-      await until(() => File(BrowserBridge.socketPath).existsSync());
-      final again = await connect({'browser': 'Google Chrome'});
-      addTearDown(again.destroy);
-      await until(() => bridge.browsers.isNotEmpty);
-      expect(bridge.used, isTrue);
-    },
-    skip: !Platform.isMacOS,
-  );
+    settings.value = null;
+    expect(bridge.enabled, isTrue);
+    await until(() => File(BrowserBridge.socketPath).existsSync());
+    final again = await connect({'browser': 'Google Chrome'});
+    addTearDown(again.destroy);
+    await until(() => bridge.browsers.isNotEmpty);
+    expect(bridge.used, isTrue);
+  }, skip: !Platform.isMacOS);
 }

@@ -130,9 +130,9 @@ jobs:
     environment: release
     env:
       VERSION: ${{ needs.pack.outputs.version }}
-      # The store's page, once the extension is listed there (a variable of
-      # the release environment's): /dl/chrome-web-store leads to it, to the
-      # download page's instructions till then.
+      # The store's page (a variable of the release environment's, to give
+      # another than the one the id makes): /dl/chrome-web-store and the
+      # app (lib/browser/extension_store.dart) lead to it.
       STORE_URL: ${{ vars.CHROME_WEB_STORE_URL }}
       R2_BUCKET: ${{ vars.R2_BUCKET }}
       AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -158,9 +158,10 @@ jobs:
           size=$(stat -c %s "$file")
           url="https://dl.baocode.dev/releases/extension/$VERSION/BaoCode-browser-$VERSION.zip?sha256=${sha:0:16}"
           jq -n --arg version "$VERSION" --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg id "$EXTENSION_ID" --arg store "$STORE_URL" \
+            --arg id "$EXTENSION_ID" \
+            --arg store "${STORE_URL:-https://chromewebstore.google.com/detail/$EXTENSION_ID}" \
             --arg url "$url" --arg sha "$sha" --argjson size "$size" \
-            '{version: $version, pubDate: $date, id: $id, store: (if $store == "" then null else $store end),
+            '{version: $version, pubDate: $date, id: $id, store: $store,
               downloads: {"browser-extension": {url: $url, size: $size, sha256: $sha}}}' > latest.json
           cat latest.json
           served=$(curl -fsSI "$url" | tr -d '\r' | awk 'tolower($1) == "content-length:" { print $2 }')

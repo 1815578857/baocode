@@ -6,14 +6,14 @@
 // cached by a browser, a fetch of the manifest too slow or blocked.
 // /dl/browser-extension redirects to the browser extension's zip, and
 // /dl/chrome-web-store to its page in the store (releases/extension/
-// latest.json), or to the download page's words on it till it is listed:
-// BaoCode's Settings → Browser links to both.
+// latest.json's store), or, that not read, to the page its id makes.
 
 const MANIFEST = 'https://dl.baocode.dev/releases/latest.json';
 const MOBILE_MANIFEST = 'https://dl.baocode.dev/releases/mobile/latest.json';
 const EXTENSION_MANIFEST = 'https://dl.baocode.dev/releases/extension/latest.json';
 const MOBILE = new Set(['android', 'ios']);
 const EXTENSION = new Set(['browser-extension', 'chrome-web-store']);
+const EXTENSION_ID = 'jfjagocghaaheooicmdnhcholmgdkngk';
 
 export default {
   async fetch(request, env) {
@@ -29,7 +29,7 @@ export default {
     if (os === 'chrome-web-store') {
       return new Response(null, {
         status: 302,
-        headers: { Location: manifest?.store || '/download#browser', 'Cache-Control': 'no-store' },
+        headers: { Location: manifest?.store || `https://chromewebstore.google.com/detail/${manifest?.id || EXTENSION_ID}`, 'Cache-Control': 'no-store' },
       });
     }
     const file = manifest?.downloads?.[os];

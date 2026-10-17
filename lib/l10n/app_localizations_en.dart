@@ -9339,38 +9339,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get browserSettingsDescription =>
-      'Let agents use your own browser, signed in as you are: open pages, read them, click and type in the tabs you share with them, while you watch in the side panel.';
+      'Let agents use your own browser, signed in as you: open pages, read them, click and type in the tabs you share with them. You can watch every step in the side panel.';
 
   @override
-  String get browserSettingsMacOSOnly => 'The browser is macOS-only for now.';
+  String get browserSettingsMacOSOnly =>
+      'The browser is available on macOS only for now.';
 
   @override
   String get browserSettingsEnabled => 'Let Agents Use the Browser';
 
   @override
   String get browserSettingsEnabledDescription =>
-      'Off, agents don\'t get the browser\'s tools, and the extension disconnects.';
+      'When off, agents have no browser tools and the extension disconnects.';
 
   @override
   String get browserSettingsStatus => 'Status';
 
   @override
-  String get browserSettingsNotInstalled => 'The extension isn\'t installed';
+  String get browserSettingsNotInstalled => 'No browser has connected yet';
 
   @override
   String get browserSettingsNotInstalledDescription =>
-      'Get it from the Chrome Web Store or in developer mode, below: it connects by itself.';
+      'Install the extension either way below, then open the browser: it connects automatically.';
 
   @override
   String get browserSettingsNotRunning => 'No browser connected';
 
   @override
   String get browserSettingsNotRunningDescription =>
-      'Open the browser that has BaoCode\'s extension: it connects by itself.';
+      'Open a browser with BaoCode\'s extension: it connects automatically.';
 
   @override
   String browserSettingsConnected(String browser) {
-    return '$browser: connected';
+    return '$browser connected';
+  }
+
+  @override
+  String browserSettingsIncompatible(String browser) {
+    return '$browser: extension version doesn\'t match';
   }
 
   @override
@@ -9380,11 +9386,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get browserSettingsExtensionOld =>
-      'Its extension is too old for this BaoCode. From the store, it updates itself when the browser restarts; in developer mode, download it again below.';
+      'The extension is out of date. From the store, it updates automatically, or click Update in chrome://extensions; installed manually, download the zip again, replace the folder\'s contents and click reload.';
 
   @override
   String get browserSettingsAppOld =>
-      'Its extension is newer than this BaoCode: update BaoCode.';
+      'The extension is newer than this BaoCode. Update BaoCode.';
 
   @override
   String get browserSettingsInstall => 'Get the Extension';
@@ -9394,17 +9400,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get browserSettingsStoreDescription =>
-      'Updates itself. For Chrome, Edge, Brave, Arc and other Chromium browsers.';
+      'Recommended. Updates automatically; works in Chrome, Edge, Brave, Arc and other Chromium browsers.';
 
   @override
   String get browserSettingsStoreOpen => 'Open Store';
 
   @override
-  String get browserSettingsUnpacked => 'Developer Mode';
+  String get browserSettingsUnpacked => 'Install Manually (Developer Mode)';
 
   @override
   String get browserSettingsUnpackedDescription =>
-      'Unzip it into a folder you\'ll keep, open chrome://extensions, turn on Developer mode, click Load unpacked and choose the folder. It doesn\'t update itself.';
+      'Unzip it into a folder you\'ll keep. In chrome://extensions, turn on Developer mode at the top right, click Load unpacked and choose the folder. It doesn\'t update automatically.';
 
   @override
   String get browserSettingsUnpackedDownload => 'Download Zip';

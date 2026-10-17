@@ -3,18 +3,17 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../../browser/browser_bridge.dart';
+import '../../browser/extension_store.dart';
 import '../../ide/ide_button.dart';
 import '../../l10n/l10n.dart';
 import '../../theme/codicons.dart';
-import '../../workspace/editor_launcher.dart' show openExternal;
 import '../user_settings.dart';
 import 'settings_widgets.dart';
 
 /// Settings → Browser: whether the agents may use the user's browsers
 /// (settings.json's `browser.enabled`, see [BrowserBridge.enabled]), which
 /// are connected, and the extension to get: from the Chrome Web Store, or
-/// as a zip to load unpacked. The two links go through baocode.dev, which
-/// knows the store's page once it is listed (site-worker/index.js).
+/// as a zip to load unpacked (see [ExtensionStore]).
 class BrowserSettingsPage extends StatelessWidget {
   const BrowserSettingsPage({super.key, this.settings, this.browsers});
 
@@ -25,21 +24,18 @@ class BrowserSettingsPage extends StatelessWidget {
   final BrowserBridge? browsers;
   BrowserBridge get bridge => browsers ?? BrowserBridge.instance;
 
-  static final storeUrl = Uri.https('baocode.dev', '/dl/chrome-web-store');
-  static final zipUrl = Uri.https('baocode.dev', '/dl/browser-extension');
-
   void _enable(bool on) {
     bridge.enabled = on;
     final settings = this.settings;
     if (settings == null) return;
     unawaited(
-      settings
-          .update(BrowserBridge.settingKey, on ? null : false)
-          .catchError((Object error) {
-            // A settings file that does not parse is left as it is; its
-            // error is shown.
-            debugPrint('${BrowserBridge.settingKey} not kept: $error');
-          }),
+      settings.update(BrowserBridge.settingKey, on ? null : false).catchError((
+        Object error,
+      ) {
+        // A settings file that does not parse is left as it is; its
+        // error is shown.
+        debugPrint('${BrowserBridge.settingKey} not kept: $error');
+      }),
     );
   }
 
@@ -89,7 +85,7 @@ class BrowserSettingsPage extends StatelessWidget {
               trailing: IdeButton(
                 label: l10n.browserSettingsStoreOpen,
                 icon: Codicons.linkExternal,
-                onPressed: () => unawaited(openExternal('$storeUrl')),
+                onPressed: () => unawaited(ExtensionStore.openPage()),
               ),
             ),
             SettingsRow(
@@ -99,7 +95,7 @@ class BrowserSettingsPage extends StatelessWidget {
                 label: l10n.browserSettingsUnpackedDownload,
                 icon: Codicons.cloudDownload,
                 secondary: true,
-                onPressed: () => unawaited(openExternal('$zipUrl')),
+                onPressed: () => unawaited(ExtensionStore.openZip()),
               ),
             ),
           ],
@@ -139,7 +135,7 @@ class BrowserSettingsPage extends StatelessWidget {
         ),
       for (final browser in mismatched)
         (
-          l10n.browserSettingsConnected(browser.browser ?? ''),
+          l10n.browserSettingsIncompatible(browser.browser ?? ''),
           browser.protocol < BrowserBridge.protocol
               ? l10n.browserSettingsExtensionOld
               : l10n.browserSettingsAppOld,

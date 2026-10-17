@@ -8828,37 +8828,43 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get browserSettingsDescription =>
-      '让 agent 使用你自己的浏览器，带着你的登录状态：在你共享给它的标签页里打开网页、阅读、点击和输入，你可以在侧边栏里看着它操作。';
+      '让 agent 用你自己的浏览器，沿用你的登录状态：在你共享给它的标签页里打开网页、读取内容、点击和输入。它的每一步操作都能在侧边栏里看到。';
 
   @override
-  String get browserSettingsMacOSOnly => '目前只支持 macOS。';
+  String get browserSettingsMacOSOnly => '浏览器功能目前只支持 macOS。';
 
   @override
   String get browserSettingsEnabled => '允许 agent 使用浏览器';
 
   @override
-  String get browserSettingsEnabledDescription => '关闭后 agent 没有浏览器工具，扩展也会断开连接。';
+  String get browserSettingsEnabledDescription =>
+      '关闭后 agent 不再有浏览器工具，扩展也会断开连接。';
 
   @override
   String get browserSettingsStatus => '状态';
 
   @override
-  String get browserSettingsNotInstalled => '还没有安装扩展';
+  String get browserSettingsNotInstalled => '还没有浏览器连接过';
 
   @override
   String get browserSettingsNotInstalledDescription =>
-      '从下方的 Chrome 应用商店或开发者模式安装，装好后会自动连接。';
+      '用下方任一方式安装扩展，之后打开浏览器就会自动连接。';
 
   @override
-  String get browserSettingsNotRunning => '没有连接浏览器';
+  String get browserSettingsNotRunning => '浏览器未连接';
 
   @override
   String get browserSettingsNotRunningDescription =>
-      '打开装有 BaoCode 扩展的浏览器，它会自动连接。';
+      '打开装有 BaoCode 扩展的浏览器，会自动连接。';
 
   @override
   String browserSettingsConnected(String browser) {
-    return '$browser：已连接';
+    return '$browser 已连接';
+  }
+
+  @override
+  String browserSettingsIncompatible(String browser) {
+    return '$browser 的扩展版本不匹配';
   }
 
   @override
@@ -8868,7 +8874,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get browserSettingsExtensionOld =>
-      '扩展版本过旧，需要更新。商店版在浏览器重启后会自动更新；开发者模式请在下方重新下载。';
+      '扩展版本太旧，需要更新。商店版会自动更新，也可以在 chrome://extensions 里点「更新」；手动安装的请重新下载 zip，覆盖原来的文件夹后点刷新。';
 
   @override
   String get browserSettingsAppOld => '扩展比当前的 BaoCode 新，请更新 BaoCode。';
@@ -8881,17 +8887,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get browserSettingsStoreDescription =>
-      '自动更新。Chrome、Edge、Brave、Arc 等 Chromium 内核的浏览器都能用。';
+      '推荐。会自动更新，Chrome、Edge、Brave、Arc 等 Chromium 内核的浏览器都能装。';
 
   @override
   String get browserSettingsStoreOpen => '打开商店';
 
   @override
-  String get browserSettingsUnpacked => '开发者模式';
+  String get browserSettingsUnpacked => '手动安装（开发者模式）';
 
   @override
   String get browserSettingsUnpackedDescription =>
-      '解压到一个会一直保留的文件夹，打开 chrome://extensions，打开「开发者模式」，点「加载已解压的扩展程序」，选中这个文件夹。不会自动更新。';
+      '下载后解压到一个固定的文件夹（之后不要删）。在 chrome://extensions 打开右上角的「开发者模式」，点「加载已解压的扩展程序」，选中这个文件夹。不会自动更新。';
 
   @override
   String get browserSettingsUnpackedDownload => '下载 zip';

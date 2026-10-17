@@ -15240,13 +15240,13 @@ abstract class AppLocalizations {
   /// No description provided for @browserSettingsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Let agents use your own browser, signed in as you are: open pages, read them, click and type in the tabs you share with them, while you watch in the side panel.'**
+  /// **'Let agents use your own browser, signed in as you: open pages, read them, click and type in the tabs you share with them. You can watch every step in the side panel.'**
   String get browserSettingsDescription;
 
   /// No description provided for @browserSettingsMacOSOnly.
   ///
   /// In en, this message translates to:
-  /// **'The browser is macOS-only for now.'**
+  /// **'The browser is available on macOS only for now.'**
   String get browserSettingsMacOSOnly;
 
   /// No description provided for @browserSettingsEnabled.
@@ -15258,7 +15258,7 @@ abstract class AppLocalizations {
   /// No description provided for @browserSettingsEnabledDescription.
   ///
   /// In en, this message translates to:
-  /// **'Off, agents don\'t get the browser\'s tools, and the extension disconnects.'**
+  /// **'When off, agents have no browser tools and the extension disconnects.'**
   String get browserSettingsEnabledDescription;
 
   /// No description provided for @browserSettingsStatus.
@@ -15270,13 +15270,13 @@ abstract class AppLocalizations {
   /// No description provided for @browserSettingsNotInstalled.
   ///
   /// In en, this message translates to:
-  /// **'The extension isn\'t installed'**
+  /// **'No browser has connected yet'**
   String get browserSettingsNotInstalled;
 
   /// No description provided for @browserSettingsNotInstalledDescription.
   ///
   /// In en, this message translates to:
-  /// **'Get it from the Chrome Web Store or in developer mode, below: it connects by itself.'**
+  /// **'Install the extension either way below, then open the browser: it connects automatically.'**
   String get browserSettingsNotInstalledDescription;
 
   /// No description provided for @browserSettingsNotRunning.
@@ -15288,14 +15288,20 @@ abstract class AppLocalizations {
   /// No description provided for @browserSettingsNotRunningDescription.
   ///
   /// In en, this message translates to:
-  /// **'Open the browser that has BaoCode\'s extension: it connects by itself.'**
+  /// **'Open a browser with BaoCode\'s extension: it connects automatically.'**
   String get browserSettingsNotRunningDescription;
 
   /// A browser connected, by its name (Google Chrome, Microsoft Edge…).
   ///
   /// In en, this message translates to:
-  /// **'{browser}: connected'**
+  /// **'{browser} connected'**
   String browserSettingsConnected(String browser);
+
+  /// A browser connected whose extension BaoCode cannot use: one too old, or newer than the app.
+  ///
+  /// In en, this message translates to:
+  /// **'{browser}: extension version doesn\'t match'**
+  String browserSettingsIncompatible(String browser);
 
   /// The version of BaoCode's extension in a connected browser.
   ///
@@ -15306,13 +15312,13 @@ abstract class AppLocalizations {
   /// No description provided for @browserSettingsExtensionOld.
   ///
   /// In en, this message translates to:
-  /// **'Its extension is too old for this BaoCode. From the store, it updates itself when the browser restarts; in developer mode, download it again below.'**
+  /// **'The extension is out of date. From the store, it updates automatically, or click Update in chrome://extensions; installed manually, download the zip again, replace the folder\'s contents and click reload.'**
   String get browserSettingsExtensionOld;
 
   /// No description provided for @browserSettingsAppOld.
   ///
   /// In en, this message translates to:
-  /// **'Its extension is newer than this BaoCode: update BaoCode.'**
+  /// **'The extension is newer than this BaoCode. Update BaoCode.'**
   String get browserSettingsAppOld;
 
   /// No description provided for @browserSettingsInstall.
@@ -15330,7 +15336,7 @@ abstract class AppLocalizations {
   /// No description provided for @browserSettingsStoreDescription.
   ///
   /// In en, this message translates to:
-  /// **'Updates itself. For Chrome, Edge, Brave, Arc and other Chromium browsers.'**
+  /// **'Recommended. Updates automatically; works in Chrome, Edge, Brave, Arc and other Chromium browsers.'**
   String get browserSettingsStoreDescription;
 
   /// No description provided for @browserSettingsStoreOpen.
@@ -15342,13 +15348,13 @@ abstract class AppLocalizations {
   /// No description provided for @browserSettingsUnpacked.
   ///
   /// In en, this message translates to:
-  /// **'Developer Mode'**
+  /// **'Install Manually (Developer Mode)'**
   String get browserSettingsUnpacked;
 
   /// No description provided for @browserSettingsUnpackedDescription.
   ///
   /// In en, this message translates to:
-  /// **'Unzip it into a folder you\'ll keep, open chrome://extensions, turn on Developer mode, click Load unpacked and choose the folder. It doesn\'t update itself.'**
+  /// **'Unzip it into a folder you\'ll keep. In chrome://extensions, turn on Developer mode at the top right, click Load unpacked and choose the folder. It doesn\'t update automatically.'**
   String get browserSettingsUnpackedDescription;
 
   /// No description provided for @browserSettingsUnpackedDownload.

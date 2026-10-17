@@ -430,7 +430,7 @@ CI 做的事：
 | `publish` | 开发者模式的 zip 传到 `releases/extension/<版本>/`，最后写 `releases/extension/latest.json`（`version`、`pubDate`、`id`、`store`、`downloads.browser-extension`） |
 | `store` | 用 Chrome Web Store API 上传商店的 zip 并提交审核，审核通过后自动上架。没配凭据就跳过，提示手动上传（凭据怎么拿见 [docs/browser-extension-store](browser-extension-store/README.md#ci-自动提交之后每个版本)） |
 
-`/dl/chrome-web-store` 跳到 `latest.json` 的 `store`，它来自 `release` 环境的变量 `CHROME_WEB_STORE_URL`；没填的时候跳到下载页的说明。所以上架通过后，在变量里填上商店地址，再推一次标签（或手动改 `latest.json`），应用和官网的按钮就指向商店了，不用发新版应用。
+商店地址由官网维护：`latest.json` 的 `store`，默认是用 ID 拼出来的 `https://chromewebstore.google.com/detail/<ID>`，要换别的就在 `release` 环境的变量 `CHROME_WEB_STORE_URL` 里填，再推一次标签（或手动改 `latest.json`），不用发新版应用。官网的 `/dl/chrome-web-store` 跳过去（读不到 `latest.json` 时也跳 ID 地址）；应用里的按钮（`lib/browser/extension_store.dart`）每次运行拉一次，存在缓存目录的 `browser/store`，拉不到用上次存的，从没拉到过就用 ID 地址。
 
 环境的部署规则里要允许 `extension-*` 标签。
 

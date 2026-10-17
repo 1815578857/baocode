@@ -58,57 +58,54 @@ void main() {
     expect(find.text('Agents can use your browser now'), findsNothing);
   });
 
-  testWidgets(
-    'the step turns to the browser once it connects',
-    (tester) async {
-      final temp = Directory('/tmp').createTempSync('bao-');
-      BrowserBridge.socketFolder = temp.path;
-      BrowserBridge.home = temp.path;
-      addTearDown(() {
-        BrowserBridge.socketFolder = null;
-        BrowserBridge.home = null;
-        temp.deleteSync(recursive: true);
-      });
-      await open(tester);
-      expect(find.text('Add the extension'), findsOneWidget);
+  testWidgets('the step turns to the browser once it connects', (tester) async {
+    final temp = Directory('/tmp').createTempSync('bao-');
+    BrowserBridge.socketFolder = temp.path;
+    BrowserBridge.home = temp.path;
+    addTearDown(() {
+      BrowserBridge.socketFolder = null;
+      BrowserBridge.home = null;
+      temp.deleteSync(recursive: true);
+    });
+    await open(tester);
+    expect(find.text('Add the extension'), findsOneWidget);
 
-      await tester.runAsync(() async {
-        await bridge.start();
-        final socket = await Socket.connect(
-          InternetAddress(
-            BrowserBridge.socketPath,
-            type: InternetAddressType.unix,
-          ),
-          0,
-        );
-        addTearDown(socket.destroy);
-        for (final message in [
-          {
-            'type': 'hello',
-            'origin': 'chrome-extension://${BrowserBridge.extensionIds.first}/',
-          },
-          {'type': 'hello', 'browser': 'Google Chrome', 'protocol': 1},
-        ]) {
-          final body = utf8.encode(jsonEncode(message));
-          socket
-            ..add(
-              (ByteData(4)..setUint32(0, body.length, Endian.little)).buffer
-                  .asUint8List(),
-            )
-            ..add(body);
-        }
-        await socket.flush();
-        final end = DateTime.now().add(const Duration(seconds: 5));
-        while (bridge.browsers.isEmpty && DateTime.now().isBefore(end)) {
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-        }
-      });
-      await tester.pump(const Duration(seconds: 1));
-      expect(find.text('Google Chrome is connected'), findsOneWidget);
-      expect(find.text('Open Store'), findsNothing);
-      // Real sockets: let go outside the test's fake time.
-      await tester.runAsync(bridge.stop);
-    },
-    skip: !Platform.isMacOS,
-  );
+    await tester.runAsync(() async {
+      await bridge.start();
+      final socket = await Socket.connect(
+        InternetAddress(
+          BrowserBridge.socketPath,
+          type: InternetAddressType.unix,
+        ),
+        0,
+      );
+      addTearDown(socket.destroy);
+      for (final message in [
+        {
+          'type': 'hello',
+          'origin': 'chrome-extension://${BrowserBridge.extensionIds.first}/',
+        },
+        {'type': 'hello', 'browser': 'Google Chrome', 'protocol': 1},
+      ]) {
+        final body = utf8.encode(jsonEncode(message));
+        socket
+          ..add(
+            (ByteData(
+              4,
+            )..setUint32(0, body.length, Endian.little)).buffer.asUint8List(),
+          )
+          ..add(body);
+      }
+      await socket.flush();
+      final end = DateTime.now().add(const Duration(seconds: 5));
+      while (bridge.browsers.isEmpty && DateTime.now().isBefore(end)) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+    });
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Google Chrome is connected'), findsOneWidget);
+    expect(find.text('Open Store'), findsNothing);
+    // Real sockets: let go outside the test's fake time.
+    await tester.runAsync(bridge.stop);
+  }, skip: !Platform.isMacOS);
 }
