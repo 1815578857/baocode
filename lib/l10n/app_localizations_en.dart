@@ -3239,13 +3239,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get generalSettingsQueuedDuringTurn => 'Join the Current Task';
 
   @override
-  String get generalSettingsTelemetry => 'Send Usage Data';
-
-  @override
-  String get generalSettingsTelemetryDescription =>
-      'Once a day BaoCode is used, it sends a random install ID, its version, and your system and processor type, so we can tell how many people use it and come back. Nothing about you, your code, or what you do in BaoCode (telemetry.telemetryLevel).';
-
-  @override
   String generalSettingsCommitAttributionLabel(String name) {
     return 'Commit Attribution: $name';
   }

@@ -928,8 +928,6 @@
   "generalSettingsQueuedMessagesDescription": "Agent 还在工作时发出的消息何时被处理。更改对之后发送的消息生效；目前仅支持 Claude Code。",
   "generalSettingsQueuedAfterTurn": "当前任务完成后依次执行",
   "generalSettingsQueuedDuringTurn": "插入当前任务",
-  "generalSettingsTelemetry": "发送使用数据",
-  "generalSettingsTelemetryDescription": "每天使用 BaoCode 时，发送一次随机的安装 ID、版本号以及系统和处理器类型，让我们知道有多少人在用、有多少人会回来。不包含任何关于你、你的代码或你在 BaoCode 中所做之事的信息（telemetry.telemetryLevel）。",
   "generalSettingsCommitAttributionLabel": "提交署名: {name}",
   "generalSettingsAttributionAgent": "跟随 Agent",
   "generalSettingsAttributionAgentDetail": "Agent 自带的署名（如 Claude Code 的），或你在 ~/.claude/settings.json 中设置的 attribution。",

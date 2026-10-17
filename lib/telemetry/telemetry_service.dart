@@ -5,25 +5,6 @@ import 'package:flutter/foundation.dart';
 
 import '../update/version.dart';
 
-/// settings.json's `telemetry.telemetryLevel`, as VS Code's. The app sends
-/// usage data only at `all` (the default): `error`, `crash` and `off`,
-/// which VS Code's users may have brought along, are all off, as BaoCode
-/// sends no error or crash reports by itself (the diagnostic logs only as
-/// the user uploads them: lib/diagnostics/).
-abstract final class TelemetrySetting {
-  static const settingKey = 'telemetry.telemetryLevel';
-
-  /// The value the switch writes to turn it off; on, the key is removed.
-  static const off = 'off';
-
-  /// Whether [setting] lets the app say it was used.
-  static bool enabled(Object? setting) => switch (setting) {
-    null => true,
-    final String value => value.trim() == 'all',
-    _ => false,
-  };
-}
-
 /// Sends a report's body; gives the HTTP status. Throws when it could not
 /// get through (offline, a timeout).
 abstract interface class TelemetrySender {
@@ -32,8 +13,8 @@ abstract interface class TelemetrySender {
 
 /// What the telemetry keeps across runs (the app's global storage).
 abstract interface class TelemetryStore {
-  /// A random id, made the first time the app is used with telemetry on:
-  /// what tells one install from another, and nothing else.
+  /// A random id, made the first time the app reports: what tells one
+  /// install from another, and nothing else.
   String? get installId;
   set installId(String? id);
 
@@ -65,9 +46,8 @@ class MemoryTelemetryStore implements TelemetryStore {
 /// their projects or what they do in the app.
 ///
 /// A day not reported (offline) is kept and sent later, the latest
-/// [maxPendingDays] of them. Nothing is kept or sent while
-/// `telemetry.telemetryLevel` is not `all`; turned off, what waited is
-/// dropped. Made once, in main.dart, only for release builds.
+/// [maxPendingDays] of them. Not a setting: what is sent tells nothing of
+/// the user. Made once, in main.dart, only for release builds.
 class TelemetryService {
   TelemetryService({
     required this.current,
@@ -75,8 +55,6 @@ class TelemetryService {
     required this.arch,
     required this.sender,
     Uri? url,
-    bool Function()? enabled,
-    this.settingsChanges,
     TelemetryStore? store,
     DateTime Function()? now,
     bool Function()? inFront,
@@ -84,7 +62,6 @@ class TelemetryService {
     this.firstDelay = const Duration(seconds: 10),
     this.interval = const Duration(hours: 1),
   }) : url = url ?? Uri.parse(defaultUrl),
-       _enabled = enabled ?? (() => true),
        store = store ?? MemoryTelemetryStore(),
        _now = now ?? DateTime.now,
        _inFront = inFront ?? (() => true),
@@ -109,20 +86,14 @@ class TelemetryService {
   final Uri url;
   final TelemetryStore store;
 
-  /// settings.json: turned off, what waited is dropped.
-  final Listenable? settingsChanges;
-
   /// After [start], the first look; then one every [interval], for a day
   /// that begins while the app stays open.
   final Duration firstDelay;
   final Duration interval;
 
-  final bool Function() _enabled;
   final DateTime Function() _now;
   final bool Function() _inFront;
   final String Function() _newId;
-
-  bool get enabled => _enabled();
 
   Timer? _first;
   Timer? _periodic;
@@ -132,8 +103,6 @@ class TelemetryService {
   void start() {
     if (_started) return;
     _started = true;
-    settingsChanges?.addListener(_settingsChanged);
-    _settingsChanged();
     _first = Timer(firstDelay, () {
       _first = null;
       _periodic = Timer.periodic(interval, (_) => _tick());
@@ -145,10 +114,6 @@ class TelemetryService {
     if (_inFront()) markActive();
   }
 
-  void _settingsChanged() {
-    if (!enabled && store.pendingDays.isNotEmpty) store.pendingDays = const [];
-  }
-
   /// `YYYY-MM-DD` of [time] in UTC.
   static String dayOf(DateTime time) {
     final utc = time.toUtc();
@@ -158,7 +123,7 @@ class TelemetryService {
 
   /// The app is in use (in front): today is reported, once.
   void markActive() {
-    if (_disposed || !enabled) return;
+    if (_disposed) return;
     final today = dayOf(_now());
     if (store.lastActiveDay != today) {
       store.lastActiveDay = today;
@@ -180,7 +145,7 @@ class TelemetryService {
 
   Future<void> _flush() async {
     final days = store.pendingDays;
-    if (_disposed || !enabled || days.isEmpty) return;
+    if (_disposed || days.isEmpty) return;
     final id = store.installId ??= _newId();
     final int status;
     try {
@@ -228,7 +193,6 @@ class TelemetryService {
 
   void dispose() {
     _disposed = true;
-    settingsChanges?.removeListener(_settingsChanged);
     _first?.cancel();
     _periodic?.cancel();
   }

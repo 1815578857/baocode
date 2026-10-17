@@ -15,7 +15,6 @@ import '../../l10n/l10n.dart';
 import '../../platform/app_platform.dart';
 import '../../platform/context_menu.dart';
 import '../../platform/shell_command.dart';
-import '../../telemetry/telemetry_service.dart' show TelemetrySetting;
 import '../../theme/workbench_theme.dart' show themeColors;
 import '../../tips/feature_tips_controller.dart';
 import '../../tips/feature_tips_view.dart';
@@ -31,8 +30,7 @@ import 'settings_widgets.dart';
 /// come back and close (`window.*`), who the commits and pull requests
 /// agents write credit (`chat.commitAttribution` in settings.json), when a
 /// message sent while the agent works is taken up (`chat.queuedMessages`),
-/// whether the app sends its usage data (`telemetry.telemetryLevel`), the
-/// Claude Code to run (`claudeCode.path`), the `code` shell command, and
+/// the Claude Code to run (`claudeCode.path`), the `code` shell command, and
 /// Open with BaoCode in Finder's or Explorer's context menu. A choice is
 /// written at once; the default is not written.
 class GeneralSettingsPage extends StatelessWidget {
@@ -340,17 +338,6 @@ class GeneralSettingsPage extends StatelessWidget {
                     QueuedMessages.duringTurn.name:
                         l10n.generalSettingsQueuedDuringTurn,
                   },
-                ),
-                SettingsSwitchRow(
-                  label: l10n.generalSettingsTelemetry,
-                  description: l10n.generalSettingsTelemetryDescription,
-                  value: TelemetrySetting.enabled(
-                    settings?[TelemetrySetting.settingKey],
-                  ),
-                  onChanged: (on) => _write(
-                    TelemetrySetting.settingKey,
-                    on ? null : TelemetrySetting.off,
-                  ),
                 ),
               ],
             ),

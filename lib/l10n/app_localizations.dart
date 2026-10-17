@@ -5666,18 +5666,6 @@ abstract class AppLocalizations {
   /// **'Join the Current Task'**
   String get generalSettingsQueuedDuringTurn;
 
-  /// No description provided for @generalSettingsTelemetry.
-  ///
-  /// In en, this message translates to:
-  /// **'Send Usage Data'**
-  String get generalSettingsTelemetry;
-
-  /// No description provided for @generalSettingsTelemetryDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Once a day BaoCode is used, it sends a random install ID, its version, and your system and processor type, so we can tell how many people use it and come back. Nothing about you, your code, or what you do in BaoCode (telemetry.telemetryLevel).'**
-  String get generalSettingsTelemetryDescription;
-
   /// The commit attribution dropdown, as read out: its setting and the choice in effect.
   ///
   /// In en, this message translates to:

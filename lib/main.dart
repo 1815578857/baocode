@@ -432,9 +432,8 @@ UpdateController? _startUpdates(SettingsFiles files) {
   );
 }
 
-/// The app's usage data (lib/telemetry/): once a UTC day it is in front,
-/// as settings.json's `telemetry.telemetryLevel` allows. None in a debug
-/// build, or with `DO_NOT_TRACK` set.
+/// The app's usage data (lib/telemetry/): once a UTC day it is in front.
+/// None in a debug build.
 void _startTelemetry(SettingsFiles files) {
   final platform = platformTelemetry();
   if (platform == null) return;
@@ -448,9 +447,6 @@ void _startTelemetry(SettingsFiles files) {
     arch: platform.arch,
     sender: platform.sender,
     url: platform.url,
-    enabled: () =>
-        TelemetrySetting.enabled(files.settings[TelemetrySetting.settingKey]),
-    settingsChanges: files.settings,
     store: GlobalTelemetryStore(files.storage),
     inFront: inFront,
   )..start();

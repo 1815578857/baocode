@@ -3108,13 +3108,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get generalSettingsQueuedDuringTurn => '插入当前任务';
 
   @override
-  String get generalSettingsTelemetry => '发送使用数据';
-
-  @override
-  String get generalSettingsTelemetryDescription =>
-      '每天使用 BaoCode 时，发送一次随机的安装 ID、版本号以及系统和处理器类型，让我们知道有多少人在用、有多少人会回来。不包含任何关于你、你的代码或你在 BaoCode 中所做之事的信息（telemetry.telemetryLevel）。';
-
-  @override
   String generalSettingsCommitAttributionLabel(String name) {
     return '提交署名: $name';
   }
