@@ -2267,6 +2267,19 @@
   "generalSettingsTitle": "General",
   "generalSettingsCommitAttribution": "Commit Attribution",
   "generalSettingsCommitAttributionDescription": "Who the commits and pull requests an agent writes credit. Applies to agents started after a change; Claude Code only for now.",
+  "generalSettingsClaudeCore": "Core",
+  "@generalSettingsClaudeCore": {
+    "description": "Settings → General → Claude Code row: what runs Claude Code sessions, BaoCode's built-in core (written in Dart) or the Claude Code CLI."
+  },
+  "generalSettingsClaudeCoreDescription": "What runs Claude Code sessions. The built-in core is BaoCode's own, written in Dart: the same tools, settings, CLAUDE.md, skills, subagents, hooks, MCP servers and session files as the CLI, signed in with an API key or a provider. The CLI is Anthropic's; pick it to sign in with a Claude subscription. Applies to sessions started after a change, on this machine and on remote hosts.",
+  "generalSettingsClaudeCoreBuiltin": "Built-in (Dart)",
+  "@generalSettingsClaudeCoreBuiltin": {
+    "description": "Claude Code core choice: BaoCode's own agent core, written in Dart and run inside the app."
+  },
+  "generalSettingsClaudeCoreCli": "Claude Code CLI",
+  "@generalSettingsClaudeCoreCli": {
+    "description": "Claude Code core choice: Anthropic's Claude Code command-line program, run as a process."
+  },
   "generalSettingsQueuedMessages": "Messages Sent While Working",
   "generalSettingsQueuedMessagesDescription": "When a message sent while the agent is still working is taken up. Applies to messages sent after a change; Claude Code only for now.",
   "generalSettingsQueuedAfterTurn": "After the Current Task",

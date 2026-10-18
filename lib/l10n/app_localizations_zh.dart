@@ -3310,6 +3310,19 @@ class AppLocalizationsZh extends AppLocalizations {
       'Agent 在它写的提交和 Pull Request 中添加的署名。更改对之后启动的 Agent 生效；目前仅支持 Claude Code。';
 
   @override
+  String get generalSettingsClaudeCore => '内核';
+
+  @override
+  String get generalSettingsClaudeCoreDescription =>
+      '运行 Claude Code 会话的内核。内置内核是 BaoCode 自己用 Dart 写的：工具、设置、CLAUDE.md、Skills、子代理、Hooks、MCP 服务器和会话文件都与 CLI 相同，用 API Key 或服务商登录。CLI 是 Anthropic 的命令行程序；用 Claude 订阅账号登录请选它。更改对之后启动的会话生效，本机和远程主机都适用。';
+
+  @override
+  String get generalSettingsClaudeCoreBuiltin => '内置（Dart）';
+
+  @override
+  String get generalSettingsClaudeCoreCli => 'Claude Code CLI';
+
+  @override
   String get generalSettingsQueuedMessages => '工作中发送的消息';
 
   @override

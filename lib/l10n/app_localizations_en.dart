@@ -3444,6 +3444,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'Who the commits and pull requests an agent writes credit. Applies to agents started after a change; Claude Code only for now.';
 
   @override
+  String get generalSettingsClaudeCore => 'Core';
+
+  @override
+  String get generalSettingsClaudeCoreDescription =>
+      'What runs Claude Code sessions. The built-in core is BaoCode\'s own, written in Dart: the same tools, settings, CLAUDE.md, skills, subagents, hooks, MCP servers and session files as the CLI, signed in with an API key or a provider. The CLI is Anthropic\'s; pick it to sign in with a Claude subscription. Applies to sessions started after a change, on this machine and on remote hosts.';
+
+  @override
+  String get generalSettingsClaudeCoreBuiltin => 'Built-in (Dart)';
+
+  @override
+  String get generalSettingsClaudeCoreCli => 'Claude Code CLI';
+
+  @override
   String get generalSettingsQueuedMessages => 'Messages Sent While Working';
 
   @override

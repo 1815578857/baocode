@@ -36,6 +36,7 @@ import 'icons/icon_library.dart';
 import 'icons/icon_storage.dart';
 import 'icons/site_icons.dart';
 import 'kernel/claude_code/claude_code_kernel.dart';
+import 'kernel/claude_code/claude_core_setting.dart';
 import 'kernel/claude_code/claude_onboarding.dart';
 import 'kernel/claude_code/claude_path_setting.dart';
 import 'kernel/claude_code/process_transport.dart';
@@ -168,6 +169,10 @@ Future<void> main(List<String> arguments) async {
     // agent starts.
     ClaudePathSetting.current = () =>
         ClaudePathSetting.parse(files.settings[ClaudePathSetting.settingKey]);
+    // Settings → General → Claude Code: the core sessions run on (BaoCode's
+    // own, or the CLI), read as each agent starts.
+    ClaudeCore.current = () =>
+        ClaudeCore.parse(files.settings[ClaudeCore.settingKey]);
     // Settings → Models: the upstreams, kept in settings.json.
     ModelProviders.current = ModelProviders.settings(files.settings);
     // Claude Code's own models as it last listed them: in the picker
