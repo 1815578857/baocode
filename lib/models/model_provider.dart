@@ -114,6 +114,12 @@ final _imageModel = RegExp(
   r'sdxl|sd3|kolors|hunyuan-image|hunyuanimage|ideogram|recraft|midjourney|mj_)',
 );
 
+/// How models are listed: alphabetically, case aside.
+int compareModelNames(String a, String b) {
+  final byName = a.toLowerCase().compareTo(b.toLowerCase());
+  return byName != 0 ? byName : a.compareTo(b);
+}
+
 /// One model of an upstream.
 class ProviderModel {
   const ProviderModel({
@@ -625,15 +631,22 @@ class ModelProvider {
   ProviderAccount? account(String id) =>
       accounts.where((account) => account.id == id).firstOrNull;
 
+  /// [models] by name ([compareModelNames]): as they are listed.
+  List<ProviderModel> get sortedModels => [...models]
+    ..sort((a, b) {
+      final byName = compareModelNames(a.displayName, b.displayName);
+      return byName != 0 ? byName : a.id.compareTo(b.id);
+    });
+
   /// The conversation models offered in the picker.
   List<ProviderModel> get enabledModels => [
-    for (final model in models)
+    for (final model in sortedModels)
       if (model.enabled && !model.kind.generatesImages) model,
   ];
 
   /// The image models turned on: the agents' `generate_image`'s.
   List<ProviderModel> get imageModels => [
-    for (final model in models)
+    for (final model in sortedModels)
       if (model.enabled && model.kind.generatesImages) model,
   ];
 

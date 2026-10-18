@@ -424,6 +424,7 @@ void main() {
         id: 'gw',
         name: 'Gateway',
         baseUrl: 'https://gw.example.com',
+        // Listed by name: down first.
         models: [
           ProviderModel(id: 'up'),
           ProviderModel(id: 'down'),
@@ -469,9 +470,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump();
-    expect(asked, ['gw/up']);
+    expect(asked, ['gw/down']);
     expect(find.byType(PixelLoader), findsOneWidget);
-    replies['up']!.complete(answer);
+    replies['down']!.complete(answer);
     await tester.pump();
     expect(find.byType(PixelLoader), findsNothing);
     expect(timed, findsOneWidget);
@@ -485,10 +486,10 @@ void main() {
     // All of them; one fails, and says why.
     await tester.tap(find.text('Test All'));
     await tester.pump();
-    expect(asked, ['gw/up', 'gw/up', 'gw/down']);
+    expect(asked, ['gw/down', 'gw/down', 'gw/up']);
     expect(find.byType(PixelLoader), findsNWidgets(2));
-    replies['up']!.complete(answer);
-    replies['down']!.completeError(Exception('401 Unauthorized'));
+    replies['down']!.complete(answer);
+    replies['up']!.completeError(Exception('401 Unauthorized'));
     await tester.pump();
     expect(timed, findsOneWidget);
     expect(find.text('Failed'), findsOneWidget);

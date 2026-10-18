@@ -1173,7 +1173,7 @@ class _ProviderSettingsPageState extends State<ProviderSettingsPage> {
     // Those checked, unless all are shown, or searched.
     final all = _showAll || query.isNotEmpty;
     final shown = [
-      for (final model in provider.models)
+      for (final model in provider.sortedModels)
         if ((all || model.enabled) &&
             (query.isEmpty ||
                 model.id.toLowerCase().contains(query) ||
