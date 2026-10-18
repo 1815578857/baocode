@@ -3516,10 +3516,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get generalSettingsClaudeCoreDescription =>
-      'What runs Claude Code sessions. The built-in core is BaoCode\'s own, written in Dart: the same tools, settings, CLAUDE.md, skills, subagents, hooks, MCP servers and session files as the CLI; it runs on the upstreams added in Settings → Models alone, never on a model the machine\'s Claude Code setup names. The CLI is Anthropic\'s, and follows that setup; pick it to sign in with a Claude subscription. Applies to sessions started after a change, on this machine and on remote hosts.';
+      'Claude Code CLI: Anthropic\'s own program, with this machine\'s sign-in and setup; pick it to use a Claude subscription. Built-in: comes with BaoCode, and uses only the models added in Settings → Models. The CLI is the default when Claude Code is installed here, the built-in core otherwise. Changes apply to new sessions.';
 
   @override
-  String get generalSettingsClaudeCoreBuiltin => 'Built-in (Dart)';
+  String get generalSettingsClaudeCoreBuiltin => 'Built-in';
 
   @override
   String get generalSettingsClaudeCoreCli => 'Claude Code CLI';
@@ -5825,7 +5825,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get claudePathSettingDescription =>
-      'Empty: the newest of the Claude Code installed on this machine and the one BaoCode downloaded (downloaded the first time there is none). A path: that one, always, e.g. one you built. (claudeCode.path)';
+      'Empty: the newest Claude Code on this machine, downloaded if there is none. A path: always that one, e.g. one you built. (claudeCode.path)';
 
   @override
   String get claudePathSettingHint => 'Automatic';

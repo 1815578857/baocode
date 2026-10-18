@@ -3379,10 +3379,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get generalSettingsClaudeCoreDescription =>
-      '运行 Claude Code 会话的内核。内置内核是 BaoCode 自己用 Dart 写的：工具、设置、CLAUDE.md、Skills、子代理、Hooks、MCP 服务器和会话文件都与 CLI 相同；它只用 设置 → 模型 里添加的上游，不用本机 Claude Code 配置的模型。CLI 是 Anthropic 的命令行程序，跟随本机配置；用 Claude 订阅账号登录请选它。更改对之后启动的会话生效，本机和远程主机都适用。';
+      'Claude Code CLI：Anthropic 官方程序，沿用本机的登录和配置，用 Claude 订阅请选它。内置：BaoCode 自带，只用 设置 → 模型 里添加的模型。本机装了 Claude Code 时默认用 CLI，否则用内置。改动对新开的会话生效。';
 
   @override
-  String get generalSettingsClaudeCoreBuiltin => '内置（Dart）';
+  String get generalSettingsClaudeCoreBuiltin => '内置';
 
   @override
   String get generalSettingsClaudeCoreCli => 'Claude Code CLI';
@@ -5452,7 +5452,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get claudePathSettingDescription =>
-      '留空：自动使用本机已安装的和 BaoCode 下载的 Claude Code 中版本最高的一份（一份都没有时会自动下载）。填入路径：始终使用这一份，例如你自己编译的版本。（claudeCode.path）';
+      '留空则自动用本机最新版本的 Claude Code，没有时自动下载。填入路径则固定用那一份，比如你自己编译的版本。（claudeCode.path）';
 
   @override
   String get claudePathSettingHint => '自动';

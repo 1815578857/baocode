@@ -5957,13 +5957,13 @@ abstract class AppLocalizations {
   /// No description provided for @generalSettingsClaudeCoreDescription.
   ///
   /// In en, this message translates to:
-  /// **'What runs Claude Code sessions. The built-in core is BaoCode\'s own, written in Dart: the same tools, settings, CLAUDE.md, skills, subagents, hooks, MCP servers and session files as the CLI; it runs on the upstreams added in Settings → Models alone, never on a model the machine\'s Claude Code setup names. The CLI is Anthropic\'s, and follows that setup; pick it to sign in with a Claude subscription. Applies to sessions started after a change, on this machine and on remote hosts.'**
+  /// **'Claude Code CLI: Anthropic\'s own program, with this machine\'s sign-in and setup; pick it to use a Claude subscription. Built-in: comes with BaoCode, and uses only the models added in Settings → Models. The CLI is the default when Claude Code is installed here, the built-in core otherwise. Changes apply to new sessions.'**
   String get generalSettingsClaudeCoreDescription;
 
   /// Claude Code core choice: BaoCode's own agent core, written in Dart and run inside the app.
   ///
   /// In en, this message translates to:
-  /// **'Built-in (Dart)'**
+  /// **'Built-in'**
   String get generalSettingsClaudeCoreBuiltin;
 
   /// Claude Code core choice: Anthropic's Claude Code command-line program, run as a process.
@@ -9390,7 +9390,7 @@ abstract class AppLocalizations {
   /// No description provided for @claudePathSettingDescription.
   ///
   /// In en, this message translates to:
-  /// **'Empty: the newest of the Claude Code installed on this machine and the one BaoCode downloaded (downloaded the first time there is none). A path: that one, always, e.g. one you built. (claudeCode.path)'**
+  /// **'Empty: the newest Claude Code on this machine, downloaded if there is none. A path: always that one, e.g. one you built. (claudeCode.path)'**
   String get claudePathSettingDescription;
 
   /// No description provided for @claudePathSettingHint.

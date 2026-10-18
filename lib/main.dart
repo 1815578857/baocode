@@ -170,7 +170,10 @@ Future<void> main(List<String> arguments) async {
     ClaudePathSetting.current = () =>
         ClaudePathSetting.parse(files.settings[ClaudePathSetting.settingKey]);
     // Settings → General → Claude Code: the core sessions run on (BaoCode's
-    // own, or the CLI), read as each agent starts.
+    // own, or the CLI), read as each agent starts. Unset, the CLI where it
+    // is installed: looked for on the app's PATH, then the shell's.
+    ClaudeCore.cliInstalled = localClaudeInstalled;
+    unawaited(lookForLocalClaude());
     ClaudeCore.current = () =>
         ClaudeCore.parse(files.settings[ClaudeCore.settingKey]);
     // Settings → Models: the upstreams, kept in settings.json.

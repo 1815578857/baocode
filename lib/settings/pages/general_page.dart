@@ -180,8 +180,12 @@ class GeneralSettingsPage extends StatelessWidget {
     required String label,
     required String description,
     required Map<String, String> values,
+    String? fallback,
   }) {
-    final fallback = values.keys.first;
+    // A fallback given may change (e.g. as an install is found): the
+    // choice is then kept as made, whichever it is.
+    final keep = fallback != null;
+    fallback ??= values.keys.first;
     final setting = settings?[key];
     final current = values.containsKey(setting) ? setting as String : fallback;
     final shown = values[current]!;
@@ -196,7 +200,8 @@ class GeneralSettingsPage extends StatelessWidget {
             IdeMenuAction(
               name,
               checked: value == current,
-              onSelected: () => _write(key, value == fallback ? null : value),
+              onSelected: () =>
+                  _write(key, !keep && value == fallback ? null : value),
             ),
         ],
       ),
@@ -381,10 +386,12 @@ class GeneralSettingsPage extends StatelessWidget {
                         label: l10n.generalSettingsClaudeCore,
                         description: l10n.generalSettingsClaudeCoreDescription,
                         values: {
+                          ClaudeCore.cli.name:
+                              l10n.generalSettingsClaudeCoreCli,
                           ClaudeCore.builtin.name:
                               l10n.generalSettingsClaudeCoreBuiltin,
-                          ClaudeCore.cli.name: l10n.generalSettingsClaudeCoreCli,
                         },
+                        fallback: ClaudeCore.fallback.name,
                       ),
                       _ClaudePathSetting(
                         path: ClaudePathSetting.parse(
