@@ -1,16 +1,31 @@
 #!/bin/sh
-# Packages flutter build linux --release into a .deb and a portable tarball.
-# Run on Ubuntu after the bundle exists at build/linux/x64/release/bundle.
+# Packages flutter build linux --release into a .deb and a portable tarball,
+# for this machine's processor (x64 or arm64). Run on Ubuntu after the
+# bundle exists at build/linux/<arch>/release/bundle. The remote server's
+# VERSION and servers.json, when built into build/remote/, go beside the
+# executable (lib/remote/remote_binaries.dart); the app downloads the
+# builds they name.
 set -eu
 
 root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 version=$(sed -n 's/^version:[[:space:]]*//p' "$root/pubspec.yaml")
 marketing=${version%%+*}
-bundle="$root/build/linux/x64/release/bundle"
+case "$(uname -m)" in
+  x86_64) arch=x64; package_arch=amd64 ;;
+  aarch64 | arm64) arch=arm64; package_arch=arm64 ;;
+  *) echo "Not built for $(uname -m)" >&2; exit 1 ;;
+esac
+bundle="$root/build/linux/$arch/release/bundle"
 
 if [ ! -x "$bundle/baocode" ]; then
   echo "No bundle at $bundle. Run: flutter build linux --release" >&2
   exit 1
+fi
+
+if [ -f "$root/build/remote/servers.json" ]; then
+  rm -rf "$bundle/remote"
+  mkdir -p "$bundle/remote"
+  cp "$root/build/remote/VERSION" "$root/build/remote/servers.json" "$bundle/remote/"
 fi
 
 stage=$(mktemp -d)
@@ -51,17 +66,18 @@ Package: baocode
 Version: ${marketing}
 Section: devel
 Priority: optional
-Architecture: amd64
+Architecture: ${package_arch}
 Depends: libgtk-3-0, libblkid1, liblzma5
 Maintainer: BaoCode <noreply@baocode.dev>
-Description: BaoCode desktop for Ubuntu
- Flutter desktop UI for Claude Code. Window stays on this machine.
+Homepage: https://baocode.dev
+Description: BaoCode desktop for Linux
+ A desktop UI for Claude Code, with a fast IDE built in.
 EOF
 
 out="$root/build/installers"
 mkdir -p "$out"
 dpkg-deb --build --root-owner-group "$stage" \
-  "$out/BaoCode-${marketing}-linux-amd64.deb"
-tar -C "$bundle" -czf "$out/BaoCode-${marketing}-linux-amd64.tar.gz" .
-echo "Wrote $out/BaoCode-${marketing}-linux-amd64.deb"
-echo "Wrote $out/BaoCode-${marketing}-linux-amd64.tar.gz"
+  "$out/BaoCode-${marketing}-linux-${package_arch}.deb"
+tar -C "$bundle" -czf "$out/BaoCode-${marketing}-linux-${package_arch}.tar.gz" .
+echo "Wrote $out/BaoCode-${marketing}-linux-${package_arch}.deb"
+echo "Wrote $out/BaoCode-${marketing}-linux-${package_arch}.tar.gz"

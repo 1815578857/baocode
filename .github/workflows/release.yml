@@ -1,4 +1,4 @@
-# Builds BaoCode for macOS and Windows and publishes it to dl.baocode.dev
+# Builds BaoCode for macOS, Windows and Linux and publishes it to dl.baocode.dev
 # (Cloudflare R2), where installed apps find their updates. docs/release.md
 # has the whole of it: versions, secrets, what goes where.
 #
@@ -218,9 +218,66 @@ jobs:
           if-no-files-found: error
           path: build/installers/BaoCode-*-setup.exe
 
+  linux:
+    name: Build for Linux (${{ matrix.arch }})
+    needs: [check, remote]
+    # The oldest Ubuntu built on: its glibc and GTK are what the package
+    # runs on from there up.
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-22.04
+          - arch: arm64
+            runner: ubuntu-22.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Install GTK's build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev \
+            liblzma-dev libstdc++-12-dev xvfb dbus-x11
+      - uses: actions/download-artifact@v4
+        with:
+          name: remote
+          path: build/remote
+      - name: Build
+        run: flutter build linux --release
+      - name: Package the .deb and the tarball
+        run: |
+          sh tool/package_linux_deb.sh
+          dpkg-deb --info build/installers/BaoCode-*.deb
+      - name: Install the package and launch it
+        run: |
+          sudo apt-get install -y ./build/installers/BaoCode-*.deb
+          log="$RUNNER_TEMP/launch.log"
+          BAOCODE_DATA_DIR="$RUNNER_TEMP/launch-data" \
+            dbus-run-session -- xvfb-run -a /opt/baocode/baocode > "$log" 2>&1 &
+          sleep 15
+          if ! pgrep -x baocode > /dev/null; then
+            cat "$log"
+            echo "::error::BaoCode exited within 15 seconds of launch"
+            exit 1
+          fi
+          echo "BaoCode is running after 15 seconds"
+          pkill -x baocode || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          if-no-files-found: error
+          path: |
+            build/installers/BaoCode-*.deb
+            build/installers/BaoCode-*.tar.gz
+
   share:
     name: Put it at dl.baocode.dev/test/ for testers
-    needs: [check, macos, windows]
+    needs: [check, macos, windows, linux]
     if: needs.check.outputs.share == 'true'
     runs-on: ubuntu-latest
     # The release environment's R2 token (it lets test-* tags in): test/ is
@@ -247,6 +304,11 @@ jobs:
           path: dist/windows
       - uses: actions/download-artifact@v4
         with:
+          pattern: linux-*
+          path: dist/linux
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
           name: remote
           path: dist/remote
       - name: Upload
@@ -263,7 +325,7 @@ jobs:
             echo "## For testers: $MARKETING, \`$GITHUB_REF_NAME\` (${GITHUB_SHA::7})"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
-          for file in dist/macos/BaoCode-*.dmg dist/windows/BaoCode-*-setup.exe; do
+          for file in dist/macos/BaoCode-*.dmg dist/windows/BaoCode-*-setup.exe dist/linux/BaoCode-*.deb; do
             name=$(basename "$file")
             aws s3 cp "$file" "s3://$R2_BUCKET/$dir/$name" --cache-control 'public, max-age=86400'
             url="https://dl.baocode.dev/$dir/$name"
@@ -275,7 +337,7 @@ jobs:
 
   publish:
     name: Publish to dl.baocode.dev
-    needs: [check, remote, macos, windows]
+    needs: [check, remote, macos, windows, linux]
     if: needs.check.outputs.publish == 'true'
     runs-on: ubuntu-latest
     # The update signing key and the R2 token are this environment's
@@ -311,6 +373,9 @@ jobs:
             cp dist/macos/BaoCode-$MARKETING-$arch.dmg dist/macos/BaoCode-$MARKETING-mac-$arch.zip out/
           done
           cp dist/windows/BaoCode-$MARKETING-setup.exe out/
+          for arch in x64 arm64; do
+            cp dist/linux-$arch/BaoCode-$MARKETING-linux-*.deb dist/linux-$arch/BaoCode-$MARKETING-linux-*.tar.gz out/
+          done
           # The remote server, under the name both apps' servers.json give it;
           # servers.json too, for an app packaged with --remote-release.
           remote="out/remote/$(cat dist/remote/VERSION)"
@@ -340,6 +405,8 @@ jobs:
             --macos-x64 out/BaoCode-$MARKETING-mac-x64.zip \
             --dmg-arm64 out/BaoCode-$MARKETING-arm64.dmg \
             --dmg-x64 out/BaoCode-$MARKETING-x64.dmg \
+            --linux-x64 out/BaoCode-$MARKETING-linux-amd64.deb \
+            --linux-arm64 out/BaoCode-$MARKETING-linux-arm64.deb \
             --manifest out/latest.json \
             "${notes[@]}"
           rm "$key"
@@ -384,4 +451,6 @@ jobs:
           # Published again: the release is made anew, on the tag's commit.
           gh release delete "v$MARKETING" --yes 2>/dev/null || true
           gh release create "v$MARKETING" --title "BaoCode $MARKETING" "${notes[@]}" \
-            out/BaoCode-$MARKETING-arm64.dmg out/BaoCode-$MARKETING-x64.dmg out/BaoCode-$MARKETING-setup.exe
+            out/BaoCode-$MARKETING-arm64.dmg out/BaoCode-$MARKETING-x64.dmg out/BaoCode-$MARKETING-setup.exe \
+            out/BaoCode-$MARKETING-linux-amd64.deb out/BaoCode-$MARKETING-linux-arm64.deb \
+            out/BaoCode-$MARKETING-linux-amd64.tar.gz out/BaoCode-$MARKETING-linux-arm64.tar.gz

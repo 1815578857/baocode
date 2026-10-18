@@ -1,6 +1,7 @@
 // baocode.dev's Worker: site/ is served as static assets, and this runs only
-// for /dl/* (run_worker_first in wrangler.jsonc). /dl/windows, /dl/macos-arm64
-// and /dl/macos-x64 redirect to that build of the release in latest.json, and
+// for /dl/* (run_worker_first in wrangler.jsonc). /dl/windows, /dl/macos-arm64,
+// /dl/macos-x64, /dl/linux-x64 and /dl/linux-arm64 redirect to that build of
+// the release in latest.json, and
 // /dl/android and /dl/ios to the phone app's in releases/mobile/latest.json, so
 // a page's links work before site.js swaps them, and without it: a page
 // cached by a browser, a fetch of the manifest too slow or blocked.
