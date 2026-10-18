@@ -6847,7 +6847,7 @@
   "settingsSectionBrowser": "Browser",
   "settingsBrowserKeywords": "chrome extension edge brave arc web page tab agent",
   "browserSettingsDescription": "Let agents use your own browser, signed in as you: open pages, read them, click and type in the tabs you share with them. You can watch every step in the side panel.",
-  "browserSettingsMacOSOnly": "The browser is available on macOS only for now.",
+  "browserSettingsUnsupported": "The browser is available on macOS and Windows only for now.",
   "browserSettingsEnabled": "Let Agents Use the Browser",
   "browserSettingsEnabledDescription": "When off, agents have no browser tools and the extension disconnects.",
   "browserSettingsStatus": "Status",

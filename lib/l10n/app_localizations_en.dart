@@ -9515,8 +9515,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Let agents use your own browser, signed in as you: open pages, read them, click and type in the tabs you share with them. You can watch every step in the side panel.';
 
   @override
-  String get browserSettingsMacOSOnly =>
-      'The browser is available on macOS only for now.';
+  String get browserSettingsUnsupported =>
+      'The browser is available on macOS and Windows only for now.';
 
   @override
   String get browserSettingsEnabled => 'Let Agents Use the Browser';

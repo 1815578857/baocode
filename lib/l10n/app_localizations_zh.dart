@@ -9001,7 +9001,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '让 agent 用你自己的浏览器，沿用你的登录状态：在你共享给它的标签页里打开网页、读取内容、点击和输入。它的每一步操作都能在侧边栏里看到。';
 
   @override
-  String get browserSettingsMacOSOnly => '浏览器功能目前只支持 macOS。';
+  String get browserSettingsUnsupported => '浏览器功能目前只支持 macOS 和 Windows。';
 
   @override
   String get browserSettingsEnabled => '允许 agent 使用浏览器';

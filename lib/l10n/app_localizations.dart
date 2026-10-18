@@ -15525,11 +15525,11 @@ abstract class AppLocalizations {
   /// **'Let agents use your own browser, signed in as you: open pages, read them, click and type in the tabs you share with them. You can watch every step in the side panel.'**
   String get browserSettingsDescription;
 
-  /// No description provided for @browserSettingsMacOSOnly.
+  /// No description provided for @browserSettingsUnsupported.
   ///
   /// In en, this message translates to:
-  /// **'The browser is available on macOS only for now.'**
-  String get browserSettingsMacOSOnly;
+  /// **'The browser is available on macOS and Windows only for now.'**
+  String get browserSettingsUnsupported;
 
   /// No description provided for @browserSettingsEnabled.
   ///
