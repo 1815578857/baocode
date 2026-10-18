@@ -34,7 +34,7 @@
 
 <main class="page">
   <h1>下载 BaoCode</h1>
-  <p class="meta"><span data-version>版本 1.3.0</span><span>免费开源</span></p>
+  <p class="meta"><span data-version>版本 1.4.0</span><span>免费开源</span></p>
 
   <div class="platforms" data-platforms>
     <section class="platform" data-os="macos">
@@ -52,7 +52,7 @@
         <a class="button primary" data-file="windows" href="/dl/windows"><svg class="ic" aria-hidden="true"><use href="#ic-download"/></svg>下载安装程序</a>
       </div>
     </section>
-    <section class="platform" data-os="linux">
+    <section class="platform" data-os="linux" id="linux">
       <h2 class="plain"><svg class="ic logo" aria-hidden="true"><use href="#ic-linux"/></svg>Linux</h2>
       <p>Ubuntu 22.04 或更高版本，以及其他基于 Debian 的发行版。</p>
       <div class="get">
@@ -112,12 +112,13 @@
   <p>装好后，在 BaoCode 里打开 设置 → 浏览器，确认已经连上。</p>
 
   <h2 class="plain">开始之前</h2>
-  <p>BaoCode 运行的是 Claude Code，并不取代它。请先安装 <a href="https://github.com/anthropics/claude-code">Claude Code</a>，然后在 BaoCode 里打开一个文件夹，开始对话。</p>
+  <p>装了 Claude Code 的话，BaoCode 会直接运行它，沿用你的设置和登录。没装的话，BaoCode 用你添加的模型服务商运行，第一次打开时会一步步带你设置。然后打开一个文件夹，开始对话。</p>
   <p>不确定你的 Mac 是哪种？在苹果菜单里选择“关于本机”：显示“芯片”的是 Apple 芯片，显示“处理器”的是 Intel。</p>
   <p>在 Mac 上，把 BaoCode 拖进“应用程序”文件夹。它还没有经过 Apple 公证，所以第一次打开时会被 macOS 拦下：打开“系统设置”→“隐私与安全性”，点 BaoCode 旁边的“仍要打开”。只有第一次需要这样做。</p>
+  <p>在 Linux 上，用系统的软件安装器打开 .deb，或者在下载目录里运行 <code>sudo apt install ./BaoCode-*.deb</code>。装好后应用列表里就有 BaoCode，终端里输入 <code>baocode</code> 也能打开。不确定是哪种处理器？运行 <code>uname -m</code>：<code>x86_64</code> 是 x64，<code>aarch64</code> 是 arm64。</p>
 
   <h2 class="plain">更新</h2>
-  <p>BaoCode 会在后台自动更新，重启前会先询问。如果是它把你带到这里，说明它没法自己更新：从上面下载新版本，直接覆盖安装旧版本即可。你的设置和对话都会保留。</p>
+  <p>BaoCode 会在后台自动更新，重启前会先询问；在 Linux 上安装时会要你输入密码。如果是它把你带到这里，说明它没法自己更新：从上面下载新版本，直接覆盖安装旧版本即可。你的设置和对话都会保留。</p>
   <p>每个版本的变化，见<a href="/zh/changelog">更新日志</a>。</p>
 
 </main>
