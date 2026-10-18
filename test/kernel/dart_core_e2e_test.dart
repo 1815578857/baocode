@@ -148,6 +148,11 @@ void main() {
       final (:kernel, :transcript, :asked) = open(
         KernelContext(cwd: cwd, settings: const {'mode': 'default'}),
       );
+      // What it writes, metered as it streams (the turn's output tokens).
+      final written = <int>[];
+      kernel.events.listen((event) {
+        if (event is OutputReported) written.add(event.output.tokens);
+      });
       const turn = '11111111-1111-4111-8111-111111111111';
       kernel.send(
         const KernelTurn(
@@ -168,6 +173,8 @@ void main() {
       expect(lines, contains('terminal: cat color.txt'));
       expect(lines.last, 'text: done');
       expect(transcript.todos.single.content, 'Pick a color');
+      expect(written, isNotEmpty);
+      expect(written.last, greaterThan(0));
       expect(transcript.usage?.window, greaterThan(0));
       expect(transcript.stats?.costUsd, greaterThan(0));
       expect(transcript.edits.single.change.path, endsWith('color.txt'));
