@@ -31,7 +31,12 @@ const remoteClaudeInstallCommand =
     'curl -fsSL https://claude.ai/install.sh | bash';
 
 /// Claude Code where [launch]'s project is: on its host for a remote one.
-Future<ClaudeCodeTransport> startClaude(ClaudeLaunch launch) {
+/// BaoCode's own core only on an upstream's model ([ClaudeLaunch.env]):
+/// never on what the machine's Claude Code setup names.
+Future<ClaudeCodeTransport> startClaude(ClaudeLaunch launch) async {
+  if (ClaudeCore.current() == ClaudeCore.builtin && launch.env == null) {
+    throw const ClaudeUnavailable(ClaudeCore.noModel);
+  }
   final host = RemoteLocation.hostOf(launch.cwd);
   if (host == null) {
     // On this machine: BaoCode's own core, unless the CLI is picked.

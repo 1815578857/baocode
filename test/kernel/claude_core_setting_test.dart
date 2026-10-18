@@ -74,28 +74,32 @@ void main() {
       return transport;
     }
 
-    test('the built-in core, with a key', () async {
-      environment(key: 'sk-user');
-      expect(await start(), isA<DartCoreTransport>());
-      expect(args.existsSync(), isFalse);
-    });
-
-    test('the built-in core, with a provider\'s key', () async {
+    test('the built-in core, on a provider\'s model', () async {
       environment();
+      ClaudeCore.current = () => ClaudeCore.builtin;
       expect(
         await start(env: {'ANTHROPIC_AUTH_TOKEN': 'token'}),
         isA<DartCoreTransport>(),
       );
+      expect(args.existsSync(), isFalse);
     });
 
-    test(
-      'no key: still the built-in core (it says how to set one up)',
-      () async {
-        environment();
-        expect(await start(), isA<DartCoreTransport>());
-        expect(args.existsSync(), isFalse);
-      },
-    );
+    test('the built-in core on none: not started on the machine\'s own '
+        'setup, key or not; told where to add one', () async {
+      environment(key: 'sk-user');
+      ClaudeCore.current = () => ClaudeCore.builtin;
+      await expectLater(
+        startClaude(ClaudeLaunch(cwd: cwd)),
+        throwsA(
+          isA<ClaudeUnavailable>().having(
+            (error) => error.message,
+            'message',
+            allOf(contains('Settings → Models'), contains('CLI')),
+          ),
+        ),
+      );
+      expect(args.existsSync(), isFalse);
+    });
 
     test('the CLI picked: the CLI, key or not', () async {
       environment(key: 'sk-user');

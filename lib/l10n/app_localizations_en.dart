@@ -3516,7 +3516,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get generalSettingsClaudeCoreDescription =>
-      'What runs Claude Code sessions. The built-in core is BaoCode\'s own, written in Dart: the same tools, settings, CLAUDE.md, skills, subagents, hooks, MCP servers and session files as the CLI, signed in with an API key or a provider. The CLI is Anthropic\'s; pick it to sign in with a Claude subscription. Applies to sessions started after a change, on this machine and on remote hosts.';
+      'What runs Claude Code sessions. The built-in core is BaoCode\'s own, written in Dart: the same tools, settings, CLAUDE.md, skills, subagents, hooks, MCP servers and session files as the CLI; it runs on the upstreams added in Settings → Models alone, never on a model the machine\'s Claude Code setup names. The CLI is Anthropic\'s, and follows that setup; pick it to sign in with a Claude subscription. Applies to sessions started after a change, on this machine and on remote hosts.';
 
   @override
   String get generalSettingsClaudeCoreBuiltin => 'Built-in (Dart)';

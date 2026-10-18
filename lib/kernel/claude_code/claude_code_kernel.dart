@@ -319,8 +319,18 @@ class ClaudeCodeKernel
   }
 
   /// The model asked for, as the CLI names it (e.g. `opus[1m]`), or a
-  /// provider's ([modelRef]).
-  String? _model;
+  /// provider's ([modelRef]). BaoCode's own core has no model of its own:
+  /// on it, one of no upstream is the first upstream's model.
+  String? get _model {
+    final picked = _pickedModel;
+    if (_providers.builtinAvailable || _providers.resolve(picked) != null) {
+      return picked;
+    }
+    return _providers.firstModel;
+  }
+
+  set _model(String? model) => _pickedModel = model;
+  String? _pickedModel;
 
   /// What the process was started on: [_providerKey] then. A provider
   /// is taken up only at start, so another is by a restart (see
@@ -2678,8 +2688,9 @@ class ClaudeCodeKernel
     options: () {
       final providers = _providers.enabled;
       return [
-        // Shown unless turned off in Settings → Models.
-        if (!_providers.builtinHidden)
+        // Shown unless turned off in Settings → Models; never on BaoCode's
+        // own core, which runs on the upstreams alone.
+        if (_providers.builtinOffered)
           if (_models.isEmpty)
             // Its models not known (it is not logged in, or no session has
             // started on it yet): picking this starts one, which lists them.
@@ -2728,6 +2739,8 @@ class ClaudeCodeKernel
     },
     selected: () {
       if (_custom != null) return _model;
+      // BaoCode's own core with no upstream: none to run on.
+      if (!_providers.builtinAvailable) return null;
       return switch (_currentModel?.value) {
         final value? => _baseOf(value),
         null => _models.isEmpty ? 'default' : null,

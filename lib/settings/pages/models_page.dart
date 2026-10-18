@@ -209,7 +209,12 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
   String _auxiliaryName(BuildContext context, String? value) {
     final l10n = context.l10n;
     if (value == null) return l10n.modelsAuxiliaryAuto;
-    if (value == builtinProviderId) return l10n.modelsAuxiliaryBuiltin;
+    if (value == builtinProviderId) {
+      // Not there on BaoCode's own core: automatic in its place.
+      return _providers.builtinAvailable
+          ? l10n.modelsAuxiliaryBuiltin
+          : l10n.modelsAuxiliaryAuto;
+    }
     return _defaultName(context, value);
   }
 
@@ -322,7 +327,7 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
                         unawaited(_providers.setDefaultModel(null)),
                   ),
                   const IdeMenuSeparator(),
-                  if (!_providers.builtinHidden)
+                  if (_providers.builtinOffered)
                     IdeMenuAction(
                       l10n.modelsBuiltinDefault,
                       checked: current == 'default',
@@ -356,17 +361,20 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
         SettingsGroup(
           title: l10n.modelsProviders,
           children: [
-            _ProviderRow(
-              icon: const ProviderIcon(builtinProviderId, size: 16),
-              name: l10n.modelsBuiltinName,
-              badge: l10n.modelsBuiltinBadge,
-              detail: l10n.modelsBuiltinDescription,
-              status: _providers.builtinHidden ? _Status.off : _Status.ready,
-              enabled: !_providers.builtinHidden,
-              switchLabel: l10n.modelsEnableProvider(l10n.modelsBuiltinName),
-              onEnabled: (value) =>
-                  unawaited(_providers.setBuiltinHidden(!value)),
-            ),
+            // Claude Code as set up on this machine: the CLI's alone, not
+            // BaoCode's own core's.
+            if (_providers.builtinAvailable)
+              _ProviderRow(
+                icon: const ProviderIcon(builtinProviderId, size: 16),
+                name: l10n.modelsBuiltinName,
+                badge: l10n.modelsBuiltinBadge,
+                detail: l10n.modelsBuiltinDescription,
+                status: _providers.builtinHidden ? _Status.off : _Status.ready,
+                enabled: !_providers.builtinHidden,
+                switchLabel: l10n.modelsEnableProvider(l10n.modelsBuiltinName),
+                onEnabled: (value) =>
+                    unawaited(_providers.setBuiltinHidden(!value)),
+              ),
             // The newest at a site BaoCode lists first (one imported later
             // takes the place of one before); the rest in their order.
             for (final provider in [

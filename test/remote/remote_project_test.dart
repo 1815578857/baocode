@@ -23,6 +23,8 @@ import 'package:baocode/kernel/claude_code/claude_code_transport.dart';
 import 'package:baocode/kernel/claude_code/claude_core_setting.dart';
 import 'package:baocode/kernel/mock/mock_kernels.dart';
 import 'package:baocode/l10n/l10n.dart';
+import 'package:baocode/models/launch_environment.dart';
+import 'package:baocode/models/model_provider.dart';
 import 'package:baocode/remote/open_remote.dart';
 import 'package:baocode/remote/project_host.dart';
 import 'package:baocode/remote/remote_files.dart';
@@ -646,8 +648,24 @@ printf '%s\n' "$line"
         Reply.text('written there'),
       ]);
       final location = RemoteLocation.of('dev', root);
+      // On an upstream of this machine's Settings → Models, over the
+      // host's own key.
       final transport = await startClaude(
-        ClaudeLaunch(cwd: location, permissionMode: 'acceptEdits'),
+        ClaudeLaunch(
+          cwd: location,
+          permissionMode: 'acceptEdits',
+          model: 'claude-sonnet-4-5',
+          env: launchEnvironment(
+            provider: ModelProvider(
+              id: 'up',
+              name: 'Upstream',
+              baseUrl: api.baseUrl,
+              auth: ProviderAuth.apiKey,
+            ),
+            model: 'claude-sonnet-4-5',
+            key: 'sk-upstream',
+          ),
+        ),
       );
       expect(transport, isA<RemoteClaudeTransport>());
       final messages = <Map<String, Object?>>[];
@@ -672,7 +690,10 @@ printf '%s\n' "$line"
         File(p.join(root, 'there.txt')).readAsStringSync(),
         'from the core\n',
       );
-      expect(api.headers.first['x-api-key'], 'sk-host');
+      expect(api.headers.map((h) => h['x-api-key']).toSet(), {'sk-upstream'});
+      expect(api.model.requests.map((r) => r.body['model']).toSet(), {
+        'claude-sonnet-4-5',
+      });
       final init = messages.firstWhere(
         (m) => m['type'] == 'system' && m['subtype'] == 'init',
       );
@@ -683,37 +704,30 @@ printf '%s\n' "$line"
       expect([for (final s in sessions) s.id], [init['session_id']]);
     }, timeout: const Timeout(Duration(minutes: 3)));
 
-    test('no key there: the core runs, and says how to set one up', () async {
+    test('no upstream: not started there on the host\'s own setup, nor '
+        'its CLI', () async {
       final fake = File(p.join(home.path, 'fake-claude'))
         ..writeAsStringSync('#!/bin/sh\ntouch "${home.path}/cli-ran"\n');
       Process.runSync('chmod', ['+x', fake.path]);
       final environment = {
-        ...hostEnvironment(key: false),
+        ...hostEnvironment(),
         'BAOCODE_CLAUDE_PATH': fake.path,
       };
       CliLocator.use(environment);
       ClaudeEnvironment.use(environment);
-      final transport = await startClaude(
-        ClaudeLaunch(cwd: RemoteLocation.of('dev', root)),
+      await expectLater(
+        startClaude(ClaudeLaunch(cwd: RemoteLocation.of('dev', root))),
+        throwsA(
+          isA<ClaudeUnavailable>().having(
+            (error) => error.message,
+            'message',
+            ClaudeCore.noModel,
+          ),
+        ),
       );
-      final messages = <Map<String, Object?>>[];
-      transport.messages.listen(messages.add);
-      transport.write({
-        'type': 'user',
-        'message': {'role': 'user', 'content': 'hi'},
-      });
-      await until(
-        () => messages.any((m) => m['type'] == 'result'),
-        timeout: const Duration(seconds: 90),
-      );
-      final result = messages.firstWhere((m) => m['type'] == 'result');
-      expect(result['is_error'], isTrue);
-      expect('${result['result']}', contains('ANTHROPIC_API_KEY'));
       expect(File(p.join(home.path, 'cli-ran')).existsSync(), isFalse);
-      expect(api.model.requests, isEmpty);
-      transport.close();
-      await transport.exited.timeout(const Duration(seconds: 20));
-    }, timeout: const Timeout(Duration(minutes: 3)));
+      expect(api.headers, isEmpty);
+    });
   });
 
   group('Open Remote Project', () {

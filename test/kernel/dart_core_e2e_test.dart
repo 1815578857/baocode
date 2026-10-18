@@ -15,6 +15,8 @@ import 'package:baocode/kernel/kernel_event.dart';
 import 'package:baocode/kernel/kernel_types.dart';
 import 'package:baocode/kernel/kernel_registry.dart';
 import 'package:baocode/kernel/transcript.dart';
+import 'package:baocode/models/model_provider.dart';
+import 'package:baocode/models/model_providers.dart';
 import 'package:baocode/network/network_proxy_io.dart';
 import 'package:baocode/network/proxy_settings.dart';
 import 'package:flutter/foundation.dart';
@@ -23,11 +25,14 @@ import 'package:path/path.dart' as p;
 
 import '../kernel_test.dart' show shown;
 
+const _model = 'claude-sonnet-4-5';
+
 void main() {
   late FakeApi api;
   late String root;
   late String cwd;
   late String config;
+  late ModelProviders providers;
 
   setUp(() async {
     root = Directory.systemTemp
@@ -49,13 +54,39 @@ void main() {
         return null;
       },
     );
+    // The machine's own Claude Code setup: another key, other models.
+    // None of it is what the core runs on.
     ClaudeEnvironment.use({
       'HOME': root,
       'PATH': Platform.environment['PATH'] ?? '/usr/bin:/bin',
-      'ANTHROPIC_API_KEY': 'sk-e2e',
-      'ANTHROPIC_BASE_URL': api.baseUrl,
+      'ANTHROPIC_API_KEY': 'sk-user',
+      'ANTHROPIC_MODEL': 'user-model',
       ClaudeEnvironment.dataPathVariable: config,
     });
+    File(p.join(config, 'settings.json')).writeAsStringSync(
+      jsonEncode({
+        'model': 'opus',
+        'env': {
+          'ANTHROPIC_DEFAULT_HAIKU_MODEL': 'user-haiku',
+          'ANTHROPIC_SMALL_FAST_MODEL': 'user-fast',
+          'CLAUDE_CODE_SUBAGENT_MODEL': 'user-subagent',
+        },
+      }),
+    );
+    // What it runs on: an upstream of Settings → Models.
+    providers = ModelProviders.current;
+    ModelProviders.current = ModelProviders.memory(
+      providers: [
+        ModelProvider(
+          id: 'up',
+          name: 'Upstream',
+          baseUrl: api.baseUrl,
+          auth: ProviderAuth.apiKey,
+          models: const [ProviderModel(id: _model)],
+        ),
+      ],
+    );
+    await ModelProviders.current.setKey('up', 'sk-e2e');
     NetworkProxy.instance.follow(
       ValueNotifier(0),
       (key) => key == ProxyMode.settingKey ? ProxyMode.off.value : null,
@@ -65,9 +96,17 @@ void main() {
 
   tearDown(() async {
     ClaudeEnvironment.use(null);
+    ModelProviders.current = providers;
     await api.close();
     Directory(root).deleteSync(recursive: true);
   });
+
+  /// Every request went to the upstream's model, with its key.
+  void onTheUpstream() {
+    expect(api.model.requests, isNotEmpty);
+    expect(api.model.requests.map((r) => r.body['model']).toSet(), {_model});
+    expect(api.headers.map((h) => h['x-api-key']).toSet(), {'sk-e2e'});
+  }
 
   /// A kernel on the core, its transcript, and answers to what it asks.
   ({ClaudeCodeKernel kernel, Transcript transcript, List<String> asked}) open(
@@ -182,12 +221,14 @@ void main() {
         kernel.commands.map((c) => c.name),
         containsAll(['compact', 'context', 'goal']),
       );
-      expect(kernel.model.selected, isNotNull);
+      // The upstream's model, picked for none; nothing else offered.
+      expect(kernel.model.selected, modelRef('up', _model));
+      expect(kernel.model.options.map((o) => o.group?.id).toSet(), {'up'});
       expect(
         (await kernel.suggestFiles('colo')).map((f) => f.path),
         contains('color.txt'),
       );
-      expect(api.headers.first['x-api-key'], 'sk-e2e');
+      onTheUpstream();
 
       // Undone: the file as it was before the turn (not there).
       kernel.revertChanges(sinceTurn: turn);
@@ -284,27 +325,52 @@ void main() {
       await until(() => kernel.promptSuggestion != null, what: 'suggestion');
       expect(kernel.promptSuggestion, 'run the tests');
       expect(asked, isEmpty);
+      // The title, the suggestion, the goal's check: the upstream's too.
+      onTheUpstream();
       kernel.dispose();
       await kernel.stopped;
     },
     timeout: const Timeout(Duration(minutes: 2)),
   );
 
-  test('no key: the built-in core says how to set one up', () async {
-    ClaudeEnvironment.use({
-      'HOME': root,
-      'PATH': Platform.environment['PATH'] ?? '/usr/bin:/bin',
-      ClaudeEnvironment.dataPathVariable: config,
-    });
+  test('a subagent: on the upstream, not the one the user\'s settings '
+      'name', () async {
+    api.model.script.addAll([
+      Reply.tool('Agent', {
+        'description': 'Look around',
+        'prompt': 'List the files',
+        'subagent_type': 'general-purpose',
+      }),
+      Reply.text('nothing here'),
+      Reply.text('it found nothing'),
+    ]);
+    final (:kernel, :transcript, asked: _) = open(
+      KernelContext(cwd: cwd, settings: const {'mode': 'bypassPermissions'}),
+    );
+    kernel.send(
+      const KernelTurn(
+        id: '66666666-6666-4666-8666-666666666666',
+        text: 'look around',
+      ),
+    );
+    await until(() => transcript.lastTurnEndSeq > 0);
+    expect(shown(transcript).last, 'text: it found nothing');
+    onTheUpstream();
+    kernel.dispose();
+    await kernel.stopped;
+  });
+
+  test('no upstream: not started on the machine\'s own setup; says where '
+      'to add one', () async {
+    ModelProviders.current = ModelProviders.memory();
     final (:kernel, :transcript, asked: _) = open(KernelContext(cwd: cwd));
+    expect(kernel.model.options, isEmpty);
     kernel.send(
       const KernelTurn(id: '55555555-5555-4555-8555-555555555555', text: 'hi'),
     );
-    await until(() => transcript.lastTurnEndSeq > 0);
-    final said = shown(transcript).join('\n');
-    expect(said, contains('ANTHROPIC_API_KEY'));
-    expect(said, contains('Settings → General'));
-    expect(api.model.requests, isEmpty);
+    await until(() => kernel.health.status == KernelHealthStatus.failed);
+    expect(kernel.health.message, ClaudeCore.noModel);
+    expect(api.headers, isEmpty);
     kernel.dispose();
     await kernel.stopped;
   });
