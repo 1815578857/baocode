@@ -436,7 +436,12 @@ class ClaudeCodeKernel
   Future<void> _ensureStarted() {
     if (_disposed) return Future.error(StateError('disposed'));
     if (_running) return Future.value();
-    return _starting ??= _launch().whenComplete(() => _starting = null);
+    return _starting ??= _launch().whenComplete(() {
+      _starting = null;
+      // Out of view while it started: freed now, unless a message sent
+      // meanwhile has it at work.
+      if (_releaseWanted) release();
+    });
   }
 
   Future<void> _launch() async {
@@ -555,7 +560,11 @@ class ClaudeCodeKernel
       _tell('file_suggestions', {'query': ''});
       if (_pendingTitle case final title?) {
         _pendingTitle = null;
-        rename(title);
+        // Waited on: a process freed as soon as it is ready (out of view
+        // by then) would end before it took the title.
+        await control
+            .request('rename_session', {'title': title, 'source': 'host'})
+            .catchError((_) => const <String, Object?>{});
       }
       unawaited(_refreshContext());
     } on ClaudeUnavailable catch (error) {
@@ -682,15 +691,16 @@ class ClaudeCodeKernel
       _permissions.isNotEmpty ||
       _starting != null;
 
-  /// Frees the process now if idle, else once the CLI says it is (one
-  /// that does not say keeps it until asked again).
+  /// Frees the process now if idle, else once it has started or the CLI
+  /// says it is idle (one that does not say keeps it until asked again).
   @override
   void release() {
-    if (_transport == null) return;
     if (_busy) {
       _releaseWanted = true;
       return;
     }
+    _releaseWanted = false;
+    if (_transport == null) return;
     _teardown();
     _setHealth(KernelHealth.idle);
   }

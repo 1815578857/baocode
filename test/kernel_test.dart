@@ -164,6 +164,25 @@ class _UsageCli extends FakeCli {
   }
 }
 
+/// A CLI that answers `initialize` only once [initialized] is called.
+class _SlowStartCli extends FakeCli {
+  Map<String, Object?>? _initialize;
+
+  void initialized() {
+    if (_initialize case final message?) super.write(message);
+  }
+
+  @override
+  void write(Map<String, Object?> message) {
+    final request = message['request'];
+    if (request is Map && request['subtype'] == 'initialize') {
+      _initialize = message;
+      return;
+    }
+    super.write(message);
+  }
+}
+
 /// A kernel on [cli], with its events applied to a transcript.
 ({ClaudeCodeKernel kernel, Transcript transcript, List<KernelEvent> events})
 claude(FakeCli cli, {KernelContext context = const KernelContext(cwd: '/p')}) {
@@ -1016,6 +1035,8 @@ void main() {
         await pumpEventQueue();
         kernel.send(const KernelTurn(id: 'u2', text: 'again'));
         await pumpEventQueue();
+        // Timed from its start as it goes.
+        expect(transcript.turnStartedAt, isNotNull);
         await request(40);
         expect(transcript.output?.tokens, 40);
         await request(60);
@@ -1036,6 +1057,7 @@ void main() {
         // Its messages too short to time.
         expect(usage.tokensPerSecond, isNull);
         expect(transcript.output, isNull);
+        expect(transcript.turnStartedAt, isNull);
         kernel.dispose();
       },
     );
@@ -2018,6 +2040,92 @@ void main() {
         ..prepare();
       await push(state('idle'));
       expect(cli.closed, isFalse);
+      kernel.dispose();
+    });
+
+    test('out of view while it starts, the process is freed once started; '
+        'a title waiting is taken first, a message sent meanwhile answered '
+        'first', () async {
+      const result = {
+        'type': 'result',
+        'subtype': 'success',
+        'is_error': false,
+      };
+      ({ClaudeCodeKernel kernel, _SlowStartCli cli, Completer<void> spawned})
+      starting() {
+        final cli = _SlowStartCli();
+        final spawned = Completer<void>();
+        final kernel = ClaudeCodeKernel(
+          MockKernels.claudeCode,
+          const KernelContext(cwd: '/p'),
+          start: (_) async {
+            await spawned.future;
+            return cli;
+          },
+        );
+        return (kernel: kernel, cli: cli, spawned: spawned);
+      }
+
+      // Out of view before the process is there.
+      var (:kernel, :cli, :spawned) = starting();
+      kernel
+        ..rename('Named')
+        ..prepare()
+        ..release();
+      spawned.complete();
+      await pumpEventQueue();
+      expect(cli.closed, isFalse, reason: 'not yet initialized');
+      cli.initialized();
+      await pumpEventQueue();
+      expect(cli.requests('rename_session').single['title'], 'Named');
+      expect(cli.closed, isTrue);
+      kernel.dispose();
+
+      // Out of view while it initializes.
+      (:kernel, :cli, :spawned) = starting();
+      spawned.complete();
+      kernel.prepare();
+      await pumpEventQueue();
+      kernel.release();
+      expect(cli.closed, isFalse);
+      cli.initialized();
+      await pumpEventQueue();
+      expect(cli.closed, isTrue);
+      kernel.dispose();
+
+      // Back in view before it is ready: it stays.
+      (:kernel, :cli, :spawned) = starting();
+      spawned.complete();
+      kernel
+        ..prepare()
+        ..release()
+        ..prepare();
+      await pumpEventQueue();
+      cli.initialized();
+      await pumpEventQueue();
+      expect(cli.closed, isFalse);
+      kernel.dispose();
+
+      // A message sent as it started: freed once it is answered.
+      (:kernel, :cli, :spawned) = starting();
+      spawned.complete();
+      kernel
+        ..send(const KernelTurn(id: 'u1', text: 'hi'))
+        ..release();
+      await pumpEventQueue();
+      cli.initialized();
+      await pumpEventQueue();
+      expect(cli.users, hasLength(1));
+      expect(cli.closed, isFalse);
+      cli.push(result);
+      await pumpEventQueue();
+      cli.push({
+        'type': 'system',
+        'subtype': 'session_state_changed',
+        'state': 'idle',
+      });
+      await pumpEventQueue();
+      expect(cli.closed, isTrue);
       kernel.dispose();
     });
 
