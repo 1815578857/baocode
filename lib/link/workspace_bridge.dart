@@ -296,6 +296,19 @@ class WorkspaceBridge {
         }
         session.answer(answer);
         return null;
+      case LinkMethods.startPlan:
+        final session = _thread(params['session']).session;
+        if (session.awaitingPlan == null) {
+          throw const LinkRemoteException(
+            LinkErrors.notFound,
+            'No plan awaits',
+          );
+        }
+        if (!session.canStartPlan) {
+          throw const LinkRemoteException('busy', 'The agent is at work');
+        }
+        session.startPlan(workspace.l10n().planStartMessage);
+        return null;
       case LinkMethods.choose:
         _choose(
           _thread(params['session']).session,
