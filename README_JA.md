@@ -42,7 +42,7 @@ BaoCode は GPU に直接 UI を描画するネイティブアプリです。以
 
 ## 必要環境
 
-- macOS 12 以降（Apple silicon と Intel 向けにそれぞれ配布）、または Windows 10 以降（x64）。
+- macOS 12 以降（Apple silicon と Intel 向けにそれぞれ配布）、Windows 10 以降（x64）、または Linux：Ubuntu 22.04 以降とその他の Debian 系ディストリビューション（x64 と arm64 向けにそれぞれ .deb）。
 - [Claude Code](https://github.com/anthropics/claude-code) がインストールされていること。
 
 ## ソースからのビルド
@@ -75,7 +75,7 @@ dart run tool/build_remote_server.dart    # Linux x64 / arm64 用の SSH リモ�
 | [packages/bao_xterm](packages/bao_xterm) | xterm.js の Dart 移植 |
 | [packages/bao_pty](packages/bao_pty) | Dart 用疑似端末：macOS / Linux は forkpty、Windows は ConPTY |
 | [packages/bao_remote](packages/bao_remote) | SSH 経由でサービスを提供するリモート側 |
-| [macos/](macos)、[windows/](windows) | ネイティブランナー |
+| [macos/](macos)、[windows/](windows)、[linux/](linux) | ネイティブランナー |
 | [tool/](tool) | ビルド、パッケージング、リリースのスクリプト |
 | [site/](site) | [baocode.dev](https://baocode.dev) のソース |
 | [docs/](docs) | 設計資料 |
