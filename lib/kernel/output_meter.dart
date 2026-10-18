@@ -21,7 +21,8 @@ class OutputMeter {
   static const window = Duration(seconds: 2);
   static const warmUp = Duration(seconds: 1);
 
-  /// Deltas closer than this came together: one burst.
+  /// Deltas this close to a message's first came with it: what the
+  /// upstream held back.
   static const _burst = Duration(milliseconds: 50);
 
   /// Tokens [text] is likely to be: a third of its ASCII characters, and
@@ -92,8 +93,10 @@ class OutputMeter {
     if (!timed || tokens == 0) return;
     _timed += tokens;
     final now = _clock();
-    if (_samples case [..., (final at, _)] when now.difference(at) < _burst) {
-      _samples.last = (at, _timed);
+    // Within [_burst] of the message's first: of what was held back. Only
+    // of the first: deltas as close all along are the model writing fast.
+    if (_samples case [(final at, _)] when now.difference(at) < _burst) {
+      _samples.first = (at, _timed);
     } else {
       _samples.add((now, _timed));
     }

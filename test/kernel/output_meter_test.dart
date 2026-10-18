@@ -40,6 +40,26 @@ void main() {
     expect(meter.output.tokens, 1300);
   });
 
+  test('deltas close together all along are timed each', () {
+    // A burst of what was held back, then a delta every 20ms.
+    for (var i = 0; i < 5; i++) {
+      after(2);
+      meter.streamed('a' * 300);
+    }
+    stream(150, every: 20);
+    expect(meter.output.tokensPerSecond, closeTo(500, 1e-6));
+  });
+
+  test('deltas read off in batches are timed by the batch', () {
+    for (var batch = 0; batch < 30; batch++) {
+      after(100);
+      for (var i = 0; i < 4; i++) {
+        meter.streamed('a' * 30);
+      }
+    }
+    expect(meter.output.tokensPerSecond, closeTo(400, 1e-6));
+  });
+
   test('follows the pace as it changes', () {
     stream(30);
     stream(60, every: 50);
