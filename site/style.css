@@ -81,7 +81,6 @@ h1 { margin: 0; font: 600 44px/1.15 var(--serif); letter-spacing: -.015em; color
 /* Hung over a link's top right corner. */
 .also a:has(.tag) { position: relative; }
 .also .tag { position: absolute; right: -10px; bottom: calc(100% + 1px); margin: 0; padding: 0 7px; font-size: 11px; line-height: 1.6; vertical-align: 0; white-space: nowrap; pointer-events: none; }
-.also .all { color: var(--muted); }
 
 h2 { margin: 72px 0 18px; font: 600 27px/1.3 var(--serif); letter-spacing: -.01em; color: var(--ink); counter-increment: h2; }
 svg.ic { width: 1em; height: 1em; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
