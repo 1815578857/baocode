@@ -214,6 +214,11 @@ void main() {
       expect(transcript.todos.single.content, 'Pick a color');
       expect(written, isNotEmpty);
       expect(written.last, greaterThan(0));
+      // Its thinking asked for summarized, for the chat to show.
+      expect(
+        api.model.turns.first.body['thinking'],
+        containsPair('display', 'summarized'),
+      );
       expect(transcript.usage?.window, greaterThan(0));
       expect(transcript.stats?.costUsd, greaterThan(0));
       expect(transcript.edits.single.change.path, endsWith('color.txt'));

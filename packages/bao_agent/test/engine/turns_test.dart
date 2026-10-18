@@ -123,12 +123,12 @@ void main() {
     await h.turn('Hi');
     final request = h.model.turns.single;
     final system = jsonEncode(request.body['system']);
-    expect(system, contains('interactive coding agent'));
+    expect(system, contains('You are the coding agent of'));
     expect(system, contains(h.cwd));
     final messages = request.body['messages'] as List;
     final first = jsonEncode(messages.first);
     expect(first, contains('Always answer in French.'));
-    expect(first, contains('# currentDate'));
+    expect(first, contains('# Date'));
     final tools = [
       for (final t in request.body['tools'] as List) (t as Map)['name'],
     ];
@@ -193,7 +193,7 @@ void main() {
     );
     final sent = requestText(h.model.turns.first);
     expect(sent, contains('void main() {}'));
-    expect(sent, contains('Called the Read tool'));
+    expect(sent, contains('which Read gives as follows'));
     expect(sent, contains('b.dart'));
     expect(sent, contains('"type":"image"'));
     expect(h.toolResults.single['is_error'], isNot(true));
