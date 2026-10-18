@@ -2545,15 +2545,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get turnSpeedHint => 'Average output speed';
 
   @override
-  String turnOutputTokens(String tokens) {
-    return '↓ $tokens tokens';
-  }
-
-  @override
   String get turnOutputTokensHint => 'Written so far this turn';
 
   @override
-  String get turnSpeedLiveHint => 'Output speed';
+  String get turnSpeedLiveHint =>
+      'Output speed, sampled over the last 2 seconds';
 
   @override
   String get turnDurationHint => 'Time this turn took';

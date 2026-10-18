@@ -2461,15 +2461,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get turnSpeedHint => '平均输出速度';
 
   @override
-  String turnOutputTokens(String tokens) {
-    return '↓ $tokens tokens';
-  }
-
-  @override
   String get turnOutputTokensHint => '本轮已输出';
 
   @override
-  String get turnSpeedLiveHint => '输出速度';
+  String get turnSpeedLiveHint => '输出速度（最近 2 秒采样）';
 
   @override
   String get turnDurationHint => '本轮耗时';

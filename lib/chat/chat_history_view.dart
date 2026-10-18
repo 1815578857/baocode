@@ -167,14 +167,18 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     );
   }
 
-  /// Under the last item of the turn under way, where its footer will be:
-  /// what the model has written so far, and how fast.
+  /// Under the status row of the turn under way, the last of all, whether
+  /// the row shows or not: how fast the model writes, how long the turn
+  /// has taken, and the tokens so far.
   Widget? _liveFooter(int index) {
-    if (!_feed.isStreaming || index != _contentCount - 1) return null;
-    return switch (_feed.itemAt(_feed.itemCount - 1)) {
-      LiveStatusItem(:final output?) when output.tokens > 0 => TurnFooter(
-        live: output,
-      ),
+    if (!_feed.isStreaming || index != _feed.itemCount - 1) return null;
+    return switch (_feed.itemAt(index)) {
+      LiveStatusItem(:final output, :final startedAt)
+          when startedAt != null || (output?.tokens ?? 0) > 0 =>
+        TurnFooter(
+          live: output ?? const TurnOutput(tokens: 0),
+          since: startedAt,
+        ),
       _ => null,
     };
   }

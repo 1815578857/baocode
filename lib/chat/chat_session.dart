@@ -606,12 +606,14 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
         'Compacting conversation',
         visible: _statusVisible,
         output: output,
+        startedAt: _transcript.turnStartedAt,
       ),
       _ => LiveStatusItem(
         'Planning next move',
         whimsical: true,
         visible: _statusVisible,
         output: output,
+        startedAt: _transcript.turnStartedAt,
         cue: MusingCue.after(_last),
       ),
     };

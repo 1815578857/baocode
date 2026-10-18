@@ -482,11 +482,14 @@ class ClaudeTranslator {
               streaming: true,
             );
           case 'text':
+            if (!replaying) _meter.startBlock();
             _streamed[index] = id;
             (_unclaimed['$_messageId:text'] ??= []).add(id);
             _textLength[id] = 0;
             _put(id, const AssistantTextItem(''), streaming: true);
           case 'tool_use':
+            // Its input may come all at once as it ends: timed from here.
+            if (!replaying) _meter.startBlock();
             final toolId = block['id'] as String;
             final name = block['name'] as String;
             if (!_tools.containsKey(toolId)) {

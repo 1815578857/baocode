@@ -4460,12 +4460,6 @@ abstract class AppLocalizations {
   /// **'Average output speed'**
   String get turnSpeedHint;
 
-  /// The tokens the model has written so far in the turn under way, e.g. "↓ 1.2k tokens".
-  ///
-  /// In en, this message translates to:
-  /// **'↓ {tokens} tokens'**
-  String turnOutputTokens(String tokens);
-
   /// No description provided for @turnOutputTokensHint.
   ///
   /// In en, this message translates to:
@@ -4475,7 +4469,7 @@ abstract class AppLocalizations {
   /// No description provided for @turnSpeedLiveHint.
   ///
   /// In en, this message translates to:
-  /// **'Output speed'**
+  /// **'Output speed, sampled over the last 2 seconds'**
   String get turnSpeedLiveHint;
 
   /// No description provided for @turnDurationHint.
