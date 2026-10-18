@@ -167,6 +167,18 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     );
   }
 
+  /// Under the last item of the turn under way, where its footer will be:
+  /// what the model has written so far, and how fast.
+  Widget? _liveFooter(int index) {
+    if (!_feed.isStreaming || index != _contentCount - 1) return null;
+    return switch (_feed.itemAt(_feed.itemCount - 1)) {
+      LiveStatusItem(:final output?) when output.tokens > 0 => TurnFooter(
+        live: output,
+      ),
+      _ => null,
+    };
+  }
+
   /// The work fold of the last turn, if it folds.
   StepFold? _lastTurnWork() {
     for (var index = _feed.itemCount - 1; index >= 0; index--) {
@@ -1806,9 +1818,12 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     }
     final row = _folds.rowAt(index, item, _isFoldOpen);
     final folds = [?row.work, ?row.steps];
-    // Folded away.
+    final footer = _turnFooter(index) ?? _liveFooter(index);
+    // Folded away (what the turn under way has written showing still).
     if (folds.isEmpty && !row.item) {
-      return const SizedBox(width: double.infinity);
+      return footer == null
+          ? const SizedBox(width: double.infinity)
+          : SizedBox(width: double.infinity, child: footer);
     }
     Widget? shown;
     if (row.item) {
@@ -1828,10 +1843,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
         onSetGoal: widget.onSetGoal,
       );
       shown = switch (item) {
-        // Meanwhile over the item it gave way to; what is written stays.
-        LiveStatusItem(:final output?)
-            when _handoffIndex != null && output.tokens > 0 =>
-          LiveTurnStats(output: output),
+        // Meanwhile over the item it gave way to.
         LiveStatusItem() when _handoffIndex != null => const SizedBox(
           width: double.infinity,
         ),
@@ -1845,7 +1857,6 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
         ),
       };
     }
-    final footer = _turnFooter(index);
     return _ItemSelectionScope(
       index: index,
       delegate: _selectionDelegate,
@@ -1891,16 +1902,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
     if (status is! LiveStatusItem) return null;
     final previous = index == 0 ? null : _feed.itemAt(index - 1);
     return (
-      // Not what is written, which stays where it is.
-      row: ChatItemView(
-        key: _statusKey,
-        item: LiveStatusItem(
-          status.label,
-          whimsical: status.whimsical,
-          visible: status.visible,
-          cue: status.cue,
-        ),
-      ),
+      row: ChatItemView(key: _statusKey, item: status),
       top: _gapBetween(previous, status) - _gapBefore(index),
     );
   }

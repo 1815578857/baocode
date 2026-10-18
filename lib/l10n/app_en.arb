@@ -1504,7 +1504,7 @@
     }
   },
   "turnOutputTokensHint": "Written so far this turn",
-  "turnSpeedLiveHint": "Output speed now",
+  "turnSpeedLiveHint": "Output speed",
   "turnDurationHint": "Time this turn took",
   "turnCostHint": "Cost of this turn",
   "turnWorked": "Worked for {duration}",

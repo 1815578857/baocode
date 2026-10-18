@@ -158,8 +158,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
   });
 
-  testWidgets('what is written shows under the row, and stays at the end as '
-      'the row gives way', (tester) async {
+  testWidgets('what is written shows where the turn\'s footer will be, '
+      'under its last item, as items come', (tester) async {
     final feed = await _pump(tester);
     feed
       ..output = const TurnOutput(tokens: 1234, tokensPerSecond: 83.4)
@@ -168,35 +168,46 @@ void main() {
     final written = find.text('↓ 1.2k tokens');
     expect(written, findsOneWidget);
     expect(find.text('83 tok/s'), findsOneWidget);
+    // Under the question, over the status row.
     expect(
       tester.getRect(written).top,
-      greaterThan(tester.getRect(find.byType(ActivityRow)).top),
+      greaterThan(tester.getRect(find.text('A question').first).bottom),
+    );
+    expect(
+      tester.getRect(written).bottom,
+      lessThan(tester.getRect(find.byType(ActivityRow)).top),
     );
 
     feed.add(_thought, statusVisible: false);
     await tester.pump();
     final thought = find.byType(ThinkingSection);
-    // Not over the thought with the row fading there: after it, at once.
+    // Under the thought now, at once.
     expect(written, findsOneWidget);
     expect(
       tester.getRect(written).top,
       greaterThan(tester.getRect(thought).top),
     );
-    final below = tester.getRect(written).top;
-    await tester.pump(const Duration(milliseconds: 120));
+    await tester.pump(const Duration(milliseconds: 400));
     expect(written, findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 300));
-    // Where it was, the row back and folded above it.
-    expect(written, findsOneWidget);
-    expect(tester.getRect(written).top, closeTo(below, 0.5));
+    expect(
+      tester.getRect(written).top,
+      greaterThan(tester.getRect(thought).bottom),
+    );
 
-    // No speed while it does not write.
+    // No speed before there is one to say.
     feed
       ..output = const TurnOutput(tokens: 1300)
       ..notifyListeners();
     await tester.pump();
     expect(find.textContaining('tok/s'), findsNothing);
     expect(find.text('↓ 1.3k tokens'), findsOneWidget);
+
+    // Done, the footer in its place.
+    feed
+      ..streaming = false
+      ..notifyListeners();
+    await tester.pump();
+    expect(find.textContaining('↓'), findsNothing);
   });
 
   testWidgets('where motion is turned down, all is at once', (tester) async {

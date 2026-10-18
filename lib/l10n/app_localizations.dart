@@ -4475,7 +4475,7 @@ abstract class AppLocalizations {
   /// No description provided for @turnSpeedLiveHint.
   ///
   /// In en, this message translates to:
-  /// **'Output speed now'**
+  /// **'Output speed'**
   String get turnSpeedLiveHint;
 
   /// No description provided for @turnDurationHint.

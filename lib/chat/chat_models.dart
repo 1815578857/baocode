@@ -71,7 +71,8 @@ class TurnUsage {
 }
 
 /// What the model has written so far in the turn under way, and how fast it
-/// writes now (null while it does not).
+/// writes (now while it does, else on average so far; null before it has
+/// written long enough to say).
 class TurnOutput {
   const TurnOutput({required this.tokens, this.tokensPerSecond});
 
@@ -518,8 +519,8 @@ class LiveStatusItem extends ChatItem {
   /// Whether it shows now: it stays through the turn, and comes and goes.
   final bool visible;
 
-  /// What the model has written so far, under the row whether it shows or
-  /// not; null before it has written anything.
+  /// What the model has written so far, shown where the turn's footer
+  /// will be; null before it has written anything.
   final TurnOutput? output;
 
   /// What the agent did last, for a [whimsical] row to muse on as well.

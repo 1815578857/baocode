@@ -145,14 +145,12 @@ class ChatItemView extends StatelessWidget {
         :final label,
         :final whimsical,
         :final visible,
-        :final output,
         :final cue,
       ) =>
         ActivityRow(
           label: label,
           whimsical: whimsical,
           visible: visible,
-          output: output,
           cue: cue,
         ),
     };

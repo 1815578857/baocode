@@ -144,10 +144,11 @@ class OutputMeter {
     _startMessage();
   }
 
-  /// What is written so far, and how fast now.
+  /// What is written so far, and how fast: now, while it writes; else on
+  /// average so far, rather than none between its messages.
   TurnOutput get output => TurnOutput(
     tokens: _counted + (_guessed * _ratio).round(),
-    tokensPerSecond: _speed,
+    tokensPerSecond: _speed ?? averageSpeed,
   );
 
   /// The speed shown, on average over the time it was; null if it never

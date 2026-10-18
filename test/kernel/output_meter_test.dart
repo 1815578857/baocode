@@ -66,10 +66,11 @@ void main() {
     expect(meter.output.tokensPerSecond, closeTo(200, 1e-6));
   });
 
-  test('none between messages; the counts replace the guesses', () {
+  test('the average so far between messages; the counts replace the '
+      'guesses', () {
     stream(20);
     meter.endMessage(tokens: 300, written: 200);
-    expect(meter.output.tokensPerSecond, isNull);
+    expect(meter.output.tokensPerSecond, closeTo(100, 1e-6));
     expect(meter.output.tokens, 300);
     meter.startMessage();
     // Guessed 200 for 200 written: the guess stands.

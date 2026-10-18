@@ -9,7 +9,6 @@ import '../chat_models.dart';
 import 'markdown_view.dart';
 import 'step_header.dart';
 import 'thinking_spark.dart';
-import 'turn_footer.dart';
 
 /// What the agent is busy with out of sight, after Claude's spark: typed
 /// out, then dots counting up behind it ("Compacting conversation..").
@@ -22,7 +21,6 @@ class ActivityRow extends StatelessWidget {
     required this.label,
     this.whimsical = false,
     this.visible = true,
-    this.output,
     this.cue,
     this.random,
   });
@@ -32,9 +30,6 @@ class ActivityRow extends StatelessWidget {
 
   /// Whether it shows: it opens and fades in, or folds and fades out.
   final bool visible;
-
-  /// What the model has written so far: under it, shown or not.
-  final TurnOutput? output;
 
   /// The step just done, to muse on.
   final MusingCue? cue;
@@ -108,15 +103,7 @@ class ActivityRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final output = this.output;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _Reveal(visible: visible, child: _row(context.l10n)),
-        if (output != null && output.tokens > 0) LiveTurnStats(output: output),
-      ],
-    );
+    return _Reveal(visible: visible, child: _row(context.l10n));
   }
 
   Widget _row(AppLocalizations l10n) {

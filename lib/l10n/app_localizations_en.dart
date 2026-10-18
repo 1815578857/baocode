@@ -2553,7 +2553,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get turnOutputTokensHint => 'Written so far this turn';
 
   @override
-  String get turnSpeedLiveHint => 'Output speed now';
+  String get turnSpeedLiveHint => 'Output speed';
 
   @override
   String get turnDurationHint => 'Time this turn took';
