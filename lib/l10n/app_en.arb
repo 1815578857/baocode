@@ -5204,6 +5204,18 @@
       }
     }
   },
+  "appearanceSettingsReplyScroll": "As a Reply Comes",
+  "appearanceSettingsReplyScrollDescription": "Where the conversation stays as the reply to your message is written: at its end, following it; or at its start, your message at the top, for you to read on from there. Scrolled to the end, it follows again.",
+  "appearanceSettingsReplyScrollFollow": "Automatic",
+  "appearanceSettingsReplyScrollStart": "Stay at its start",
+  "appearanceSettingsReplyScrollLabel": "As a reply comes: {choice}",
+  "@appearanceSettingsReplyScrollLabel": {
+    "placeholders": {
+      "choice": {
+        "type": "String"
+      }
+    }
+  },
   "appearanceSettingsMinimap": "Conversation Minimap",
   "appearanceSettingsMinimapDescription": "A minimap of the whole conversation at the left of its column, where you are in it shown as you scroll; click or drag it to get somewhere. It stands in for the scrollbar, and is not shown in a window too narrow for it. Off: the scrollbar.",
   "appearanceSettingsSidebarTimes": "Times in the Sidebar",

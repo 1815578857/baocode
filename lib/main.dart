@@ -15,6 +15,7 @@ import 'browser/browser_bridge.dart';
 import 'browser/browser_tools.dart' show BrowserHistory;
 import 'chat/composer/composer_files.dart' show ComposerFile, pastedAsPicture;
 import 'chat/chat_width.dart';
+import 'chat/reply_scroll.dart';
 import 'chat/user_message_style.dart';
 import 'chat/widgets/chat_minimap.dart';
 import 'chat/widgets/pixel_loader.dart';
@@ -203,6 +204,11 @@ Future<void> main(List<String> arguments) async {
     UserMessageStyle.follow(
       files.settings,
       () => files.settings[UserMessageStyle.settingKey],
+    );
+    // Settings → Appearance: where a conversation stays as a reply comes.
+    ReplyScroll.keep(
+      files.settings,
+      () => files.settings[ReplyScroll.settingKey],
     );
     // Settings → Appearance: whether the conversation has a minimap, how
     // opaque its glass is and how much it stretches.

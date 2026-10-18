@@ -7362,6 +7362,24 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get appearanceSettingsReplyScroll => 'As a Reply Comes';
+
+  @override
+  String get appearanceSettingsReplyScrollDescription =>
+      'Where the conversation stays as the reply to your message is written: at its end, following it; or at its start, your message at the top, for you to read on from there. Scrolled to the end, it follows again.';
+
+  @override
+  String get appearanceSettingsReplyScrollFollow => 'Automatic';
+
+  @override
+  String get appearanceSettingsReplyScrollStart => 'Stay at its start';
+
+  @override
+  String appearanceSettingsReplyScrollLabel(String choice) {
+    return 'As a reply comes: $choice';
+  }
+
+  @override
   String get appearanceSettingsMinimap => 'Conversation Minimap';
 
   @override

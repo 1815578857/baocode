@@ -24,6 +24,7 @@ import 'chat_models.dart';
 import 'chat_session.dart';
 import 'composer/composer.dart';
 import 'composer/composer_draft.dart';
+import 'reply_scroll.dart';
 import 'side_panel/file_link_menu.dart';
 import 'steadiness.dart';
 import 'step_folds.dart';
@@ -506,7 +507,9 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   @override
   void initState() {
     super.initState();
-    _scrollController.laidOut = _keepShownLaidOut;
+    _scrollController
+      ..laidOut = _keepShownLaidOut
+      ..stopAt = _replyStart;
     _find
       ..feed = _feed
       ..addListener(_findChanged);
@@ -991,6 +994,8 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
       // move it less than that.
       _scrollController.anchored =
           position.pixels >= end && position.headedTo >= end;
+      // Taken to the end: what is written is followed again.
+      if (_scrollController.anchored) _toReplyStart = false;
     }
     if (_shownAtBottom != _atBottom) {
       setState(() => _shownAtBottom = _atBottom);
@@ -1230,11 +1235,43 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   }
 
   bool _handleMetricsChanged(ScrollMetricsNotification notification) {
+    // Let go of as it laid out (see [_replyStart]).
+    if (_shownAtBottom != _atBottom) {
+      setState(() => _shownAtBottom = _atBottom);
+    }
     _syncEdgeFades();
     _scheduleStickyUpdate();
     _editorMoved.value++;
     _wantEarlier();
     return false;
+  }
+
+  /// Whether the list, following the reply to a message sent, stops with
+  /// the message at the top ([ReplyScroll.start]): until the user takes it
+  /// back to the end, or the turn ends.
+  bool _toReplyStart = false;
+
+  /// The offset that has the message of the turn under way at the top,
+  /// as its stuck copy would be, while the list stops there; null while it
+  /// does not, or the message is not laid out. Read during layout.
+  double? _replyStart() {
+    if (!_toReplyStart || ReplyScroll.current.value != ReplyScroll.start) {
+      return null;
+    }
+    final index = (_liveStart ?? 0) - 1;
+    if (index < 0) return null;
+    for (final item in _laidOutItems()) {
+      if (_indexOf(item) != index) continue;
+      final offset =
+          (item.parentData! as SliverMultiBoxAdaptorParentData).layoutOffset;
+      final sliver = item.parent;
+      if (offset == null || sliver is! RenderSliver) return null;
+      return sliver.constraints.precedingScrollExtent +
+          offset +
+          _gapBefore(index) -
+          _stickyInset;
+    }
+    return null;
   }
 
   void _setAnchored(bool value) {
@@ -1280,7 +1317,11 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
       _feed.editing = null;
     }
     // Sending a message always brings the live turn into view.
-    if (startedStreaming && sent) _jumpToBottom();
+    if (startedStreaming && sent) {
+      _jumpToBottom();
+      _toReplyStart = true;
+    }
+    if (ended) _toReplyStart = false;
     _itemsCame();
     _scheduleStickyUpdate();
     setState(() {});
@@ -1981,6 +2022,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   };
 
   void _jumpToBottom() {
+    _toReplyStart = false;
     _setAnchored(true);
     if (_scrollController.hasClients) {
       final position = _scrollController.position;
@@ -2480,6 +2522,10 @@ class _JumpToBottomButton extends StatelessWidget {
 class _BottomAnchoredScrollController extends SmoothScrollController {
   bool anchored = true;
 
+  /// While [anchored]: the furthest it follows to, if anywhere; there it
+  /// lets go (see [ReplyScroll.start]).
+  double? Function()? stopAt;
+
   /// Once the list is laid out: how far to move it, laid out again then.
   double Function()? laidOut;
 
@@ -2538,6 +2584,20 @@ class _BottomAnchoredScrollPosition extends ScrollPositionWithSingleContext
       minScrollExtent,
       maxScrollExtent,
     );
+    if (controller.anchored && hasPixels && activity is! DragScrollActivity) {
+      if (controller.stopAt?.call() case final stop?
+          when stop < maxScrollExtent) {
+        // As far as it follows: let go there (or here, past it already).
+        controller.anchored = false;
+        final target = math
+            .max(stop, pixels)
+            .clamp(minScrollExtent, maxScrollExtent);
+        if (target != pixels) {
+          correctPixels(target);
+          return false;
+        }
+      }
+    }
     if (controller.anchored &&
         hasPixels &&
         pixels != maxScrollExtent &&

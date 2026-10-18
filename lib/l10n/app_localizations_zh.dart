@@ -6913,6 +6913,24 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get appearanceSettingsReplyScroll => '回复时滚动';
+
+  @override
+  String get appearanceSettingsReplyScrollDescription =>
+      'Agent 回复时对话停在哪里：自动跟随最新输出；或者锚定开头，你的消息到顶部后就不再自动滚动，从回复开头往下读。手动滚到底部后恢复跟随。';
+
+  @override
+  String get appearanceSettingsReplyScrollFollow => '自动';
+
+  @override
+  String get appearanceSettingsReplyScrollStart => '锚定开头';
+
+  @override
+  String appearanceSettingsReplyScrollLabel(String choice) {
+    return '回复时滚动：$choice';
+  }
+
+  @override
   String get appearanceSettingsMinimap => '对话缩略图';
 
   @override

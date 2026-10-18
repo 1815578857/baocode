@@ -11961,6 +11961,36 @@ abstract class AppLocalizations {
   /// **'Your messages: {style}'**
   String appearanceSettingsUserMessageStyleLabel(String style);
 
+  /// No description provided for @appearanceSettingsReplyScroll.
+  ///
+  /// In en, this message translates to:
+  /// **'As a Reply Comes'**
+  String get appearanceSettingsReplyScroll;
+
+  /// No description provided for @appearanceSettingsReplyScrollDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Where the conversation stays as the reply to your message is written: at its end, following it; or at its start, your message at the top, for you to read on from there. Scrolled to the end, it follows again.'**
+  String get appearanceSettingsReplyScrollDescription;
+
+  /// No description provided for @appearanceSettingsReplyScrollFollow.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get appearanceSettingsReplyScrollFollow;
+
+  /// No description provided for @appearanceSettingsReplyScrollStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay at its start'**
+  String get appearanceSettingsReplyScrollStart;
+
+  /// No description provided for @appearanceSettingsReplyScrollLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'As a reply comes: {choice}'**
+  String appearanceSettingsReplyScrollLabel(String choice);
+
   /// No description provided for @appearanceSettingsMinimap.
   ///
   /// In en, this message translates to:
