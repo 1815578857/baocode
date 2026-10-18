@@ -8,6 +8,8 @@
 //     --macos-x64 build/installers/BaoCode-1.2.0-mac-x64.zip \
 //     [--dmg-arm64 build/installers/BaoCode-1.2.0-arm64.dmg] \
 //     [--dmg-x64 build/installers/BaoCode-1.2.0-x64.dmg] \
+//     [--linux-x64 build/installers/BaoCode-1.2.0-linux-amd64.deb] \
+//     [--linux-arm64 build/installers/BaoCode-1.2.0-linux-arm64.deb] \
 //     [--notes-en <text or file>] [--notes-zh <text or file>] \
 //     [--minimum-version 1.0.0] [--version 1.2.0+12] \
 //     [--manifest build/installers/latest.json]
@@ -30,7 +32,8 @@
 //
 // Besides what the app reads, `downloads` gives the download page
 // (site/site.js) what it offers: the disk images (--dmg-arm64, --dmg-x64),
-// which the app does not update from, and the Windows installer.
+// which the app does not update from, the Windows installer, and the Linux
+// packages (which the app updates from too).
 import 'dart:convert';
 import 'dart:io';
 
@@ -51,6 +54,9 @@ Uri _link(AppVersion version, String name, String sha256) => Uri.parse(
 /// the app takes its processor's (lib/update/installer_io.dart).
 const _macArchitectures = ['arm64', 'x64'];
 
+/// The Linux packages built (tool/package_linux_deb.sh), the same.
+const _linuxArchitectures = ['x64', 'arm64'];
+
 /// Where the private key's path is given.
 const _keyVariable = 'BAOCODE_UPDATE_SIGNING_KEY';
 
@@ -59,6 +65,7 @@ Usage:
   dart run tool/release_manifest.dart [--windows <setup.exe>]
       [--macos-arm64 <mac-arm64.zip>] [--macos-x64 <mac-x64.zip>]
       [--dmg-arm64 <arm64.dmg>] [--dmg-x64 <x64.dmg>]
+      [--linux-x64 <amd64.deb>] [--linux-arm64 <arm64.deb>]
       [--notes-en <text|file>] [--notes-zh <text|file>]
       [--minimum-version <version>] [--version <version>]
       [--manifest <latest.json>]
@@ -97,10 +104,13 @@ Future<void> main(List<String> arguments) async {
     if (options['windows'] case final path?) 'windows-x64': File(path),
     for (final arch in _macArchitectures)
       if (options['macos-$arch'] case final path?) 'macos-$arch': File(path),
+    for (final arch in _linuxArchitectures)
+      if (options['linux-$arch'] case final path?) 'linux-$arch': File(path),
   };
   if (files.isEmpty) {
     _fail(
-      'Nothing to sign: give --windows, --macos-arm64 or --macos-x64.\n\n'
+      'Nothing to sign: give --windows, --macos-arm64, --macos-x64, '
+      '--linux-x64 or --linux-arm64.\n\n'
       '$_usage',
     );
   }
@@ -167,6 +177,16 @@ Future<void> main(List<String> arguments) async {
       'sha256': installer.sha256,
     };
   }
+  // The packages as they are: the page's links, and the app's updates.
+  for (final arch in _linuxArchitectures) {
+    if (assets['linux-$arch'] case final package?) {
+      downloads['linux-$arch'] = {
+        'url': '${package.url}',
+        'size': package.size,
+        'sha256': package.sha256,
+      };
+    }
+  }
   final dmgs = {
     for (final arch in _macArchitectures)
       if (options['dmg-$arch'] case final path?) 'macos-$arch': File(path),
@@ -215,6 +235,7 @@ Future<void> main(List<String> arguments) async {
   final missing = {
     'windows-x64',
     for (final arch in _macArchitectures) 'macos-$arch',
+    for (final arch in _linuxArchitectures) 'linux-$arch',
   }.difference(assets.keys.toSet());
   if (missing.isNotEmpty) {
     stdout.writeln(
@@ -283,6 +304,8 @@ Map<String, String?> _parse(List<String> arguments) {
     'macos-x64',
     'dmg-arm64',
     'dmg-x64',
+    'linux-x64',
+    'linux-arm64',
     'notes-en',
     'notes-zh',
     'minimum-version',
