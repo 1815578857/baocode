@@ -8,6 +8,7 @@ import '../../ide/ide_agent_changes.dart';
 import '../../ide/ide_button.dart';
 import '../../ide/ide_menu.dart';
 import '../../ide/ide_notifications.dart' show IdeSeverity;
+import '../../kernel/claude_code/claude_core_setting.dart';
 import '../../kernel/claude_code/claude_path_setting.dart';
 import '../../kernel/commit_attribution.dart';
 import '../../kernel/prompt_suggestions.dart';
@@ -374,6 +375,17 @@ class GeneralSettingsPage extends StatelessWidget {
                 children: [
                   SettingsCard(
                     children: [
+                      _choiceRow(
+                        context,
+                        key: ClaudeCore.settingKey,
+                        label: l10n.generalSettingsClaudeCore,
+                        description: l10n.generalSettingsClaudeCoreDescription,
+                        values: {
+                          ClaudeCore.builtin.name:
+                              l10n.generalSettingsClaudeCoreBuiltin,
+                          ClaudeCore.cli.name: l10n.generalSettingsClaudeCoreCli,
+                        },
+                      ),
                       _ClaudePathSetting(
                         path: ClaudePathSetting.parse(
                           settings?[ClaudePathSetting.settingKey],

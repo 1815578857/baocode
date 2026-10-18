@@ -5858,6 +5858,30 @@ abstract class AppLocalizations {
   /// **'Who the commits and pull requests an agent writes credit. Applies to agents started after a change; Claude Code only for now.'**
   String get generalSettingsCommitAttributionDescription;
 
+  /// Settings → General → Claude Code row: what runs Claude Code sessions, BaoCode's built-in core (written in Dart) or the Claude Code CLI.
+  ///
+  /// In en, this message translates to:
+  /// **'Core'**
+  String get generalSettingsClaudeCore;
+
+  /// No description provided for @generalSettingsClaudeCoreDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'What runs Claude Code sessions. The built-in core is BaoCode\'s own, written in Dart: the same tools, settings, CLAUDE.md, skills, subagents, hooks, MCP servers and session files as the CLI, signed in with an API key or a provider. The CLI is Anthropic\'s; pick it to sign in with a Claude subscription. Applies to sessions started after a change, on this machine and on remote hosts.'**
+  String get generalSettingsClaudeCoreDescription;
+
+  /// Claude Code core choice: BaoCode's own agent core, written in Dart and run inside the app.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in (Dart)'**
+  String get generalSettingsClaudeCoreBuiltin;
+
+  /// Claude Code core choice: Anthropic's Claude Code command-line program, run as a process.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude Code CLI'**
+  String get generalSettingsClaudeCoreCli;
+
   /// No description provided for @generalSettingsQueuedMessages.
   ///
   /// In en, this message translates to:
