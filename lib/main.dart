@@ -41,6 +41,9 @@ import 'kernel/claude_code/claude_core_setting.dart';
 import 'kernel/claude_code/claude_onboarding.dart';
 import 'kernel/claude_code/claude_path_setting.dart';
 import 'kernel/claude_code/process_transport.dart';
+import 'kernel/claude_code/turn_stats_stub.dart'
+    if (dart.library.io) 'kernel/claude_code/turn_stats_io.dart'
+    show turnStatsIn;
 import 'kernel/commit_attribution.dart';
 import 'kernel/prompt_suggestions.dart';
 import 'chat/composer/composer_polish.dart' show ComposerPolishSetting;
@@ -182,6 +185,11 @@ Future<void> main(List<String> arguments) async {
     // Claude Code's own models as it last listed them: in the picker
     // before a session on them starts.
     ClaudeCodeKernel.modelCache = files.storage;
+    // What each turn took and spent, for its footer when the session is
+    // opened again: in the data folder, a file per session.
+    ClaudeCodeKernel.turnStats = turnStatsIn(
+      p.join(DataDirectory.current.path, 'turn-stats'),
+    );
     // The upstreams' sites' icons, for those that show no other: in the
     // cache, fetched as soon as one is added.
     SiteIcons.current = SiteIcons(

@@ -29,6 +29,7 @@ import 'claude_code_translator.dart';
 import 'claude_elicitation.dart';
 import 'claude_goal.dart';
 import 'claude_sdk_tools.dart';
+import 'turn_stats.dart';
 import 'control_channel.dart';
 
 /// Reads a kept session: its conversation lines, oldest first, along the
@@ -293,6 +294,23 @@ class ClaudeCodeKernel
 
   static GlobalStorage? _modelCache;
   static const modelCacheKey = 'claudeCode.models';
+
+  /// Where what each turn took and spent is kept (main.dart sets it), for
+  /// its footer to show again when the session is opened later; none
+  /// kept when null. This machine's sessions only.
+  static TurnStats? turnStats;
+
+  /// [turnStats] for this session's history: none for a remote one's.
+  TurnStats? get _turnStats => _remoteHost == null ? turnStats : null;
+
+  /// What the kept session's turns took and spent, by prompt.
+  Future<Map<String, TurnRecord>> _keptTurns(SessionRecord session) async {
+    try {
+      return await _turnStats?.read(session.id) ?? const {};
+    } on Object {
+      return const {};
+    }
+  }
 
   /// The models [modelCache] kept, as the CLI listed them.
   static List<_ModelInfo> _keptModels() => [
@@ -934,6 +952,11 @@ class ClaudeCodeKernel
       emit(InteractionResolved(nextSeq, id));
     }
     _permissions.clear();
+    if (!interrupted && worked != null) {
+      if ((_turnStats, _sessionId) case (final stats?, final session?)) {
+        stats.write(session, turn, (worked: worked, usage: usage));
+      }
+    }
     emit(
       TurnEnded(
         nextSeq,
@@ -2293,10 +2316,15 @@ class ClaudeCodeKernel
     // Read in the constructor, before anyone listens: seen when asked.
     _loadingHistory = true;
     try {
+      // Read alongside; never fails.
+      final keptTurns = _keptTurns(session);
       final page = await read(session, turns: _firstTurns);
+      final kept = await keptTurns;
       _earlier = page.earlier;
       _readInTurn = _beginsInTurn(page);
-      _translator.replaying = true;
+      _translator
+        ..replaying = true
+        ..keptTurns = kept;
       var counted = false;
       for (final line in page.entries) {
         if (line['type'] == 'assistant') counted |= _countRequest(line);
@@ -2313,7 +2341,9 @@ class ClaudeCodeKernel
         ),
       );
     } finally {
-      _translator.replaying = false;
+      _translator
+        ..replaying = false
+        ..keptTurns = const {};
       _loadingHistory = false;
       if (!_disposed) emitInfoChanged();
     }
@@ -2331,20 +2361,22 @@ class ClaudeCodeKernel
   Future<void> _readEarlier() async {
     emitInfoChanged();
     try {
+      final keptTurns = _keptTurns(_context.resume!);
       final page = await _pager!(
         _context.resume!,
         turns: _earlierTurns,
         before: _earlier,
       );
+      final kept = await keptTurns;
       if (_disposed) return;
       // Told apart from the live one: it only gathers the items, and its
       // events never reach the stream.
       var seq = 0;
       final items = Transcript();
-      final translator = ClaudeTranslator(
-        emit: items.apply,
-        nextSeq: () => ++seq,
-      )..replaying = true;
+      final translator =
+          ClaudeTranslator(emit: items.apply, nextSeq: () => ++seq)
+            ..replaying = true
+            ..keptTurns = kept;
       var counted = false;
       for (final line in page.entries) {
         if (line['type'] == 'assistant') counted |= _countRequest(line);

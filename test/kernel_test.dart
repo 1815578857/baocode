@@ -19,6 +19,7 @@ import 'package:baocode/kernel/claude_code/claude_goal.dart';
 import 'package:baocode/kernel/claude_code/claude_storage_io.dart';
 import 'package:baocode/kernel/claude_code/cli_locator.dart';
 import 'package:baocode/kernel/claude_code/control_channel.dart';
+import 'package:baocode/kernel/claude_code/turn_stats.dart';
 import 'package:baocode/kernel/codex/codex_kernel.dart';
 import 'package:baocode/kernel/codex/codex_transport.dart';
 import 'package:baocode/kernel/commit_attribution.dart';
@@ -980,6 +981,36 @@ void main() {
       final message = transcript.itemAt(0) as UserMessageItem;
       expect(message.worked, const Duration(milliseconds: 65400));
       expect(message.text, 'hi');
+      kernel.dispose();
+    });
+
+    test('a turn done is kept by its session and prompt, for its footer '
+        'later; one stopped is not', () async {
+      final kept = _KeptTurns();
+      ClaudeCodeKernel.turnStats = kept;
+      addTearDown(() => ClaudeCodeKernel.turnStats = null);
+      final cli = FakeCli();
+      final (:kernel, transcript: _, events: _) = claude(cli);
+      kernel.send(const KernelTurn(id: 'u1', text: 'hi'));
+      await pumpEventQueue();
+      cli.push({'type': 'system', 'subtype': 'init', 'session_id': 's1'});
+      cli.push({
+        'type': 'result',
+        'subtype': 'success',
+        'is_error': false,
+        'duration_ms': 65400,
+        'total_cost_usd': 0.5,
+      });
+      await pumpEventQueue();
+      final record = kept.sessions['s1']!['u1']!;
+      expect(record.worked, const Duration(milliseconds: 65400));
+      expect(record.usage?.costUsd, closeTo(0.5, 1e-9));
+
+      kernel.send(const KernelTurn(id: 'u2', text: 'again'));
+      await pumpEventQueue();
+      kernel.cancel();
+      await pumpEventQueue();
+      expect(kept.sessions['s1']!.keys, ['u1']);
       kernel.dispose();
     });
 
@@ -2451,6 +2482,51 @@ void main() {
           kernel.dispose();
         },
       );
+
+      test('turns kept show as their footers did, on every page; those '
+          'not kept as before', () async {
+        const usage = TurnUsage(
+          inputTokens: 1200,
+          outputTokens: 300,
+          tokensPerSecond: 61.25,
+          costUsd: 0.04,
+        );
+        final kept = _KeptTurns()
+          ..sessions['s'] = {
+            'u1': (worked: const Duration(seconds: 5), usage: null),
+            'u3': (worked: const Duration(seconds: 9), usage: usage),
+          };
+        ClaudeCodeKernel.turnStats = kept;
+        addTearDown(() => ClaudeCodeKernel.turnStats = null);
+        final kernel = open(
+          (session, {required turns, before}) async => before == null
+              ? ClaudeHistoryPage([
+                  prompt('u3'),
+                  answer('u3', 1),
+                  prompt('u4'),
+                  answer('u4', 1),
+                ], earlier: 'u3')
+              : ClaudeHistoryPage([prompt('u1'), answer('u1', 1)]),
+        );
+        final transcript = Transcript();
+        kernel.events.listen(transcript.apply);
+        await pumpEventQueue();
+        UserMessageItem message(String id) =>
+            transcript.itemAt(transcript.indexOf(id)!) as UserMessageItem;
+        expect(message('u3').worked, const Duration(seconds: 9));
+        expect(message('u3').usage?.tokensPerSecond, 61.25);
+        expect(message('u3').usage?.totalTokens, 1500);
+        expect(message('u4').usage, isNull);
+
+        await kernel.loadEarlier();
+        await pumpEventQueue();
+        expect(transcript.itemAt(0), isA<UserMessageItem>());
+        expect(
+          (transcript.itemAt(0) as UserMessageItem).worked,
+          const Duration(seconds: 5),
+        );
+        kernel.dispose();
+      });
 
       test('asked again while it is read, it is the same reading', () async {
         final read = Completer<ClaudeHistoryPage>();
@@ -5080,4 +5156,17 @@ class _FakeServer implements CodexTransport {
 
   @override
   void close() => _out.close();
+}
+
+/// Turns kept in memory, by session and prompt.
+class _KeptTurns implements TurnStats {
+  final Map<String, Map<String, TurnRecord>> sessions = {};
+
+  @override
+  void write(String sessionId, String turnId, TurnRecord record) =>
+      (sessions[sessionId] ??= {})[turnId] = record;
+
+  @override
+  Future<Map<String, TurnRecord>> read(String sessionId) async =>
+      sessions[sessionId] ?? const {};
 }
