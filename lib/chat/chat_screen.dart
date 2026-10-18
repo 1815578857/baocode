@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import '../kernel/kernel_types.dart';
 import '../keybindings/chat_keybindings.dart';
 import '../l10n/l10n.dart';
+import '../models/model_welcome.dart';
 import '../remote/remote_location.dart';
 import '../remote/remote_status.dart' show ClaudeInstallBanner, SshHostBanner;
 import '../stash/stash_actions.dart';
@@ -309,6 +310,7 @@ class _ChatScreenState extends State<ChatScreen>
     _session.addListener(_checkStarting);
     _planShown = _session.plan?.seq;
     _session.addListener(_followPlan);
+    _session.addListener(_welcomeToModels);
     _restoreAgents();
     ChatWidth.current.addListener(_widthChanged);
     ChatMinimap.enabled.addListener(_widthChanged);
@@ -329,6 +331,7 @@ class _ChatScreenState extends State<ChatScreen>
   void dispose() {
     _session.removeListener(_checkStarting);
     _session.removeListener(_followPlan);
+    _session.removeListener(_welcomeToModels);
     ChatWidth.current.removeListener(_widthChanged);
     ChatMinimap.enabled.removeListener(_widthChanged);
     _existence?.dispose();
@@ -361,6 +364,16 @@ class _ChatScreenState extends State<ChatScreen>
       _planShown = plan.seq;
       _openFile(FileOpenRequest(plan.path, plan: true));
     }
+  }
+
+  /// No model to run on, the first time for the app: what setting one up
+  /// is, by itself; after that, from the banner and the model's pill.
+  void _welcomeToModels() {
+    if (!_session.health.noModel || ModelWelcome.welcomed) return;
+    ModelWelcome.welcomed = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(showModelWelcome(context));
+    });
   }
 
   // --- Keys ------------------------------------------------------------------
@@ -760,6 +773,8 @@ class _ChatScreenState extends State<ChatScreen>
                             health: _session.health,
                             kernelName: _session.kernel.label,
                             onRetry: _session.restart,
+                            onSetUpModel: () =>
+                                unawaited(showModelWelcome(context)),
                           )
                         : null,
                   ),

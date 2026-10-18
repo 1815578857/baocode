@@ -2010,7 +2010,8 @@ class ChatComposerState extends State<ChatComposer>
                       ),
                       const SizedBox(width: 2),
                     ],
-                    if (model != null)
+                    // With none to pick, one to set up.
+                    if (model != null || session.health.noModel)
                       SessionModelPicker(
                         session: session,
                         pickerKey: _modelPickerKey,

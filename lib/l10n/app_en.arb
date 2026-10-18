@@ -6904,5 +6904,30 @@
   "browserWelcomeUnpacked": "Developer Mode Zip",
   "browserWelcomeDone": "Got It",
   "cmdBrowserWelcome": "Connect Your Browser...",
-  "cmdStashWelcome": "Meet Stash..."
+  "cmdStashWelcome": "Meet Stash...",
+  "cmdModelWelcome": "Set Up a Model...",
+  "modelWelcomeTitle": "Pick a Model to Start",
+  "modelWelcomeLead": "BaoCode runs your agents on a model of your choosing. Add an upstream, a service with an API key, and its models are ready to use.",
+  "modelWelcomeAnyTitle": "Any upstream",
+  "modelWelcomeAny": "Anthropic's API, OpenAI's Chat Completions or Responses, or a service that speaks one of them, such as OpenRouter or DeepSeek.",
+  "modelWelcomeKeysTitle": "Your keys stay with you",
+  "modelWelcomeKeys": "Keys are kept in the system keychain, and requests go from this computer straight to the upstream.",
+  "modelWelcomeSwitchTitle": "Switch any time",
+  "modelWelcomeSwitch": "Add more upstreams whenever you like, and pick the model for each conversation under its input.",
+  "modelWelcomeStepTitle": "Add your first upstream",
+  "modelWelcomeStep": "Its address and key, then the models to use. Some services can also add theirs in one click from Settings → Models.",
+  "modelWelcomeReadyTitle": "Ready to go",
+  "modelWelcomeReady": "New conversations start on {model}. Pick another under the input any time.",
+  "@modelWelcomeReady": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "modelWelcomeLater": "You can also add one later in Settings → Models.",
+  "modelWelcomeSkip": "Later",
+  "modelWelcomeStart": "Start Chatting",
+  "healthNoModel": "Pick a model to start: add an upstream and its models are ready to use.",
+  "modelSetUp": "Set Up a Model"
 }

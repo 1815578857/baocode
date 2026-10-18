@@ -593,6 +593,7 @@ class ClaudeCodeKernel
           ClaudeFolderGone(:final folder) => folder,
           _ => null,
         },
+        noModel: error is ClaudeNoModel,
       );
       rethrow;
     } on ControlError catch (error) {
@@ -612,7 +613,12 @@ class ClaudeCodeKernel
     }
   }
 
-  void _fail(String message, String? detail, {String? missingFolder}) {
+  void _fail(
+    String message,
+    String? detail, {
+    String? missingFolder,
+    bool noModel = false,
+  }) {
     _teardown();
     _setHealth(
       KernelHealth(
@@ -620,6 +626,7 @@ class ClaudeCodeKernel
         message: message,
         detail: detail,
         missingFolder: missingFolder,
+        noModel: noModel,
       ),
     );
   }
@@ -2556,6 +2563,8 @@ class ClaudeCodeKernel
   void _providersChanged() {
     if (_disposed) return;
     emitInfoChanged();
+    // Failed for want of a model, it starts on the first one added.
+    if (_health.noModel && _model != null) restart();
   }
 
   /// The heading Claude Code's own models are listed under.

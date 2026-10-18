@@ -92,6 +92,18 @@ class ModelsSettingsPage extends StatefulWidget {
   /// it does): one just imported. Taken as it is opened.
   static final ValueNotifier<String?> reveal = ValueNotifier(null);
 
+  /// Adds an upstream named [name], to be filled in: its id.
+  static Future<String> addUpstream(
+    ModelProviders providers,
+    String name,
+  ) async {
+    final id = providers.newId(name);
+    await providers.save(
+      ModelProvider(id: id, name: name, disableNonessentialTraffic: true),
+    );
+    return id;
+  }
+
   /// The protocol's name, as the list and the detail show it.
   static String protocolName(BuildContext context, ProviderProtocol value) {
     final l10n = context.l10n;
@@ -167,10 +179,9 @@ class _ModelsSettingsPageState extends State<ModelsSettingsPage> {
   }
 
   Future<void> _add() async {
-    final name = context.l10n.modelsNewProviderName;
-    final id = _providers.newId(name);
-    await _providers.save(
-      ModelProvider(id: id, name: name, disableNonessentialTraffic: true),
+    final id = await ModelsSettingsPage.addUpstream(
+      _providers,
+      context.l10n.modelsNewProviderName,
     );
     if (mounted) setState(() => _open = id);
   }

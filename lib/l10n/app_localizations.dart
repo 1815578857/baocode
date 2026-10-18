@@ -15842,6 +15842,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Meet Stash...'**
   String get cmdStashWelcome;
+
+  /// No description provided for @cmdModelWelcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Up a Model...'**
+  String get cmdModelWelcome;
+
+  /// No description provided for @modelWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a Model to Start'**
+  String get modelWelcomeTitle;
+
+  /// No description provided for @modelWelcomeLead.
+  ///
+  /// In en, this message translates to:
+  /// **'BaoCode runs your agents on a model of your choosing. Add an upstream, a service with an API key, and its models are ready to use.'**
+  String get modelWelcomeLead;
+
+  /// No description provided for @modelWelcomeAnyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Any upstream'**
+  String get modelWelcomeAnyTitle;
+
+  /// No description provided for @modelWelcomeAny.
+  ///
+  /// In en, this message translates to:
+  /// **'Anthropic\'s API, OpenAI\'s Chat Completions or Responses, or a service that speaks one of them, such as OpenRouter or DeepSeek.'**
+  String get modelWelcomeAny;
+
+  /// No description provided for @modelWelcomeKeysTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your keys stay with you'**
+  String get modelWelcomeKeysTitle;
+
+  /// No description provided for @modelWelcomeKeys.
+  ///
+  /// In en, this message translates to:
+  /// **'Keys are kept in the system keychain, and requests go from this computer straight to the upstream.'**
+  String get modelWelcomeKeys;
+
+  /// No description provided for @modelWelcomeSwitchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch any time'**
+  String get modelWelcomeSwitchTitle;
+
+  /// No description provided for @modelWelcomeSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Add more upstreams whenever you like, and pick the model for each conversation under its input.'**
+  String get modelWelcomeSwitch;
+
+  /// No description provided for @modelWelcomeStepTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your first upstream'**
+  String get modelWelcomeStepTitle;
+
+  /// No description provided for @modelWelcomeStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Its address and key, then the models to use. Some services can also add theirs in one click from Settings → Models.'**
+  String get modelWelcomeStep;
+
+  /// No description provided for @modelWelcomeReadyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to go'**
+  String get modelWelcomeReadyTitle;
+
+  /// No description provided for @modelWelcomeReady.
+  ///
+  /// In en, this message translates to:
+  /// **'New conversations start on {model}. Pick another under the input any time.'**
+  String modelWelcomeReady(String model);
+
+  /// No description provided for @modelWelcomeLater.
+  ///
+  /// In en, this message translates to:
+  /// **'You can also add one later in Settings → Models.'**
+  String get modelWelcomeLater;
+
+  /// No description provided for @modelWelcomeSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get modelWelcomeSkip;
+
+  /// No description provided for @modelWelcomeStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Chatting'**
+  String get modelWelcomeStart;
+
+  /// No description provided for @healthNoModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a model to start: add an upstream and its models are ready to use.'**
+  String get healthNoModel;
+
+  /// No description provided for @modelSetUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Up a Model'**
+  String get modelSetUp;
 }
 
 class _AppLocalizationsDelegate

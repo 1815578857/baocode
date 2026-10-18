@@ -35,7 +35,7 @@ const remoteClaudeInstallCommand =
 /// never on what the machine's Claude Code setup names.
 Future<ClaudeCodeTransport> startClaude(ClaudeLaunch launch) async {
   if (ClaudeCore.current() == ClaudeCore.builtin && launch.env == null) {
-    throw const ClaudeUnavailable(ClaudeCore.noModel);
+    throw const ClaudeNoModel(ClaudeCore.noModel);
   }
   final host = RemoteLocation.hostOf(launch.cwd);
   if (host == null) {

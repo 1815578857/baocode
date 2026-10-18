@@ -9705,4 +9705,67 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cmdStashWelcome => 'Meet Stash...';
+
+  @override
+  String get cmdModelWelcome => 'Set Up a Model...';
+
+  @override
+  String get modelWelcomeTitle => 'Pick a Model to Start';
+
+  @override
+  String get modelWelcomeLead =>
+      'BaoCode runs your agents on a model of your choosing. Add an upstream, a service with an API key, and its models are ready to use.';
+
+  @override
+  String get modelWelcomeAnyTitle => 'Any upstream';
+
+  @override
+  String get modelWelcomeAny =>
+      'Anthropic\'s API, OpenAI\'s Chat Completions or Responses, or a service that speaks one of them, such as OpenRouter or DeepSeek.';
+
+  @override
+  String get modelWelcomeKeysTitle => 'Your keys stay with you';
+
+  @override
+  String get modelWelcomeKeys =>
+      'Keys are kept in the system keychain, and requests go from this computer straight to the upstream.';
+
+  @override
+  String get modelWelcomeSwitchTitle => 'Switch any time';
+
+  @override
+  String get modelWelcomeSwitch =>
+      'Add more upstreams whenever you like, and pick the model for each conversation under its input.';
+
+  @override
+  String get modelWelcomeStepTitle => 'Add your first upstream';
+
+  @override
+  String get modelWelcomeStep =>
+      'Its address and key, then the models to use. Some services can also add theirs in one click from Settings → Models.';
+
+  @override
+  String get modelWelcomeReadyTitle => 'Ready to go';
+
+  @override
+  String modelWelcomeReady(String model) {
+    return 'New conversations start on $model. Pick another under the input any time.';
+  }
+
+  @override
+  String get modelWelcomeLater =>
+      'You can also add one later in Settings → Models.';
+
+  @override
+  String get modelWelcomeSkip => 'Later';
+
+  @override
+  String get modelWelcomeStart => 'Start Chatting';
+
+  @override
+  String get healthNoModel =>
+      'Pick a model to start: add an upstream and its models are ready to use.';
+
+  @override
+  String get modelSetUp => 'Set Up a Model';
 }

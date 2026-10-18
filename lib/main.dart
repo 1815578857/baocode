@@ -57,6 +57,7 @@ import 'models/featured_upstreams.dart';
 import 'models/model_icons.dart';
 import 'models/model_providers.dart';
 import 'models/model_runtime.dart';
+import 'models/model_welcome.dart';
 import 'network/network_proxy.dart';
 import 'notifications/attention_host.dart';
 import 'notifications/attention_settings.dart';
@@ -185,6 +186,8 @@ Future<void> main(List<String> arguments) async {
     // Claude Code's own models as it last listed them: in the picker
     // before a session on them starts.
     ClaudeCodeKernel.modelCache = files.storage;
+    // Whether the welcome to setting a model up has shown by itself.
+    ModelWelcome.storage = files.storage;
     // What each turn took and spent, for its footer when the session is
     // opened again: in the data folder, a file per session.
     ClaudeCodeKernel.turnStats = turnStatsIn(

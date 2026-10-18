@@ -52,6 +52,7 @@ import 'ide/ide_color_theme_picker.dart';
 import 'ide/ide_commands.dart';
 import 'ide/ide_dialog.dart';
 import 'ide/ide_menu.dart';
+import 'models/model_welcome.dart';
 import 'models/upstream_import.dart';
 import 'ide/ide_modern_ui.dart';
 import 'ide/ide_notifications.dart';
@@ -794,6 +795,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         starOnGitHubCommandId: _starOnGitHub,
         if (BrowserBridge.instance.supported)
           browserWelcomeCommandId: _showBrowserWelcome,
+        modelWelcomeCommandId: _showModelWelcome,
         ChatCommandIds.search: () => unawaited(_openPalette()),
         ..._sidePanelCommands(),
         ..._terminalCommands(),
@@ -818,6 +820,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         browserWelcomeCommandId: _showBrowserWelcome,
       if (StashController.current != null)
         stashWelcomeCommandId: _showStashWelcome,
+      modelWelcomeCommandId: _showModelWelcome,
       // As the sidebar's New Agent button: a folder first, without one.
       if (_workspace.sidebarProjects.isNotEmpty)
         ChatCommandIds.newChat: _newAgent
@@ -1202,6 +1205,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       ?action(starOnGitHubCommandId, Codicons.star),
       ?action(browserWelcomeCommandId, Codicons.globe),
       ?action(stashWelcomeCommandId, Codicons.note),
+      ?action(modelWelcomeCommandId, Codicons.sparkle),
       ?action(
         'workbench.action.toggleSidebarVisibility',
         Codicons.layoutSidebarLeft,
@@ -1319,6 +1323,12 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         label: commandCatalog[stashWelcomeCommandId]!.title,
         run: _showStashWelcome,
       ),
+    IdeCommand(
+      id: modelWelcomeCommandId,
+      category: 'Help',
+      label: commandCatalog[modelWelcomeCommandId]!.title,
+      run: _showModelWelcome,
+    ),
   ];
 
   // --- Feature tips ----------------------------------------------------------
@@ -1429,6 +1439,17 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     if (!mounted || stash == null) return;
     stash.welcomed = true;
     unawaited(showStashWelcome(context, controller: stash));
+  }
+
+  /// Set Up a Model…, the command: what an upstream is, and adding one.
+  void _showModelWelcome() {
+    if (!mounted) return;
+    unawaited(
+      showModelWelcome(
+        context,
+        openSettings: (section) => unawaited(openSettings(section)),
+      ),
+    );
   }
 
   // --- Asking for a star -----------------------------------------------------

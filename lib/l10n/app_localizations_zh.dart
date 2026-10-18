@@ -9181,4 +9181,62 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cmdStashWelcome => '认识 Stash...';
+
+  @override
+  String get cmdModelWelcome => '设置模型...';
+
+  @override
+  String get modelWelcomeTitle => '选一个模型开始';
+
+  @override
+  String get modelWelcomeLead =>
+      'BaoCode 用你选的模型来运行 agent。添加一个上游（提供 API Key 的服务），它的模型就能直接用了。';
+
+  @override
+  String get modelWelcomeAnyTitle => '任意上游';
+
+  @override
+  String get modelWelcomeAny =>
+      '支持 Anthropic API、OpenAI Chat Completions 和 Responses，以及兼容它们的服务，比如 OpenRouter、DeepSeek。';
+
+  @override
+  String get modelWelcomeKeysTitle => 'Key 只在你手里';
+
+  @override
+  String get modelWelcomeKeys => 'Key 存在系统钥匙串里，请求从这台电脑直接发往上游。';
+
+  @override
+  String get modelWelcomeSwitchTitle => '随时切换';
+
+  @override
+  String get modelWelcomeSwitch => '之后随时可以再添加上游，每个对话都能在输入框下方选模型。';
+
+  @override
+  String get modelWelcomeStepTitle => '添加第一个上游';
+
+  @override
+  String get modelWelcomeStep => '填上地址和 Key，再勾选要用的模型。部分服务也能在 设置 → 模型 里一键导入。';
+
+  @override
+  String get modelWelcomeReadyTitle => '准备好了';
+
+  @override
+  String modelWelcomeReady(String model) {
+    return '新对话会使用 $model，随时可以在输入框下方换成别的。';
+  }
+
+  @override
+  String get modelWelcomeLater => '也可以之后在 设置 → 模型 中添加。';
+
+  @override
+  String get modelWelcomeSkip => '稍后';
+
+  @override
+  String get modelWelcomeStart => '开始对话';
+
+  @override
+  String get healthNoModel => '选一个模型就能开始：添加一个上游，它的模型就能直接用了。';
+
+  @override
+  String get modelSetUp => '设置模型';
 }
