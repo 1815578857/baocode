@@ -608,6 +608,10 @@ printf '%s\n' "$line"
       home = Directory.systemTemp.createTempSync('baocode-remote-core-');
       api = await FakeApi.start(errands: (_) => Reply.text('A title'));
       ClaudeCore.current = () => ClaudeCore.builtin;
+      // On the host, as its server saved in the app says.
+      hosts.savedServers = () => {
+        'dev': const SshServer(hostName: 'dev', core: SshCore.builtin),
+      };
       // The server, from its source, run as the core.
       ServerClaude.selfCommand = () => [
         p.join(p.dirname(Platform.resolvedExecutable), 'dart'),

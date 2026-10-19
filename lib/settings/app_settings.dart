@@ -36,6 +36,7 @@ import 'pages/language_page.dart';
 import 'pages/network_page.dart';
 import 'pages/notifications_page.dart';
 import 'pages/settings_widgets.dart' show SettingsPage;
+import 'pages/ssh_page.dart';
 import 'pages/stash_hotkey_field.dart';
 import 'pages/stash_page.dart';
 import 'pages/updates_page.dart';
@@ -161,6 +162,8 @@ class AppSettings {
         );
       case SettingsSection.network:
         return NetworkSettingsPage(settings: files?.settings);
+      case SettingsSection.ssh:
+        return SshSettingsPage(workspace: workspace);
       case SettingsSection.mobile:
         return switch (link) {
           final link? => MobileSettingsPage(host: link),

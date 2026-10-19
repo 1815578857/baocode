@@ -15,6 +15,18 @@ enum SshAuth {
   key,
 }
 
+/// What runs Claude Code on a server saved in the app.
+enum SshCore {
+  /// The host's Claude Code CLI where it has one, else BaoCode's own core.
+  auto,
+
+  /// BaoCode's own core (the server's): on the upstreams of the app alone.
+  builtin,
+
+  /// The host's Claude Code CLI, installed there when it has none.
+  cli,
+}
+
 /// A server the user saved in the app (its form), rather than in
 /// `~/.ssh/config`: reached through a `Host` of the app's own ssh config
 /// ([sshServersConfig]), which includes the user's after it.
@@ -26,6 +38,7 @@ class SshServer {
     this.auth = SshAuth.auto,
     this.identityFile,
     this.jump,
+    this.core = SshCore.auto,
   });
 
   /// Its name or address.
@@ -46,6 +59,9 @@ class SshServer {
   /// `~/.ssh/config`); null for none.
   final String? jump;
 
+  /// What runs Claude Code there.
+  final SshCore core;
+
   /// What one would type for it: `user@host`, with `:port` after.
   String get address => [
     if (user case final user? when user.isNotEmpty) '$user@',
@@ -60,6 +76,7 @@ class SshServer {
     'auth': auth.name,
     'identityFile': ?identityFile,
     'jump': ?jump,
+    if (core != SshCore.auto) 'core': core.name,
   };
 
   /// Null for what is not one.
@@ -84,6 +101,10 @@ class SshServer {
       ),
       identityFile: text('identityFile'),
       jump: text('jump'),
+      core: SshCore.values.firstWhere(
+        (core) => core.name == json['core'],
+        orElse: () => SshCore.auto,
+      ),
     );
   }
 
@@ -95,11 +116,12 @@ class SshServer {
       other.user == user &&
       other.auth == auth &&
       other.identityFile == identityFile &&
-      other.jump == jump;
+      other.jump == jump &&
+      other.core == core;
 
   @override
   int get hashCode =>
-      Object.hash(hostName, port, user, auth, identityFile, jump);
+      Object.hash(hostName, port, user, auth, identityFile, jump, core);
 }
 
 /// The `Host` of [host] (as the app knows it) in [sshServersConfig]: a

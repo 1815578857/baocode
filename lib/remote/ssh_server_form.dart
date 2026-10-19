@@ -1,7 +1,8 @@
 // The form a server is added or edited with, from the host picker (Open
 // Remote Project…'s): its address, how it signs in (a password, a key, or as
-// ssh would on its own), and a host to jump through. Where the picker shows,
-// at the top of the window, as if it had opened into the form.
+// ssh would on its own), a host to jump through, and what runs Claude Code
+// there. A dialog as the app's
+// others, over the window dimmed.
 
 import 'dart:io';
 import 'dart:math' as math;
@@ -15,6 +16,7 @@ import '../ide/ide_button.dart';
 import '../ide/ide_hover.dart';
 import '../ide/ide_input.dart';
 import '../ide/ide_menu.dart';
+import '../ide/ide_motion.dart';
 import '../l10n/l10n.dart';
 import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' show themeColors;
@@ -47,8 +49,17 @@ Future<SshServerFormResult?> showSshServerForm(
   String Function(String host)? labelOf,
 }) => showGeneralDialog<SshServerFormResult>(
   context: context,
+  // Closed by its buttons, Escape or the close button: a click beside it
+  // would lose what was typed.
   barrierLabel: context.l10n.commonDismiss,
-  barrierColor: Colors.transparent,
+  // As the app's other dialogs: the window dimmed behind it.
+  barrierColor: const Color(0x80000000),
+  transitionDuration: IdeMotion.livelyOf(context)
+      ? IdeMotion.enterDuration
+      : Duration.zero,
+  transitionBuilder: IdeMotion.livelyOf(context)
+      ? (context, animation, _, child) => IdeMotion.enter(animation, child)
+      : null,
   pageBuilder: (context, _, _) => SshServerForm(
     host: host,
     address: address,
@@ -139,6 +150,7 @@ class _SshServerFormState extends State<SshServerForm> {
   late final _key = TextEditingController();
   late SshAuth _auth;
   String? _jump;
+  late SshCore _core = widget.server?.core ?? SshCore.auto;
 
   /// The messages of the fields, once saving was tried.
   final Map<String, String> _errors = {};
@@ -230,6 +242,7 @@ class _SshServerFormState extends State<SshServerForm> {
       auth: _auth,
       identityFile: _auth == SshAuth.key ? _expand(key) : null,
       jump: _jump,
+      core: _core,
     );
     final password = _password.text;
     _close((
@@ -331,177 +344,206 @@ class _SshServerFormState extends State<SshServerForm> {
     final border = colors.get('widget.border');
     final shadow = colors.get('widget.shadow');
     final foreground = colors['editorWidget.foreground'];
-    final width = math.min(560.0, MediaQuery.sizeOf(context).width - 32);
+    final size = MediaQuery.sizeOf(context);
+    final width = math.min(520.0, size.width - 32);
     final editing = widget.host != null;
+    void submit(String _) => _save(connect: true);
     return CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): _close},
       child: FocusScope(
         autofocus: true,
         child: Align(
-          alignment: Alignment.topCenter,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 44),
-            child: Material(
-              type: MaterialType.transparency,
-              child: Container(
-                width: width,
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.sizeOf(context).height - 64,
-                ),
-                decoration: BoxDecoration(
-                  color: colors['quickInput.background'],
-                  border: border == null ? null : Border.all(color: border),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    const BoxShadow(color: Color(0x26000000), blurRadius: 20),
-                    if (shadow != null) BoxShadow(color: shadow, blurRadius: 8),
-                  ],
-                ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              editing
-                                  ? l10n.sshServerEditTitle(
-                                      widget.labelOf(widget.host!),
-                                    )
-                                  : l10n.sshServerAddTitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: foreground,
-                              ),
-                            ),
-                          ),
-                          IdeActionButton(
-                            icon: Codicons.close,
-                            tooltip: l10n.dialogCloseDialog,
-                            onPressed: _close,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _Field(
-                              label: l10n.sshServerHost,
-                              child: IdeInputBox(
-                                controller: _host,
-                                autofocus: !editing,
-                                placeholder: l10n.sshServerHostPlaceholder,
-                                semanticsLabel: l10n.sshServerHost,
-                                validation: _error('host'),
-                                onChanged: _hostChanged,
-                                onSubmitted: (_) => _save(connect: true),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          SizedBox(
-                            width: 84,
-                            child: _Field(
-                              label: l10n.sshServerPort,
-                              child: IdeInputBox(
-                                controller: _port,
-                                placeholder: '22',
-                                semanticsLabel: l10n.sshServerPort,
-                                validation: _error('port'),
-                                onSubmitted: (_) => _save(connect: true),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _Field(
-                              label: l10n.sshServerUser,
-                              child: IdeInputBox(
-                                controller: _user,
-                                placeholder: 'root',
-                                semanticsLabel: l10n.sshServerUser,
-                                validation: _error('user'),
-                                onSubmitted: (_) => _save(connect: true),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _Field(
-                              label: l10n.sshServerName,
-                              child: IdeInputBox(
-                                controller: _name,
-                                placeholder: l10n.sshServerNamePlaceholder,
-                                semanticsLabel: l10n.sshServerName,
-                                onSubmitted: (_) => _save(connect: true),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      _Field(
-                        label: l10n.sshServerAuth,
-                        child: _Segments<SshAuth>(
-                          value: _auth,
-                          options: [
-                            (SshAuth.password, l10n.sshServerAuthPassword),
-                            (SshAuth.key, l10n.sshServerAuthKey),
-                            (SshAuth.auto, l10n.sshServerAuthAuto),
-                          ],
-                          onChanged: (auth) => setState(() => _auth = auth),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ..._authFields(l10n),
-                      const SizedBox(height: 12),
-                      _Field(
-                        label: l10n.sshServerJump,
-                        child: _Choice(
-                          label: _jump == null
-                              ? l10n.sshServerNoJump
-                              : _jumpLabel(_jump!),
-                          onOpen: _pickJump,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        alignment: WrapAlignment.end,
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          IdeButton(
-                            label: l10n.commonCancel,
-                            secondary: true,
-                            onPressed: _close,
-                          ),
-                          IdeButton(
-                            label: l10n.sshServerSave,
-                            secondary: true,
-                            onPressed: () => _save(connect: false),
-                          ),
-                          IdeButton(
-                            label: l10n.sshServerSaveConnect,
-                            onPressed: () => _save(connect: true),
-                          ),
-                        ],
-                      ),
-                    ],
+          alignment: const Alignment(0, -0.4),
+          child: Material(
+            type: MaterialType.transparency,
+            child: Container(
+              width: width,
+              constraints: BoxConstraints(maxHeight: size.height - 48),
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: colors['editorWidget.background'],
+                border: border == null ? null : Border.all(color: border),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  const BoxShadow(
+                    color: Color(0x40000000),
+                    blurRadius: 32,
+                    offset: Offset(0, 12),
                   ),
-                ),
+                  if (shadow != null) BoxShadow(color: shadow, blurRadius: 8),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _Header(
+                    title: editing
+                        ? l10n.sshServerEditTitle(widget.labelOf(widget.host!))
+                        : l10n.sshServerAddTitle,
+                    subtitle: editing
+                        ? widget.server?.address ?? widget.host!
+                        : l10n.sshServerAddSubtitle,
+                    foreground: foreground,
+                    onClose: _close,
+                  ),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: _Field(
+                                  label: l10n.sshServerHost,
+                                  child: IdeInputBox(
+                                    controller: _host,
+                                    autofocus: !editing,
+                                    placeholder: l10n.sshServerHostPlaceholder,
+                                    semanticsLabel: l10n.sshServerHost,
+                                    validation: _error('host'),
+                                    onChanged: _hostChanged,
+                                    onSubmitted: submit,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              SizedBox(
+                                width: 88,
+                                child: _Field(
+                                  label: l10n.sshServerPort,
+                                  child: IdeInputBox(
+                                    controller: _port,
+                                    placeholder: '22',
+                                    semanticsLabel: l10n.sshServerPort,
+                                    validation: _error('port'),
+                                    onSubmitted: submit,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: _Field(
+                                  label: l10n.sshServerUser,
+                                  child: IdeInputBox(
+                                    controller: _user,
+                                    placeholder: 'root',
+                                    semanticsLabel: l10n.sshServerUser,
+                                    validation: _error('user'),
+                                    onSubmitted: submit,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _Field(
+                                  label: l10n.sshServerName,
+                                  child: IdeInputBox(
+                                    controller: _name,
+                                    placeholder: l10n.sshServerNamePlaceholder,
+                                    semanticsLabel: l10n.sshServerName,
+                                    onSubmitted: submit,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 18),
+                          _Field(
+                            label: l10n.sshServerAuth,
+                            trailing: _Segments<SshAuth>(
+                              value: _auth,
+                              options: [
+                                (SshAuth.password, l10n.sshServerAuthPassword),
+                                (SshAuth.key, l10n.sshServerAuthKey),
+                                (SshAuth.auto, l10n.sshServerAuthAuto),
+                              ],
+                              onChanged: (auth) => setState(() => _auth = auth),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: _authFields(l10n),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          _Field(
+                            label: l10n.sshServerJump,
+                            child: _Choice(
+                              label: _jump == null
+                                  ? l10n.sshServerNoJump
+                                  : _jumpLabel(_jump!),
+                              onOpen: _pickJump,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          _Field(
+                            label: l10n.sshServerCore,
+                            trailing: _Segments<SshCore>(
+                              value: _core,
+                              options: [
+                                (SshCore.auto, l10n.sshServerCoreAuto),
+                                (
+                                  SshCore.builtin,
+                                  l10n.generalSettingsClaudeCoreBuiltin,
+                                ),
+                                (
+                                  SshCore.cli,
+                                  l10n.generalSettingsClaudeCoreCli,
+                                ),
+                              ],
+                              onChanged: (core) => setState(() => _core = core),
+                            ),
+                            child: _Hint(switch (_core) {
+                              SshCore.auto => l10n.sshServerCoreAutoHint,
+                              SshCore.builtin => l10n.sshServerCoreBuiltinHint,
+                              SshCore.cli => l10n.sshServerCoreCliHint,
+                            }, top: 0),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                    decoration: BoxDecoration(
+                      color: colors.get('sideBar.background'),
+                      border: border == null
+                          ? null
+                          : Border(top: BorderSide(color: border)),
+                    ),
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        IdeButton(
+                          label: l10n.commonCancel,
+                          secondary: true,
+                          onPressed: _close,
+                        ),
+                        IdeButton(
+                          label: l10n.sshServerSave,
+                          secondary: true,
+                          onPressed: () => _save(connect: false),
+                        ),
+                        IdeButton(
+                          label: l10n.sshServerSaveConnect,
+                          onPressed: () => _save(connect: true),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -554,16 +596,91 @@ class _SshServerFormState extends State<SshServerForm> {
       ),
       _Hint(l10n.sshServerKeyHint),
     ],
-    SshAuth.auto => [_Hint(l10n.sshServerAuthAutoHint)],
+    SshAuth.auto => [_Hint(l10n.sshServerAuthAutoHint, top: 0)],
   };
 }
 
-/// A field's label over it.
+/// The dialog's top: a server's icon, [title] and [subtitle], and its
+/// close button.
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.title,
+    required this.subtitle,
+    required this.foreground,
+    required this.onClose,
+  });
+
+  final String title;
+  final String subtitle;
+  final Color foreground;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = IdeButtonColors.background;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 18, 12, 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Codicons.server, size: 18, color: accent),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 15,
+                    height: 18 / 15,
+                    fontWeight: FontWeight.w600,
+                    color: foreground,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 16 / 12,
+                    color: themeColors['descriptionForeground'],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IdeActionButton(
+            icon: Codicons.close,
+            tooltip: context.l10n.dialogCloseDialog,
+            onPressed: onClose,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A field's label over it; [trailing] at the label's end (a choice that
+/// decides what the field is).
 class _Field extends StatelessWidget {
-  const _Field({required this.label, required this.child});
+  const _Field({required this.label, required this.child, this.trailing});
 
   final String label;
   final Widget child;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -571,13 +688,21 @@ class _Field extends StatelessWidget {
     mainAxisSize: MainAxisSize.min,
     children: [
       Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: themeColors['editorWidget.foreground'],
-          ),
+        padding: EdgeInsets.only(bottom: trailing == null ? 6 : 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: themeColors['editorWidget.foreground'],
+                ),
+              ),
+            ),
+            ?trailing,
+          ],
         ),
       ),
       child,
@@ -587,13 +712,14 @@ class _Field extends StatelessWidget {
 
 /// A muted line under a field.
 class _Hint extends StatelessWidget {
-  const _Hint(this.text);
+  const _Hint(this.text, {this.top = 5});
 
   final String text;
+  final double top;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 5),
+    padding: EdgeInsets.only(top: top),
     child: Text(
       text,
       style: TextStyle(
@@ -605,7 +731,8 @@ class _Hint extends StatelessWidget {
   );
 }
 
-/// One of a few [options], side by side, the one picked filled.
+/// One of a few [options], side by side, as wide as they say, the one
+/// picked filled.
 class _Segments<T> extends StatelessWidget {
   const _Segments({
     required this.value,
@@ -626,14 +753,13 @@ class _Segments<T> extends StatelessWidget {
       borderRadius: BorderRadius.circular(6),
     ),
     child: Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         for (final (option, label) in options)
-          Expanded(
-            child: _Segment(
-              label: label,
-              selected: option == value,
-              onTap: () => onChanged(option),
-            ),
+          _Segment(
+            label: label,
+            selected: option == value,
+            onTap: () => onChanged(option),
           ),
       ],
     ),
@@ -674,7 +800,8 @@ class _SegmentState extends State<_Segment> {
           behavior: HitTestBehavior.opaque,
           onTap: widget.onTap,
           child: Container(
-            height: 24,
+            height: 22,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: selected

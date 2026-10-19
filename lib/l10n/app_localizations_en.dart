@@ -9790,7 +9790,76 @@ class AppLocalizationsEn extends AppLocalizations {
   String get remoteEditServer => 'Edit';
 
   @override
+  String get settingsSectionSsh => 'SSH Servers';
+
+  @override
+  String get settingsSshKeywords =>
+      'ssh remote server host jump bastion key password core';
+
+  @override
+  String get sshSettingsDescription =>
+      'The servers remote projects connect to: their address, how they sign in, a jump host, and the core each runs.';
+
+  @override
+  String get sshSettingsServers => 'Servers';
+
+  @override
+  String get sshSettingsServersDescription =>
+      'Those added in the app, and the hosts the sidebar has.';
+
+  @override
+  String get sshSettingsNone => 'No servers yet';
+
+  @override
+  String get sshSettingsAdd => 'Add Server…';
+
+  @override
+  String get sshSettingsEdit => 'Edit…';
+
+  @override
+  String get sshSettingsConnect => 'Connect';
+
+  @override
+  String get sshSettingsDisconnect => 'Disconnect';
+
+  @override
+  String sshSettingsDisconnectTitle(String host) {
+    return 'Disconnect from $host?';
+  }
+
+  @override
+  String get sshSettingsDisconnectDetail =>
+      'The conversations and terminals running there end.';
+
+  @override
+  String sshSettingsCore(String core) {
+    return 'Core: $core';
+  }
+
+  @override
+  String sshSettingsVia(String host) {
+    return 'through $host';
+  }
+
+  @override
+  String get sshSettingsTyped => 'As typed';
+
+  @override
+  String get sshSettingsConfigHosts => 'Hosts of ~/.ssh/config';
+
+  @override
+  String get sshSettingsConfigHostsDescription =>
+      'Changed in that file; their core is Automatic.';
+
+  @override
+  String get sshSettingsOpenConfig => 'Open File';
+
+  @override
   String get sshServerAddTitle => 'Add SSH Server';
+
+  @override
+  String get sshServerAddSubtitle =>
+      'Saved to the remote list: connect to it in one click.';
 
   @override
   String sshServerEditTitle(String name) {
@@ -9814,8 +9883,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sshServerName => 'Name (optional)';
 
   @override
-  String get sshServerNamePlaceholder =>
-      'What the app calls it, e.g. Production';
+  String get sshServerNamePlaceholder => 'e.g. Production';
 
   @override
   String get sshServerAuth => 'Sign in with';
@@ -9853,6 +9921,24 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sshServerKeyHint =>
       'If the key has a passphrase, it is asked for when connecting.';
+
+  @override
+  String get sshServerCore => 'Core';
+
+  @override
+  String get sshServerCoreAuto => 'Automatic';
+
+  @override
+  String get sshServerCoreAutoHint =>
+      'The server\'s Claude Code CLI if it has one, else the built-in core.';
+
+  @override
+  String get sshServerCoreBuiltinHint =>
+      'BaoCode\'s own core: it runs on the upstreams of Settings → Models.';
+
+  @override
+  String get sshServerCoreCliHint =>
+      'The server\'s Claude Code CLI, installed there if it has none.';
 
   @override
   String get sshServerJump => 'Jump Host (optional)';

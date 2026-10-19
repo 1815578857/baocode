@@ -116,7 +116,8 @@ void main() {
     final result = await open(tester, address: 'me@box');
     expect(find.text('box'), findsOneWidget);
     expect(find.text('me'), findsOneWidget);
-    await tester.tap(find.text('Automatic'));
+    // How it signs in: the first of the two.
+    await tester.tap(find.text('Automatic').first);
     await tester.pump();
     expect(find.textContaining('ssh-agent'), findsOneWidget);
     await tester.tap(find.text('Save and Connect'));
@@ -124,6 +125,23 @@ void main() {
     final saved = (await result)!;
     expect(saved.host, 'me@box');
     expect(saved.server.auth, SshAuth.auto);
+    expect(saved.server.core, SshCore.auto);
     expect(saved.password, isNull);
+  });
+
+  testWidgets('the core: automatic at first, as picked, said what it '
+      'does', (tester) async {
+    final result = await open(
+      tester,
+      host: 'prod',
+      server: const SshServer(hostName: 'prod.example', core: SshCore.cli),
+    );
+    expect(find.textContaining('installed there if it has none'), findsOne);
+    await tester.tap(find.text('Built-in'));
+    await tester.pump();
+    expect(find.textContaining('upstreams of Settings'), findsOne);
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect((await result)!.server.core, SshCore.builtin);
   });
 }

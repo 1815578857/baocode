@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:bao_editor/textmate/textmate_syntax.dart';
-import 'package:bao_remote/client.dart' show SshAuth, SshPrompt;
+import 'package:bao_remote/client.dart' show SshPrompt;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, listEquals;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -53,7 +53,6 @@ import 'ide/ide_commands.dart';
 import 'ide/ide_dialog.dart';
 import 'ide/ide_menu.dart';
 import 'models/model_welcome.dart';
-import 'models/secret_store.dart' show SecretStoreException;
 import 'models/upstream_import.dart';
 import 'ide/ide_modern_ui.dart';
 import 'ide/ide_notifications.dart';
@@ -114,7 +113,6 @@ import 'remote/remote_location.dart';
 import 'remote/remote_status.dart';
 import 'remote/ssh_host.dart';
 import 'remote/ssh_password_dialog.dart';
-import 'remote/ssh_server_form.dart';
 import 'remote/ssh_passwords.dart';
 import 'stash/stash_controller.dart';
 import 'stash/stash_thread_view.dart' show sidebarStashes;
@@ -125,6 +123,7 @@ import 'workspace/chat_drag.dart';
 import 'workspace/chat_grid_view.dart';
 import 'workspace/chat_terminal.dart';
 import 'workspace/editor_launcher.dart' show openExternal;
+import 'workspace/ssh_server_edit.dart';
 import 'workspace/new_chat_folder_bar.dart';
 import 'workspace/open_in_editor_button.dart';
 import 'workspace/pin_window_button.dart';
@@ -3099,44 +3098,22 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     String? host,
     String? address,
   }) async {
-    final passwords = SshHosts.instance.passwords;
-    final kept =
-        host != null &&
-        await passwords
-            .has(SshPasswords.serverId(host))
-            .catchError((Object _) => false);
     final config = await _loadSshConfigHosts();
     if (!mounted) return;
-    final result = await showSshServerForm(
+    final result = await editSshServer(
       context,
+      _workspace,
       host: host,
       address: address,
-      server: host == null ? null : _workspace.sshServers[host],
-      name: host == null || _workspace.hostLabel(host) == host
-          ? null
-          : _workspace.hostLabel(host),
-      hasPassword: kept,
-      jumps: {..._workspace.sshHosts, ...config}.toList(),
-      labelOf: _workspace.hostLabel,
+      configHosts: config,
+      onWarning: (message) =>
+          _notifications.notify(IdeSeverity.warning, message),
     );
     if (!mounted) return;
     if (result == null) {
       if (flow != null) unawaited(flow.start());
       return;
     }
-    _workspace.saveSshServer(result.host, result.server, name: result.name);
-    final id = SshPasswords.serverId(result.host);
-    try {
-      if (result.password case final password?) {
-        await passwords.keep(id, password);
-      } else if (kept && result.server.auth != SshAuth.password) {
-        await passwords.keep(id, null);
-      }
-    } on SecretStoreException catch (error) {
-      // Asked for when connecting instead.
-      if (mounted) _notifications.notify(IdeSeverity.warning, '$error');
-    }
-    if (!mounted) return;
     if (flow == null) {
       // Connected already: the new settings are for the next connection.
       final ssh = SshHosts.instance[result.host];

@@ -9261,7 +9261,71 @@ class AppLocalizationsZh extends AppLocalizations {
   String get remoteEditServer => '编辑';
 
   @override
+  String get settingsSectionSsh => 'SSH 服务器';
+
+  @override
+  String get settingsSshKeywords =>
+      'ssh 远程 服务器 主机 跳板机 私钥 密码 内核 remote server host';
+
+  @override
+  String get sshSettingsDescription => '远程项目连接的服务器：地址、登录方式、跳板机，以及每台用的内核。';
+
+  @override
+  String get sshSettingsServers => '服务器';
+
+  @override
+  String get sshSettingsServersDescription => '在应用里添加的，以及侧栏里用过的主机。';
+
+  @override
+  String get sshSettingsNone => '还没有服务器';
+
+  @override
+  String get sshSettingsAdd => '添加服务器…';
+
+  @override
+  String get sshSettingsEdit => '编辑…';
+
+  @override
+  String get sshSettingsConnect => '连接';
+
+  @override
+  String get sshSettingsDisconnect => '断开';
+
+  @override
+  String sshSettingsDisconnectTitle(String host) {
+    return '断开 $host？';
+  }
+
+  @override
+  String get sshSettingsDisconnectDetail => '这台主机上正在运行的对话和终端会结束。';
+
+  @override
+  String sshSettingsCore(String core) {
+    return '内核：$core';
+  }
+
+  @override
+  String sshSettingsVia(String host) {
+    return '经 $host';
+  }
+
+  @override
+  String get sshSettingsTyped => '按输入的地址';
+
+  @override
+  String get sshSettingsConfigHosts => '~/.ssh/config 里的主机';
+
+  @override
+  String get sshSettingsConfigHostsDescription => '在这个文件里修改；内核按“自动”。';
+
+  @override
+  String get sshSettingsOpenConfig => '打开文件';
+
+  @override
   String get sshServerAddTitle => '新增 SSH 服务器';
+
+  @override
+  String get sshServerAddSubtitle => '保存后会出现在远程列表里，点一下就能连接。';
 
   @override
   String sshServerEditTitle(String name) {
@@ -9284,7 +9348,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sshServerName => '名称（可选）';
 
   @override
-  String get sshServerNamePlaceholder => '在应用里显示的名字，如“生产环境”';
+  String get sshServerNamePlaceholder => '如“生产环境”';
 
   @override
   String get sshServerAuth => '登录方式';
@@ -9319,6 +9383,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sshServerKeyHint => '如果私钥有口令，连接时会问。';
+
+  @override
+  String get sshServerCore => '内核';
+
+  @override
+  String get sshServerCoreAuto => '自动';
+
+  @override
+  String get sshServerCoreAutoHint => '服务器上装了 Claude Code CLI 就用它，没装就用内置内核。';
+
+  @override
+  String get sshServerCoreBuiltinHint => 'BaoCode 自带的内核，使用“设置 → 模型”里的上游。';
+
+  @override
+  String get sshServerCoreCliHint => '服务器上的 Claude Code CLI，没装会自动装上。';
 
   @override
   String get sshServerJump => '跳板机（可选）';

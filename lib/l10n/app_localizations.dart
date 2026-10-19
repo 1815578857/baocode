@@ -15987,11 +15987,125 @@ abstract class AppLocalizations {
   /// **'Edit'**
   String get remoteEditServer;
 
+  /// No description provided for @settingsSectionSsh.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH Servers'**
+  String get settingsSectionSsh;
+
+  /// No description provided for @settingsSshKeywords.
+  ///
+  /// In en, this message translates to:
+  /// **'ssh remote server host jump bastion key password core'**
+  String get settingsSshKeywords;
+
+  /// No description provided for @sshSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The servers remote projects connect to: their address, how they sign in, a jump host, and the core each runs.'**
+  String get sshSettingsDescription;
+
+  /// No description provided for @sshSettingsServers.
+  ///
+  /// In en, this message translates to:
+  /// **'Servers'**
+  String get sshSettingsServers;
+
+  /// No description provided for @sshSettingsServersDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Those added in the app, and the hosts the sidebar has.'**
+  String get sshSettingsServersDescription;
+
+  /// No description provided for @sshSettingsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No servers yet'**
+  String get sshSettingsNone;
+
+  /// No description provided for @sshSettingsAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Server…'**
+  String get sshSettingsAdd;
+
+  /// No description provided for @sshSettingsEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit…'**
+  String get sshSettingsEdit;
+
+  /// No description provided for @sshSettingsConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get sshSettingsConnect;
+
+  /// No description provided for @sshSettingsDisconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get sshSettingsDisconnect;
+
+  /// No description provided for @sshSettingsDisconnectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect from {host}?'**
+  String sshSettingsDisconnectTitle(String host);
+
+  /// No description provided for @sshSettingsDisconnectDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'The conversations and terminals running there end.'**
+  String get sshSettingsDisconnectDetail;
+
+  /// No description provided for @sshSettingsCore.
+  ///
+  /// In en, this message translates to:
+  /// **'Core: {core}'**
+  String sshSettingsCore(String core);
+
+  /// No description provided for @sshSettingsVia.
+  ///
+  /// In en, this message translates to:
+  /// **'through {host}'**
+  String sshSettingsVia(String host);
+
+  /// No description provided for @sshSettingsTyped.
+  ///
+  /// In en, this message translates to:
+  /// **'As typed'**
+  String get sshSettingsTyped;
+
+  /// No description provided for @sshSettingsConfigHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'Hosts of ~/.ssh/config'**
+  String get sshSettingsConfigHosts;
+
+  /// No description provided for @sshSettingsConfigHostsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Changed in that file; their core is Automatic.'**
+  String get sshSettingsConfigHostsDescription;
+
+  /// No description provided for @sshSettingsOpenConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Open File'**
+  String get sshSettingsOpenConfig;
+
   /// No description provided for @sshServerAddTitle.
   ///
   /// In en, this message translates to:
   /// **'Add SSH Server'**
   String get sshServerAddTitle;
+
+  /// No description provided for @sshServerAddSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to the remote list: connect to it in one click.'**
+  String get sshServerAddSubtitle;
 
   /// No description provided for @sshServerEditTitle.
   ///
@@ -16032,7 +16146,7 @@ abstract class AppLocalizations {
   /// No description provided for @sshServerNamePlaceholder.
   ///
   /// In en, this message translates to:
-  /// **'What the app calls it, e.g. Production'**
+  /// **'e.g. Production'**
   String get sshServerNamePlaceholder;
 
   /// No description provided for @sshServerAuth.
@@ -16100,6 +16214,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'If the key has a passphrase, it is asked for when connecting.'**
   String get sshServerKeyHint;
+
+  /// No description provided for @sshServerCore.
+  ///
+  /// In en, this message translates to:
+  /// **'Core'**
+  String get sshServerCore;
+
+  /// No description provided for @sshServerCoreAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get sshServerCoreAuto;
+
+  /// No description provided for @sshServerCoreAutoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The server\'s Claude Code CLI if it has one, else the built-in core.'**
+  String get sshServerCoreAutoHint;
+
+  /// No description provided for @sshServerCoreBuiltinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'BaoCode\'s own core: it runs on the upstreams of Settings → Models.'**
+  String get sshServerCoreBuiltinHint;
+
+  /// No description provided for @sshServerCoreCliHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The server\'s Claude Code CLI, installed there if it has none.'**
+  String get sshServerCoreCliHint;
 
   /// No description provided for @sshServerJump.
   ///
