@@ -13,6 +13,7 @@ import '../../kernel/claude_code/claude_path_setting.dart';
 import '../../kernel/commit_attribution.dart';
 import '../../kernel/prompt_suggestions.dart';
 import '../../chat/composer/composer_polish.dart' show ComposerPolishSetting;
+import '../../chat/widgets/turn_footer.dart' show LiveTurnStatsSetting;
 import '../../kernel/queued_messages.dart';
 import '../../l10n/l10n.dart';
 import '../../platform/app_platform.dart';
@@ -35,7 +36,8 @@ import 'settings_widgets.dart';
 /// message sent while the agent works is taken up (`chat.queuedMessages`),
 /// whether the next prompt is suggested after each turn
 /// (`chat.promptSuggestions`), whether the composer has its Polish button
-/// (`chat.composer.polish`), the Claude Code to run (`claudeCode.path`),
+/// (`chat.composer.polish`), whether the turn under way shows its time and
+/// speed (`chat.liveTurn.*`), the Claude Code to run (`claudeCode.path`),
 /// the `code` shell command, and Open with BaoCode in Finder's or
 /// Explorer's context menu. A choice is written at once; the default is not
 /// written.
@@ -370,6 +372,28 @@ class GeneralSettingsPage extends StatelessWidget {
                   onChanged: (on) => _write(
                     ComposerPolishSetting.settingKey,
                     on ? null : ComposerPolishSetting.off,
+                  ),
+                ),
+                SettingsSwitchRow(
+                  label: l10n.generalSettingsLiveTurnTime,
+                  description: l10n.generalSettingsLiveTurnTimeDescription,
+                  value: LiveTurnStatsSetting.enabled(
+                    settings?[LiveTurnStatsSetting.timeKey],
+                  ),
+                  onChanged: (on) => _write(
+                    LiveTurnStatsSetting.timeKey,
+                    on ? null : LiveTurnStatsSetting.off,
+                  ),
+                ),
+                SettingsSwitchRow(
+                  label: l10n.generalSettingsLiveTurnSpeed,
+                  description: l10n.generalSettingsLiveTurnSpeedDescription,
+                  value: LiveTurnStatsSetting.enabled(
+                    settings?[LiveTurnStatsSetting.speedKey],
+                  ),
+                  onChanged: (on) => _write(
+                    LiveTurnStatsSetting.speedKey,
+                    on ? null : LiveTurnStatsSetting.off,
                   ),
                 ),
               ],

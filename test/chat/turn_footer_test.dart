@@ -64,6 +64,59 @@ void main() {
     expect(find.text('12 tok/s'), findsOneWidget);
   });
 
+  testWidgets('the turn under way\'s time and speed each turned off in '
+      'settings, as they change; its tokens stay', (tester) async {
+    final settings = ValueNotifier(<String, Object?>{});
+    LiveTurnStatsSetting.time = () => LiveTurnStatsSetting.enabled(
+      settings.value[LiveTurnStatsSetting.timeKey],
+    );
+    LiveTurnStatsSetting.speed = () => LiveTurnStatsSetting.enabled(
+      settings.value[LiveTurnStatsSetting.speedKey],
+    );
+    LiveTurnStatsSetting.changes = settings;
+    addTearDown(() {
+      LiveTurnStatsSetting.time = () => true;
+      LiveTurnStatsSetting.speed = () => true;
+      LiveTurnStatsSetting.changes = null;
+    });
+    String shown() => [
+      for (final text in tester.widgetList<RollingText>(
+        find.byType(RollingText),
+      ))
+        text.text,
+    ].join(' | ');
+
+    await _pump(
+      tester,
+      TurnFooter(
+        live: const TurnOutput(tokens: 1234, tokensPerSecond: 42),
+        since: DateTime.now().subtract(const Duration(seconds: 3)),
+      ),
+    );
+    expect(shown(), contains('tok/s'));
+    expect(shown(), contains('tokens'));
+    expect(find.byType(RollingText), findsNWidgets(3));
+
+    settings.value = {LiveTurnStatsSetting.speedKey: false};
+    await tester.pump();
+    expect(shown(), isNot(contains('tok/s')));
+    expect(find.byType(RollingText), findsNWidgets(2));
+
+    settings.value = {
+      LiveTurnStatsSetting.speedKey: false,
+      LiveTurnStatsSetting.timeKey: false,
+    };
+    await tester.pump();
+    expect(find.byType(RollingText), findsOneWidget);
+    expect(shown(), contains('tokens'));
+
+    settings.value = {};
+    await tester.pump();
+    expect(find.byType(RollingText), findsNWidgets(3));
+    // The ticker, gone with the footer.
+    await _pump(tester, const SizedBox());
+  });
+
   testWidgets('a finished turn\'s time comes first, its tokens last', (
     tester,
   ) async {

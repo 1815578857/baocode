@@ -8227,6 +8227,20 @@ class AppLocalizationsZh extends AppLocalizations {
       '在输入框里显示润色按钮，发送前用辅助模型把写的内容改得更清楚';
 
   @override
+  String get generalSettingsLiveTurnTime => '运行时显示耗时';
+
+  @override
+  String get generalSettingsLiveTurnTimeDescription =>
+      '运行中在回复下方实时显示本轮已用时间。一轮结束后的统计始终显示';
+
+  @override
+  String get generalSettingsLiveTurnSpeed => '运行时显示速度';
+
+  @override
+  String get generalSettingsLiveTurnSpeedDescription =>
+      '运行中在回复下方实时显示模型输出速度（tok/s）。一轮结束后的统计始终显示';
+
+  @override
   String stashPolishFailed(String error) {
     return '没能润色：$error';
   }

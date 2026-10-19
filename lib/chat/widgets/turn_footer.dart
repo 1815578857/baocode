@@ -20,6 +20,27 @@ const _zapIcon = 'assets/icons/lucide-zap.svg';
 const _clockIcon = 'assets/icons/lucide-clock.svg';
 const _arrowDownIcon = 'assets/icons/lucide-arrow-down.svg';
 
+/// Whether the turn under way shows how long it has taken
+/// (`chat.liveTurn.time`) and how fast the model writes
+/// (`chat.liveTurn.speed`), each on unless set to false. A finished turn's
+/// figures always show.
+abstract final class LiveTurnStatsSetting {
+  static const timeKey = 'chat.liveTurn.time';
+  static const speedKey = 'chat.liveTurn.speed';
+
+  /// Written when off; on, the setting is left out.
+  static const off = false;
+
+  /// On unless set to false.
+  static bool enabled(Object? setting) => setting != false;
+
+  /// The settings as they are now, and what tells they changed; main()
+  /// points them at settings.json.
+  static bool Function() time = () => true;
+  static bool Function() speed = () => true;
+  static Listenable? changes;
+}
+
 /// Under a finished turn: a button to copy its answer, then, faint, how
 /// long the turn took, how fast the model wrote, what it cost and the
 /// tokens it used, as far as known. Out of the history's selection.
@@ -74,7 +95,15 @@ class TurnFooter extends StatelessWidget {
                 if (answer case final answer?) _CopyButton(text: answer),
                 ..._stats(l10n),
               ])
-            : _LiveStats(output: live, since: since),
+            : ListenableBuilder(
+                listenable:
+                    LiveTurnStatsSetting.changes ?? Listenable.merge(const []),
+                builder: (context, _) => _LiveStats(
+                  output: live,
+                  since: LiveTurnStatsSetting.time() ? since : null,
+                  speed: LiveTurnStatsSetting.speed(),
+                ),
+              ),
       ),
     );
   }
@@ -121,12 +150,14 @@ class TurnFooter extends StatelessWidget {
 
 /// The turn under way's figures, changing as it goes, all as wide and
 /// rolling: the line keeps still. The speed to two decimals; the time
-/// counted on each second.
+/// counted on each second. No time without [since], no speed unless
+/// [speed]: turned off in settings.
 class _LiveStats extends StatefulWidget {
-  const _LiveStats({required this.output, this.since});
+  const _LiveStats({required this.output, this.since, this.speed = true});
 
   final TurnOutput output;
   final DateTime? since;
+  final bool speed;
 
   @override
   State<_LiveStats> createState() => _LiveStatsState();
@@ -171,7 +202,7 @@ class _LiveStatsState extends State<_LiveStats> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final output = widget.output;
-    final speed = output.tokensPerSecond;
+    final speed = widget.speed ? output.tokensPerSecond : null;
     final since = widget.since;
     final tokens = output.tokens;
     return TurnFooter._line([

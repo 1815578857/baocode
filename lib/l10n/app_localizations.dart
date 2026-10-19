@@ -14181,6 +14181,30 @@ abstract class AppLocalizations {
   /// **'A button in the message box that has the auxiliary model make what you wrote clearer before you send it'**
   String get generalSettingsComposerPolishDescription;
 
+  /// No description provided for @generalSettingsLiveTurnTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Running Time'**
+  String get generalSettingsLiveTurnTime;
+
+  /// No description provided for @generalSettingsLiveTurnTimeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'While the agent works, how long the turn has taken so far, counting up under the reply. The figures under a finished turn always show.'**
+  String get generalSettingsLiveTurnTimeDescription;
+
+  /// No description provided for @generalSettingsLiveTurnSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Running Speed'**
+  String get generalSettingsLiveTurnSpeed;
+
+  /// No description provided for @generalSettingsLiveTurnSpeedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'While the agent works, how fast the model writes (tok/s), changing under the reply. The figures under a finished turn always show.'**
+  String get generalSettingsLiveTurnSpeedDescription;
+
   /// No description provided for @stashPolishFailed.
   ///
   /// In en, this message translates to:

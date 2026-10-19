@@ -19,6 +19,7 @@ import 'chat/reply_scroll.dart';
 import 'chat/user_message_style.dart';
 import 'chat/widgets/chat_minimap.dart';
 import 'chat/widgets/pixel_loader.dart';
+import 'chat/widgets/turn_footer.dart' show LiveTurnStatsSetting;
 import 'customize/customization_store.dart';
 import 'diagnostics/app_event_watch.dart';
 import 'diagnostics/diagnostics_upload.dart';
@@ -170,6 +171,14 @@ Future<void> main(List<String> arguments) async {
       files.settings[ComposerPolishSetting.settingKey],
     );
     ComposerPolishSetting.changes = files.settings;
+    // The turn under way's time and speed, shown or not as they change.
+    LiveTurnStatsSetting.time = () => LiveTurnStatsSetting.enabled(
+      files.settings[LiveTurnStatsSetting.timeKey],
+    );
+    LiveTurnStatsSetting.speed = () => LiveTurnStatsSetting.enabled(
+      files.settings[LiveTurnStatsSetting.speedKey],
+    );
+    LiveTurnStatsSetting.changes = files.settings;
     // Settings → General → Claude Code: the build to run, read as each
     // agent starts.
     ClaudePathSetting.current = () =>

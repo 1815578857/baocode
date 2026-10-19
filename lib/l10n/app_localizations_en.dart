@@ -8716,6 +8716,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'A button in the message box that has the auxiliary model make what you wrote clearer before you send it';
 
   @override
+  String get generalSettingsLiveTurnTime => 'Running Time';
+
+  @override
+  String get generalSettingsLiveTurnTimeDescription =>
+      'While the agent works, how long the turn has taken so far, counting up under the reply. The figures under a finished turn always show.';
+
+  @override
+  String get generalSettingsLiveTurnSpeed => 'Running Speed';
+
+  @override
+  String get generalSettingsLiveTurnSpeedDescription =>
+      'While the agent works, how fast the model writes (tok/s), changing under the reply. The figures under a finished turn always show.';
+
+  @override
   String stashPolishFailed(String error) {
     return 'Could not polish: $error';
   }
