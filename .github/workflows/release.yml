@@ -272,6 +272,8 @@ jobs:
           mkdir -p "$HOME/.config/google-chrome"
           export XDG_RUNTIME_DIR="$RUNNER_TEMP/runtime"
           mkdir -m 700 "$XDG_RUNTIME_DIR"
+          # One that does not exist is asked about, and the app waits there.
+          mkdir "$RUNNER_TEMP/launch-data"
           BAOCODE_DATA_DIR="$RUNNER_TEMP/launch-data" \
             dbus-run-session -- xvfb-run -a /opt/baocode/baocode > "$log" 2>&1 &
           sleep 15
