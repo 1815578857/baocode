@@ -516,6 +516,48 @@ void main() {
       expect(customUpstreamHeaders(at('https://x.example')), isEmpty);
     });
 
+    test('OpenCode is told the conversation, the same id every request, '
+        'unless the user names it', () {
+      final zen = at(
+        'https://opencode.ai/zen/go/v1',
+        ProviderProtocol.openaiChat,
+      );
+      final first = customUpstreamHeaders(zen, session: 's-1');
+      expect(first.keys, [openCodeSessionHeader]);
+      expect(
+        first[openCodeSessionHeader],
+        matches(RegExp(r'^ses_[0-9a-f]{32}$')),
+      );
+      expect(customUpstreamHeaders(zen, session: 's-1'), first);
+      expect(
+        customUpstreamHeaders(zen, session: 's-2')[openCodeSessionHeader],
+        isNot(first[openCodeSessionHeader]),
+      );
+      // No session (a model list): one of its own all the same.
+      expect(
+        customUpstreamHeaders(zen)[openCodeSessionHeader],
+        matches(RegExp(r'^ses_[0-9a-f]{32}$')),
+      );
+      // The user's own, in any case, is kept and not doubled.
+      expect(
+        customUpstreamHeaders(
+          zen.copyWith(
+            headers: {'X-OpenCode-Session': '{{CLAUDE_SESSION_ID}}'},
+          ),
+          session: 's-1',
+        ),
+        {'X-OpenCode-Session': 's-1'},
+      );
+      // Another upstream: none.
+      expect(
+        customUpstreamHeaders(
+          at('https://opencode.example', ProviderProtocol.openaiChat),
+          session: 's-1',
+        ),
+        isEmpty,
+      );
+    });
+
     test('model lists of each kind are read, with their windows', () {
       final openai = parseModelList({
         'object': 'list',
