@@ -649,8 +649,8 @@ void main() {
       ),
     );
     await pumpEventQueue();
-    // Its CLI resolves "opus" to the provider's model: not told it.
-    expect(kernel.switchRestarts('opus'), isTrue);
+    // Its CLI resolves "opus" to the provider's model: let go, not told it.
+    expect(clis.first.closed, isTrue);
     kernel.model.select('opus');
     await pumpEventQueue();
     expect(clis.first.requests('set_model'), isEmpty);
@@ -658,7 +658,6 @@ void main() {
 
     kernel.send(const KernelTurn(id: 'u2', text: 'go on'));
     await pumpEventQueue();
-    expect(clis.first.closed, isTrue);
     expect(launches, hasLength(2));
     expect(launches.last.resume, 's1');
     expect(launches.last.model, 'opus');
@@ -921,6 +920,57 @@ void main() {
     expect(launches.single.model, isNull);
     expect(launches.single.env, isNull);
     expect(environments, isEmpty);
+    kernel.dispose();
+  });
+
+  test('a provider gone since, Claude Code\'s own left out of the picker, '
+      'falls back to the first upstream\'s model, as the picker shows', () async {
+    await providers.setBuiltinHidden(true);
+    final (:kernel, :launches, clis: _, :environments) = start(providers, {
+      'model': '@removed/x',
+    });
+    kernel.prepare();
+    await pumpEventQueue();
+    expect(kernel.model.selected, '@gw/gpt-5');
+    expect(launches.single.model, startsWith('gpt-5'));
+    expect(environments.single.$1, 'gw');
+    kernel.dispose();
+  });
+
+  test('the model in use removed mid-conversation: the CLI started on it '
+      'is let go, and the next message resumes on the model the picker '
+      'shows, not on Claude Code\'s own left out of it (#164)', () async {
+    await providers.setBuiltinHidden(true);
+    final (:kernel, :launches, :clis, environments: _) = start(providers, {
+      'model': '@gw/gpt-5',
+    });
+    kernel.send(const KernelTurn(id: 'u1', text: 'hi'));
+    await pumpEventQueue();
+    clis.last
+      ..push({'type': 'system', 'subtype': 'init', 'session_id': 's1'})
+      ..push({'type': 'result', 'subtype': 'success', 'is_error': false});
+    await pumpEventQueue();
+
+    await providers.save(
+      _gateway.copyWith(
+        models: [
+          for (final model in _gateway.models)
+            if (model.id != 'gpt-5') model,
+        ],
+      ),
+    );
+    await pumpEventQueue();
+    // Its environment names the model removed for each of Claude Code's.
+    expect(clis.first.closed, isTrue);
+    expect(kernel.model.selected, '@gw/plain');
+
+    kernel.send(const KernelTurn(id: 'u2', text: 'go on'));
+    await pumpEventQueue();
+    expect(launches, hasLength(2));
+    expect(launches.last.resume, 's1');
+    expect(launches.last.model, startsWith('plain'));
+    expect(launches.last.env, isNotNull);
+    expect(clis.last.users.single['uuid'], 'u2');
     kernel.dispose();
   });
 }

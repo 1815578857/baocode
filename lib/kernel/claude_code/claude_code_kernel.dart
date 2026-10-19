@@ -338,17 +338,28 @@ class ClaudeCodeKernel
 
   /// The model asked for, as the CLI names it (e.g. `opus[1m]`), or a
   /// provider's ([modelRef]). BaoCode's own core has no model of its own:
-  /// on it, one of no upstream is the first upstream's model.
+  /// on it, one of no upstream is the first upstream's model. A provider's
+  /// removed since falls back as the picker shows it: to Claude Code's own
+  /// if offered there, else to the first upstream's.
   String? get _model {
     final picked = _pickedModel;
-    if (_providers.builtinAvailable || _providers.resolve(picked) != null) {
+    if (_providers.resolve(picked) != null) return picked;
+    if (_providers.builtinAvailable &&
+        (parseModelRef(picked) == null || _providers.builtinOffered)) {
       return picked;
     }
-    return _providers.firstModel;
+    return _providers.firstModel ??
+        (_providers.builtinAvailable ? picked : null);
   }
 
   set _model(String? model) => _pickedModel = model;
   String? _pickedModel;
+
+  /// The provider's model the process was started on, which its
+  /// environment names for each of Claude Code's own (`ANTHROPIC_MODEL`,
+  /// `ANTHROPIC_DEFAULT_OPUS_MODEL`): whatever it was switched to since,
+  /// one removed leaves it no use (see [_providersChanged]).
+  String? _launchedModel;
 
   /// What the process was started on: [_providerKey] then. A provider
   /// is taken up only at start, so another is by a restart (see
@@ -520,6 +531,7 @@ class ClaudeCodeKernel
       }
       final workspace = _workspace;
       _launchedProvider = target.provider;
+      _launchedModel = custom != null ? _model : null;
       _launchedWindow = _autocompact;
       _launchedSuggestions = PromptSuggestions.current();
       final sdkServers = ClaudeSdkTools.servers;
@@ -2593,6 +2605,14 @@ class ClaudeCodeKernel
     emitInfoChanged();
     // Failed for want of a model, it starts on the first one added.
     if (_health.noModel && _model != null) restart();
+    // Started on a model removed since: let go (once idle), for the next
+    // message to start one on the model now picked.
+    if (_transport != null &&
+        _launchedModel != null &&
+        _providers.resolve(_launchedModel) == null) {
+      _launchedModel = null;
+      release();
+    }
   }
 
   /// The heading Claude Code's own models are listed under.
