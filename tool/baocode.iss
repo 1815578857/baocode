@@ -174,7 +174,8 @@ Root: HKA; Subkey: "Software\Classes\Directory\Background\shell\BaoCodeFastIde\c
   Tasks: contextmenu
 ; The baocode: URL scheme, always: a site's one-click import of an upstream
 ; (baocode.dev/import opens baocode://provider/import?…; see
-; docs/upstream-import.md). The link comes after --baocode-link, which the
+; docs/upstream-import.md), and the channel build's setup (baocode.dev/activate
+; opens baocode://activate?…). The link comes after --baocode-link, which the
 ; runner hands Flutter as a request (windows/runner/open_requests.cpp).
 Root: HKA; Subkey: "Software\Classes\baocode"; ValueType: string; \
   ValueName: ""; ValueData: "URL:BaoCode"; Flags: uninsdeletekey

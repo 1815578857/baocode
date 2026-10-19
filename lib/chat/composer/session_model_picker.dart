@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../channel/channel_setup.dart' show ChannelSetup;
 import '../../ide/ide_dialog.dart';
 import '../../kernel/agent_kernel.dart';
 import '../../kernel/kernel_types.dart';
@@ -112,7 +113,9 @@ class SessionModelPicker extends StatelessWidget {
       searchPlaceholder: l10n.modelsSearch,
       footer: switch (SettingsOpener.maybeOf(context)) {
         final open? => (
-          label: l10n.modelsManage,
+          label: ChannelSetup.channelBuild
+              ? l10n.channelAccountTitle
+              : l10n.modelsManage,
           icon: Icons.tune_rounded,
           onTap: () => open(SettingsSection.models),
         ),

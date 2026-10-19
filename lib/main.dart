@@ -73,6 +73,11 @@ import 'remote/remote_claude.dart';
 import 'remote/ssh_host.dart';
 import 'search/claude_conversation_search.dart';
 import 'search/conversation_search.dart';
+import 'channel/account/account_send.dart';
+import 'channel/account/channel_account.dart';
+import 'channel/channel_gate.dart';
+import 'channel/channel_setup.dart';
+import 'channel/channel_setup_platform.dart';
 import 'settings/app_locale.dart';
 import 'settings/app_settings.dart';
 import 'settings/data_dir_startup.dart';
@@ -194,6 +199,9 @@ Future<void> main(List<String> arguments) async {
     ClaudeCodeKernel.modelCache = files.storage;
     // Whether the welcome to setting a model up has shown by itself.
     ModelWelcome.storage = files.storage;
+    // The channel build's first start: set up before anything else shows.
+    await _beginChannelSetup(files);
+    _openChannelGate(files);
     // What each turn took and spent, for its footer when the session is
     // opened again: in the data folder, a file per session.
     ClaudeCodeKernel.turnStats = turnStatsIn(
@@ -487,11 +495,59 @@ UpdateController? _startUpdates(SettingsFiles files) {
   );
 }
 
+/// The channel build's first start (lib/channel/): to set up while it is
+/// pending, for the windows to show. The install's id made now, to give
+/// the page, and kept before the telemetry would make its own.
+Future<void> _beginChannelSetup(SettingsFiles files) async {
+  if (kIsWeb) return;
+  final store = GlobalChannelSetupStore(files.storage);
+  if (!ChannelSetup.begin(store)) return;
+  var id = GlobalTelemetryStore(files.storage).installId;
+  if (id == null) {
+    id = TelemetryService.randomInstallId();
+    await files.storage
+        .set(GlobalTelemetryStore.installIdKey, id)
+        .catchError(
+          (Object error) => debugPrint('install id not kept: $error'),
+        );
+  }
+  ChannelSetup.current = ChannelSetup(
+    store: store,
+    installId: id,
+    lookUp: lookUpChannel,
+    open: (url) => openExternal('$url'),
+  );
+}
+
+/// The channel build's way in (lib/channel/): set up, then signed in to
+/// its channel's account site, whose key is its only upstream.
+void _openChannelGate(SettingsFiles files) {
+  if (kIsWeb || !ChannelSetup.channelBuild) return;
+  final accounts = GlobalChannelAccountStore(files.storage);
+  ChannelGate.current = ChannelGate(
+    setup: ChannelSetup.current,
+    setupStore:
+        ChannelSetup.current?.store ?? GlobalChannelSetupStore(files.storage),
+    accountStore: accounts,
+    fetch: channelEntry,
+    makeAccount: (channel) => ChannelAccount(
+      site: channel.info.account!,
+      channelName: channel.info.name,
+      store: accounts,
+      send: sendToAccountSite,
+      listModels: listUpstreamModels,
+    ),
+  );
+}
+
 /// The app's usage data (lib/telemetry/): once a UTC day it is in front.
 /// None in a debug build.
 void _startTelemetry(SettingsFiles files) {
   final platform = platformTelemetry();
   if (platform == null) return;
+  // The setup's, read back as it was set.
+  final channel =
+      ChannelSetup.current?.store ?? GlobalChannelSetupStore(files.storage);
   bool inFront() => switch (WidgetsBinding.instance.lifecycleState) {
     null || AppLifecycleState.resumed => true,
     _ => false,
@@ -504,6 +560,8 @@ void _startTelemetry(SettingsFiles files) {
     url: platform.url,
     store: GlobalTelemetryStore(files.storage),
     inFront: inFront,
+    edition: () => ChannelSetup.editionOf(channel),
+    attribution: () => channel.attribution?.toJson(),
   )..start();
   // Back in front: a new day, if it is one. For the app's whole run.
   AppLifecycleListener(onResume: telemetry.markActive);

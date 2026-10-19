@@ -19,7 +19,17 @@ served as it is, `/download` being `download.html`.
   in; `activate.html`, `activate.js`: what the channel build opens on its
   first start, to send it to stats.baocode.dev; `channels.json` and
   `channels/` (their logos), the channels listed, shown by the brand, in
-  the home page's title and subtitle.
+  the home page's title and subtitle; and in the channel build once set up
+  (lib/channel/): its name; the site its users sign in to, without which
+  the channel build cannot be used, `account: {type, url, apiUrl?,
+  protocol?}` (`type` `newapi` or `sub2api`, the panel it runs; `url` the
+  panel's, HTTPS, opened in the app's login window; `apiUrl` where its
+  keys' models are, the panel's unless given; `protocol` `anthropic`,
+  `openai-chat` or `openai-responses`, else the key's group's where
+  sub2api tells, else Anthropic's); and its welcome, `welcome: {title,
+  text, button?}` (each text `{zh, en}`; "Welcome to <name>" and Sign In
+  unless given). `BAOCODE_CHANNELS_URL=http://127.0.0.1:<port>`, `site/`
+  served there, shows one before it is published.
 - `shots/`: the screenshots on the page.
 - `sounds/`: the notification sound the page plays.
 - `qr/`: the phone cards' QR codes, made by

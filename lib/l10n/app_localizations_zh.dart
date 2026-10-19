@@ -9467,4 +9467,169 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get remoteFailUnreachable => '连不上服务器：请检查地址、端口和网络。';
+
+  @override
+  String get channelSetupTitle => '欢迎使用 BaoCode';
+
+  @override
+  String get channelSetupLead => '打开官网完成首次设置，大约 10 秒。';
+
+  @override
+  String get channelSetupStepTitle => '在浏览器中完成设置';
+
+  @override
+  String get channelSetupStep =>
+      'BaoCode 会在浏览器里打开 baocode.dev，网页显示完成后，这里会自动继续。';
+
+  @override
+  String get channelSetupWaitingTitle => '正在等待浏览器完成…';
+
+  @override
+  String get channelSetupWaiting => '网页显示完成后，这里会自动继续。不小心关掉了网页，可以重新打开。';
+
+  @override
+  String get channelSetupOffline => '连不上 baocode.dev，需要联网才能完成设置。';
+
+  @override
+  String get channelSetupRetry => '重试';
+
+  @override
+  String get channelSetupDoneTitle => '设置完成';
+
+  @override
+  String get channelSetupOpen => '在浏览器中完成设置';
+
+  @override
+  String get channelSetupOpenAgain => '重新打开网页';
+
+  @override
+  String get channelSetupNoResponse => '浏览器没反应？';
+
+  @override
+  String get channelSetupPasteLead => '网页上如果有一段链接，复制后粘贴到这里：';
+
+  @override
+  String get channelSetupPasteConfirm => '确定';
+
+  @override
+  String get channelSetupLinkInvalid => '这不是网页上的链接，请复制网页上显示的完整链接。';
+
+  @override
+  String get channelSetupLinkOther => '这个链接属于另一个 BaoCode（别的电脑或重装前的），请用这里打开的网页。';
+
+  @override
+  String get channelSetupTrouble => '遇到问题？';
+
+  @override
+  String get channelSetupOnceTitle => '只需一次';
+
+  @override
+  String get channelSetupOnce => '完成后不会再出现，更新后也不会。';
+
+  @override
+  String get channelSetupPrivateTitle => '不涉及个人信息';
+
+  @override
+  String get channelSetupPrivate => '网页只告诉 BaoCode 你是从哪里知道它的，比如某个视频或网站。';
+
+  @override
+  String get channelSetupFindingTitle => '正在读取渠道信息…';
+
+  @override
+  String get channelSetupFinding => '马上就好。';
+
+  @override
+  String get channelSetupSiteOfflineTitle => '连不上 baocode.dev';
+
+  @override
+  String get channelSetupSiteOffline => '需要联网读取渠道信息，请检查网络后重试。';
+
+  @override
+  String get channelSetupUnavailableTitle => '这个渠道暂时用不了';
+
+  @override
+  String get channelSetupUnavailable =>
+      '这份安装包对应的渠道还没有开通账号服务。请联系提供安装包的一方，或到 baocode.dev 下载普通版。';
+
+  @override
+  String channelWelcomeTitle(String channel) {
+    return '欢迎使用 $channel';
+  }
+
+  @override
+  String channelWelcomeText(String channel) {
+    return '登录你的 $channel 账号，就可以开始使用了。';
+  }
+
+  @override
+  String get channelWelcomeSignIn => '登录';
+
+  @override
+  String get channelWelcomeSigningIn => '请在弹出的窗口中登录…';
+
+  @override
+  String get channelWelcomePreparing => '正在准备…';
+
+  @override
+  String channelWelcomeFailed(String error) {
+    return '没能完成登录：$error';
+  }
+
+  @override
+  String get channelAccountTitle => '账号管理';
+
+  @override
+  String get channelAccountBalance => '余额';
+
+  @override
+  String get channelAccountRefresh => '刷新账户';
+
+  @override
+  String get channelAccountSignOut => '退出登录';
+
+  @override
+  String get channelAccountSignOutTitle => '退出登录？';
+
+  @override
+  String channelAccountSignOutDetail(String channel) {
+    return '退出后，需要重新登录 $channel 才能继续使用 BaoCode。';
+  }
+
+  @override
+  String get channelAccountOpenSite => '打开网站';
+
+  @override
+  String get channelAccountDefaultModel => '新对话默认模型';
+
+  @override
+  String get channelAccountNoModels => '正在使用的 Key 没有可用的模型。';
+
+  @override
+  String get channelAccountKeys => '我的 API Key';
+
+  @override
+  String get channelAccountCreateKey => '创建 Key';
+
+  @override
+  String get channelAccountKeyName => '名称';
+
+  @override
+  String get channelAccountUseKey => '使用此 Key';
+
+  @override
+  String get channelAccountInUse => '使用中';
+
+  @override
+  String get channelAccountNoKeys => '还没有 API Key。';
+
+  @override
+  String get channelAccountSignedOut => '还没有登录。';
+
+  @override
+  String get channelAccountUnavailable => '这个渠道暂时用不了，请联系提供安装包的一方。';
+
+  @override
+  String channelAccountFailed(String error) {
+    return '出错了：$error';
+  }
 }

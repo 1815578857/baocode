@@ -10012,4 +10012,180 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get remoteFailUnreachable =>
       'The server could not be reached: check the address, port and network.';
+
+  @override
+  String get channelSetupTitle => 'Welcome to BaoCode';
+
+  @override
+  String get channelSetupLead =>
+      'Finish your first-time setup on baocode.dev. It takes about 10 seconds.';
+
+  @override
+  String get channelSetupStepTitle => 'Finish setup in your browser';
+
+  @override
+  String get channelSetupStep =>
+      'BaoCode opens baocode.dev in your browser. Once the page says it\'s done, BaoCode continues on its own.';
+
+  @override
+  String get channelSetupWaitingTitle => 'Waiting for your browser…';
+
+  @override
+  String get channelSetupWaiting =>
+      'Once the page says it\'s done, BaoCode continues on its own. Closed the page by mistake? Open it again.';
+
+  @override
+  String get channelSetupOffline =>
+      'Can\'t reach baocode.dev. You need to be online to finish setup.';
+
+  @override
+  String get channelSetupRetry => 'Retry';
+
+  @override
+  String get channelSetupDoneTitle => 'Setup complete';
+
+  @override
+  String get channelSetupOpen => 'Finish Setup in Browser';
+
+  @override
+  String get channelSetupOpenAgain => 'Open the Page Again';
+
+  @override
+  String get channelSetupNoResponse => 'Browser not responding?';
+
+  @override
+  String get channelSetupPasteLead =>
+      'If the page shows a link, copy it and paste it here:';
+
+  @override
+  String get channelSetupPasteConfirm => 'OK';
+
+  @override
+  String get channelSetupLinkInvalid =>
+      'That isn\'t the link from the page. Copy the whole link shown there.';
+
+  @override
+  String get channelSetupLinkOther =>
+      'That link is for another BaoCode install. Use the page this BaoCode opened.';
+
+  @override
+  String get channelSetupTrouble => 'Having trouble?';
+
+  @override
+  String get channelSetupOnceTitle => 'Only once';
+
+  @override
+  String get channelSetupOnce =>
+      'Once it\'s done, this won\'t show again, not even after an update.';
+
+  @override
+  String get channelSetupPrivateTitle => 'Nothing personal';
+
+  @override
+  String get channelSetupPrivate =>
+      'The page only tells BaoCode where you heard of it, like a video or a website.';
+
+  @override
+  String get channelSetupFindingTitle => 'Getting your channel ready…';
+
+  @override
+  String get channelSetupFinding => 'Just a moment.';
+
+  @override
+  String get channelSetupSiteOfflineTitle => 'Can\'t reach baocode.dev';
+
+  @override
+  String get channelSetupSiteOffline =>
+      'BaoCode needs to be online to read your channel. Check your connection and retry.';
+
+  @override
+  String get channelSetupUnavailableTitle => 'This channel isn\'t available';
+
+  @override
+  String get channelSetupUnavailable =>
+      'The channel this installer came from doesn\'t have accounts set up yet. Contact whoever gave you the installer, or download the standard edition from baocode.dev.';
+
+  @override
+  String channelWelcomeTitle(String channel) {
+    return 'Welcome to $channel';
+  }
+
+  @override
+  String channelWelcomeText(String channel) {
+    return 'Sign in to your $channel account to get started.';
+  }
+
+  @override
+  String get channelWelcomeSignIn => 'Sign In';
+
+  @override
+  String get channelWelcomeSigningIn => 'Sign in in the window that opened…';
+
+  @override
+  String get channelWelcomePreparing => 'Getting ready…';
+
+  @override
+  String channelWelcomeFailed(String error) {
+    return 'Couldn\'t finish signing in: $error';
+  }
+
+  @override
+  String get channelAccountTitle => 'Account';
+
+  @override
+  String get channelAccountBalance => 'Balance';
+
+  @override
+  String get channelAccountRefresh => 'Refresh';
+
+  @override
+  String get channelAccountSignOut => 'Sign Out';
+
+  @override
+  String get channelAccountSignOutTitle => 'Sign out?';
+
+  @override
+  String channelAccountSignOutDetail(String channel) {
+    return 'You\'ll need to sign in to $channel again to keep using BaoCode.';
+  }
+
+  @override
+  String get channelAccountOpenSite => 'Open Website';
+
+  @override
+  String get channelAccountDefaultModel => 'Default model for new chats';
+
+  @override
+  String get channelAccountNoModels =>
+      'The key in use doesn\'t reach any models.';
+
+  @override
+  String get channelAccountKeys => 'My API Keys';
+
+  @override
+  String get channelAccountCreateKey => 'Create Key';
+
+  @override
+  String get channelAccountKeyName => 'Name';
+
+  @override
+  String get channelAccountUseKey => 'Use This Key';
+
+  @override
+  String get channelAccountInUse => 'In Use';
+
+  @override
+  String get channelAccountNoKeys => 'No API keys yet.';
+
+  @override
+  String get channelAccountSignedOut => 'You\'re not signed in.';
+
+  @override
+  String get channelAccountUnavailable =>
+      'This channel isn\'t available. Contact whoever gave you the installer.';
+
+  @override
+  String channelAccountFailed(String error) {
+    return 'Something went wrong: $error';
+  }
 }

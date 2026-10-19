@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import '../channel/channel_setup.dart';
 import '../kernel/kernel_types.dart';
 import '../keybindings/chat_keybindings.dart';
 import '../l10n/l10n.dart';
@@ -366,10 +367,27 @@ class _ChatScreenState extends State<ChatScreen>
     }
   }
 
+  /// Whether the welcome to models waits for the channel build's setup.
+  bool _awaitingSetup = false;
+
   /// No model to run on, the first time for the app: what setting one up
-  /// is, by itself; after that, from the banner and the model's pill.
+  /// is, by itself; after that, from the banner and the model's pill. The
+  /// channel build's setup first (lib/channel/).
   void _welcomeToModels() {
+    // The channel build's model is its account's: no setting one up.
+    if (ChannelSetup.channelBuild) return;
     if (!_session.health.noModel || ModelWelcome.welcomed) return;
+    if (ChannelSetup.current case final setup? when !setup.done) {
+      if (_awaitingSetup) return;
+      _awaitingSetup = true;
+      // Once its welcome closed, with Get Started.
+      unawaited(
+        setup.started.then((_) {
+          if (mounted) _welcomeToModels();
+        }),
+      );
+      return;
+    }
     ModelWelcome.welcomed = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(showModelWelcome(context));

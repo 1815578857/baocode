@@ -16370,6 +16370,312 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The server could not be reached: check the address, port and network.'**
   String get remoteFailUnreachable;
+
+  /// No description provided for @channelSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to BaoCode'**
+  String get channelSetupTitle;
+
+  /// No description provided for @channelSetupLead.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish your first-time setup on baocode.dev. It takes about 10 seconds.'**
+  String get channelSetupLead;
+
+  /// No description provided for @channelSetupStepTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish setup in your browser'**
+  String get channelSetupStepTitle;
+
+  /// No description provided for @channelSetupStep.
+  ///
+  /// In en, this message translates to:
+  /// **'BaoCode opens baocode.dev in your browser. Once the page says it\'s done, BaoCode continues on its own.'**
+  String get channelSetupStep;
+
+  /// No description provided for @channelSetupWaitingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for your browser…'**
+  String get channelSetupWaitingTitle;
+
+  /// No description provided for @channelSetupWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Once the page says it\'s done, BaoCode continues on its own. Closed the page by mistake? Open it again.'**
+  String get channelSetupWaiting;
+
+  /// No description provided for @channelSetupOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach baocode.dev. You need to be online to finish setup.'**
+  String get channelSetupOffline;
+
+  /// No description provided for @channelSetupRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get channelSetupRetry;
+
+  /// No description provided for @channelSetupDoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup complete'**
+  String get channelSetupDoneTitle;
+
+  /// No description provided for @channelSetupOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish Setup in Browser'**
+  String get channelSetupOpen;
+
+  /// No description provided for @channelSetupOpenAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the Page Again'**
+  String get channelSetupOpenAgain;
+
+  /// No description provided for @channelSetupNoResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Browser not responding?'**
+  String get channelSetupNoResponse;
+
+  /// No description provided for @channelSetupPasteLead.
+  ///
+  /// In en, this message translates to:
+  /// **'If the page shows a link, copy it and paste it here:'**
+  String get channelSetupPasteLead;
+
+  /// No description provided for @channelSetupPasteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get channelSetupPasteConfirm;
+
+  /// No description provided for @channelSetupLinkInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'That isn\'t the link from the page. Copy the whole link shown there.'**
+  String get channelSetupLinkInvalid;
+
+  /// No description provided for @channelSetupLinkOther.
+  ///
+  /// In en, this message translates to:
+  /// **'That link is for another BaoCode install. Use the page this BaoCode opened.'**
+  String get channelSetupLinkOther;
+
+  /// No description provided for @channelSetupTrouble.
+  ///
+  /// In en, this message translates to:
+  /// **'Having trouble?'**
+  String get channelSetupTrouble;
+
+  /// No description provided for @channelSetupOnceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Only once'**
+  String get channelSetupOnceTitle;
+
+  /// No description provided for @channelSetupOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Once it\'s done, this won\'t show again, not even after an update.'**
+  String get channelSetupOnce;
+
+  /// No description provided for @channelSetupPrivateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing personal'**
+  String get channelSetupPrivateTitle;
+
+  /// No description provided for @channelSetupPrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'The page only tells BaoCode where you heard of it, like a video or a website.'**
+  String get channelSetupPrivate;
+
+  /// No description provided for @channelSetupFindingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting your channel ready…'**
+  String get channelSetupFindingTitle;
+
+  /// No description provided for @channelSetupFinding.
+  ///
+  /// In en, this message translates to:
+  /// **'Just a moment.'**
+  String get channelSetupFinding;
+
+  /// No description provided for @channelSetupSiteOfflineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach baocode.dev'**
+  String get channelSetupSiteOfflineTitle;
+
+  /// No description provided for @channelSetupSiteOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'BaoCode needs to be online to read your channel. Check your connection and retry.'**
+  String get channelSetupSiteOffline;
+
+  /// No description provided for @channelSetupUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This channel isn\'t available'**
+  String get channelSetupUnavailableTitle;
+
+  /// No description provided for @channelSetupUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The channel this installer came from doesn\'t have accounts set up yet. Contact whoever gave you the installer, or download the standard edition from baocode.dev.'**
+  String get channelSetupUnavailable;
+
+  /// A channel's welcome's title when its channels.json entry has none, by its name.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to {channel}'**
+  String channelWelcomeTitle(String channel);
+
+  /// A channel's welcome's text when its entry has none.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to your {channel} account to get started.'**
+  String channelWelcomeText(String channel);
+
+  /// No description provided for @channelWelcomeSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign In'**
+  String get channelWelcomeSignIn;
+
+  /// No description provided for @channelWelcomeSigningIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in in the window that opened…'**
+  String get channelWelcomeSigningIn;
+
+  /// No description provided for @channelWelcomePreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting ready…'**
+  String get channelWelcomePreparing;
+
+  /// Signing in to the channel's account site failed; the site's or the network's error.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t finish signing in: {error}'**
+  String channelWelcomeFailed(String error);
+
+  /// No description provided for @channelAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get channelAccountTitle;
+
+  /// No description provided for @channelAccountBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance'**
+  String get channelAccountBalance;
+
+  /// No description provided for @channelAccountRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get channelAccountRefresh;
+
+  /// No description provided for @channelAccountSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign Out'**
+  String get channelAccountSignOut;
+
+  /// No description provided for @channelAccountSignOutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out?'**
+  String get channelAccountSignOutTitle;
+
+  /// No description provided for @channelAccountSignOutDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll need to sign in to {channel} again to keep using BaoCode.'**
+  String channelAccountSignOutDetail(String channel);
+
+  /// No description provided for @channelAccountOpenSite.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Website'**
+  String get channelAccountOpenSite;
+
+  /// No description provided for @channelAccountDefaultModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Default model for new chats'**
+  String get channelAccountDefaultModel;
+
+  /// No description provided for @channelAccountNoModels.
+  ///
+  /// In en, this message translates to:
+  /// **'The key in use doesn\'t reach any models.'**
+  String get channelAccountNoModels;
+
+  /// No description provided for @channelAccountKeys.
+  ///
+  /// In en, this message translates to:
+  /// **'My API Keys'**
+  String get channelAccountKeys;
+
+  /// No description provided for @channelAccountCreateKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Key'**
+  String get channelAccountCreateKey;
+
+  /// No description provided for @channelAccountKeyName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get channelAccountKeyName;
+
+  /// No description provided for @channelAccountUseKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Use This Key'**
+  String get channelAccountUseKey;
+
+  /// No description provided for @channelAccountInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'In Use'**
+  String get channelAccountInUse;
+
+  /// No description provided for @channelAccountNoKeys.
+  ///
+  /// In en, this message translates to:
+  /// **'No API keys yet.'**
+  String get channelAccountNoKeys;
+
+  /// No description provided for @channelAccountSignedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re not signed in.'**
+  String get channelAccountSignedOut;
+
+  /// No description provided for @channelAccountUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This channel isn\'t available. Contact whoever gave you the installer.'**
+  String get channelAccountUnavailable;
+
+  /// No description provided for @channelAccountFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong: {error}'**
+  String channelAccountFailed(String error);
 }
 
 class _AppLocalizationsDelegate
