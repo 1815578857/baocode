@@ -18,6 +18,9 @@
    - `?utm_source=abc`
    - 否则第一个参数：`?abc` 取 `abc`，`?from=abc` 取 `abc`。广告平台加的点击 ID（`gclid`、`fbclid`、`msclkid` 等）和其他 `utm_*` 跳过。
    - 取到的值去掉首尾空白、转小写，必须是 1–128 个字母（任何文字，所以 `?小红书` 也行）、数字、`.`、`_`、`-`，否则当没有。
+   - `#` 后面的不看（渠道只会在 `?` 后面）。
+   - **取到就从地址栏去掉**：渠道记下后，用 `history.replaceState` 把 `?` 后面整段去掉（官网页面都不读 query），路径和 `#` 保留。不重新加载页面，也不在"后退"里多一步。没取到渠道（比如只有 `?gclid=…`）就原样不动。
+   - 推广链接用规范写法：`/?abc`、`/zh/?abc`、`/download?abc`、`/zh/download?abc`。`/zh?abc`、`/index.html?abc`、`/download.html?abc`、`/download/?abc` 也能用，但 Cloudflare 会先 307 到规范地址（`?` 和 `#` 都带着），多一次跳转。
 2. **外站**：`document.referrer` 的域名，去掉 `www.`；baocode.dev 自己和它的子域名不算。只在从没记过时记。
 3. **直接访问**：都没有。只在从没记过时记。
 

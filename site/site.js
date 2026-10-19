@@ -1,7 +1,7 @@
 // Where the visitor came to the site from (docs/attribution.md), kept for
 // good in IndexedDB and localStorage both, one at a time: a channel's id
-// after the ? of any page's address (?abc, ?ch=abc, ?utm_source=abc,
-// ?from=abc), the latest channel replacing the one before; with none ever,
+// after the ? of any page's address (never after the #), the latest
+// channel replacing the one before, then taken off the address; with none ever,
 // the site that first linked here, else direct. A visit without one
 // changes nothing. The channel build's first start opens /activate, which
 // reads it back and writes nothing; nor does /import, whose address is a
@@ -38,16 +38,19 @@ const attribution = (() => {
   /** The later of the two kept, if either is: one may not have been written last time. */
   const kept = async () => [await fromDb(), fromLocal()].filter(valid).sort((a, b) => (a.at > b.at ? -1 : 1))[0] || null;
 
+  // ?ch=abc, ?utm_source=abc, else the first other: ?abc, ?abc=, ?from=abc.
+  // Lower case, blanks and a trailing / (a link pasted sloppily) taken off.
   const channelIn = (search) => {
     const params = new URLSearchParams(search);
     const picks = [params.get('ch'), params.get('utm_source')];
     for (const [name, value] of params) {
-      if (CLICK_IDS.has(name.toLowerCase()) || name.toLowerCase().startsWith('utm_')) continue;
+      const key = name.toLowerCase();
+      if (key === 'ch' || key.startsWith('utm_') || CLICK_IDS.has(key)) continue;
       picks.push(value || name);
       break;
     }
     for (const pick of picks) {
-      const value = pick?.trim().toLowerCase();
+      const value = pick?.trim().replace(/\/+$/, '').toLowerCase();
       if (value && VALUE.test(value)) return value;
     }
     return null;
@@ -77,7 +80,12 @@ const attribution = (() => {
     }
     // Both again each time: one cleared, the other puts it back.
     const [inDb, inLocal] = [await toDb(source), toLocal(source)];
-    return inDb || inLocal ? source : null;
+    if (!inDb && !inLocal) return null;
+    // Taken, the channel comes off the address bar, the rest of the query
+    // with it (no page here reads one): the path and the # stay, and the
+    // page is not loaded again, nor a step added to Back.
+    if (channel) history.replaceState(history.state, '', location.pathname + location.hash);
+    return source;
   })();
 
   return { kept, ready };
