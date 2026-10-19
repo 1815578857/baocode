@@ -26,6 +26,7 @@ import 'editor_surface_controller.dart';
 import 'editor_view_painters.dart';
 import 'editor_view_styles.dart';
 import 'editor_view_theme.dart';
+import 'text_input_window.dart';
 import 'viewport_layout.dart';
 import 'wheel_glide.dart';
 
@@ -506,9 +507,8 @@ class _EditorSurfaceState extends State<EditorSurface>
       _providedFoldingSnapshot = null;
       _foldingConfig = null;
       _foldingVersion++;
-      if (_connection?.attached == true) {
-        _connection!.setEditingState(widget.controller.value);
-      }
+      _inputWindow = null;
+      _sendInputWindow();
     }
     if (oldWidget.focusNode != widget.focusNode) {
       _focusNode.removeListener(_onFocusChange);
@@ -557,7 +557,8 @@ class _EditorSurfaceState extends State<EditorSurface>
           ),
         );
       }
-      _connection!.setEditingState(widget.controller.value);
+      _inputWindow = null;
+      _sendInputWindow();
       _connection!.show();
       _scheduleGeometry();
     } else {
@@ -570,14 +571,30 @@ class _EditorSurfaceState extends State<EditorSurface>
   void _detach() {
     _connection?.close();
     _connection = null;
+    _inputWindow = null;
+  }
+
+  /// What the platform's text input has of the document: the lines around
+  /// the selection, not the whole text, which it would be sent at every
+  /// change and send back at every key (see [TextInputWindow]).
+  TextInputWindow? _inputWindow;
+
+  /// Gives the platform's text input the window around the selection,
+  /// unless it has that already.
+  void _sendInputWindow() {
+    if (_connection?.attached != true) return;
+    final window = TextInputWindow.around(widget.controller.value);
+    final previous = _inputWindow;
+    _inputWindow = window;
+    if (previous == null || previous.value != window.value) {
+      _connection!.setEditingState(window.value);
+    }
   }
 
   void _onControllerChange() {
     // While drag-selecting, auto-scroll (not caret reveal) moves the view.
     if (!_isSelectionDrag) _scrollToCaret = true;
-    if (!_updatingFromPlatform && _connection?.attached == true) {
-      _connection!.setEditingState(widget.controller.value);
-    }
+    if (!_updatingFromPlatform) _sendInputWindow();
     _restartBlink();
     if (mounted) setState(() {});
   }
@@ -594,7 +611,8 @@ class _EditorSurfaceState extends State<EditorSurface>
   }
 
   @override
-  TextEditingValue get currentTextEditingValue => widget.controller.value;
+  TextEditingValue get currentTextEditingValue =>
+      (_inputWindow ?? TextInputWindow.around(widget.controller.value)).value;
 
   @override
   AutofillScope? get currentAutofillScope => null;
@@ -602,18 +620,54 @@ class _EditorSurfaceState extends State<EditorSurface>
   @override
   void updateEditingValue(TextEditingValue value) {
     if (!_canEdit || _connection?.attached != true) return;
+    final window =
+        _inputWindow ?? TextInputWindow.around(widget.controller.value);
+    final edit = window.edit(value);
     _updatingFromPlatform = true;
     try {
-      widget.controller.value = value;
+      widget.controller.applyPlatformEdit(
+        edit.start,
+        edit.end,
+        edit.text,
+        selection: edit.selection,
+        composing: edit.composing,
+      );
     } finally {
       _updatingFromPlatform = false;
     }
+    if (_connection?.attached != true) return;
+    // The platform goes on with the window as it edited it while the model
+    // is what it made: told nothing, nothing it sends next can be of a
+    // window it has not had yet.
+    final model = widget.controller.value;
+    final kept = TextInputWindow.within(
+      model,
+      window.start,
+      window.end + edit.text.length - (edit.end - edit.start),
+    );
+    if (kept != null && kept.value == value && !_atWindowEdge(kept, model)) {
+      _inputWindow = kept;
+      return;
+    }
     // Auto-closing, surround and multi-cursor replication can make the model
     // differ from what the platform sent; the platform must see the result.
-    final result = widget.controller.value;
-    if (result != value && _connection?.attached == true) {
-      _connection!.setEditingState(result);
-    }
+    final around = TextInputWindow.around(model);
+    _inputWindow = around;
+    if (around.value != value) _connection!.setEditingState(around.value);
+  }
+
+  /// Whether the selection of [window] reached an end of it that is not the
+  /// document's, where a soft keyboard's next deletion (deleteSurroundingText
+  /// on Android) would find nothing; not while composing, which a new window
+  /// would interrupt.
+  static bool _atWindowEdge(TextInputWindow window, TextEditingValue model) {
+    final value = window.value;
+    final composing = value.composing;
+    if (composing.isValid && !composing.isCollapsed) return false;
+    final selection = value.selection;
+    if (!selection.isValid) return false;
+    return (selection.start == 0 && window.start > 0) ||
+        (selection.end == value.text.length && window.end < model.text.length);
   }
 
   @override
@@ -643,6 +697,7 @@ class _EditorSurfaceState extends State<EditorSurface>
   @override
   void connectionClosed() {
     _connection = null;
+    _inputWindow = null;
     _focusNode.unfocus();
   }
 
@@ -668,13 +723,27 @@ class _EditorSurfaceState extends State<EditorSurface>
     if (!widget.readOnly) _connection?.show();
   }
 
+  /// What accessibility is given of the document: the same lines around the
+  /// selection as the platform's text input, as Monaco gives a screen reader
+  /// a page, not the whole text at every change.
+  TextInputWindow get _semanticWindow =>
+      _inputWindow ?? TextInputWindow.around(widget.controller.value);
+
   void _setSemanticText(String text) {
     if (!_canEdit) return;
     // A full accessibility replacement commits any active composition, just
     // like Flutter's editable text semantics. Never normalize the raw text.
-    widget.controller.value = TextEditingValue(
-      text: text,
-      selection: TextSelection.collapsed(offset: text.length),
+    final edit = _semanticWindow.edit(
+      TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      ),
+    );
+    widget.controller.applyPlatformEdit(
+      edit.start,
+      edit.end,
+      edit.text,
+      selection: edit.selection,
     );
   }
 
@@ -682,7 +751,19 @@ class _EditorSurfaceState extends State<EditorSurface>
     if (!mounted || !_focusNode.hasFocus || !selection.isValid) return;
     // Selection commands use the controller's composition-commit policy;
     // exposing semantics alone never changes the editing value or composition.
-    widget.controller.select(selection.baseOffset, selection.extentOffset);
+    final window = _semanticWindow;
+    final length = window.value.text.length;
+    final mapped = window
+        .edit(
+          window.value.copyWith(
+            selection: TextSelection(
+              baseOffset: selection.baseOffset.clamp(0, length),
+              extentOffset: selection.extentOffset.clamp(0, length),
+            ),
+          ),
+        )
+        .selection;
+    widget.controller.select(mapped.baseOffset, mapped.extentOffset);
   }
 
   void _moveSemanticCursor(int direction, bool extendSelection) {
@@ -1900,6 +1981,8 @@ class _EditorSurfaceState extends State<EditorSurface>
     final selection = value.selection;
     final validSelection =
         selection.isValid && selection.end <= value.text.length;
+    final semantic = _semanticWindow.value;
+    final semanticSelection = semantic.selection;
     final focused = _focusNode.hasFocus;
     return Semantics(
       container: true,
@@ -1908,7 +1991,7 @@ class _EditorSurfaceState extends State<EditorSurface>
       readOnly: widget.readOnly,
       focused: _focusNode.canRequestFocus ? focused : null,
       textDirection: direction,
-      value: value.text,
+      value: semantic.text,
       onFocus: _focusNode.canRequestFocus ? _requestSemanticFocus : null,
       onTap: _focusNode.canRequestFocus ? _requestSemanticFocus : null,
       onSetText: _canEdit ? _setSemanticText : null,
@@ -1953,7 +2036,9 @@ class _EditorSurfaceState extends State<EditorSurface>
             }
           : null,
       child: _TextSelectionSemantics(
-        selection: validSelection ? selection : null,
+        selection: validSelection && semanticSelection.isValid
+            ? semanticSelection
+            : null,
         // The editor is one document node, not one node per painted visible row.
         child: ExcludeSemantics(child: child),
       ),
