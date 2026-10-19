@@ -1,11 +1,12 @@
-// Where the visitor first came to the site from (docs/attribution.md), kept
-// for good in IndexedDB and localStorage both, the first visit's only: a
-// channel's id after the ? of any page's address (?abc, ?ch=abc,
-// ?utm_source=abc, ?from=abc), else the site that linked here, else direct.
-// The channel build's first start opens /activate, which reads it back
-// and writes nothing; nor does /import, whose address is a visitor's key.
-// `ready`: what is kept once this page has kept it, null when the browser
-// keeps nothing.
+// Where the visitor came to the site from (docs/attribution.md), kept for
+// good in IndexedDB and localStorage both, one at a time: a channel's id
+// after the ? of any page's address (?abc, ?ch=abc, ?utm_source=abc,
+// ?from=abc), the latest channel replacing the one before; with none ever,
+// the site that first linked here, else direct. A visit without one
+// changes nothing. The channel build's first start opens /activate, which
+// reads it back and writes nothing; nor does /import, whose address is a
+// visitor's key. `ready`: what is kept once this page has kept it, null
+// when the browser keeps nothing.
 const attribution = (() => {
   const KEY = 'attribution';
   const VALUE = /^[\p{L}\p{N}._-]{1,128}$/u;
@@ -34,8 +35,8 @@ const attribution = (() => {
   const fromLocal = () => { try { return JSON.parse(localStorage.getItem(`baocode.${KEY}`)); } catch { return null; } };
   const toLocal = (r) => { try { localStorage.setItem(`baocode.${KEY}`, JSON.stringify(r)); return true; } catch { return false; } };
 
-  /** The earlier of the two kept, if either is. */
-  const kept = async () => [await fromDb(), fromLocal()].filter(valid).sort((a, b) => (a.at < b.at ? -1 : 1))[0] || null;
+  /** The later of the two kept, if either is: one may not have been written last time. */
+  const kept = async () => [await fromDb(), fromLocal()].filter(valid).sort((a, b) => (a.at > b.at ? -1 : 1))[0] || null;
 
   const channelIn = (search) => {
     const params = new URLSearchParams(search);
@@ -63,17 +64,20 @@ const attribution = (() => {
 
   const ready = (async () => {
     if (document.querySelector('[data-activate], [data-import]')) return kept();
-    let first = await kept();
-    if (!first) {
-      const channel = channelIn(location.search);
-      const host = channel ? null : referrer();
-      first = { source: channel ? 'channel' : host ? 'referrer' : 'direct', value: channel || host, at: new Date().toISOString() };
+    let source = await kept();
+    const channel = channelIn(location.search);
+    const now = new Date().toISOString();
+    if (channel && !(source?.source === 'channel' && source.value === channel)) {
+      source = { source: 'channel', value: channel, at: now };
+    } else if (!source) {
+      const host = referrer();
+      source = { source: host ? 'referrer' : 'direct', value: host, at: now };
       // Kept from being cleared to make room; Firefox would ask for it, so not there.
       if (!/Firefox\//.test(navigator.userAgent)) navigator.storage?.persist?.().catch(() => {});
     }
     // Both again each time: one cleared, the other puts it back.
-    const [inDb, inLocal] = [await toDb(first), toLocal(first)];
-    return inDb || inLocal ? first : null;
+    const [inDb, inLocal] = [await toDb(source), toLocal(source)];
+    return inDb || inLocal ? source : null;
   })();
 
   return { kept, ready };
@@ -82,15 +86,15 @@ const attribution = (() => {
 // A channel listed in channels.json (docs/attribution.md) shows in three
 // places: its logo and name in place of the brand's, "<its logo> <its
 // name> × <our logo> BaoCode" for the home page's title, and its subtitle
-// in place of ours; the visitor's first source decides, as for the
+// in place of ours; the visitor's kept source decides, as for the
 // download. Only listed ones, words as text, the logo from /channels/: an
 // address anyone can make up never puts anything on the page. head.js has
 // the places hidden meanwhile, and channels.json asked for.
-attribution.ready.then(async (first) => {
-  if (first?.source !== 'channel') return;
+attribution.ready.then(async (kept) => {
+  if (kept?.source !== 'channel') return;
   const channels = await (window.channelsJson || fetch('/channels.json').then((res) => res.json()).catch(() => null));
   // Own keys only: ?constructor is not a channel.
-  const channel = channels && Object.hasOwn(channels, first.value) ? channels[first.value] : null;
+  const channel = channels && Object.hasOwn(channels, kept.value) ? channels[kept.value] : null;
   if (!channel || typeof channel !== 'object') return;
   const lang = document.documentElement.lang.startsWith('zh') ? 'zh' : 'en';
   const words = (field) => (typeof channel[field]?.[lang] === 'string' ? channel[field][lang].trim() : '');
@@ -245,8 +249,8 @@ function showDownloads(downloads, v) {
   }
   // Whoever came through the site gets the channel build, where the
   // manifest has one (docs/attribution.md).
-  attribution.ready.then((first) => {
-    if (!first) return;
+  attribution.ready.then((kept) => {
+    if (!kept) return;
     for (const [os, file] of Object.entries(downloads || {})) {
       if (!file.channel?.url) continue;
       for (const a of document.querySelectorAll(`[data-file="${os}"]`)) a.href = file.channel.url;

@@ -2,8 +2,8 @@
 //
 //   https://baocode.dev/activate#i=<install id>
 //
-// and waits. This page sends stats.baocode.dev where the visitor first came
-// to the site from, as site.js kept it in this browser, and BaoCode, asking
+// and waits. This page sends stats.baocode.dev where the visitor came to
+// the site from, as site.js kept it in this browser, and BaoCode, asking
 // there, goes on. Should BaoCode not hear of it (its network, the server
 // down), the page hands it over itself: baocode://activate?…, opened or
 // pasted into BaoCode. Nothing kept in this browser: the link to open in
@@ -30,11 +30,11 @@
   }
 
   let sent = false;
-  const send = async (first) => {
+  const send = async (kept) => {
     if (sent) return;
     sent = true;
-    const source = first?.source || 'none';
-    const value = first?.value || null;
+    const source = kept?.source || 'none';
+    const value = kept?.value || null;
     const link = `baocode://activate?i=${id}&s=${source}${value ? `&c=${encodeURIComponent(value)}` : ''}`;
     root.querySelector('[data-open]').href = link;
     root.querySelector('[data-link]').textContent = link;
@@ -54,9 +54,9 @@
     }
   };
 
-  attribution.kept().then((first) => {
-    if (first) {
-      send(first);
+  attribution.kept().then((kept) => {
+    if (kept) {
+      send(kept);
       return;
     }
     root.querySelector('[data-page-link]').textContent = `https://baocode.dev/activate#i=${id}`;

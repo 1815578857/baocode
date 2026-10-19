@@ -6,8 +6,8 @@
 (() => {
   let kept = null;
   try { kept = JSON.parse(localStorage.getItem('baocode.attribution')); } catch {}
-  // Kept: a channel's or not. Not yet: one may be in the address.
-  if (kept ? kept.source !== 'channel' : location.search.length < 2) return;
+  // A channel kept, or one in the address, replacing whatever is.
+  if (kept?.source !== 'channel' && location.search.length < 2) return;
   const root = document.documentElement;
   root.classList.add('channel-pending');
   window.channelsJson = fetch('/channels.json').then((res) => res.json()).catch(() => null);
