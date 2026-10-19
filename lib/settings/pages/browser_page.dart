@@ -138,7 +138,7 @@ class BrowserSettingsPage extends StatelessWidget {
                     children: [
                       if (DataDirectoryPage.canReveal)
                         IdeButton(
-                          label: DataDirectoryPage.revealLabel(l10n),
+                          label: l10n.revealInFileManager,
                           secondary: true,
                           onPressed: () {
                             Directory(kept.folder).createSync(recursive: true);

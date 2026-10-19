@@ -2930,11 +2930,11 @@ abstract class AppLocalizations {
   /// **'{kind, select, click{Clicked} input{Set} key{Pressed} submit{Submitted} navigate{Went to} closed{Closed the tab} other{Did}}'**
   String browserWatchedStep(String kind);
 
-  /// No description provided for @browserTraceReveal.
+  /// {app} is the system's file manager, as the system names it (Finder, File Explorer).
   ///
   /// In en, this message translates to:
-  /// **'Show the trace in Finder (drop it into DevTools\' Performance panel to look closer)'**
-  String get browserTraceReveal;
+  /// **'Show the trace in {app} (drop it into DevTools\' Performance panel to look closer)'**
+  String browserTraceReveal(String app);
 
   /// A browser step's verb once done, by the browser tool it called; what it did it on follows (a URL, an element's name).
   ///
@@ -3865,6 +3865,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'File Explorer'**
   String get workspaceFileExplorer;
+
+  /// The Linux desktop's file manager, which has no one name.
+  ///
+  /// In en, this message translates to:
+  /// **'File Manager'**
+  String get workspaceFileManager;
 
   /// The macOS Terminal app, as macOS names it.
   ///
@@ -8649,6 +8655,12 @@ abstract class AppLocalizations {
   /// **'Reveal in File Explorer'**
   String get dataDirRevealInFileExplorer;
 
+  /// No description provided for @dataDirRevealInFileManager.
+  ///
+  /// In en, this message translates to:
+  /// **'Reveal in File Manager'**
+  String get dataDirRevealInFileManager;
+
   /// No description provided for @dataDirChecking.
   ///
   /// In en, this message translates to:
@@ -12198,7 +12210,7 @@ abstract class AppLocalizations {
   /// No description provided for @generalSettingsContextMenuExplorer.
   ///
   /// In en, this message translates to:
-  /// **'Explorer Context Menu'**
+  /// **'File Explorer Context Menu'**
   String get generalSettingsContextMenuExplorer;
 
   /// No description provided for @generalSettingsContextMenuDescription.
@@ -14492,12 +14504,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dismiss'**
   String get stashDismiss;
-
-  /// No description provided for @stashReveal.
-  ///
-  /// In en, this message translates to:
-  /// **'Show in Finder'**
-  String get stashReveal;
 
   /// No description provided for @stashDelete.
   ///

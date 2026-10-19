@@ -669,7 +669,11 @@
     "description": "A step the user took while watched, by its kind; what it was on follows (an element, a URL).",
     "placeholders": {"kind": {"type": "String"}}
   },
-  "browserTraceReveal": "Show the trace in Finder (drop it into DevTools' Performance panel to look closer)",
+  "browserTraceReveal": "Show the trace in {app} (drop it into DevTools' Performance panel to look closer)",
+  "@browserTraceReveal": {
+    "description": "{app} is the system's file manager, as the system names it (Finder, File Explorer).",
+    "placeholders": {"app": {"type": "String", "example": "Finder"}}
+  },
   "browserStepDone": "{action, select, tabs{Listed tabs} open{Opened} navigate{Went to} back{Went back} forward{Went forward} reload{Reloaded} snapshot{Read the page} screenshot{Took a screenshot} click{Clicked} type{Typed} press{Pressed} scroll{Scrolled} evaluate{Ran} close{Closed the tab} console{Read the console} network{Listed requests} request{Read the request} performance{Profiled} recordStart{Started profiling} recordStop{Profiled} emulate{Emulated} watch{Watched you} act{Acted} inspect{Inspected} sources{Read the sources} breakpoints{Set breakpoints} debugger{Debugged} intercept{Intercepted requests} storage{Read site data} dialog{Answered the dialog} coverage{Measured coverage} memory{Measured memory} history{Read the debugging history} other{Used the browser}}",
   "@browserStepDone": {
     "description": "A browser step's verb once done, by the browser tool it called; what it did it on follows (a URL, an element's name).",
@@ -1153,6 +1157,10 @@
   "workspaceFileExplorer": "File Explorer",
   "@workspaceFileExplorer": {
     "description": "The Windows file manager, as Windows names it."
+  },
+  "workspaceFileManager": "File Manager",
+  "@workspaceFileManager": {
+    "description": "The Linux desktop's file manager, which has no one name."
   },
   "workspaceTerminalApp": "Terminal",
   "@workspaceTerminalApp": {
@@ -3808,6 +3816,7 @@
     }
   },
   "dataDirRevealInFileExplorer": "Reveal in File Explorer",
+  "dataDirRevealInFileManager": "Reveal in File Manager",
   "dataDirChecking": "Checking the folder…",
   "dataDirAlreadyHolds": "The folder already holds BaoCode data",
   "dataDirMoveBack": "Move BaoCode's data back to the default folder?",
@@ -5292,7 +5301,7 @@
     }
   },
   "generalSettingsContextMenuFinder": "Finder Context Menu",
-  "generalSettingsContextMenuExplorer": "Explorer Context Menu",
+  "generalSettingsContextMenuExplorer": "File Explorer Context Menu",
   "generalSettingsContextMenuDescription": "Adds \"Open with BaoCode\" (a new agent) and \"Open with Fast Ide\" (a new IDE window) to the context menu of files, folders and a folder's background.",
   "generalSettingsContextMenuMacNote": "Finder's own setting is in System Settings' extensions, where the BaoCode extension can also be turned on and off.",
   "generalSettingsContextMenuOn": "On",
@@ -6370,7 +6379,6 @@
     }
   },
   "stashDismiss": "Dismiss",
-  "stashReveal": "Show in Finder",
   "stashDelete": "Delete",
   "stashDeleteOne": "Delete {stash}?",
   "@stashDeleteOne": {

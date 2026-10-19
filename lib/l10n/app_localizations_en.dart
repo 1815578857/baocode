@@ -1514,8 +1514,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get browserTraceReveal =>
-      'Show the trace in Finder (drop it into DevTools\' Performance panel to look closer)';
+  String browserTraceReveal(String app) {
+    return 'Show the trace in $app (drop it into DevTools\' Performance panel to look closer)';
+  }
 
   @override
   String browserStepDone(String action) {
@@ -2139,6 +2140,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workspaceFileExplorer => 'File Explorer';
+
+  @override
+  String get workspaceFileManager => 'File Manager';
 
   @override
   String get workspaceTerminalApp => 'Terminal';
@@ -5341,6 +5345,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dataDirRevealInFileExplorer => 'Reveal in File Explorer';
 
   @override
+  String get dataDirRevealInFileManager => 'Reveal in File Manager';
+
+  @override
   String get dataDirChecking => 'Checking the folder…';
 
   @override
@@ -7503,7 +7510,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get generalSettingsContextMenuFinder => 'Finder Context Menu';
 
   @override
-  String get generalSettingsContextMenuExplorer => 'Explorer Context Menu';
+  String get generalSettingsContextMenuExplorer => 'File Explorer Context Menu';
 
   @override
   String get generalSettingsContextMenuDescription =>
@@ -8901,9 +8908,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stashDismiss => 'Dismiss';
-
-  @override
-  String get stashReveal => 'Show in Finder';
 
   @override
   String get stashDelete => 'Delete';

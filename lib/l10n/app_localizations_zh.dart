@@ -1475,7 +1475,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get browserTraceReveal => '在访达中显示 trace 文件（拖进 DevTools 的性能面板可以细看）';
+  String browserTraceReveal(String app) {
+    return '在$app中显示 trace 文件（拖进 DevTools 的性能面板可以细看）';
+  }
 
   @override
   String browserStepDone(String action) {
@@ -2066,6 +2068,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get workspaceFileExplorer => '文件资源管理器';
+
+  @override
+  String get workspaceFileManager => '文件管理器';
 
   @override
   String get workspaceTerminalApp => '终端';
@@ -4995,6 +5000,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dataDirRevealInFileExplorer => '在文件资源管理器中显示';
 
   @override
+  String get dataDirRevealInFileManager => '在文件管理器中显示';
+
+  @override
   String get dataDirChecking => '正在检查文件夹…';
 
   @override
@@ -7054,7 +7062,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get generalSettingsContextMenuFinder => '访达右键菜单';
 
   @override
-  String get generalSettingsContextMenuExplorer => '资源管理器右键菜单';
+  String get generalSettingsContextMenuExplorer => '文件资源管理器右键菜单';
 
   @override
   String get generalSettingsContextMenuDescription =>
@@ -8406,9 +8414,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get stashDismiss => '忽略';
-
-  @override
-  String get stashReveal => '在访达中显示';
 
   @override
   String get stashDelete => '删除';

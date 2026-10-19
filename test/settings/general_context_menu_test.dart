@@ -82,7 +82,7 @@ void main() {
     tester,
   ) async {
     await _pump(tester, _Menu(failure: 'Access is denied.'));
-    expect(find.text('Explorer Context Menu'), findsOneWidget);
+    expect(find.text('File Explorer Context Menu'), findsOneWidget);
     await _tap(tester, 'Turn On');
     await tester.pumpAndSettle();
     expect(
