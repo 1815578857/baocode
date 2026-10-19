@@ -171,12 +171,9 @@ Future<void> main(List<String> arguments) async {
       files.settings[ComposerPolishSetting.settingKey],
     );
     ComposerPolishSetting.changes = files.settings;
-    // The turn under way's time and speed, shown or not as they change.
-    LiveTurnStatsSetting.time = () => LiveTurnStatsSetting.enabled(
-      files.settings[LiveTurnStatsSetting.timeKey],
-    );
-    LiveTurnStatsSetting.speed = () => LiveTurnStatsSetting.enabled(
-      files.settings[LiveTurnStatsSetting.speedKey],
+    // The turn under way's line of figures, shown or not as it changes.
+    LiveTurnStatsSetting.current = () => LiveTurnStatsSetting.enabled(
+      files.settings[LiveTurnStatsSetting.settingKey],
     );
     LiveTurnStatsSetting.changes = files.settings;
     // Settings → General → Claude Code: the build to run, read as each

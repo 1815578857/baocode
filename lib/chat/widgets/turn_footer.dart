@@ -20,13 +20,10 @@ const _zapIcon = 'assets/icons/lucide-zap.svg';
 const _clockIcon = 'assets/icons/lucide-clock.svg';
 const _arrowDownIcon = 'assets/icons/lucide-arrow-down.svg';
 
-/// Whether the turn under way shows how long it has taken
-/// (`chat.liveTurn.time`) and how fast the model writes
-/// (`chat.liveTurn.speed`), each on unless set to false. A finished turn's
-/// figures always show.
+/// Whether the turn under way has its line of figures (`chat.liveTurnStats`),
+/// on unless set to false. A finished turn's figures always show.
 abstract final class LiveTurnStatsSetting {
-  static const timeKey = 'chat.liveTurn.time';
-  static const speedKey = 'chat.liveTurn.speed';
+  static const settingKey = 'chat.liveTurnStats';
 
   /// Written when off; on, the setting is left out.
   static const off = false;
@@ -34,10 +31,9 @@ abstract final class LiveTurnStatsSetting {
   /// On unless set to false.
   static bool enabled(Object? setting) => setting != false;
 
-  /// The settings as they are now, and what tells they changed; main()
-  /// points them at settings.json.
-  static bool Function() time = () => true;
-  static bool Function() speed = () => true;
+  /// The setting as it is now, and what tells it changed; main() points
+  /// them at settings.json.
+  static bool Function() current = () => true;
   static Listenable? changes;
 }
 
@@ -87,26 +83,26 @@ class TurnFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final live = this.live;
-    return SelectionContainer.disabled(
-      child: Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: live == null
-            ? _line([
-                if (answer case final answer?) _CopyButton(text: answer),
-                ..._stats(l10n),
-              ])
-            : ListenableBuilder(
-                listenable:
-                    LiveTurnStatsSetting.changes ?? Listenable.merge(const []),
-                builder: (context, _) => _LiveStats(
-                  output: live,
-                  since: LiveTurnStatsSetting.time() ? since : null,
-                  speed: LiveTurnStatsSetting.speed(),
-                ),
-              ),
-      ),
+    if (live == null) {
+      return _padded(
+        _line([
+          if (answer case final answer?) _CopyButton(text: answer),
+          ..._stats(l10n),
+        ]),
+      );
+    }
+    // Turned off in settings: no line at all.
+    return ListenableBuilder(
+      listenable: LiveTurnStatsSetting.changes ?? Listenable.merge(const []),
+      builder: (context, _) => LiveTurnStatsSetting.current()
+          ? _padded(_LiveStats(output: live, since: since))
+          : const SizedBox.shrink(),
     );
   }
+
+  static Widget _padded(Widget line) => SelectionContainer.disabled(
+    child: Padding(padding: const EdgeInsets.only(top: 6), child: line),
+  );
 
   static Widget _line(List<Widget> items) => Row(
     mainAxisSize: MainAxisSize.min,
@@ -150,14 +146,12 @@ class TurnFooter extends StatelessWidget {
 
 /// The turn under way's figures, changing as it goes, all as wide and
 /// rolling: the line keeps still. The speed to two decimals; the time
-/// counted on each second. No time without [since], no speed unless
-/// [speed]: turned off in settings.
+/// counted on each second.
 class _LiveStats extends StatefulWidget {
-  const _LiveStats({required this.output, this.since, this.speed = true});
+  const _LiveStats({required this.output, this.since});
 
   final TurnOutput output;
   final DateTime? since;
-  final bool speed;
 
   @override
   State<_LiveStats> createState() => _LiveStatsState();
@@ -202,7 +196,7 @@ class _LiveStatsState extends State<_LiveStats> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final output = widget.output;
-    final speed = widget.speed ? output.tokensPerSecond : null;
+    final speed = output.tokensPerSecond;
     final since = widget.since;
     final tokens = output.tokens;
     return TurnFooter._line([
