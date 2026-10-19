@@ -5319,7 +5319,7 @@
   },
   "cmdOpenRemoteFolder": "Open Remote Project...",
   "cmdOpenRemoteFile": "Open Remote File...",
-  "remoteHostPlaceholder": "Select a host of ~/.ssh/config, or type user@host[:port]",
+  "remoteHostPlaceholder": "Select a host, add one, or type user@host[:port]",
   "remoteConnectTo": "Connect to {host}",
   "@remoteConnectTo": {
     "placeholders": {
@@ -5328,7 +5328,7 @@
       }
     }
   },
-  "remoteNoHosts": "No hosts in ~/.ssh/config: type one",
+  "remoteNoHosts": "No hosts yet: add one, or type user@host",
   "remoteInvalidHost": "Not a host: no spaces, and not starting with '-'",
   "remoteConnecting": "Connecting to {host}...",
   "@remoteConnecting": {
@@ -6072,6 +6072,7 @@
     }
   },
   "sidebarRenameHost": "Rename Host",
+  "sidebarEditHost": "Edit Connection...",
   "explorerNoPermission": "No permission to read this folder",
   "fileErrorAccessDenied": "Permission denied: {path}",
   "@fileErrorAccessDenied": {
@@ -6929,5 +6930,59 @@
   "modelWelcomeSkip": "Later",
   "modelWelcomeStart": "Start Chatting",
   "healthNoModel": "Pick a model to start: add an upstream and its models are ready to use.",
-  "modelSetUp": "Set Up a Model"
+  "modelSetUp": "Set Up a Model",
+  "remoteAddServer": "Add SSH Server...",
+  "remoteEditServer": "Edit",
+  "sshServerAddTitle": "Add SSH Server",
+  "sshServerEditTitle": "Edit {name}",
+  "@sshServerEditTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sshServerHost": "Host",
+  "sshServerHostPlaceholder": "Domain or IP; user@host:port is split up",
+  "sshServerPort": "Port",
+  "sshServerUser": "User",
+  "sshServerName": "Name (optional)",
+  "sshServerNamePlaceholder": "What the app calls it, e.g. Production",
+  "sshServerAuth": "Sign in with",
+  "sshServerAuthPassword": "Password",
+  "sshServerAuthKey": "Private Key",
+  "sshServerAuthAuto": "Automatic",
+  "sshServerAuthAutoHint": "As ssh does in a terminal: ssh-agent, the keys in ~/.ssh, ~/.ssh/config. A password is asked for if the server wants one.",
+  "sshServerPasswordHint": "Kept in the system keychain. Leave it empty to be asked when connecting.",
+  "sshServerPasswordKept": "Saved: leave empty to keep it",
+  "sshServerKeyPlaceholder": "Path of the private key, e.g. ~/.ssh/id_ed25519",
+  "sshServerKeyBrowse": "Browse...",
+  "sshServerKeysFound": "Keys in ~/.ssh",
+  "sshServerKeyHint": "If the key has a passphrase, it is asked for when connecting.",
+  "sshServerJump": "Jump Host (optional)",
+  "sshServerNoJump": "None: connect directly",
+  "sshServerSaveConnect": "Save and Connect",
+  "sshServerSave": "Save",
+  "sshServerHostRequired": "Enter the server's domain or IP",
+  "sshServerHostInvalid": "No spaces, and not starting with '-'",
+  "sshServerPortInvalid": "A port is from 1 to 65535",
+  "sshServerKeyRequired": "Choose the private key file",
+  "sshServerKeyMissing": "There is no such file",
+  "remoteForgetHostKey": "Remove the Old Key and Connect",
+  "remoteForgetHostKeyTitle": "Remove the old key of {host}?",
+  "@remoteForgetHostKeyTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteForgetHostKeyDetail": "Only if you know the server was reinstalled or its key changed: otherwise someone may be between you and it. The key it has now is accepted at the next connection.",
+  "remoteForgetHostKeyButton": "Remove and Connect",
+  "remoteFailNoSsh": "There is no ssh on this computer: install the OpenSSH client.",
+  "remoteFailAuth": "The server refused to sign in: check the user, password or key.",
+  "remoteFailCancelled": "Signing in was cancelled.",
+  "remoteFailHostKey": "The server's key is not known, and your ssh config says not to accept new ones (StrictHostKeyChecking).",
+  "remoteFailHostKeyChanged": "The server's key changed since the last connection: it was reinstalled, or someone is in between.",
+  "remoteFailUnreachable": "The server could not be reached: check the address, port and network."
 }

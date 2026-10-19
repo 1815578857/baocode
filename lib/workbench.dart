@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:bao_editor/textmate/textmate_syntax.dart';
-import 'package:bao_remote/client.dart' show SshPrompt;
+import 'package:bao_remote/client.dart' show SshAuth, SshPrompt;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, listEquals;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -53,6 +53,7 @@ import 'ide/ide_commands.dart';
 import 'ide/ide_dialog.dart';
 import 'ide/ide_menu.dart';
 import 'models/model_welcome.dart';
+import 'models/secret_store.dart' show SecretStoreException;
 import 'models/upstream_import.dart';
 import 'ide/ide_modern_ui.dart';
 import 'ide/ide_notifications.dart';
@@ -113,6 +114,7 @@ import 'remote/remote_location.dart';
 import 'remote/remote_status.dart';
 import 'remote/ssh_host.dart';
 import 'remote/ssh_password_dialog.dart';
+import 'remote/ssh_server_form.dart';
 import 'remote/ssh_passwords.dart';
 import 'stash/stash_controller.dart';
 import 'stash/stash_thread_view.dart' show sidebarStashes;
@@ -497,6 +499,9 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     WindowControls.handleWindowEvents(_viewId);
     // What signing in to a host asks, asked here.
     SshHosts.instance.passwords.ask = _askSshPassword;
+    // The servers saved with the host picker's form.
+    SshHosts.instance.savedServers = () => _workspace.sshServers;
+    unawaited(_loadSshConfigHosts());
     FileDrops.listen(_viewId);
     if (_windows?.started ?? false) {
       FileDrops.setUnhandledDrop(_viewId, _dropped);
@@ -2755,6 +2760,9 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       onOpenFolderOn: WindowControls.canPickDirectory
           ? (host) => _openRemoteProject(host: host)
           : null,
+      editSshHost: (host) => _sshConfigHosts.contains(host)
+          ? null
+          : () => unawaited(_editSshServer(host: host)),
       onOpenSettings: () => unawaited(openSettings()),
       updates: widget.settings?.updates?.service,
       onUpdate: _restartToUpdate,
@@ -3036,12 +3044,18 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     bool switchTo = false,
   }) {
     final held = _newWindowHeld;
-    final flow = OpenRemoteFlow(
+    late final OpenRemoteFlow flow;
+    flow = OpenRemoteFlow(
       show: showQuickPick,
       l10n: context.l10n,
       added: _workspace.sshHosts,
       labelOf: _workspace.hostLabel,
+      addressOf: (host) => _workspace.sshServers[host]?.address ?? host,
       iconOf: _hostIcon,
+      onAdd: (address) =>
+          unawaited(_editSshServer(flow: flow, address: address)),
+      onEdit: (host) => unawaited(_editSshServer(flow: flow, host: host)),
+      onForgetHostKey: _forgetHostKey,
       onConnected: (host) {
         if (!mounted) return;
         _workspace.addSshHost(host);
@@ -3063,6 +3077,102 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     } else {
       unawaited(flow.start());
     }
+  }
+
+  /// The hosts of `~/.ssh/config`, as last read: edited there, not with
+  /// the form (see the sidebar's host menu).
+  List<String> _sshConfigHosts = const [];
+
+  Future<List<String>> _loadSshConfigHosts() async {
+    final hosts = await defaultRemoteConfigHosts().catchError(
+      (Object _) => const <String>[],
+    );
+    return _sshConfigHosts = hosts;
+  }
+
+  /// The form of a server: adding one (at [address], when typed), or
+  /// editing [host], from [flow]'s host picker or the sidebar's host menu
+  /// (no [flow]). Saved, it is connected to when asked; from the picker,
+  /// else the picker shows again, as it does when cancelled.
+  Future<void> _editSshServer({
+    OpenRemoteFlow? flow,
+    String? host,
+    String? address,
+  }) async {
+    final passwords = SshHosts.instance.passwords;
+    final kept =
+        host != null &&
+        await passwords
+            .has(SshPasswords.serverId(host))
+            .catchError((Object _) => false);
+    final config = await _loadSshConfigHosts();
+    if (!mounted) return;
+    final result = await showSshServerForm(
+      context,
+      host: host,
+      address: address,
+      server: host == null ? null : _workspace.sshServers[host],
+      name: host == null || _workspace.hostLabel(host) == host
+          ? null
+          : _workspace.hostLabel(host),
+      hasPassword: kept,
+      jumps: {..._workspace.sshHosts, ...config}.toList(),
+      labelOf: _workspace.hostLabel,
+    );
+    if (!mounted) return;
+    if (result == null) {
+      if (flow != null) unawaited(flow.start());
+      return;
+    }
+    _workspace.saveSshServer(result.host, result.server, name: result.name);
+    final id = SshPasswords.serverId(result.host);
+    try {
+      if (result.password case final password?) {
+        await passwords.keep(id, password);
+      } else if (kept && result.server.auth != SshAuth.password) {
+        await passwords.keep(id, null);
+      }
+    } on SecretStoreException catch (error) {
+      // Asked for when connecting instead.
+      if (mounted) _notifications.notify(IdeSeverity.warning, '$error');
+    }
+    if (!mounted) return;
+    if (flow == null) {
+      // Connected already: the new settings are for the next connection.
+      final ssh = SshHosts.instance[result.host];
+      if (result.connect && ssh.state != SshHostState.connected) {
+        ssh.reconnect().ignore();
+      }
+    } else if (result.connect) {
+      flow.startAt(result.host);
+    } else {
+      unawaited(flow.start());
+    }
+  }
+
+  /// Asks whether to forget the host key known for [host], changed, and
+  /// does: whether it did.
+  Future<bool> _forgetHostKey(String host) async {
+    final l10n = context.l10n;
+    final choice = await showIdeDialog(
+      context,
+      message: l10n.remoteForgetHostKeyTitle(_workspace.hostLabel(host)),
+      detail: l10n.remoteForgetHostKeyDetail,
+      buttons: [l10n.remoteForgetHostKeyButton],
+    );
+    if (choice != 0 || !mounted) return false;
+    try {
+      await SshHosts.instance.forgetHostKey(host);
+    } on Object catch (error) {
+      if (mounted) {
+        _notifications.notify(
+          IdeSeverity.error,
+          sshErrorText(error, l10n).$1 ?? '$error',
+        );
+      }
+      return false;
+    }
+    return true;
   }
 
   /// A host's icon, as the workspace kept it (the host switcher's).

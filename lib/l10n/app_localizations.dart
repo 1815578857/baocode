@@ -12276,7 +12276,7 @@ abstract class AppLocalizations {
   /// No description provided for @remoteHostPlaceholder.
   ///
   /// In en, this message translates to:
-  /// **'Select a host of ~/.ssh/config, or type user@host[:port]'**
+  /// **'Select a host, add one, or type user@host[:port]'**
   String get remoteHostPlaceholder;
 
   /// No description provided for @remoteConnectTo.
@@ -12288,7 +12288,7 @@ abstract class AppLocalizations {
   /// No description provided for @remoteNoHosts.
   ///
   /// In en, this message translates to:
-  /// **'No hosts in ~/.ssh/config: type one'**
+  /// **'No hosts yet: add one, or type user@host'**
   String get remoteNoHosts;
 
   /// No description provided for @remoteInvalidHost.
@@ -13604,6 +13604,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Rename Host'**
   String get sidebarRenameHost;
+
+  /// No description provided for @sidebarEditHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Connection...'**
+  String get sidebarEditHost;
 
   /// No description provided for @explorerNoPermission.
   ///
@@ -15950,6 +15956,246 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Set Up a Model'**
   String get modelSetUp;
+
+  /// No description provided for @remoteAddServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Add SSH Server...'**
+  String get remoteAddServer;
+
+  /// No description provided for @remoteEditServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get remoteEditServer;
+
+  /// No description provided for @sshServerAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add SSH Server'**
+  String get sshServerAddTitle;
+
+  /// No description provided for @sshServerEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit {name}'**
+  String sshServerEditTitle(String name);
+
+  /// No description provided for @sshServerHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Host'**
+  String get sshServerHost;
+
+  /// No description provided for @sshServerHostPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Domain or IP; user@host:port is split up'**
+  String get sshServerHostPlaceholder;
+
+  /// No description provided for @sshServerPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get sshServerPort;
+
+  /// No description provided for @sshServerUser.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get sshServerUser;
+
+  /// No description provided for @sshServerName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (optional)'**
+  String get sshServerName;
+
+  /// No description provided for @sshServerNamePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'What the app calls it, e.g. Production'**
+  String get sshServerNamePlaceholder;
+
+  /// No description provided for @sshServerAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with'**
+  String get sshServerAuth;
+
+  /// No description provided for @sshServerAuthPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get sshServerAuthPassword;
+
+  /// No description provided for @sshServerAuthKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Private Key'**
+  String get sshServerAuthKey;
+
+  /// No description provided for @sshServerAuthAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get sshServerAuthAuto;
+
+  /// No description provided for @sshServerAuthAutoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'As ssh does in a terminal: ssh-agent, the keys in ~/.ssh, ~/.ssh/config. A password is asked for if the server wants one.'**
+  String get sshServerAuthAutoHint;
+
+  /// No description provided for @sshServerPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept in the system keychain. Leave it empty to be asked when connecting.'**
+  String get sshServerPasswordHint;
+
+  /// No description provided for @sshServerPasswordKept.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved: leave empty to keep it'**
+  String get sshServerPasswordKept;
+
+  /// No description provided for @sshServerKeyPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Path of the private key, e.g. ~/.ssh/id_ed25519'**
+  String get sshServerKeyPlaceholder;
+
+  /// No description provided for @sshServerKeyBrowse.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse...'**
+  String get sshServerKeyBrowse;
+
+  /// No description provided for @sshServerKeysFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Keys in ~/.ssh'**
+  String get sshServerKeysFound;
+
+  /// No description provided for @sshServerKeyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'If the key has a passphrase, it is asked for when connecting.'**
+  String get sshServerKeyHint;
+
+  /// No description provided for @sshServerJump.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump Host (optional)'**
+  String get sshServerJump;
+
+  /// No description provided for @sshServerNoJump.
+  ///
+  /// In en, this message translates to:
+  /// **'None: connect directly'**
+  String get sshServerNoJump;
+
+  /// No description provided for @sshServerSaveConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Save and Connect'**
+  String get sshServerSaveConnect;
+
+  /// No description provided for @sshServerSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get sshServerSave;
+
+  /// No description provided for @sshServerHostRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the server\'s domain or IP'**
+  String get sshServerHostRequired;
+
+  /// No description provided for @sshServerHostInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'No spaces, and not starting with \'-\''**
+  String get sshServerHostInvalid;
+
+  /// No description provided for @sshServerPortInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'A port is from 1 to 65535'**
+  String get sshServerPortInvalid;
+
+  /// No description provided for @sshServerKeyRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the private key file'**
+  String get sshServerKeyRequired;
+
+  /// No description provided for @sshServerKeyMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no such file'**
+  String get sshServerKeyMissing;
+
+  /// No description provided for @remoteForgetHostKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the Old Key and Connect'**
+  String get remoteForgetHostKey;
+
+  /// No description provided for @remoteForgetHostKeyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the old key of {host}?'**
+  String remoteForgetHostKeyTitle(String host);
+
+  /// No description provided for @remoteForgetHostKeyDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Only if you know the server was reinstalled or its key changed: otherwise someone may be between you and it. The key it has now is accepted at the next connection.'**
+  String get remoteForgetHostKeyDetail;
+
+  /// No description provided for @remoteForgetHostKeyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove and Connect'**
+  String get remoteForgetHostKeyButton;
+
+  /// No description provided for @remoteFailNoSsh.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no ssh on this computer: install the OpenSSH client.'**
+  String get remoteFailNoSsh;
+
+  /// No description provided for @remoteFailAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused to sign in: check the user, password or key.'**
+  String get remoteFailAuth;
+
+  /// No description provided for @remoteFailCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing in was cancelled.'**
+  String get remoteFailCancelled;
+
+  /// No description provided for @remoteFailHostKey.
+  ///
+  /// In en, this message translates to:
+  /// **'The server\'s key is not known, and your ssh config says not to accept new ones (StrictHostKeyChecking).'**
+  String get remoteFailHostKey;
+
+  /// No description provided for @remoteFailHostKeyChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'The server\'s key changed since the last connection: it was reinstalled, or someone is in between.'**
+  String get remoteFailHostKeyChanged;
+
+  /// No description provided for @remoteFailUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'The server could not be reached: check the address, port and network.'**
+  String get remoteFailUnreachable;
 }
 
 class _AppLocalizationsDelegate

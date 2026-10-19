@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:bao_remote/client.dart' show SshServer;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show TextSelection;
 import 'package:flutter_quill/quill_delta.dart';
@@ -1305,9 +1306,10 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
   }
 
   /// Takes [host] off, its projects off the sidebar ([hideProject]):
-  /// nothing of them is deleted.
+  /// nothing of them is deleted. What the form saved of it goes.
   void removeSshHost(String host) {
     _sshHosts.remove(host);
+    _sshServers.remove(host);
     final now = DateTime.now();
     for (final project in _projects) {
       if (project.host == host) _hiddenProjects[project.path] = now;
@@ -1352,6 +1354,26 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
   /// The projects the sidebar lists where it is: on its host, or all.
   List<Project> get sidebarProjectsHere =>
       sidebarAllHosts ? sidebarProjects : sidebarProjectsOn(sidebarHost);
+
+  /// The servers the user saved with the app's form, by host (see
+  /// [SshServer]): reached as saved rather than as the host's text says.
+  final Map<String, SshServer> _sshServers = {};
+  Map<String, SshServer> get sshServers => Map.unmodifiable(_sshServers);
+
+  /// Saves [server] as [host]'s, kept among [sshHosts] and called [name]
+  /// (by itself for none).
+  void saveSshServer(String host, SshServer server, {String? name}) {
+    _sshServers[host] = server;
+    if (!_sshHosts.contains(host)) _sshHosts.add(host);
+    name = name?.trim();
+    if (name == null || name.isEmpty || name == host) {
+      _hostNames.remove(host);
+    } else {
+      _hostNames[host] = name;
+    }
+    _save();
+    notifyListeners();
+  }
 
   /// Names the user gave SSH hosts, by host.
   final Map<String, String> _hostNames = {};
@@ -1936,6 +1958,12 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
       _projectOrder.addAll(list('projectOrder'));
       _sshHosts.addAll(list('sshHosts'));
       _hostNames.addAll(strings(sidebar['hostNames']));
+      if (sidebar['sshServers'] case final Map<Object?, Object?> servers) {
+        for (final MapEntry(:key, :value) in servers.entries) {
+          final server = SshServer.fromJson(value);
+          if (key is String && server != null) _sshServers[key] = server;
+        }
+      }
       if (sidebar['host'] case final String host) _sidebarHost = host;
       _sidebarAll = sidebar['allHosts'] == true;
       for (final MapEntry(:key, :value) in strings(
@@ -2039,6 +2067,10 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
         'projectOrder': [..._projectOrder],
         'sshHosts': [..._sshHosts],
         'hostNames': {..._hostNames},
+        'sshServers': {
+          for (final MapEntry(:key, :value) in _sshServers.entries)
+            key: value.toJson(),
+        },
         'host': ?_sidebarHost,
         if (_sidebarAll) 'allHosts': true,
         'hiddenProjects': {

@@ -7099,8 +7099,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cmdOpenRemoteFile => '打开远程文件...';
 
   @override
-  String get remoteHostPlaceholder =>
-      '选择 ~/.ssh/config 中的主机，或输入 user@host[:port]';
+  String get remoteHostPlaceholder => '选择主机、新增一个，或直接输入 user@host[:port]';
 
   @override
   String remoteConnectTo(String host) {
@@ -7108,7 +7107,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get remoteNoHosts => '~/.ssh/config 中没有主机，请直接输入';
+  String get remoteNoHosts => '还没有主机：新增一个，或直接输入 user@host';
 
   @override
   String get remoteInvalidHost => '不是有效的主机：不能含空格，也不能以 \'-\' 开头';
@@ -7908,6 +7907,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sidebarRenameHost => '重命名主机';
+
+  @override
+  String get sidebarEditHost => '编辑连接…';
 
   @override
   String get explorerNoPermission => '没有权限读取此文件夹';
@@ -9239,4 +9241,132 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modelSetUp => '设置模型';
+
+  @override
+  String get remoteAddServer => '新增 SSH 服务器…';
+
+  @override
+  String get remoteEditServer => '编辑';
+
+  @override
+  String get sshServerAddTitle => '新增 SSH 服务器';
+
+  @override
+  String sshServerEditTitle(String name) {
+    return '编辑 $name';
+  }
+
+  @override
+  String get sshServerHost => '主机';
+
+  @override
+  String get sshServerHostPlaceholder => '域名或 IP，粘贴 user@host:port 会自动拆开';
+
+  @override
+  String get sshServerPort => '端口';
+
+  @override
+  String get sshServerUser => '用户名';
+
+  @override
+  String get sshServerName => '名称（可选）';
+
+  @override
+  String get sshServerNamePlaceholder => '在应用里显示的名字，如“生产环境”';
+
+  @override
+  String get sshServerAuth => '登录方式';
+
+  @override
+  String get sshServerAuthPassword => '密码';
+
+  @override
+  String get sshServerAuthKey => '私钥';
+
+  @override
+  String get sshServerAuthAuto => '自动';
+
+  @override
+  String get sshServerAuthAutoHint =>
+      '和终端里的 ssh 一样：用 ssh-agent、~/.ssh 里的密钥和 ~/.ssh/config 的设置；服务器要密码时会再问。';
+
+  @override
+  String get sshServerPasswordHint => '保存在系统钥匙串中。留空则连接时再问。';
+
+  @override
+  String get sshServerPasswordKept => '已保存，不修改请留空';
+
+  @override
+  String get sshServerKeyPlaceholder => '私钥文件路径，如 ~/.ssh/id_ed25519';
+
+  @override
+  String get sshServerKeyBrowse => '浏览…';
+
+  @override
+  String get sshServerKeysFound => '~/.ssh 中的密钥';
+
+  @override
+  String get sshServerKeyHint => '如果私钥有口令，连接时会问。';
+
+  @override
+  String get sshServerJump => '跳板机（可选）';
+
+  @override
+  String get sshServerNoJump => '不使用，直接连接';
+
+  @override
+  String get sshServerSaveConnect => '保存并连接';
+
+  @override
+  String get sshServerSave => '保存';
+
+  @override
+  String get sshServerHostRequired => '请填写服务器的域名或 IP';
+
+  @override
+  String get sshServerHostInvalid => '不能含空格，也不能以 - 开头';
+
+  @override
+  String get sshServerPortInvalid => '端口应为 1 到 65535';
+
+  @override
+  String get sshServerKeyRequired => '请选择私钥文件';
+
+  @override
+  String get sshServerKeyMissing => '找不到这个文件';
+
+  @override
+  String get remoteForgetHostKey => '移除旧指纹并重新连接';
+
+  @override
+  String remoteForgetHostKeyTitle(String host) {
+    return '移除 $host 的旧指纹？';
+  }
+
+  @override
+  String get remoteForgetHostKeyDetail =>
+      '只有在确认服务器重装过或更换过密钥时才这样做，否则可能有人在中间截获连接。移除后，下次连接会接受服务器现在的指纹。';
+
+  @override
+  String get remoteForgetHostKeyButton => '移除并连接';
+
+  @override
+  String get remoteFailNoSsh => '本机没有 ssh：请安装 OpenSSH 客户端。';
+
+  @override
+  String get remoteFailAuth => '服务器拒绝登录：请检查用户名、密码或密钥。';
+
+  @override
+  String get remoteFailCancelled => '已取消登录。';
+
+  @override
+  String get remoteFailHostKey =>
+      '服务器的指纹未知，而你的 ssh 配置要求不自动接受新指纹（StrictHostKeyChecking）。';
+
+  @override
+  String get remoteFailHostKeyChanged =>
+      '服务器的指纹和上次连接时不同：可能是服务器重装过，也可能有人在中间截获连接。';
+
+  @override
+  String get remoteFailUnreachable => '连不上服务器：请检查地址、端口和网络。';
 }

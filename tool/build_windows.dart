@@ -19,6 +19,10 @@
 // The bundle's flutter_windows.dll is replaced by tool/engine's, the engine
 // built with tool/engine/windows_text.patch (see tool/engine/README.md).
 //
+// The bundle carries OpenSSH for Windows (openssh\), Microsoft's build, for
+// remote projects where the system's ssh is too old to ask for a password
+// (Windows 10's 8.1): downloaded once into build\openssh\ and checked.
+//
 // The installer lands in build/installers/; beside it, remote\<VERSION>\,
 // the remote server's gzipped builds, which the app downloads instead of
 // carrying them (tool/build_remote_server.dart), to upload with the
@@ -52,6 +56,22 @@ const _required = [
   r'data\app.so',
   r'data\icudtl.dat',
   r'data\flutter_assets',
+];
+
+/// The OpenSSH for Windows release the bundle carries (Win32-OpenSSH's
+/// OpenSSH-Win64.zip), its SHA-256, and what of it goes in `openssh\`: the
+/// client, ssh-keygen (to forget a host's changed key), their library and
+/// their licenses. The app takes it over the system's ssh where that one is
+/// older than 8.4 or missing (chooseSsh in package:bao_remote).
+const _openSshRelease = '10.0.0.0p2-Preview';
+const _openSshSha256 =
+    '23f50f3458c4c5d0b12217c6a5ddfde0137210a30fa870e98b29827f7b43aba5';
+const _openSshFiles = [
+  'ssh.exe',
+  'ssh-keygen.exe',
+  'libcrypto.dll',
+  'LICENSE.txt',
+  'NOTICE.txt',
 ];
 
 /// SHA-256 of Flutter's own release flutter_windows.dll that
@@ -145,6 +165,10 @@ Future<void> main(List<String> arguments) async {
   final remoteVersion = File('${remote.path}\\VERSION')
       .readAsStringSync()
       .trim();
+
+  _step('Putting in OpenSSH for Windows $_openSshRelease');
+  await _putOpenSsh(root, bundle);
+  _checkBundle(bundle, [for (final name in _openSshFiles) 'openssh\\$name']);
 
   _step('Compiling the installer');
   final iscc = _findIscc();
@@ -282,6 +306,55 @@ void _swapEngine(Directory root, Directory bundle) {
   }
   patched.copySync(target.path);
   stdout.writeln('  ${target.path} replaced.');
+}
+
+/// Puts [_openSshFiles] of the OpenSSH release in the bundle's `openssh\`:
+/// downloaded into build\openssh\ once, and checked against
+/// [_openSshSha256] each time.
+Future<void> _putOpenSsh(Directory root, Directory bundle) async {
+  final cache = Directory('${root.path}\\build\\openssh');
+  final zip = File('${cache.path}\\OpenSSH-Win64-$_openSshRelease.zip');
+  String sha256Of(File file) =>
+      sha256.convert(file.readAsBytesSync()).toString();
+  if (!zip.existsSync() || sha256Of(zip) != _openSshSha256) {
+    final url = Uri.parse(
+      'https://github.com/PowerShell/Win32-OpenSSH/releases/download/'
+      '$_openSshRelease/OpenSSH-Win64.zip',
+    );
+    stdout.writeln('  Downloading $url');
+    cache.createSync(recursive: true);
+    final client = HttpClient();
+    try {
+      final response = await (await client.getUrl(url)).close();
+      if (response.statusCode != 200) {
+        _fail('$url answered ${response.statusCode}.');
+      }
+      await response.pipe(zip.openWrite());
+    } finally {
+      client.close();
+    }
+    if (sha256Of(zip) != _openSshSha256) {
+      zip.deleteSync();
+      _fail(
+        'The OpenSSH download is not the one this script expects.\n'
+        'After choosing another release, update _openSshRelease and\n'
+        '_openSshSha256 in this script.',
+      );
+    }
+  }
+  final unpacked = Directory('${cache.path}\\$_openSshRelease');
+  if (unpacked.existsSync()) unpacked.deleteSync(recursive: true);
+  unpacked.createSync(recursive: true);
+  // Windows' own tar (bsdtar) reads zips.
+  await _run('tar', ['-xf', zip.path, '-C', unpacked.path], root.path);
+  final target = Directory('${bundle.path}\\openssh');
+  if (target.existsSync()) target.deleteSync(recursive: true);
+  target.createSync(recursive: true);
+  for (final name in _openSshFiles) {
+    final file = File('${unpacked.path}\\OpenSSH-Win64\\$name');
+    if (!file.existsSync()) _fail('No $name in the OpenSSH release.');
+    file.copySync('${target.path}\\$name');
+  }
 }
 
 /// The Inno Setup compiler: where winget puts it, then where a manual

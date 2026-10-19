@@ -7550,7 +7550,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get remoteHostPlaceholder =>
-      'Select a host of ~/.ssh/config, or type user@host[:port]';
+      'Select a host, add one, or type user@host[:port]';
 
   @override
   String remoteConnectTo(String host) {
@@ -7558,7 +7558,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get remoteNoHosts => 'No hosts in ~/.ssh/config: type one';
+  String get remoteNoHosts => 'No hosts yet: add one, or type user@host';
 
   @override
   String get remoteInvalidHost =>
@@ -8385,6 +8385,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sidebarRenameHost => 'Rename Host';
+
+  @override
+  String get sidebarEditHost => 'Edit Connection...';
 
   @override
   String get explorerNoPermission => 'No permission to read this folder';
@@ -9768,4 +9771,140 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelSetUp => 'Set Up a Model';
+
+  @override
+  String get remoteAddServer => 'Add SSH Server...';
+
+  @override
+  String get remoteEditServer => 'Edit';
+
+  @override
+  String get sshServerAddTitle => 'Add SSH Server';
+
+  @override
+  String sshServerEditTitle(String name) {
+    return 'Edit $name';
+  }
+
+  @override
+  String get sshServerHost => 'Host';
+
+  @override
+  String get sshServerHostPlaceholder =>
+      'Domain or IP; user@host:port is split up';
+
+  @override
+  String get sshServerPort => 'Port';
+
+  @override
+  String get sshServerUser => 'User';
+
+  @override
+  String get sshServerName => 'Name (optional)';
+
+  @override
+  String get sshServerNamePlaceholder =>
+      'What the app calls it, e.g. Production';
+
+  @override
+  String get sshServerAuth => 'Sign in with';
+
+  @override
+  String get sshServerAuthPassword => 'Password';
+
+  @override
+  String get sshServerAuthKey => 'Private Key';
+
+  @override
+  String get sshServerAuthAuto => 'Automatic';
+
+  @override
+  String get sshServerAuthAutoHint =>
+      'As ssh does in a terminal: ssh-agent, the keys in ~/.ssh, ~/.ssh/config. A password is asked for if the server wants one.';
+
+  @override
+  String get sshServerPasswordHint =>
+      'Kept in the system keychain. Leave it empty to be asked when connecting.';
+
+  @override
+  String get sshServerPasswordKept => 'Saved: leave empty to keep it';
+
+  @override
+  String get sshServerKeyPlaceholder =>
+      'Path of the private key, e.g. ~/.ssh/id_ed25519';
+
+  @override
+  String get sshServerKeyBrowse => 'Browse...';
+
+  @override
+  String get sshServerKeysFound => 'Keys in ~/.ssh';
+
+  @override
+  String get sshServerKeyHint =>
+      'If the key has a passphrase, it is asked for when connecting.';
+
+  @override
+  String get sshServerJump => 'Jump Host (optional)';
+
+  @override
+  String get sshServerNoJump => 'None: connect directly';
+
+  @override
+  String get sshServerSaveConnect => 'Save and Connect';
+
+  @override
+  String get sshServerSave => 'Save';
+
+  @override
+  String get sshServerHostRequired => 'Enter the server\'s domain or IP';
+
+  @override
+  String get sshServerHostInvalid => 'No spaces, and not starting with \'-\'';
+
+  @override
+  String get sshServerPortInvalid => 'A port is from 1 to 65535';
+
+  @override
+  String get sshServerKeyRequired => 'Choose the private key file';
+
+  @override
+  String get sshServerKeyMissing => 'There is no such file';
+
+  @override
+  String get remoteForgetHostKey => 'Remove the Old Key and Connect';
+
+  @override
+  String remoteForgetHostKeyTitle(String host) {
+    return 'Remove the old key of $host?';
+  }
+
+  @override
+  String get remoteForgetHostKeyDetail =>
+      'Only if you know the server was reinstalled or its key changed: otherwise someone may be between you and it. The key it has now is accepted at the next connection.';
+
+  @override
+  String get remoteForgetHostKeyButton => 'Remove and Connect';
+
+  @override
+  String get remoteFailNoSsh =>
+      'There is no ssh on this computer: install the OpenSSH client.';
+
+  @override
+  String get remoteFailAuth =>
+      'The server refused to sign in: check the user, password or key.';
+
+  @override
+  String get remoteFailCancelled => 'Signing in was cancelled.';
+
+  @override
+  String get remoteFailHostKey =>
+      'The server\'s key is not known, and your ssh config says not to accept new ones (StrictHostKeyChecking).';
+
+  @override
+  String get remoteFailHostKeyChanged =>
+      'The server\'s key changed since the last connection: it was reinstalled, or someone is in between.';
+
+  @override
+  String get remoteFailUnreachable =>
+      'The server could not be reached: check the address, port and network.';
 }
