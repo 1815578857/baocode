@@ -13,6 +13,10 @@
 #   git tag test-channel-foo && git push origin test-channel-foo
 #                                              the same, of the channel build
 #                                              alone
+#   git tag v1.2.0-channel && git push origin v1.2.0-channel
+#                                              the channel build alone, signed
+#                                              into 1.2.0 as published; the
+#                                              standard build left as it is
 #   Actions → Release → Run workflow           build only, to try the build
 #                                              (the editions asked for)
 #
@@ -57,6 +61,7 @@ jobs:
       publish: ${{ steps.version.outputs.publish }}
       share: ${{ steps.version.outputs.share }}
       editions: ${{ steps.version.outputs.editions }}
+      channel_only: ${{ steps.version.outputs.channel_only }}
     steps:
       - uses: actions/checkout@v4
       - id: version
@@ -78,6 +83,7 @@ jobs:
           fi
           publish=false
           share=false
+          channel_only=false
           # A release has both: each edition's installs update to its own.
           editions='["standard","channel"]'
           if [ "$GITHUB_REF_TYPE" = tag ] && [[ "$GITHUB_REF_NAME" == test-channel-* ]]; then
@@ -91,6 +97,21 @@ jobs:
               standard) editions='["standard"]' ;;
               channel) editions='["channel"]' ;;
             esac
+          elif [ "$GITHUB_REF_TYPE" = tag ] && [[ "$GITHUB_REF_NAME" == *-channel ]]; then
+            # The channel build alone, signed into the version published,
+            # whose standard build is left as it is.
+            if [ "$GITHUB_REF_NAME" != "v$marketing-channel" ]; then
+              echo "::error::Tag $GITHUB_REF_NAME, but pubspec.yaml is $version: the tag has to be v$marketing-channel"
+              exit 1
+            fi
+            published=$(curl -fsS https://dl.baocode.dev/releases/latest.json | jq -r .version)
+            if [ "$published" != "$version" ]; then
+              echo "::error::$published is published, pubspec.yaml is $version: the channel build alone goes beside the version published"
+              exit 1
+            fi
+            publish=true
+            channel_only=true
+            editions='["channel"]'
           elif [ "$GITHUB_REF_TYPE" = tag ]; then
             if [ "$GITHUB_REF_NAME" != "v$marketing" ]; then
               echo "::error::Tag $GITHUB_REF_NAME, but pubspec.yaml is $version: the tag has to be v$marketing"
@@ -104,10 +125,11 @@ jobs:
             echo "publish=$publish"
             echo "share=$share"
             echo "editions=$editions"
+            echo "channel_only=$channel_only"
           } >> "$GITHUB_OUTPUT"
           echo "Builds: $editions"
       - name: Be no older than the version published
-        if: steps.version.outputs.publish == 'true'
+        if: steps.version.outputs.publish == 'true' && steps.version.outputs.channel_only != 'true'
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -445,6 +467,9 @@ jobs:
     env:
       VERSION: ${{ needs.check.outputs.version }}
       MARKETING: ${{ needs.check.outputs.marketing }}
+      # v<version>-channel: the channel build alone, into the version
+      # published.
+      CHANNEL_ONLY: ${{ needs.check.outputs.channel_only }}
       R2_BUCKET: ${{ vars.R2_BUCKET }}
       AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -467,7 +492,9 @@ jobs:
         run: |
           mkdir -p out
           # The standard build, then the channel build's, ending in -channel.
-          for edition in '' -channel; do
+          editions=('' -channel)
+          [ "$CHANNEL_ONLY" = true ] && editions=(-channel)
+          for edition in "${editions[@]}"; do
             for arch in arm64 x64; do
               cp dist/macos$edition/BaoCode-$MARKETING-$arch$edition.dmg \
                 dist/macos$edition/BaoCode-$MARKETING-mac-$arch$edition.zip out/
@@ -492,7 +519,17 @@ jobs:
           key="$RUNNER_TEMP/update-signing.key"
           echo "$SIGNING_KEY" > "$key"
           notes=()
+          editions=('' -channel)
+          if [ "$CHANNEL_ONLY" = true ]; then
+            # The manifest published, which the channel build's entries join:
+            # the standard build's, its notes and its downloads kept as they
+            # are (release_manifest.dart keeps a manifest of the same version).
+            editions=(-channel)
+            curl -fsS https://dl.baocode.dev/releases/latest.json -o out/latest.json
+            [ "$(jq -r .version out/latest.json)" = "$VERSION" ] || { echo "::error::latest.json is not $VERSION"; exit 1; }
+          fi
           for language in en zh; do
+            [ "$CHANNEL_ONLY" = true ] && break
             file="release-notes/$MARKETING.$language.md"
             if [ -f "$file" ]; then
               notes+=(--notes-$language "$file")
@@ -501,7 +538,7 @@ jobs:
             fi
           done
           files=()
-          for edition in '' -channel; do
+          for edition in "${editions[@]}"; do
             files+=(
               --windows$edition out/BaoCode-$MARKETING-setup$edition.exe
               --macos-arm64$edition out/BaoCode-$MARKETING-mac-arm64$edition.zip
@@ -523,11 +560,14 @@ jobs:
           immutable='public, max-age=31536000, immutable'
           aws s3 cp out/remote "s3://$R2_BUCKET/releases/remote/" --recursive \
             --cache-control "$immutable"
-          # The newest server, for --remote-release latest (remote.yml).
-          jq -n --arg version "$(cat dist/remote/VERSION)" --arg tag "$GITHUB_REF_NAME" --arg commit "$GITHUB_SHA" \
-            '{version: $version, tag: $tag, commit: $commit}' > remote-latest.json
-          aws s3 cp remote-latest.json "s3://$R2_BUCKET/releases/remote/latest.json" \
-            --cache-control 'public, max-age=60' --content-type application/json
+          # The newest server, for --remote-release latest (remote.yml): a
+          # release's, not the channel build's alone.
+          if [ "$CHANNEL_ONLY" != true ]; then
+            jq -n --arg version "$(cat dist/remote/VERSION)" --arg tag "$GITHUB_REF_NAME" --arg commit "$GITHUB_SHA" \
+              '{version: $version, tag: $tag, commit: $commit}' > remote-latest.json
+            aws s3 cp remote-latest.json "s3://$R2_BUCKET/releases/remote/latest.json" \
+              --cache-control 'public, max-age=60' --content-type application/json
+          fi
           for file in $(cd out && ls BaoCode-*); do
             aws s3 cp "out/$file" "s3://$R2_BUCKET/releases/$MARKETING/$file" \
               --cache-control "$immutable"
@@ -550,7 +590,9 @@ jobs:
           aws s3 cp out/latest.json "s3://$R2_BUCKET/releases/latest.json" \
             --cache-control 'public, max-age=300' --content-type application/json
           curl -fsS "https://dl.baocode.dev/releases/latest.json?$GITHUB_RUN_ID" | jq .
+      # The standard build's alone; the channel build alone makes none.
       - name: Make the GitHub release
+        if: env.CHANNEL_ONLY != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
