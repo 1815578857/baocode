@@ -8677,7 +8677,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get branchBarWorkspace => '各文件夹的分支';
 
   @override
-  String get settingsSectionAccounts => '账号';
+  String get settingsSectionAccounts => 'Git 账号';
 
   @override
   String get settingsAccountsKeywords =>
@@ -9614,6 +9614,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get channelAccountKeyName => '名称';
 
   @override
+  String get channelAccountKeyGroup => '分组';
+
+  @override
   String get channelAccountUseKey => '使用此 Key';
 
   @override
@@ -9637,4 +9640,38 @@ class AppLocalizationsZh extends AppLocalizations {
   String channelAccountBlocked(String site, String request) {
     return '$site 拒绝了这台电脑的连接（$request），可能是当前网络或代理的 IP 被它的防火墙拦截了。换个网络，或让 $site 不走代理后再试。';
   }
+
+  @override
+  String get settingsSectionAbout => '关于';
+
+  @override
+  String get aboutTagline => '好看又好用的 Claude Code 桌面应用，内置毫秒级响应的 IDE。';
+
+  @override
+  String aboutVersion(String version, int build) {
+    return '版本 $version（$build）';
+  }
+
+  @override
+  String aboutRepository(String repository) {
+    return '$repository · 免费开源，GPL-3.0 许可证';
+  }
+
+  @override
+  String get aboutWebsite => '官网';
+
+  @override
+  String get aboutChangelog => '更新日志';
+
+  @override
+  String get aboutChangelogDetail => '每个版本改了什么';
+
+  @override
+  String get aboutFeedback => '反馈问题';
+
+  @override
+  String get aboutFeedbackDetail => '在 GitHub 上提 issue，或者看看别人提过的';
+
+  @override
+  String get aboutOpen => '打开';
 }

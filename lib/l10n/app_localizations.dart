@@ -14976,7 +14976,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSectionAccounts.
   ///
   /// In en, this message translates to:
-  /// **'Accounts'**
+  /// **'Git Accounts'**
   String get settingsSectionAccounts;
 
   /// No description provided for @settingsAccountsKeywords.
@@ -16641,6 +16641,12 @@ abstract class AppLocalizations {
   /// **'Name'**
   String get channelAccountKeyName;
 
+  /// No description provided for @channelAccountKeyGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Group'**
+  String get channelAccountKeyGroup;
+
   /// No description provided for @channelAccountUseKey.
   ///
   /// In en, this message translates to:
@@ -16682,6 +16688,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{site} refused this computer\'s connection ({request}); its firewall may be blocking the IP of your network or proxy. Try another network, or reach {site} without the proxy.'**
   String channelAccountBlocked(String site, String request);
+
+  /// No description provided for @settingsSectionAbout.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get settingsSectionAbout;
+
+  /// No description provided for @aboutTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'An awesome, easy-to-use desktop UI for Claude Code, with a millisecond-fast IDE built in.'**
+  String get aboutTagline;
+
+  /// No description provided for @aboutVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} ({build})'**
+  String aboutVersion(String version, int build);
+
+  /// No description provided for @aboutRepository.
+  ///
+  /// In en, this message translates to:
+  /// **'{repository} · free and open source, under the GPL-3.0'**
+  String aboutRepository(String repository);
+
+  /// No description provided for @aboutWebsite.
+  ///
+  /// In en, this message translates to:
+  /// **'Website'**
+  String get aboutWebsite;
+
+  /// No description provided for @aboutChangelog.
+  ///
+  /// In en, this message translates to:
+  /// **'Changelog'**
+  String get aboutChangelog;
+
+  /// No description provided for @aboutChangelogDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'What each version changed'**
+  String get aboutChangelogDetail;
+
+  /// No description provided for @aboutFeedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Report an Issue'**
+  String get aboutFeedback;
+
+  /// No description provided for @aboutFeedbackDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Open an issue on GitHub, or see those others opened'**
+  String get aboutFeedbackDetail;
+
+  /// No description provided for @aboutOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get aboutOpen;
 }
 
 class _AppLocalizationsDelegate

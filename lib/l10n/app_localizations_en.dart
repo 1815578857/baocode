@@ -9182,7 +9182,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get branchBarWorkspace => 'Branches of the folders';
 
   @override
-  String get settingsSectionAccounts => 'Accounts';
+  String get settingsSectionAccounts => 'Git Accounts';
 
   @override
   String get settingsAccountsKeywords =>
@@ -10169,6 +10169,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get channelAccountKeyName => 'Name';
 
   @override
+  String get channelAccountKeyGroup => 'Group';
+
+  @override
   String get channelAccountUseKey => 'Use This Key';
 
   @override
@@ -10193,4 +10196,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String channelAccountBlocked(String site, String request) {
     return '$site refused this computer\'s connection ($request); its firewall may be blocking the IP of your network or proxy. Try another network, or reach $site without the proxy.';
   }
+
+  @override
+  String get settingsSectionAbout => 'About';
+
+  @override
+  String get aboutTagline =>
+      'An awesome, easy-to-use desktop UI for Claude Code, with a millisecond-fast IDE built in.';
+
+  @override
+  String aboutVersion(String version, int build) {
+    return 'Version $version ($build)';
+  }
+
+  @override
+  String aboutRepository(String repository) {
+    return '$repository · free and open source, under the GPL-3.0';
+  }
+
+  @override
+  String get aboutWebsite => 'Website';
+
+  @override
+  String get aboutChangelog => 'Changelog';
+
+  @override
+  String get aboutChangelogDetail => 'What each version changed';
+
+  @override
+  String get aboutFeedback => 'Report an Issue';
+
+  @override
+  String get aboutFeedbackDetail =>
+      'Open an issue on GitHub, or see those others opened';
+
+  @override
+  String get aboutOpen => 'Open';
 }

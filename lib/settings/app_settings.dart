@@ -25,6 +25,7 @@ import '../tips/feature_tips_controller.dart';
 import '../update/update_controller.dart';
 import '../workspace/workspace.dart';
 import 'app_locale.dart';
+import 'pages/about_page.dart';
 import 'pages/accounts_page.dart';
 import 'pages/appearance_page.dart';
 import 'pages/browser_page.dart';
@@ -220,6 +221,8 @@ class AppSettings {
           settings: files?.settings,
           diagnostics: diagnostics,
         );
+      case SettingsSection.about:
+        return const AboutSettingsPage();
       case SettingsSection.dataDirectory:
         return const DataDirectoryPage();
     }

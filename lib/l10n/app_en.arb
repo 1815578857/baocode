@@ -6608,7 +6608,7 @@
   "@branchBarWorkspace": {
     "description": "Tooltip and menu title of the branch picker under the chat input of a multi-folder workspace."
   },
-  "settingsSectionAccounts": "Accounts",
+  "settingsSectionAccounts": "Git Accounts",
   "settingsAccountsKeywords": "GitHub GitLab sign in login token issue pull request merge request",
   "accountsDescription": "Sign in to GitHub or GitLab to see the state of the issues and pull requests linked in Stash, import issues as stashes, and reply to them once you confirm.",
   "accountsSignedIn": "Signed in",
@@ -7073,6 +7073,7 @@
   "channelAccountKeys": "My API Keys",
   "channelAccountCreateKey": "Create Key",
   "channelAccountKeyName": "Name",
+  "channelAccountKeyGroup": "Group",
   "channelAccountUseKey": "Use This Key",
   "channelAccountInUse": "In Use",
   "channelAccountNoKeys": "No API keys yet.",
@@ -7081,5 +7082,17 @@
   "channelAccountFailed": "Something went wrong: {error}",
   "@channelAccountFailed": {"placeholders": {"error": {"type": "String"}}},
   "channelAccountBlocked": "{site} refused this computer's connection ({request}); its firewall may be blocking the IP of your network or proxy. Try another network, or reach {site} without the proxy.",
-  "@channelAccountBlocked": {"description": "The channel's account site's firewall (e.g. Cloudflare) refused the app's requests; not a sign-out.", "placeholders": {"site": {"type": "String"}, "request": {"type": "String", "example": "POST /api/v1/auth/refresh"}}}
+  "@channelAccountBlocked": {"description": "The channel's account site's firewall (e.g. Cloudflare) refused the app's requests; not a sign-out.", "placeholders": {"site": {"type": "String"}, "request": {"type": "String", "example": "POST /api/v1/auth/refresh"}}},
+  "settingsSectionAbout": "About",
+  "aboutTagline": "An awesome, easy-to-use desktop UI for Claude Code, with a millisecond-fast IDE built in.",
+  "aboutVersion": "Version {version} ({build})",
+  "@aboutVersion": {"placeholders": {"version": {"type": "String"}, "build": {"type": "int"}}},
+  "aboutRepository": "{repository} · free and open source, under the GPL-3.0",
+  "@aboutRepository": {"placeholders": {"repository": {"type": "String"}}},
+  "aboutWebsite": "Website",
+  "aboutChangelog": "Changelog",
+  "aboutChangelogDetail": "What each version changed",
+  "aboutFeedback": "Report an Issue",
+  "aboutFeedbackDetail": "Open an issue on GitHub, or see those others opened",
+  "aboutOpen": "Open"
 }
