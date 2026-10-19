@@ -31,6 +31,11 @@
 /featured/*
   Cache-Control: public, max-age=300
 
+# The channels' editions (site.js, docs/attribution.md): a change shows
+# within minutes.
+/channels.json
+  Cache-Control: public, max-age=300
+
 # Not part of the site.
 /README.md
   X-Robots-Tag: noindex

@@ -79,6 +79,41 @@ const attribution = (() => {
   return { kept, ready };
 })();
 
+// A channel listed in channels.json (docs/attribution.md) shows in three
+// places: its logo and name in place of the brand's, "<its logo> <its
+// name> × <our logo> BaoCode" for the home page's title, and its subtitle
+// in place of ours; the visitor's first source decides, as for the
+// download. Only listed ones, words as text, the logo from /channels/: an
+// address anyone can make up never puts anything on the page. head.js has
+// the places hidden meanwhile, and channels.json asked for.
+attribution.ready.then(async (first) => {
+  if (first?.source !== 'channel') return;
+  const channels = await (window.channelsJson || fetch('/channels.json').then((res) => res.json()).catch(() => null));
+  // Own keys only: ?constructor is not a channel.
+  const channel = channels && Object.hasOwn(channels, first.value) ? channels[first.value] : null;
+  if (!channel || typeof channel !== 'object') return;
+  const lang = document.documentElement.lang.startsWith('zh') ? 'zh' : 'en';
+  const words = (field) => (typeof channel[field]?.[lang] === 'string' ? channel[field][lang].trim() : '');
+  const logo = typeof channel.logo === 'string' && /^\/channels\/[\w.-]+$/.test(channel.logo) ? channel.logo : null;
+  const name = words('name');
+  const subtitle = words('subtitle');
+  const span = (className, text) => Object.assign(document.createElement('span'), { className, textContent: text });
+  // A logo and a name; whole on its line.
+  const side = (src, text) => {
+    const el = span('channel', '');
+    if (src) el.append(Object.assign(document.createElement('img'), { src, alt: '', className: 'channel-logo' }));
+    el.append(text);
+    return el;
+  };
+  if (name) {
+    for (const el of document.querySelectorAll('.top .brand')) el.replaceChildren(...side(logo, name).childNodes);
+    for (const el of document.querySelectorAll('[data-channel-title]')) {
+      el.replaceChildren(side(logo, name), ' ', span('channel-x', '×'), ' ', side('/icon.png', 'BaoCode'));
+    }
+  }
+  if (subtitle) for (const el of document.querySelectorAll('[data-channel-subtitle]')) el.textContent = subtitle;
+}).finally(() => document.documentElement.classList.remove('channel-pending'));
+
 // Until a screenshot exists, its frame shows the file it is waiting for.
 for (const img of document.querySelectorAll('figure img')) {
   const missing = () => img.parentElement.classList.add('missing');

@@ -16,7 +16,9 @@ served as it is, `/download` being `download.html`.
 - `site.js` keeps, on any page, where a visitor first came from (`?abc`
   after any page's address, the site linking here, or direct), and gives
   them the channel build; `activate.html`, `activate.js`: what the channel
-  build opens on its first start, to send it to stats.baocode.dev. See
+  build opens on its first start, to send it to stats.baocode.dev;
+  `channels.json` and `channels/` (their logos), the channels listed,
+  shown by the brand, in the home page's title and subtitle. See
   `docs/attribution.md`.
 - `shots/`: the screenshots on the page.
 - `sounds/`: the notification sound the page plays.

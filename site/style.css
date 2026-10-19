@@ -51,6 +51,16 @@ a:hover { text-decoration-color: var(--ink); }
 
 h1 { margin: 0; font: 600 44px/1.15 var(--serif); letter-spacing: -.015em; color: var(--ink); }
 .subtitle { margin: 10px 0 0; font-size: 23px; line-height: 1.4; color: var(--muted); }
+/* A channel (channels.json): its logo and name for the brand, the logo as
+   high as ours and as wide as it is; "<logo> <name> × <logo> BaoCode" for
+   the title, each side kept on one line. */
+.top .brand img.channel-logo { width: auto; border-radius: 0; }
+/* Until site.js knows (head.js): hidden, their room kept. */
+.channel-pending .top .brand, .channel-pending [data-channel-title], .channel-pending [data-channel-subtitle] { visibility: hidden; }
+h1 .channel { display: inline-flex; align-items: center; gap: .28em; white-space: nowrap; }
+h1 .channel-x { margin: 0 .12em; font-weight: 400; color: var(--faint); }
+h1 .channel-logo { height: .78em; width: auto; }
+h1 .channel-logo[src="/icon.png"] { border-radius: .18em; }
 .meta { margin: 22px 0 0; font: 13.5px/1.6 var(--sans); color: var(--muted); }
 /* Each item whole, its dot after it: a line breaks between items, never in one or before a dot. */
 .meta span { display: inline-block; }
