@@ -1,4 +1,4 @@
-// Where the visitor came to the site from (docs/attribution.md), kept for
+// Where the visitor came to the site from, kept for
 // good in IndexedDB and localStorage both, one at a time: a channel's id
 // after the ? of any page's address (never after the #), the latest
 // channel replacing the one before, then taken off the address; with none ever,
@@ -91,7 +91,7 @@ const attribution = (() => {
   return { kept, ready };
 })();
 
-// A channel listed in channels.json (docs/attribution.md) shows in three
+// A channel listed in channels.json shows in three
 // places: its logo and name in place of the brand's, "<its logo> <its
 // name> × <our logo> BaoCode" for the home page's title, and its subtitle
 // in place of ours; the visitor's kept source decides, as for the
@@ -256,7 +256,7 @@ function showDownloads(downloads, v) {
     }
   }
   // Whoever came through the site gets the channel build, where the
-  // manifest has one (docs/attribution.md).
+  // manifest has one.
   attribution.ready.then((kept) => {
     if (!kept) return;
     for (const [os, file] of Object.entries(downloads || {})) {

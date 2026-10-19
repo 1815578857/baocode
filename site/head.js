@@ -1,4 +1,4 @@
-// In each page's <head>, before it shows (docs/attribution.md): a visitor
+// In each page's <head>, before it shows: a visitor
 // who may be a listed channel's has the places a channel changes (the
 // brand, the home page's title and subtitle) hidden until site.js has
 // filled them in, so ours never flash first; and channels.json is asked

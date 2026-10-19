@@ -1,4 +1,4 @@
-// The channel build's first start (docs/attribution.md): BaoCode opens
+// The channel build's first start: BaoCode opens
 //
 //   https://baocode.dev/activate#i=<install id>
 //

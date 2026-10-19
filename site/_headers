@@ -31,7 +31,7 @@
 /featured/*
   Cache-Control: public, max-age=300
 
-# The channels' editions (site.js, docs/attribution.md): a change shows
+# The channels' editions (site.js): a change shows
 # within minutes.
 /channels.json
   Cache-Control: public, max-age=300
@@ -48,7 +48,7 @@
   Cache-Control: no-store
   X-Robots-Tag: noindex
 
-# The channel build's first start (activate.js, docs/attribution.md).
+# The channel build's first start (activate.js).
 /activate
   Cache-Control: no-store
   X-Robots-Tag: noindex
