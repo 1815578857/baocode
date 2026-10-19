@@ -2416,10 +2416,15 @@ class _EditorSurfaceState extends State<EditorSurface>
             onPointerCancel: _onPointerUp,
             onPointerSignal: _onPointerSignal,
             onPointerPanZoomUpdate: _onPanZoomUpdate,
-            child: ColoredBox(
-              key: _paintKey,
-              color: widget.backgroundColor,
-              child: SizedBox.fromSize(size: size, child: layers),
+            // What the editor paints as it is typed in (its gutter, the
+            // current line) is painted again alone, not with the window
+            // around it.
+            child: RepaintBoundary(
+              child: ColoredBox(
+                key: _paintKey,
+                color: widget.backgroundColor,
+                child: SizedBox.fromSize(size: size, child: layers),
+              ),
             ),
           ),
         );
