@@ -15,6 +15,11 @@
 //                                                  instead of building one
 //   dart run tool/build_windows.dart --stock-engine keep Flutter's own
 //                                                  flutter_windows.dll
+//   dart run tool/build_windows.dart --channel      the channel build
+//                                                  (BAOCODE_CHANNEL;
+//                                                  lib/channel/), its
+//                                                  installer named
+//                                                  -setup-channel.exe
 //
 // The bundle's flutter_windows.dll is replaced by tool/engine's, the engine
 // built with tool/engine/windows_text.patch (see tool/engine/README.md).
@@ -99,6 +104,7 @@ Future<void> main(List<String> arguments) async {
       ? arguments[releaseAt + 1]
       : 'latest';
   final stockEngine = arguments.contains('--stock-engine');
+  final channel = arguments.contains('--channel');
 
   // The script lives in tool/, so the repository is one level above it.
   final root = File.fromUri(Platform.script).parent.parent.absolute;
@@ -107,8 +113,15 @@ Future<void> main(List<String> arguments) async {
   final version = _readVersion(File('${root.path}\\pubspec.yaml'));
 
   if (!skipBuild) {
-    _step('Building the Release bundle');
-    await _run('flutter', ['build', 'windows', '--release'], root.path);
+    _step(
+      'Building the Release bundle${channel ? ' (the channel build)' : ''}',
+    );
+    await _run('flutter', [
+      'build',
+      'windows',
+      '--release',
+      if (channel) '--dart-define=BAOCODE_CHANNEL=true',
+    ], root.path);
   } else {
     _step('Using the bundle already built');
   }
@@ -177,6 +190,7 @@ Future<void> main(List<String> arguments) async {
     '/DBundleDir=${bundle.path}',
     '/DAppVersion=${version.full}',
     '/DOutDir=${installers.path}',
+    if (channel) '/DEdition=-channel',
     '${root.path}\\tool\\baocode.iss',
   ], root.path);
 
@@ -197,7 +211,8 @@ Future<void> main(List<String> arguments) async {
 
   _step('Done');
   final installer = File(
-    '${installers.path}\\BaoCode-${version.marketing}-setup.exe',
+    '${installers.path}\\BaoCode-${version.marketing}-setup'
+    '${channel ? '-channel' : ''}.exe',
   );
   for (final file in [installer, ...servers]) {
     if (!file.existsSync()) continue;

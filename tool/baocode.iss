@@ -17,6 +17,12 @@
   #error OutDir is not defined: pass /DOutDir=<folder for the installer>
 #endif
 
+; The channel build's (tool/build_windows.dart --channel): "-channel", after
+; the installer's name. The same app either way, installed over the other.
+#ifndef Edition
+  #define Edition ""
+#endif
+
 ; The part of the version Windows records, without the build number pubspec
 ; adds after "+".
 #define VersionNumber Copy(AppVersion, 1, Pos("+", AppVersion) - 1)
@@ -38,7 +44,7 @@ DefaultDirName={autopf}\BaoCode
 DefaultGroupName=BaoCode
 UninstallDisplayName=BaoCode
 UninstallDisplayIcon={app}\baocode.exe
-OutputBaseFilename=BaoCode-{#VersionNumber}-setup
+OutputBaseFilename=BaoCode-{#VersionNumber}-setup{#Edition}
 OutputDir={#OutDir}
 ; What Explorer shows for the installer itself. Windows wants four numbers,
 ; where pubspec's version has three.

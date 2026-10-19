@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
+import '../channel/channel_setup.dart' show ChannelSetup;
 import 'update_io.dart';
 import 'update_manifest.dart';
 import 'update_service.dart';
@@ -52,16 +53,28 @@ PlatformUpdates? platformUpdates({required String updatesDirectory}) {
   } else {
     return null;
   }
+  final edition = editionUpdatePlatform(
+    platform,
+    channel: ChannelSetup.channelBuild,
+  );
   return PlatformUpdates(
-    platform: platform,
+    platform: edition,
     manifestUrl: manifestUrl,
     backend: IoUpdateBackend(
       directory: updatesDirectory,
-      userAgent: 'BaoCode/$currentAppVersion ($platform)',
+      userAgent: 'BaoCode/$currentAppVersion ($edition)',
     ),
     installer: installer,
   );
 }
+
+/// [platform]'s download for the build's edition: the channel build's
+/// (`windows-x64-channel`…) for it, which a release has beside the standard
+/// one's, signed for it alone; the standard build's otherwise. Each edition
+/// updates to itself.
+@visibleForTesting
+String editionUpdatePlatform(String platform, {required bool channel}) =>
+    channel ? '$platform-channel' : platform;
 
 /// The Mac build an app updates to: the one for the processor. An Intel
 /// build run by Rosetta on Apple silicon (the wrong download) takes the

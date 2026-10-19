@@ -9,8 +9,8 @@
 // user's channel's account site in a WebKitGTK view of its own, ephemeral
 // (its cookies and storage gone once it closes).
 //
-//   open (url, title)   opens it, in place of one open; an error where the
-//                       app was built without WebKitGTK (webkit2gtk-4.1)
+//   open (url, title)   opens it, in place of one open; an error in the
+//                       standard build, built without WebKitGTK
 //   evaluate (script)   the string the script comes to, or null
 //   cookies (url)       the cookies it has for the url, HttpOnly ones too
 //   close               closes it
