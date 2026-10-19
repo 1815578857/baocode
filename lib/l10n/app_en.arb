@@ -7079,5 +7079,7 @@
   "channelAccountSignedOut": "You're not signed in.",
   "channelAccountUnavailable": "This channel isn't available. Contact whoever gave you the installer.",
   "channelAccountFailed": "Something went wrong: {error}",
-  "@channelAccountFailed": {"placeholders": {"error": {"type": "String"}}}
+  "@channelAccountFailed": {"placeholders": {"error": {"type": "String"}}},
+  "channelAccountBlocked": "{site} refused this computer's connection ({request}); its firewall may be blocking the IP of your network or proxy. Try another network, or reach {site} without the proxy.",
+  "@channelAccountBlocked": {"description": "The channel's account site's firewall (e.g. Cloudflare) refused the app's requests; not a sign-out.", "placeholders": {"site": {"type": "String"}, "request": {"type": "String", "example": "POST /api/v1/auth/refresh"}}}
 }

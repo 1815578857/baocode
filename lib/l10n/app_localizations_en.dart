@@ -10188,4 +10188,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String channelAccountFailed(String error) {
     return 'Something went wrong: $error';
   }
+
+  @override
+  String channelAccountBlocked(String site, String request) {
+    return '$site refused this computer\'s connection ($request); its firewall may be blocking the IP of your network or proxy. Try another network, or reach $site without the proxy.';
+  }
 }

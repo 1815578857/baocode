@@ -307,7 +307,7 @@ class ChannelAccount extends ChangeNotifier {
     notifyListeners();
     final window = _openWindow();
     try {
-      await window.open(site.url, title: title);
+      await window.open(_adapter.loginUrl, title: title);
       var closed = false;
       unawaited(window.closed.then((_) => closed = true));
       String? credential;

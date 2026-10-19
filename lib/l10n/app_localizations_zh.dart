@@ -9632,4 +9632,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String channelAccountFailed(String error) {
     return '出错了：$error';
   }
+
+  @override
+  String channelAccountBlocked(String site, String request) {
+    return '$site 拒绝了这台电脑的连接（$request），可能是当前网络或代理的 IP 被它的防火墙拦截了。换个网络，或让 $site 不走代理后再试。';
+  }
 }

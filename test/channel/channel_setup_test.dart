@@ -528,7 +528,7 @@ void main() {
       var closed = false;
       unawaited(shown.closed.then((_) => closed = true));
       await signIn(tester);
-      expect(windows.single.opened, Uri.parse('https://panel.example'));
+      expect(windows.single.opened, Uri.parse('https://panel.example/login'));
       expect(windows.single.title, 'YouTube');
       expect(closed, isTrue);
       expect(started, isTrue);

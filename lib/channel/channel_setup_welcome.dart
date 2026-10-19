@@ -14,6 +14,7 @@ import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' show themeColors;
 import '../tips/welcome_dialog.dart';
+import 'account/account_api.dart' show AccountBlocked;
 import 'channel_gate.dart';
 import 'channel_setup.dart';
 
@@ -226,13 +227,10 @@ class _ChannelSetupWelcomeState extends State<ChannelSetupWelcome>
             ),
           ),
           if (error != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                l10n.channelWelcomeFailed('$error'),
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.caution, fontSize: 12),
-              ),
+            _Failed(
+              error is AccountBlocked
+                  ? l10n.channelAccountBlocked(error.host, error.request)
+                  : l10n.channelWelcomeFailed('$error'),
             ),
         ],
         footer: WelcomeRise(
@@ -850,6 +848,46 @@ class _DoneChip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Why signing in did not go through: under the welcome's words, in line
+/// with them, a warning's tint around it.
+class _Failed extends StatelessWidget {
+  const _Failed(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final caution = AppColors.caution;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 6, 28, 4),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
+        decoration: BoxDecoration(
+          color: caution.withValues(alpha: .08),
+          border: Border.all(color: caution.withValues(alpha: .25)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(Codicons.warning, size: 14, color: caution),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(color: caution, fontSize: 12.5, height: 1.45),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

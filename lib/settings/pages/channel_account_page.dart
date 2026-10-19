@@ -152,7 +152,9 @@ class _AccountView extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
                 child: Text(
-                  l10n.channelAccountFailed('$error'),
+                  error is AccountBlocked
+                      ? l10n.channelAccountBlocked(error.host, error.request)
+                      : l10n.channelAccountFailed('$error'),
                   style: TextStyle(color: AppColors.caution, fontSize: 12),
                 ),
               ),

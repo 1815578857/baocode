@@ -16676,6 +16676,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Something went wrong: {error}'**
   String channelAccountFailed(String error);
+
+  /// The channel's account site's firewall (e.g. Cloudflare) refused the app's requests; not a sign-out.
+  ///
+  /// In en, this message translates to:
+  /// **'{site} refused this computer\'s connection ({request}); its firewall may be blocking the IP of your network or proxy. Try another network, or reach {site} without the proxy.'**
+  String channelAccountBlocked(String site, String request);
 }
 
 class _AppLocalizationsDelegate

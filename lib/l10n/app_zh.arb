@@ -2769,5 +2769,6 @@
   "channelAccountNoKeys": "还没有 API Key。",
   "channelAccountSignedOut": "还没有登录。",
   "channelAccountUnavailable": "这个渠道暂时用不了，请联系提供安装包的一方。",
-  "channelAccountFailed": "出错了：{error}"
+  "channelAccountFailed": "出错了：{error}",
+  "channelAccountBlocked": "{site} 拒绝了这台电脑的连接（{request}），可能是当前网络或代理的 IP 被它的防火墙拦截了。换个网络，或让 {site} 不走代理后再试。"
 }

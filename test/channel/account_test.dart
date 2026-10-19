@@ -212,7 +212,7 @@ void main() {
       final signingIn = account.signIn(title: 'Example');
       await pumpEventQueue();
       final window = windows.single;
-      expect(window.opened, Uri.parse('https://panel.example'));
+      expect(window.opened, Uri.parse('https://panel.example/login'));
       window.cookieJar = {'new_api_refresh': 'r0'};
       expect(await signingIn, isTrue);
       expect(window.shut, isTrue);

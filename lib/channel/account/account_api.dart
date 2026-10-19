@@ -98,6 +98,25 @@ class AccountSignedOut implements Exception {
   String toString() => message;
 }
 
+/// What stands in front of the account site (its firewall, its CDN's bot
+/// check) refused the app: a 403 that is not the site's own answer. Not a
+/// sign-out; the network the app is on (a VPN's or a proxy's address, say)
+/// is what the site does not let in.
+class AccountBlocked implements Exception {
+  const AccountBlocked(this.method, this.url);
+
+  /// What was refused, said to the user: `POST /api/v1/auth/refresh`.
+  final String method;
+  final Uri url;
+
+  String get host => url.host;
+
+  String get request => '$method ${url.path}';
+
+  @override
+  String toString() => '$host refused $request (HTTP 403)';
+}
+
 /// The account site refused, or answered what could not be read.
 class AccountError implements Exception {
   const AccountError(this.message);
@@ -134,6 +153,11 @@ abstract class AccountAdapter {
   /// A new [credential] to keep (null: signed out).
   final void Function(String? credential)? onCredential;
   final DateTime Function() now;
+
+  /// What the login window opens: the site's sign-in page, `/login` on
+  /// new-api's and sub2api's both (one signed in already is sent on from
+  /// there by the site).
+  Uri get loginUrl => site.url.replace(path: '/login');
 
   /// While the login window is open, asked of it every second: the
   /// session it has signed in to, if it has (its credential); null till

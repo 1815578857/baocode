@@ -36,6 +36,11 @@ Future<AccountResponse> sendToAccountSite(
     } on FormatException {
       decoded = null;
     }
+    // A page, not the site's JSON: its firewall's (Cloudflare's "you have
+    // been blocked"), which would otherwise read as signed out.
+    if (response.statusCode == HttpStatus.forbidden && decoded is! Map) {
+      throw AccountBlocked(method, url);
+    }
     var cookies = const <String, String>{};
     try {
       cookies = {
