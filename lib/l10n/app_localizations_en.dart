@@ -10103,7 +10103,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get channelSetupUnavailable =>
-      'The channel this installer came from doesn\'t have accounts set up yet. Contact whoever gave you the installer, or download the standard edition from baocode.dev.';
+      'The channel this installer came from doesn\'t have accounts set up yet. If you downloaded it through another channel, confirm where you came from in your browser; otherwise contact whoever gave you the installer, or download the standard edition from baocode.dev.';
+
+  @override
+  String get channelSetupConfirmAgain => 'Confirm in Browser';
 
   @override
   String channelWelcomeTitle(String channel) {

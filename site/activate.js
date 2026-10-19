@@ -2,7 +2,9 @@
 //
 //   https://baocode.dev/activate#i=<install id>
 //
-// and waits. This page sends stats.baocode.dev where the visitor came to
+// and waits (`&again=<id>` too when it asks once more: its channel not one
+// with accounts, the visitor might have come by another since, which this
+// browser now keeps). This page sends stats.baocode.dev where the visitor came to
 // the site from, as site.js kept it in this browser, and BaoCode, asking
 // there, goes on. Should BaoCode not hear of it (its network, the server
 // down), the page hands it over itself: baocode://activate?…, opened or
@@ -23,8 +25,11 @@
     for (const el of root.querySelectorAll('[data-state]')) el.hidden = el.dataset.state !== name;
     root.querySelector('[data-handover]').hidden = name !== 'done' && name !== 'failed';
   };
-  const id = new URLSearchParams(location.hash.slice(1)).get('i') || '';
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id)) {
+  const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+  const hash = new URLSearchParams(location.hash.slice(1));
+  const id = hash.get('i') || '';
+  const again = hash.get('again');
+  if (!ID.test(id) || (again != null && !ID.test(again))) {
     show('invalid');
     return;
   }
@@ -45,7 +50,7 @@
       const res = await fetch('https://stats.baocode.dev/v1/attribution', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ v: 1, id, source, value }),
+        body: JSON.stringify({ v: 1, id, source, value, ...(again ? { again } : {}) }),
         signal: ctl.signal,
       });
       show(res.ok ? 'done' : 'failed');
@@ -59,7 +64,7 @@
       send(kept);
       return;
     }
-    root.querySelector('[data-page-link]').textContent = `https://baocode.dev/activate#i=${id}`;
+    root.querySelector('[data-page-link]').textContent = `https://baocode.dev/activate${location.hash}`;
     show('missing');
     root.querySelector('[data-continue]').addEventListener('click', () => send(null));
   });

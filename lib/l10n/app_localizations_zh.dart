@@ -9549,7 +9549,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get channelSetupUnavailable =>
-      '这份安装包对应的渠道还没有开通账号服务。请联系提供安装包的一方，或到 baocode.dev 下载普通版。';
+      '这份安装包对应的渠道还没有开通账号服务。如果你是从别的渠道下载的，去浏览器确认一下来源；否则请联系提供安装包的一方，或到 baocode.dev 下载普通版。';
+
+  @override
+  String get channelSetupConfirmAgain => '去浏览器确认';
 
   @override
   String channelWelcomeTitle(String channel) {

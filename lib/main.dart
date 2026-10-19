@@ -511,25 +511,40 @@ Future<void> _beginChannelSetup(SettingsFiles files) async {
           (Object error) => debugPrint('install id not kept: $error'),
         );
   }
-  ChannelSetup.current = ChannelSetup(
-    store: store,
-    installId: id,
-    lookUp: lookUpChannel,
-    open: (url) => openExternal('$url'),
-  );
+  ChannelSetup.current = _channelSetup(store, id);
 }
+
+ChannelSetup _channelSetup(
+  ChannelSetupStore store,
+  String installId, {
+  String? again,
+}) => ChannelSetup(
+  store: store,
+  installId: installId,
+  again: again,
+  lookUp: lookUpChannel,
+  open: (url) => openExternal('$url'),
+);
 
 /// The channel build's way in (lib/channel/): set up, then signed in to
 /// its channel's account site, whose key is its only upstream.
 void _openChannelGate(SettingsFiles files) {
   if (kIsWeb || !ChannelSetup.channelBuild) return;
   final accounts = GlobalChannelAccountStore(files.storage);
+  final setupStore =
+      ChannelSetup.current?.store ?? GlobalChannelSetupStore(files.storage);
   ChannelGate.current = ChannelGate(
     setup: ChannelSetup.current,
-    setupStore:
-        ChannelSetup.current?.store ?? GlobalChannelSetupStore(files.storage),
+    setupStore: setupStore,
     accountStore: accounts,
     fetch: channelEntry,
+    // Its link opened, the setup asking takes it (workbench.dart).
+    makeSetupAgain: () => ChannelSetup.current = _channelSetup(
+      setupStore,
+      GlobalTelemetryStore(files.storage).installId ??
+          TelemetryService.randomInstallId(),
+      again: TelemetryService.randomInstallId(),
+    ),
     makeAccount: (channel) => ChannelAccount(
       site: channel.info.account!,
       channelName: channel.info.name,

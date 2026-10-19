@@ -16530,8 +16530,14 @@ abstract class AppLocalizations {
   /// No description provided for @channelSetupUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'The channel this installer came from doesn\'t have accounts set up yet. Contact whoever gave you the installer, or download the standard edition from baocode.dev.'**
+  /// **'The channel this installer came from doesn\'t have accounts set up yet. If you downloaded it through another channel, confirm where you came from in your browser; otherwise contact whoever gave you the installer, or download the standard edition from baocode.dev.'**
   String get channelSetupUnavailable;
+
+  /// No description provided for @channelSetupConfirmAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm in Browser'**
+  String get channelSetupConfirmAgain;
 
   /// A channel's welcome's title when its channels.json entry has none, by its name.
   ///

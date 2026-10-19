@@ -300,9 +300,10 @@ class ChannelSetup extends ChangeNotifier {
     required this.installId,
     required this.lookUp,
     required this.open,
+    this.again,
     this.pollInterval = const Duration(seconds: 3),
     this.offlineAfter = 2,
-  }) : _done = store.state == doneState;
+  }) : _done = again == null && store.state == doneState;
 
   /// Made with `--dart-define=BAOCODE_CHANNEL=true`: the build the site
   /// gives a visitor who came by a channel.
@@ -336,6 +337,12 @@ class ChannelSetup extends ChangeNotifier {
   /// The install's id, the telemetry's (made here if it has none yet).
   final String installId;
   final ChannelLookUp lookUp;
+
+  /// Set up once already, asking the browser once more ([ChannelGate.
+  /// confirmAgain]): the id made for the asking, which the page's answer
+  /// comes with, and replaces what was kept (an answer without it, the
+  /// one before, not taken).
+  final String? again;
 
   /// Opens a page in the user's browser.
   final Future<bool> Function(Uri url) open;
@@ -375,12 +382,15 @@ class ChannelSetup extends ChangeNotifier {
     if (_done && !_started.isCompleted) _started.complete();
   }
 
-  Uri get lookUpUrl => Uri.parse('$lookUpBase$installId');
+  Uri get lookUpUrl =>
+      Uri.parse('$lookUpBase$installId${again == null ? '' : '?again=$again'}');
 
   /// The page, in Chinese for a Chinese app (its English one sends a
   /// Chinese browser there too).
-  Uri page({required bool zh}) =>
-      Uri.parse('${zh ? zhPageUrl : pageUrl}#i=$installId');
+  Uri page({required bool zh}) => Uri.parse(
+    '${zh ? zhPageUrl : pageUrl}#i=$installId'
+    '${again == null ? '' : '&again=$again'}',
+  );
 
   /// Asked once as the welcome shows: done already, in a run before
   /// (quit while the page sent it).

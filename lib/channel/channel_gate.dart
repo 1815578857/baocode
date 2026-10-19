@@ -17,7 +17,8 @@ enum ChannelStage {
   offline,
 
   /// Not a channel the site lists (or not one at all: the user did not
-  /// come from one), or one without an account site: not to be used.
+  /// come from one), or one without an account site: not to be used, but
+  /// asked of the browser once more ([ChannelGate.confirmAgain]).
   unavailable,
 
   /// The user is to sign in to the channel's account site.
@@ -37,12 +38,13 @@ typedef ChannelEntryFetch = Future<ChannelEntry?> Function(String id);
 /// welcome till it is [ChannelStage.ready], and again once signed out.
 class ChannelGate extends ChangeNotifier {
   ChannelGate({
-    required this.setup,
+    required ChannelSetup? setup,
     required this.setupStore,
     required this.accountStore,
     required this.fetch,
     required this.makeAccount,
-  }) {
+    this.makeSetupAgain,
+  }) : _setup = setup {
     setup?.addListener(_setupChanged);
   }
 
@@ -50,13 +52,18 @@ class ChannelGate extends ChangeNotifier {
   static ChannelGate? current;
 
   /// The first start's, while not done; null once it was (another run).
-  final ChannelSetup? setup;
+  /// Or the one asking again ([confirmAgain]).
+  ChannelSetup? get setup => _setup;
+  ChannelSetup? _setup;
   final ChannelSetupStore setupStore;
   final ChannelAccountStore accountStore;
   final ChannelEntryFetch fetch;
 
   /// The account on [ChannelShown]'s site, not yet loaded.
   final ChannelAccount Function(ChannelShown channel) makeAccount;
+
+  /// A setup to ask the browser once more with ([ChannelSetup.again]).
+  final ChannelSetup Function()? makeSetupAgain;
 
   ChannelShown? _channel;
   ChannelAccount? _account;
@@ -72,7 +79,7 @@ class ChannelGate extends ChangeNotifier {
   /// The account on its site, once there is one.
   ChannelAccount? get account => _account;
 
-  bool get _setUp => setup?.done ?? setupStore.state == ChannelSetup.doneState;
+  bool get _setUp => _setup?.done ?? setupStore.state == ChannelSetup.doneState;
 
   ChannelStage get stage {
     if (!_setUp) return ChannelStage.setup;
@@ -123,6 +130,21 @@ class ChannelGate extends ChangeNotifier {
     if (_finding) return;
     _asked = false;
     await find(_language ?? 'en');
+  }
+
+  /// [ChannelStage.unavailable]: asks the browser where the user came from
+  /// once more, as the setup did. They might have come by another channel
+  /// since, whose download replaces the one before (the site keeps the
+  /// latest in their browser). The setup's stage till it answers, then the
+  /// channel it says.
+  void confirmAgain() {
+    final make = makeSetupAgain;
+    if (make == null || stage != ChannelStage.unavailable) return;
+    _setup?.removeListener(_setupChanged);
+    _setup = make()..addListener(_setupChanged);
+    _asked = false;
+    _found = false;
+    notifyListeners();
   }
 
   /// The site's entry read, after [find]: done once it is (or could not
@@ -184,7 +206,7 @@ class ChannelGate extends ChangeNotifier {
 
   @override
   void dispose() {
-    setup?.removeListener(_setupChanged);
+    _setup?.removeListener(_setupChanged);
     _dropAccount();
     super.dispose();
   }

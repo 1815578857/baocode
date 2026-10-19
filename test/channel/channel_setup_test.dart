@@ -17,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'account_fakes.dart';
 
 const _id = '3f2b8c1e-9a4d-4f6b-8e2a-1c3d5e7f9a0b';
+const _again = '9c1d2e3f-4a5b-4c6d-8e7f-0a1b2c3d4e5f';
 
 /// As site/channels.json lists them.
 const _channels = <String, Object?>{
@@ -63,17 +64,20 @@ void main() {
   late MemoryChannelSetupStore store;
   late List<Uri> opened;
 
-  ChannelSetup setupOf({Duration poll = const Duration(milliseconds: 5)}) =>
-      ChannelSetup(
-        store: store,
-        installId: _id,
-        lookUp: server.lookUp,
-        open: (url) async {
-          opened.add(url);
-          return true;
-        },
-        pollInterval: poll,
-      );
+  ChannelSetup setupOf({
+    Duration poll = const Duration(milliseconds: 5),
+    String? again,
+  }) => ChannelSetup(
+    store: store,
+    installId: _id,
+    again: again,
+    lookUp: server.lookUp,
+    open: (url) async {
+      opened.add(url);
+      return true;
+    },
+    pollInterval: poll,
+  );
 
   setUp(() {
     server = FakeServer();
@@ -365,6 +369,25 @@ void main() {
       expect(store.state, isNull);
     });
 
+    test('asks once more, done before: the page and the server told the '
+        'asking, what it says replacing what was kept', () async {
+      store
+        ..state = ChannelSetup.doneState
+        ..attribution = const ChannelAttribution('channel', 'youtube');
+      final setup = setupOf(again: _again);
+      addTearDown(setup.dispose);
+      expect(setup.done, isFalse);
+      await setup.openPage(zh: false);
+      expect(opened, [
+        Uri.parse('https://baocode.dev/activate#i=$_id&again=$_again'),
+      ]);
+      server.kept = const ChannelAttribution('channel', 'aijws');
+      await until(() => setup.done);
+      expect(server.asked.first, Uri.parse('$lookUpBase$_id?again=$_again'));
+      expect(store.attribution, const ChannelAttribution('channel', 'aijws'));
+      expect(store.state, ChannelSetup.doneState);
+    });
+
     test('tells its links from the other baocode:// links', () {
       expect(ChannelSetup.isLink('baocode://activate?i=x'), isTrue);
       expect(ChannelSetup.isLink('baocode://provider/import?v=1'), isFalse);
@@ -409,6 +432,7 @@ void main() {
       ChannelSetup? setup, {
       List<String>? troubles,
       Map<String, Object?>? channels,
+      ChannelSetup Function()? again,
     }) async {
       tester.view.physicalSize = const Size(1000, 900);
       tester.view.devicePixelRatio = 1;
@@ -439,6 +463,7 @@ void main() {
           },
           pollInterval: const Duration(milliseconds: 100),
         ),
+        makeSetupAgain: again,
       );
       addTearDown(gate.dispose);
       late BuildContext context;
@@ -578,6 +603,55 @@ void main() {
       expect(find.text('这个渠道暂时用不了'), findsOneWidget);
       await tester.tap(find.text('遇到问题？'));
       expect(troubles, ['trouble']);
+    });
+
+    testWidgets('asks the browser once more for a channel it cannot be used '
+        'with: one come by since, which has accounts, welcomed', (
+      tester,
+    ) async {
+      store
+        ..state = ChannelSetup.doneState
+        ..attribution = const ChannelAttribution('channel', 'youtube');
+      final asking = <ChannelSetup>[];
+      final shown = await open(
+        tester,
+        null,
+        channels: {
+          'youtube': {
+            'name': {'zh': 'YouTube', 'en': 'YouTube'},
+          },
+          'aijws': {
+            'name': {'zh': '贾维斯', 'en': 'JARVIS'},
+            'account': {'type': 'newapi', 'url': 'https://panel.example'},
+          },
+        },
+        again: () {
+          final setup = setupOf(
+            poll: const Duration(seconds: 3),
+            again: _again,
+          );
+          asking.add(setup);
+          return setup;
+        },
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('这个渠道暂时用不了'), findsOneWidget);
+      await tester.tap(find.text('去浏览器确认'));
+      await tester.pump();
+      expect(opened, [
+        Uri.parse('https://baocode.dev/zh/activate#i=$_id&again=$_again'),
+      ]);
+      expect(shown.gate.stage, ChannelStage.setup);
+      expect(find.text('正在等待浏览器完成…'), findsOneWidget);
+
+      server.kept = const ChannelAttribution('channel', 'aijws');
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1600));
+      expect(store.attribution, const ChannelAttribution('channel', 'aijws'));
+      expect(find.text('欢迎使用 贾维斯'), findsOneWidget);
+      expect(shown.gate.stage, ChannelStage.signIn);
+      asking.single.dispose();
     });
 
     testWidgets('takes the page’s link pasted, after saying what is wrong '

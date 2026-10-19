@@ -154,6 +154,12 @@ class _ChannelSetupWelcomeState extends State<ChannelSetupWelcome>
 
   void _retry() => unawaited(_gate.retry());
 
+  /// Not a channel with accounts: the browser asked once more, at once.
+  void _confirmAgain() {
+    _gate.confirmAgain();
+    _open();
+  }
+
   void _paste() {
     final result = _setup?.acceptLink(_link.text);
     setState(() => _linkResult = result);
@@ -394,7 +400,28 @@ class _ChannelSetupWelcomeState extends State<ChannelSetupWelcome>
                 ),
                 onPressed: _open,
               )
-            else if (stuck)
+            else if (stage == ChannelStage.unavailable &&
+                _gate.makeSetupAgain != null) ...[
+              IdeButton(
+                label: l10n.channelSetupRetry,
+                secondary: true,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
+                onPressed: _retry,
+              ),
+              const SizedBox(width: 8),
+              IdeButton(
+                label: l10n.channelSetupConfirmAgain,
+                icon: Codicons.linkExternal,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
+                onPressed: _confirmAgain,
+              ),
+            ] else if (stuck)
               IdeButton(
                 label: l10n.channelSetupRetry,
                 padding: const EdgeInsets.symmetric(
