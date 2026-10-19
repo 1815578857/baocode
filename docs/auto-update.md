@@ -291,7 +291,7 @@ https://dl.baocode.dev/
 | `pubDate` | 否 | ISO 8601 格式，目前只是记录下来 |
 | `notes` | 否 | `{语言: 文本}`，也可以直接写一个字符串（当作英文）。界面按应用语言取，取不到用 `en`，再取不到用任意一种 |
 | `minimumVersion` | 否 | 低于它的版本视为强制更新。格式写错时整份清单都会被拒绝 |
-| `platforms` | 是 | 平台键目前有 `windows-x64`、`macos-arm64`、`macos-x64`。Mac 按自己的处理器选：Apple silicon 取 `macos-arm64`；Intel 取 `macos-x64`；Intel 版在 Apple silicon 上经 Rosetta 运行时（`sysctl.proc_translated` 为 1）取 `macos-arm64`，借这次更新换成原生版（`installer_io.dart` 的 `macUpdatePlatform`）。1.0.0 最早发的是 universal 包、键是 `macos-universal`，那些安装找不到更新，要重新下载。渠道版（`BAOCODE_CHANNEL`）取同一个键后面加 `-channel`（`windows-x64-channel`…，`editionUpdatePlatform`），签名里包含平台键，所以两个版本各自只更新成自己 |
+| `platforms` | 是 | 平台键目前有 `windows-x64`、`macos-arm64`、`macos-x64`。Mac 按自己的处理器选：Apple silicon 取 `macos-arm64`；Intel 取 `macos-x64`；Intel 版在 Apple silicon 上经 Rosetta 运行时（`sysctl.proc_translated` 为 1）取 `macos-arm64`，借这次更新换成原生版（`installer_io.dart` 的 `macUpdatePlatform`）。1.0.0 最早发的是 universal 包、键是 `macos-universal`，那些安装找不到更新，要重新下载 |
 | `url` | 是 | 见 5.3 |
 | `size` | 是 | 正整数，单位字节 |
 | `sha256` | 是 | 64 位十六进制，大小写都可以 |

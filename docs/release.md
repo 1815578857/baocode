@@ -124,7 +124,7 @@ git tag -f v1.2.0 && git push origin v1.2.0      # 打在现在的提交上，�
 
 CI 会照常构建，覆盖 R2 上的文件，重新建 GitHub Release。
 
-**只想试一下构建**：Actions → Release → Run workflow。只构建、不发布，产物在这次运行的 Artifacts 里（要登录 GitHub 才能下载）。`editions` 选构建哪个版本：`both`（默认）、`standard`、`channel`。
+**只想试一下构建**：Actions → Release → Run workflow。只构建、不发布，产物在这次运行的 Artifacts 里（要登录 GitHub 才能下载）。
 
 **打测试包给别人**：在要测的提交上打一个 `test-` 开头的标签并推送：
 
@@ -139,7 +139,6 @@ CI 照常构建，然后把安装包传到 `dl.baocode.dev/test/<版本>-<标签
 - macOS 包的签名和正式版一样（现在是 ad hoc，第一次打开要在 系统设置 → 隐私与安全性 里点“仍要打开”；配上 7.3 的证书后两者都会正式签名）。
 - 远程服务端也会传到 `releases/remote/<它的版本>/`（按内容定版本，不影响已发布的），测试包连 SSH 主机时要用。
 - 旧测试包不会自动删：可以在 R2 存储桶的 Settings → Object lifecycle rules 给前缀 `test/` 加一条“30 天后删除”。
-- `test-` 标签只打普通版。只测渠道版（`lib/channel/`）就用 `test-channel-` 开头的标签（如 `test-channel-login`），只打渠道版，文件名带 `-channel`，其余同上；它也匹配 `test-*`，环境不用改。
 
 **单独发布远程服务端**：在要发的提交上打一个 `server-` 开头的标签并推送：
 
@@ -176,11 +175,8 @@ dart run tool/build_macos.dart --remote-release              # macOS 同理
 | `windows` | Windows | 装 Inno Setup → `tool/build_windows.dart --remote-built`：构建、放进 `servers.json`、打安装包 |
 | `publish` | Ubuntu | 汇总产物 → 用更新私钥签 `latest.json`（`tool/release_manifest.dart`，带上 dmg 给网站用）→ 上传远程服务端 → 上传安装包 → 按清单里的链接确认 CDN 给出的文件大小对 → **最后**上传 `latest.json` → 建 GitHub Release（附两个 dmg 和 exe；重新发布时先删掉旧的） |
 
-`macos`、`windows`、`linux` 每个版本各跑一份（`check` 的 `editions`）：`v*` 是普通版和渠道版两个，`test-channel-*` 只有渠道版，其他 `test-*` 只有普通版。渠道版就是给构建脚本加 `--channel`（Linux 还要装 WebKitGTK、带 `BAOCODE_CHANNEL=true`），产物名和文件名都多一个 `-channel`。
-
 几个设计上的考虑：
 
-- **正式版总是两个版本一起发**：渠道版的安装包签在自己的平台键下（`windows-x64-channel`、`macos-arm64-channel`、`linux-x64-channel`…），渠道版只从这些键更新，普通版只从原来的键更新，谁也不会被更新成另一个版本。所以每次发版两个都要有，不然渠道版用户收不到更新（`release_manifest.dart` 会提示少了哪些）。`downloads` 里每个系统的渠道版放在 `channel` 下，官网只给从登记过的渠道进来的访客。
 - **`latest.json` 最后传**：应用一读到新清单就会去下载，安装包必须先就位。
 - **远程服务端只编译一次**：`remote` 任务编译，macOS 和 Windows 两个应用带的是同一份 `servers.json`（四个平台都有），R2 上一个版本只有一个 `releases/remote/<版本>-<二进制哈希>/`。
 - **下载链接带哈希**：`latest.json` 里每个链接末尾是 `?sha256=<文件哈希前 16 位>`。CDN 按完整地址缓存，文件换了地址就换了，不会给出旧文件；应用取文件名时只看路径。
@@ -201,7 +197,6 @@ releases/
     BaoCode-1.2.0-mac-x64.zip            macOS Intel：自动更新         immutable，一年
     BaoCode-1.2.0-arm64.dmg              macOS Apple silicon：首次安装 immutable，一年
     BaoCode-1.2.0-x64.dmg                macOS Intel：首次安装         immutable，一年
-    BaoCode-1.2.0-…-channel.*            上面每个的渠道版，文件名多 -channel
   remote/
     latest.json                          最新发布的服务端（--remote-release 用） max-age=60
     <VERSION>/                           远程服务端，应用连远程主机时按需下载

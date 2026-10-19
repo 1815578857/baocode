@@ -14,23 +14,10 @@ served as it is, `/download` being `download.html`.
   handed on to the app (`baocode://provider/import`); `upstreams.html`, how
   a site adds it. See `docs/upstream-import.md`.
 - `site.js` keeps, on any page, where a visitor came from (`?abc` after
-  any page's address, the site linking here, or direct), and gives the
-  channel build to those who came through a channel listed with its
-  account site, the standard build to anyone else; `head.js` hides what a channel changes until it is
-  in; `activate.html`, `activate.js`: what the channel build opens on its
-  first start, to send it to stats.baocode.dev; `channels.json` and
-  `channels/` (their logos), the channels listed, shown by the brand, in
-  the home page's title and subtitle; and in the channel build once set up
-  (lib/channel/): its name; the site its users sign in to, without which
-  the channel build cannot be used, `account: {type, url, apiUrl?,
-  protocol?}` (`type` `newapi` or `sub2api`, the panel it runs; `url` the
-  panel's, HTTPS, opened in the app's login window; `apiUrl` where its
-  keys' models are, the panel's unless given; `protocol` `anthropic`,
-  `openai-chat` or `openai-responses`, else the key's group's where
-  sub2api tells, else Anthropic's); and its welcome, `welcome: {title,
-  text, button?}` (each text `{zh, en}`; "Welcome to <name>" and Sign In
-  unless given). `BAOCODE_CHANNELS_URL=http://127.0.0.1:<port>`, `site/`
-  served there, shows one before it is published.
+  any page's address, the site linking here, or direct); `head.js`,
+  `activate.html`, `activate.js`, `channels.json` and `channels/`: the
+  channels listed (lib/channel/). A channel asks to be listed with the
+  `channel` issue template.
 - `shots/`: the screenshots on the page.
 - `sounds/`: the notification sound the page plays.
 - `qr/`: the phone cards' QR codes, made by

@@ -142,6 +142,8 @@ jobs:
     needs: [check, remote]
     runs-on: macos-15
     strategy:
+      # One edition failing leaves the other building, to be re-run alone.
+      fail-fast: false
       matrix:
         edition: ${{ fromJSON(needs.check.outputs.editions) }}
     # The Developer ID certificate and the notary key are the release
@@ -233,6 +235,8 @@ jobs:
     needs: [check, remote]
     runs-on: windows-latest
     strategy:
+      # One edition failing leaves the other building, to be re-run alone.
+      fail-fast: false
       matrix:
         edition: ${{ fromJSON(needs.check.outputs.editions) }}
     env:
@@ -265,6 +269,8 @@ jobs:
     # runs on from there up.
     runs-on: ${{ matrix.runner }}
     strategy:
+      # One edition failing leaves the other building, to be re-run alone.
+      fail-fast: false
       matrix:
         arch: [x64, arm64]
         edition: ${{ fromJSON(needs.check.outputs.editions) }}
