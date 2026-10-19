@@ -110,7 +110,8 @@ class IdeEditor extends StatefulWidget {
 
   /// Opens a go-to target (the workbench records navigation history and
   /// opens other files); without it only targets in the active document
-  /// are revealed.
+  /// are revealed, centered even when already in view (where Go to
+  /// Definition lands is what one reads next).
   final Future<void> Function(IdeLocation location)? onOpenLocation;
 
   /// Lists references (or several definitions) in the workbench's panel.
@@ -513,7 +514,9 @@ class IdeEditorState extends State<IdeEditor> {
 
   Future<void> _openLocation(IdeLocation location) async {
     if (widget.onOpenLocation case final open?) return open(location);
-    if (location.path == widget.active.path) revealRange(location.range);
+    if (location.path == widget.active.path) {
+      revealRange(location.range, center: true);
+    }
   }
 
   /// The language session of the active document (tests and the
@@ -538,8 +541,8 @@ class IdeEditorState extends State<IdeEditor> {
 
   /// Selects the protocol [range] (or places the caret at its start unless
   /// [select]) in the active document and scrolls it into view, centered
-  /// when it was outside the viewport.
-  void revealRange(LspRange range, {bool select = false}) {
+  /// when it was outside the viewport, or always when [center].
+  void revealRange(LspRange range, {bool select = false, bool center = false}) {
     final snapshot = widget.active.model.snapshot;
     final (start, end) = lspOffsetsOf(snapshot, range);
     if (widget.nativeEditorEnabled) {
@@ -554,7 +557,7 @@ class IdeEditorState extends State<IdeEditor> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final view = _surfaceKey.currentState;
         if (mounted && view is EditorSurfaceView) {
-          (view as EditorSurfaceView).revealRange(start, end);
+          (view as EditorSurfaceView).revealRange(start, end, center: center);
         }
       });
       WidgetsBinding.instance.scheduleFrame();

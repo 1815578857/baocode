@@ -313,8 +313,9 @@ abstract interface class EditorSurfaceView {
   /// text of a line.
   int? textOffsetAt(Offset position);
 
-  /// Scrolls so that `[start, end)` is visible, centered when it is not.
-  void revealRange(int start, int end);
+  /// Scrolls so that `[start, end)` is visible, centered when it is not,
+  /// or always when [center].
+  void revealRange(int start, int end, {bool center = false});
 
   double get lineHeight;
 
@@ -902,13 +903,13 @@ class _EditorSurfaceState extends State<EditorSurface>
   }
 
   @override
-  void revealRange(int start, int end) {
+  void revealRange(int start, int end, {bool center = false}) {
     final layout = _layout;
     if (layout == null) return;
     final length = layout.snapshot.text.length;
     final caret = layout.caretRect(start.clamp(0, length));
     final h = layout.viewportSize.height;
-    if (caret.top >= 0 && caret.bottom <= h) return;
+    if (!center && caret.top >= 0 && caret.bottom <= h) return;
     _scrollToCaret = false;
     _setScroll(top: _scrollTop + caret.top - (h - layout.lineHeight) / 2);
   }

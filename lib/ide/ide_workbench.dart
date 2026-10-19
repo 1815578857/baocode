@@ -826,9 +826,13 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     }
   }
 
-  void _revealRange(LspRange range, {bool select = false}) {
+  void _revealRange(
+    LspRange range, {
+    bool select = false,
+    bool center = false,
+  }) {
     if (_editor case final editor?) {
-      editor.revealRange(range, select: select);
+      editor.revealRange(range, select: select, center: center);
     } else {
       _preview?.revealLine(range.start.line + 1);
     }
@@ -1608,6 +1612,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     int? column,
     LspRange? range,
     bool select = false,
+    bool center = false,
     bool focusEditor = false,
     VoidCallback? afterReveal,
   }) async {
@@ -1626,7 +1631,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           if (range != null) {
-            _revealRange(range, select: select);
+            _revealRange(range, select: select, center: center);
             afterReveal?.call();
           } else if (line != null) {
             _revealLine(line, column ?? 1);
@@ -2063,12 +2068,13 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   Future<void> _openLocation(
     IdeLocation location, {
     bool select = false,
+    bool center = false,
     bool record = true,
     VoidCallback? afterReveal,
   }) async {
     if (record) _recordNavigation(_here());
     if (widget.workspace.active?.path == location.path) {
-      _revealRange(location.range, select: select);
+      _revealRange(location.range, select: select, center: center);
       afterReveal?.call();
       if (mounted) setState(() {});
       return;
@@ -2077,6 +2083,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       location.path,
       range: location.range,
       select: select,
+      center: center,
       focusEditor: true,
       afterReveal: afterReveal,
     );
@@ -4026,7 +4033,10 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                                 onError: _report,
                                 onLspStatus: (_) {},
                                 onPositionChanged: _positionChanged,
-                                onOpenLocation: _openLocation,
+                                // Go to Definition's target (F12),
+                                // centered even when already in view.
+                                onOpenLocation: (location) =>
+                                    _openLocation(location, center: true),
                                 onShowReferences: _showReferences,
                                 onShowCommands: () => _showQuickInput('>'),
                                 gitBlame: _gitBlame,

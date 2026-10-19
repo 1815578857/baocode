@@ -583,6 +583,36 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('revealRange leaves a visible range be, and centers it when '
+      'asked to', (tester) async {
+    final controller = _controller(
+      List.generate(200, (i) => 'line $i').join('\n'),
+    );
+    controller.select(0, 0);
+    await _mount(tester, controller);
+    final view = tester.state(find.byType(EditorSurface)) as EditorSurfaceView;
+    final area = view.textArea!;
+    final lineHeight = view.lineHeight;
+    // The second line from the bottom of the viewport.
+    final line = (area.height / lineHeight).floor() - 2;
+    final target = controller.document.snapshot.lineStarts[line];
+    final before = view.caretRectAt(target)!;
+    expect(before.bottom, lessThanOrEqualTo(area.bottom));
+    expect(before.bottom, greaterThan(area.bottom - 3 * lineHeight));
+
+    view.revealRange(target, target + 1);
+    await tester.pump();
+    expect(view.caretRectAt(target)!.top, before.top);
+    expect(_gutter(tester).scrollTop, 0);
+
+    view.revealRange(target, target + 1, center: true);
+    await tester.pump();
+    expect(
+      view.caretRectAt(target)!.top,
+      closeTo(area.top + (area.height - lineHeight) / 2, 0.5),
+    );
+  });
+
   testWidgets('wheel scrolls, shift+wheel scrolls horizontally, beyond end', (
     tester,
   ) async {
