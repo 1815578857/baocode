@@ -13,6 +13,9 @@ const MANIFEST = 'https://dl.baocode.dev/releases/latest.json';
 const MOBILE_MANIFEST = 'https://dl.baocode.dev/releases/mobile/latest.json';
 const EXTENSION_MANIFEST = 'https://dl.baocode.dev/releases/extension/latest.json';
 const MOBILE = new Set(['android', 'ios']);
+// The phone app is off the site for now: its links go to the download page
+// instead of to a build. False brings them back.
+const MOBILE_OFFLINE = true;
 const EXTENSION = new Set(['browser-extension', 'chrome-web-store']);
 const EXTENSION_ID = 'jfjagocghaaheooicmdnhcholmgdkngk';
 
@@ -21,6 +24,12 @@ export default {
     const { pathname } = new URL(request.url);
     const os = pathname.match(/^\/dl\/([a-z0-9-]+)\/?$/)?.[1];
     if (!os) return env.ASSETS.fetch(request);
+    if (MOBILE.has(os) && MOBILE_OFFLINE) {
+      return new Response(null, {
+        status: 302,
+        headers: { Location: '/download', 'Cache-Control': 'no-store' },
+      });
+    }
     let manifest;
     try {
       const url = MOBILE.has(os) ? MOBILE_MANIFEST : EXTENSION.has(os) ? EXTENSION_MANIFEST : MANIFEST;
