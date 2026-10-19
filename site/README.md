@@ -14,8 +14,9 @@ served as it is, `/download` being `download.html`.
   handed on to the app (`baocode://provider/import`); `upstreams.html`, how
   a site adds it. See `docs/upstream-import.md`.
 - `site.js` keeps, on any page, where a visitor came from (`?abc` after
-  any page's address, the site linking here, or direct), and gives them
-  the channel build; `head.js` hides what a channel changes until it is
+  any page's address, the site linking here, or direct), and gives the
+  channel build to those who came through a channel listed with its
+  account site, the standard build to anyone else; `head.js` hides what a channel changes until it is
   in; `activate.html`, `activate.js`: what the channel build opens on its
   first start, to send it to stats.baocode.dev; `channels.json` and
   `channels/` (their logos), the channels listed, shown by the brand, in

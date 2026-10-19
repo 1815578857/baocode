@@ -2,12 +2,19 @@
 # (Cloudflare R2), where installed apps find their updates. docs/release.md
 # has the whole of it: versions, secrets, what goes where.
 #
-#   git tag v1.2.0 && git push origin v1.2.0   build and publish 1.2.0
+#   git tag v1.2.0 && git push origin v1.2.0   build and publish 1.2.0, the
+#                                              standard build and the channel
+#                                              build (lib/channel/), each
+#                                              updating to its own
 #   git tag test-foo && git push origin test-foo
 #                                              build, and put the installers
 #                                              at dl.baocode.dev/test/…, to
 #                                              send to testers (no update)
+#   git tag test-channel-foo && git push origin test-channel-foo
+#                                              the same, of the channel build
+#                                              alone
 #   Actions → Release → Run workflow           build only, to try the build
+#                                              (the editions asked for)
 #
 # The remote server alone: a server-* tag (remote.yml, which this calls).
 #
@@ -20,6 +27,12 @@ on:
   push:
     tags: ['v*', 'test-*']
   workflow_dispatch:
+    inputs:
+      editions:
+        description: The builds to make
+        type: choice
+        default: both
+        options: [both, standard, channel]
 
 permissions:
   contents: read
@@ -43,10 +56,13 @@ jobs:
       marketing: ${{ steps.version.outputs.marketing }}
       publish: ${{ steps.version.outputs.publish }}
       share: ${{ steps.version.outputs.share }}
+      editions: ${{ steps.version.outputs.editions }}
     steps:
       - uses: actions/checkout@v4
       - id: version
         name: Read pubspec.yaml's version, and match the tag against it
+        env:
+          EDITIONS: ${{ inputs.editions }}
         run: |
           version=$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml)
           marketing=${version%%+*}
@@ -62,8 +78,19 @@ jobs:
           fi
           publish=false
           share=false
-          if [ "$GITHUB_REF_TYPE" = tag ] && [[ "$GITHUB_REF_NAME" == test-* ]]; then
+          # A release has both: each edition's installs update to its own.
+          editions='["standard","channel"]'
+          if [ "$GITHUB_REF_TYPE" = tag ] && [[ "$GITHUB_REF_NAME" == test-channel-* ]]; then
             share=true
+            editions='["channel"]'
+          elif [ "$GITHUB_REF_TYPE" = tag ] && [[ "$GITHUB_REF_NAME" == test-* ]]; then
+            share=true
+            editions='["standard"]'
+          elif [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            case "$EDITIONS" in
+              standard) editions='["standard"]' ;;
+              channel) editions='["channel"]' ;;
+            esac
           elif [ "$GITHUB_REF_TYPE" = tag ]; then
             if [ "$GITHUB_REF_NAME" != "v$marketing" ]; then
               echo "::error::Tag $GITHUB_REF_NAME, but pubspec.yaml is $version: the tag has to be v$marketing"
@@ -76,7 +103,9 @@ jobs:
             echo "marketing=$marketing"
             echo "publish=$publish"
             echo "share=$share"
+            echo "editions=$editions"
           } >> "$GITHUB_OUTPUT"
+          echo "Builds: $editions"
       - name: Be no older than the version published
         if: steps.version.outputs.publish == 'true'
         env:
@@ -106,10 +135,15 @@ jobs:
     needs: check
     uses: ./.github/workflows/remote.yml
 
+  # Each build once per edition (check's editions): the channel build's
+  # files and artifacts end in -channel.
   macos:
-    name: Build for macOS
+    name: Build for macOS (${{ matrix.edition }})
     needs: [check, remote]
     runs-on: macos-15
+    strategy:
+      matrix:
+        edition: ${{ fromJSON(needs.check.outputs.editions) }}
     # The Developer ID certificate and the notary key are the release
     # environment's secrets, for its tags only (v*, and test-* for testers).
     # Without them (a build only, or before they are set) the app is signed
@@ -120,6 +154,7 @@ jobs:
       MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
       MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
       NOTARY_KEY: ${{ secrets.NOTARY_KEY }}
+      SUFFIX: ${{ matrix.edition == 'channel' && '-channel' || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -157,7 +192,7 @@ jobs:
           BAOCODE_MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
           BAOCODE_NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
           BAOCODE_NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER }}
-        run: dart run tool/build_macos.dart --remote-built
+        run: dart run tool/build_macos.dart --remote-built ${{ matrix.edition == 'channel' && '--channel' || '' }}
       - name: Launch each app, as an update installs it
         run: |
           # A valid signature is not enough: dyld can still refuse to load
@@ -167,7 +202,7 @@ jobs:
           for arch in arm64 x64; do
             dir="$RUNNER_TEMP/launch-$arch"
             mkdir "$dir"
-            ditto -x -k build/installers/BaoCode-*-mac-$arch.zip "$dir"
+            ditto -x -k build/installers/BaoCode-*-mac-$arch$SUFFIX.zip "$dir"
             BAOCODE_DATA_DIR="$dir-data" \
               "$dir/BaoCode.app/Contents/MacOS/BaoCode" > "$dir.log" 2>&1 &
             pid=$!
@@ -182,7 +217,7 @@ jobs:
           done
       - uses: actions/upload-artifact@v4
         with:
-          name: macos
+          name: macos${{ env.SUFFIX }}
           if-no-files-found: error
           path: |
             build/installers/BaoCode-*.dmg
@@ -194,9 +229,14 @@ jobs:
           rm -f "$RUNNER_TEMP/notary.p8"
 
   windows:
-    name: Build for Windows
+    name: Build for Windows (${{ matrix.edition }})
     needs: [check, remote]
     runs-on: windows-latest
+    strategy:
+      matrix:
+        edition: ${{ fromJSON(needs.check.outputs.editions) }}
+    env:
+      SUFFIX: ${{ matrix.edition == 'channel' && '-channel' || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -211,26 +251,33 @@ jobs:
           name: remote
           path: build/remote
       - name: Build
-        run: dart run tool/build_windows.dart --remote-built
+        run: dart run tool/build_windows.dart --remote-built ${{ matrix.edition == 'channel' && '--channel' || '' }}
       - uses: actions/upload-artifact@v4
         with:
-          name: windows
+          name: windows${{ env.SUFFIX }}
           if-no-files-found: error
-          path: build/installers/BaoCode-*-setup.exe
+          path: build/installers/BaoCode-*-setup${{ env.SUFFIX }}.exe
 
   linux:
-    name: Build for Linux (${{ matrix.arch }})
+    name: Build for Linux (${{ matrix.arch }}, ${{ matrix.edition }})
     needs: [check, remote]
     # The oldest Ubuntu built on: its glibc and GTK are what the package
     # runs on from there up.
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
+        arch: [x64, arm64]
+        edition: ${{ fromJSON(needs.check.outputs.editions) }}
         include:
           - arch: x64
             runner: ubuntu-22.04
           - arch: arm64
             runner: ubuntu-22.04-arm
+    env:
+      SUFFIX: ${{ matrix.edition == 'channel' && '-channel' || '' }}
+      # The channel build's login window is WebKitGTK's
+      # (linux/runner/CMakeLists.txt).
+      BAOCODE_CHANNEL: ${{ matrix.edition == 'channel' && 'true' || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -253,15 +300,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev \
             liblzma-dev libstdc++-12-dev xvfb dbus-x11
+          if [ "$BAOCODE_CHANNEL" = true ]; then
+            sudo apt-get install -y libwebkit2gtk-4.1-dev
+          fi
       - uses: actions/download-artifact@v4
         with:
           name: remote
           path: build/remote
       - name: Build
-        run: flutter build linux --release
+        run: flutter build linux --release ${{ matrix.edition == 'channel' && '--dart-define=BAOCODE_CHANNEL=true' || '' }}
       - name: Package the .deb and the tarball
         run: |
-          sh tool/package_linux_deb.sh
+          sh tool/package_linux_deb.sh ${{ matrix.edition == 'channel' && '--channel' || '' }}
           dpkg-deb --info build/installers/BaoCode-*.deb
       - name: Install the package and launch it
         run: |
@@ -307,7 +357,7 @@ jobs:
           pkill -x baocode || true
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-${{ matrix.arch }}
+          name: linux-${{ matrix.arch }}${{ env.SUFFIX }}
           if-no-files-found: error
           path: |
             build/installers/BaoCode-*.deb
@@ -332,14 +382,17 @@ jobs:
       AWS_REQUEST_CHECKSUM_CALCULATION: when_required
       AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
     steps:
+      # Each edition built (macos, macos-channel…).
       - uses: actions/download-artifact@v4
         with:
-          name: macos
+          pattern: macos*
           path: dist/macos
+          merge-multiple: true
       - uses: actions/download-artifact@v4
         with:
-          name: windows
+          pattern: windows*
           path: dist/windows
+          merge-multiple: true
       - uses: actions/download-artifact@v4
         with:
           pattern: linux-*
@@ -363,7 +416,7 @@ jobs:
             echo "## For testers: $MARKETING, \`$GITHUB_REF_NAME\` (${GITHUB_SHA::7})"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
-          for file in dist/macos/BaoCode-*.dmg dist/windows/BaoCode-*-setup.exe dist/linux/BaoCode-*.deb; do
+          for file in dist/macos/BaoCode-*.dmg dist/windows/BaoCode-*-setup*.exe dist/linux/BaoCode-*.deb; do
             name=$(basename "$file")
             aws s3 cp "$file" "s3://$R2_BUCKET/$dir/$name" --cache-control 'public, max-age=86400'
             url="https://dl.baocode.dev/$dir/$name"
@@ -407,12 +460,17 @@ jobs:
       - name: Gather the files
         run: |
           mkdir -p out
-          for arch in arm64 x64; do
-            cp dist/macos/BaoCode-$MARKETING-$arch.dmg dist/macos/BaoCode-$MARKETING-mac-$arch.zip out/
-          done
-          cp dist/windows/BaoCode-$MARKETING-setup.exe out/
-          for arch in x64 arm64; do
-            cp dist/linux-$arch/BaoCode-$MARKETING-linux-*.deb dist/linux-$arch/BaoCode-$MARKETING-linux-*.tar.gz out/
+          # The standard build, then the channel build's, ending in -channel.
+          for edition in '' -channel; do
+            for arch in arm64 x64; do
+              cp dist/macos$edition/BaoCode-$MARKETING-$arch$edition.dmg \
+                dist/macos$edition/BaoCode-$MARKETING-mac-$arch$edition.zip out/
+            done
+            cp dist/windows$edition/BaoCode-$MARKETING-setup$edition.exe out/
+            for arch in x64 arm64; do
+              cp dist/linux-$arch$edition/BaoCode-$MARKETING-linux-*.deb \
+                dist/linux-$arch$edition/BaoCode-$MARKETING-linux-*.tar.gz out/
+            done
           done
           # The remote server, under the name both apps' servers.json give it;
           # servers.json too, for an app packaged with --remote-release.
@@ -436,15 +494,21 @@ jobs:
               echo "::warning::No $file: the update notification and the changelog say nothing of $MARKETING"
             fi
           done
+          files=()
+          for edition in '' -channel; do
+            files+=(
+              --windows$edition out/BaoCode-$MARKETING-setup$edition.exe
+              --macos-arm64$edition out/BaoCode-$MARKETING-mac-arm64$edition.zip
+              --macos-x64$edition out/BaoCode-$MARKETING-mac-x64$edition.zip
+              --dmg-arm64$edition out/BaoCode-$MARKETING-arm64$edition.dmg
+              --dmg-x64$edition out/BaoCode-$MARKETING-x64$edition.dmg
+              --linux-x64$edition out/BaoCode-$MARKETING-linux-amd64$edition.deb
+              --linux-arm64$edition out/BaoCode-$MARKETING-linux-arm64$edition.deb
+            )
+          done
           BAOCODE_UPDATE_SIGNING_KEY="$key" dart run tool/release_manifest.dart \
             --version "$VERSION" \
-            --windows out/BaoCode-$MARKETING-setup.exe \
-            --macos-arm64 out/BaoCode-$MARKETING-mac-arm64.zip \
-            --macos-x64 out/BaoCode-$MARKETING-mac-x64.zip \
-            --dmg-arm64 out/BaoCode-$MARKETING-arm64.dmg \
-            --dmg-x64 out/BaoCode-$MARKETING-x64.dmg \
-            --linux-x64 out/BaoCode-$MARKETING-linux-amd64.deb \
-            --linux-arm64 out/BaoCode-$MARKETING-linux-arm64.deb \
+            "${files[@]}" \
             --manifest out/latest.json \
             "${notes[@]}"
           rm "$key"
@@ -467,7 +531,7 @@ jobs:
           # At the manifest's links, which end in each file's hash: what
           # users will be given, not what the CDN may have kept of a
           # release published before under the same names.
-          jq -r '(.downloads[], .platforms[]) | "\(.url) \(.size)"' out/latest.json | sort -u |
+          jq -r '(.downloads[], (.downloads[].channel // empty), .platforms[]) | "\(.url) \(.size)"' out/latest.json | sort -u |
           while read -r url expected; do
             served=$(curl -fsSI "$url" | tr -d '\r' | awk 'tolower($1) == "content-length:" { print $2 }')
             echo "$url: $served bytes (expected $expected)"

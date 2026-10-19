@@ -98,12 +98,15 @@ const attribution = (() => {
 // download. Only listed ones, words as text, the logo from /channels/: an
 // address anyone can make up never puts anything on the page. head.js has
 // the places hidden meanwhile, and channels.json asked for.
-attribution.ready.then(async (kept) => {
-  if (kept?.source !== 'channel') return;
+const listedChannel = attribution.ready.then(async (kept) => {
+  if (kept?.source !== 'channel') return null;
   const channels = await (window.channelsJson || fetch('/channels.json').then((res) => res.json()).catch(() => null));
   // Own keys only: ?constructor is not a channel.
   const channel = channels && Object.hasOwn(channels, kept.value) ? channels[kept.value] : null;
-  if (!channel || typeof channel !== 'object') return;
+  return channel && typeof channel === 'object' ? channel : null;
+});
+listedChannel.then((channel) => {
+  if (!channel) return;
   const lang = document.documentElement.lang.startsWith('zh') ? 'zh' : 'en';
   const words = (field) => (typeof channel[field]?.[lang] === 'string' ? channel[field][lang].trim() : '');
   const logo = typeof channel.logo === 'string' && /^\/channels\/[\w.-]+$/.test(channel.logo) ? channel.logo : null;
@@ -246,6 +249,7 @@ for (const button of document.querySelectorAll('[data-sound]')) {
 // Each download's link and size, as a manifest gives them.
 function showDownloads(downloads, v) {
   for (const [os, file] of Object.entries(downloads || {})) {
+    if (!file?.url) continue;
     for (const a of document.querySelectorAll(`[data-file="${os}"]`)) {
       a.href = file.url;
       if (a.classList.contains('button')) a.title = `≈ ${Math.round(file.size / 1e6)} MB`;
@@ -255,10 +259,11 @@ function showDownloads(downloads, v) {
       el.textContent = `≈ ${Math.round(file.size / 1e6)} MB`;
     }
   }
-  // Whoever came through the site gets the channel build, where the
-  // manifest has one.
-  attribution.ready.then((kept) => {
-    if (!kept) return;
+  // Whoever came through a channel listed with its account site gets the
+  // channel build, where the manifest has one: anyone else could not use
+  // it (lib/channel/), and gets the standard build.
+  listedChannel.then((channel) => {
+    if (typeof channel?.account?.url !== 'string') return;
     for (const [os, file] of Object.entries(downloads || {})) {
       if (!file.channel?.url) continue;
       for (const a of document.querySelectorAll(`[data-file="${os}"]`)) a.href = file.channel.url;
