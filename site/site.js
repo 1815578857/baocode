@@ -1,3 +1,84 @@
+// Where the visitor first came to the site from (docs/attribution.md), kept
+// for good in IndexedDB and localStorage both, the first visit's only: a
+// channel's id after the ? of any page's address (?abc, ?ch=abc,
+// ?utm_source=abc, ?from=abc), else the site that linked here, else direct.
+// The channel build's first start opens /activate, which reads it back
+// and writes nothing; nor does /import, whose address is a visitor's key.
+// `ready`: what is kept once this page has kept it, null when the browser
+// keeps nothing.
+const attribution = (() => {
+  const KEY = 'attribution';
+  const VALUE = /^[\p{L}\p{N}._-]{1,128}$/u;
+  // What ad networks add to a link they show: not a channel.
+  const CLICK_IDS = new Set(['gclid', 'gbraid', 'wbraid', 'dclid', 'fbclid', 'msclkid', 'yclid', 'ttclid', 'twclid', 'li_fat_id', '_gl']);
+  const SOURCES = ['channel', 'referrer', 'direct'];
+  const valid = (r) => !!r && typeof r === 'object' && SOURCES.includes(r.source) && typeof r.at === 'string'
+    && (r.source === 'direct' ? r.value == null : typeof r.value === 'string' && VALUE.test(r.value));
+
+  // A browser that blocks storage may never answer: given up on after a while.
+  const within = (promise, ms, fallback) => Promise.race([promise, new Promise((done) => setTimeout(() => done(fallback), ms))]);
+  const store = (mode, use) => new Promise((resolve, reject) => {
+    const open = indexedDB.open('baocode', 1);
+    open.onupgradeneeded = () => open.result.createObjectStore('kv');
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const db = open.result;
+      const tx = db.transaction('kv', mode);
+      const request = use(tx.objectStore('kv'));
+      tx.oncomplete = () => { db.close(); resolve(request.result); };
+      tx.onerror = tx.onabort = () => { db.close(); reject(tx.error); };
+    };
+  });
+  const fromDb = () => within(store('readonly', (kv) => kv.get(KEY)).catch(() => null), 1500, null);
+  const toDb = (r) => within(store('readwrite', (kv) => kv.put(r, KEY)).then(() => true, () => false), 1500, false);
+  const fromLocal = () => { try { return JSON.parse(localStorage.getItem(`baocode.${KEY}`)); } catch { return null; } };
+  const toLocal = (r) => { try { localStorage.setItem(`baocode.${KEY}`, JSON.stringify(r)); return true; } catch { return false; } };
+
+  /** The earlier of the two kept, if either is. */
+  const kept = async () => [await fromDb(), fromLocal()].filter(valid).sort((a, b) => (a.at < b.at ? -1 : 1))[0] || null;
+
+  const channelIn = (search) => {
+    const params = new URLSearchParams(search);
+    const picks = [params.get('ch'), params.get('utm_source')];
+    for (const [name, value] of params) {
+      if (CLICK_IDS.has(name.toLowerCase()) || name.toLowerCase().startsWith('utm_')) continue;
+      picks.push(value || name);
+      break;
+    }
+    for (const pick of picks) {
+      const value = pick?.trim().toLowerCase();
+      if (value && VALUE.test(value)) return value;
+    }
+    return null;
+  };
+  const referrer = () => {
+    try {
+      const host = new URL(document.referrer).hostname.toLowerCase().replace(/^www\./, '');
+      if (host === 'baocode.dev' || host.endsWith('.baocode.dev')) return null;
+      return VALUE.test(host) ? host : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const ready = (async () => {
+    if (document.querySelector('[data-activate], [data-import]')) return kept();
+    let first = await kept();
+    if (!first) {
+      const channel = channelIn(location.search);
+      const host = channel ? null : referrer();
+      first = { source: channel ? 'channel' : host ? 'referrer' : 'direct', value: channel || host, at: new Date().toISOString() };
+      // Kept from being cleared to make room; Firefox would ask for it, so not there.
+      if (!/Firefox\//.test(navigator.userAgent)) navigator.storage?.persist?.().catch(() => {});
+    }
+    // Both again each time: one cleared, the other puts it back.
+    const [inDb, inLocal] = [await toDb(first), toLocal(first)];
+    return inDb || inLocal ? first : null;
+  })();
+
+  return { kept, ready };
+})();
+
 // Until a screenshot exists, its frame shows the file it is waiting for.
 for (const img of document.querySelectorAll('figure img')) {
   const missing = () => img.parentElement.classList.add('missing');
@@ -127,6 +208,15 @@ function showDownloads(downloads, v) {
       el.textContent = `≈ ${Math.round(file.size / 1e6)} MB`;
     }
   }
+  // Whoever came through the site gets the channel build, where the
+  // manifest has one (docs/attribution.md).
+  attribution.ready.then((first) => {
+    if (!first) return;
+    for (const [os, file] of Object.entries(downloads || {})) {
+      if (!file.channel?.url) continue;
+      for (const a of document.querySelectorAll(`[data-file="${os}"]`)) a.href = file.channel.url;
+    }
+  });
 }
 
 // The background grid: tilted, zooming in for ever. Each level of lines is

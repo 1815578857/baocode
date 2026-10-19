@@ -4,7 +4,7 @@
 # Inline style attributes only for /upstreams' sample buttons, which carry
 # their own style to be copied.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self'; media-src 'self'; connect-src 'self' https://dl.baocode.dev; frame-ancestors 'none'; base-uri 'self'; form-action 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self'; media-src 'self'; connect-src 'self' https://dl.baocode.dev https://stats.baocode.dev; frame-ancestors 'none'; base-uri 'self'; form-action 'none'
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
@@ -40,5 +40,13 @@
   Cache-Control: no-store
   X-Robots-Tag: noindex
 /zh/import
+  Cache-Control: no-store
+  X-Robots-Tag: noindex
+
+# The channel build's first start (activate.js, docs/attribution.md).
+/activate
+  Cache-Control: no-store
+  X-Robots-Tag: noindex
+/zh/activate
   Cache-Control: no-store
   X-Robots-Tag: noindex

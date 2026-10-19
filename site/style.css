@@ -61,6 +61,7 @@ h1 { margin: 0; font: 600 44px/1.15 var(--serif); letter-spacing: -.015em; color
 .button:hover { border-color: var(--faint); }
 .button.primary { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 .button.primary:hover { background: #000; }
+button.button { background: var(--paper); cursor: pointer; }
 .actions .note { margin-left: 6px; font-size: 13.5px; color: var(--muted); }
 /* What is new: a sand pill. */
 .pill-new { display: inline-block; margin-left: 12px; padding: 2px 9px; font: 600 12.5px/1.5 var(--sans); letter-spacing: .02em; vertical-align: .3em; color: #7A4E14; background: #F8EAD2; border: 1px solid #EDCF9E; border-radius: 999px; }
