@@ -188,7 +188,30 @@ class NewApiAdapter extends AccountAdapter {
       key.startsWith('sk-') ? key : 'sk-$key';
 
   @override
-  Future<AccountKey> create(String name) async {
+  Future<List<AccountGroup>> groups() async {
+    final data = await _call('GET', '/api/user/self/groups');
+    if (data is! Map) return const [];
+    return [
+      for (final MapEntry(:key, :value) in data.entries)
+        if (key is String && key.isNotEmpty)
+          AccountGroup(
+            id: key,
+            name: key,
+            description: switch (value) {
+              {'desc': final String desc} when desc.trim().isNotEmpty =>
+                desc.trim(),
+              _ => null,
+            },
+            rate: switch (value) {
+              {'ratio': final num ratio} => ratio.toDouble(),
+              _ => null,
+            },
+          ),
+    ];
+  }
+
+  @override
+  Future<AccountKey> create(String name, {AccountGroup? group}) async {
     await _call(
       'POST',
       '/api/token/',
@@ -199,7 +222,8 @@ class NewApiAdapter extends AccountAdapter {
         'unlimited_quota': true,
         'model_limits_enabled': false,
         'model_limits': '',
-        'group': '',
+        // None: the user's own group.
+        'group': group?.id ?? '',
       },
     );
     final made = await keys();

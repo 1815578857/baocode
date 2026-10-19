@@ -87,6 +87,30 @@ class AccountKey {
       : '${key.substring(0, 6)}••••••${key.substring(key.length - 4)}';
 }
 
+/// A group the user may make a key in: its own models, at its own price.
+@immutable
+class AccountGroup {
+  const AccountGroup({
+    required this.id,
+    required this.name,
+    this.description,
+    this.rate,
+    this.platform,
+  });
+
+  /// What the site knows it by: sub2api's number, as text; new-api's name.
+  final String id;
+  final String name;
+  final String? description;
+
+  /// Its price against the site's own (1 the same); null where the site
+  /// gives none (new-api's `auto`, which picks one per call).
+  final double? rate;
+
+  /// The models it is for (sub2api's platform: `anthropic`, `openai`…).
+  final String? platform;
+}
+
 /// The account site said the user is signed out (their session ended,
 /// revoked, or never was): they sign in again.
 class AccountSignedOut implements Exception {
@@ -172,8 +196,12 @@ abstract class AccountAdapter {
   /// [key] whole, to call the models with.
   Future<String> reveal(AccountKey key);
 
-  /// A new key named [name]: the one made.
-  Future<AccountKey> create(String name);
+  /// The groups the user may make a key in.
+  Future<List<AccountGroup>> groups();
+
+  /// A new key named [name], in [group] (one the site would pick, without):
+  /// the one made.
+  Future<AccountKey> create(String name, {AccountGroup? group});
 
   /// How [key]'s models are spoken to: the channel's word for it, else the
   /// key's platform's, else Anthropic's.

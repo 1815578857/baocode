@@ -114,6 +114,11 @@ FakeSite newApiSite({List<Map<String, Object?>>? tokens}) {
     'GET /api/token/': (_) => ok({'items': made, 'total': made.length}),
     'POST /api/token/7/key': (_) => ok({'key': 'abcdWHOLEwxyz'}),
     'POST /api/token/8/key': (_) => ok({'key': 'newWHOLEkey0'}),
+    'GET /api/user/self/groups': (_) => ok({
+      'default': {'ratio': 1, 'desc': 'Default'},
+      'vip': {'ratio': 0.5, 'desc': ''},
+      'auto': {'ratio': 'auto', 'desc': 'Picked per call'},
+    }),
     'POST /api/token/': (sent) {
       made.insert(0, {
         'id': 8,
@@ -159,8 +164,14 @@ FakeSite sub2apiSite() {
     'GET /api/v1/keys/3': (_) =>
         sub({'id': 3, 'key': 'sk-0123456789abcdef0123'}),
     'GET /api/v1/groups/available': (_) => sub([
-      {'id': 2, 'platform': 'openai'},
-      {'id': 5, 'platform': 'anthropic'},
+      {'id': 2, 'name': 'Codex', 'platform': 'openai', 'rate_multiplier': 1},
+      {
+        'id': 5,
+        'name': 'Claude',
+        'description': 'Claude models',
+        'platform': 'anthropic',
+        'rate_multiplier': 1.5,
+      },
     ]),
     'POST /api/v1/keys': (_) => sub({'id': 4}),
     'POST /api/v1/auth/logout': (_) => sub({'message': 'ok'}),

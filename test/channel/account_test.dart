@@ -9,6 +9,7 @@ import 'package:baocode/models/model_providers.dart';
 import 'package:baocode/models/upstream.dart';
 import 'package:baocode/l10n/l10n.dart';
 import 'package:baocode/settings/pages/channel_account_page.dart';
+import 'package:baocode/settings/pages/settings_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -84,6 +85,20 @@ void main() {
         expect(adapter.protocolFor(keys.single), ProviderProtocol.anthropic);
       },
     );
+
+    test('lists the groups, and makes a key in the one picked', () async {
+      final groups = await adapter.groups();
+      expect([for (final g in groups) g.id], ['default', 'vip', 'auto']);
+      expect(groups.first.description, 'Default');
+      expect(groups[1].rate, .5);
+      expect(groups[1].description, isNull);
+      expect(groups.last.rate, isNull);
+      await adapter.create('Cheap', group: groups[1]);
+      final create = site.sent.firstWhere(
+        (s) => s.method == 'POST' && s.url.path == '/api/token/',
+      );
+      expect(create.json, containsPair('group', 'vip'));
+    });
 
     test('makes a key, unlimited and never ending', () async {
       final made = await adapter.create('BaoCode');
@@ -162,6 +177,20 @@ void main() {
         expect(create.headers['Idempotency-Key'], hasLength(32));
       },
     );
+
+    test('lists the groups at their prices, and makes a key in the one '
+        'picked', () async {
+      final groups = await adapter.groups();
+      expect([for (final g in groups) g.name], ['Codex', 'Claude']);
+      expect(groups.last.rate, 1.5);
+      expect(groups.last.description, 'Claude models');
+      expect(groups.last.platform, 'anthropic');
+      await adapter.create('Codex', group: groups.first);
+      final create = site.sent.firstWhere(
+        (s) => s.method == 'POST' && s.url.path == '/api/v1/keys',
+      );
+      expect(create.json, {'name': 'Codex', 'group_id': 2});
+    });
 
     test('signs out with the refresh token', () async {
       await adapter.signOut();
@@ -507,6 +536,32 @@ void main() {
     expect(find.text('我的 API Key'), findsOneWidget);
     expect(find.text('使用中'), findsOneWidget);
     expect(find.text('创建 Key'), findsOneWidget);
+
+    // A key made in the group picked.
+    await tester.tap(find.text('创建 Key'));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pump();
+    expect(find.text('分组'), findsOneWidget);
+    expect(find.text('default'), findsOneWidget);
+    expect(find.text('Default'), findsOneWidget);
+    await tester.tap(find.byType(SettingsDropdown).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('vip  ×0.5').last);
+    await tester.pumpAndSettle();
+    expect(find.text('vip  ×0.5'), findsOneWidget);
+    await tester.tap(find.text('创建 Key').last);
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pump();
+    final create = site.sent.lastWhere(
+      (s) => s.method == 'POST' && s.url.path == '/api/token/',
+    );
+    expect(create.json, containsPair('group', 'vip'));
+    expect(create.json, containsPair('name', 'BaoCode'));
+    expect(find.text('分组'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

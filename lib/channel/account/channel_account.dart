@@ -360,11 +360,26 @@ class ChannelAccount extends ChangeNotifier {
     _save();
   });
 
-  /// Makes a key named [name]: the one made; null when it could not be.
-  Future<AccountKey?> create(String name) async {
+  /// The groups a key may be made in; none when they could not be read
+  /// (what went wrong kept, as [error]).
+  Future<List<AccountGroup>> groups() async {
+    try {
+      return await _adapter.groups();
+    } on AccountSignedOut {
+      return const [];
+    } on Object catch (error) {
+      _error = error;
+      notifyListeners();
+      return const [];
+    }
+  }
+
+  /// Makes a key named [name], in [group] (one the site picks, without):
+  /// the one made; null when it could not be.
+  Future<AccountKey?> create(String name, {AccountGroup? group}) async {
     AccountKey? made;
     await _run(() async {
-      made = await _adapter.create(name);
+      made = await _adapter.create(name, group: group);
       _keys = await _adapter.keys();
     });
     return made;

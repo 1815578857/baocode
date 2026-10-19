@@ -166,22 +166,42 @@ class Sub2ApiAdapter extends AccountAdapter {
   }
 
   @override
-  Future<AccountKey> create(String name) async {
-    // A key without a group reaches no models: the first group the user
-    // may use, Anthropic's first (BaoCode speaks it best).
-    final groups = [
+  Future<List<AccountGroup>> groups() async {
+    String? text(Object? value) =>
+        value is String && value.trim().isNotEmpty ? value.trim() : null;
+    return [
       for (final group in _items(await _call('GET', '/groups/available')))
-        if (group case {'id': final num id}) (id: id.toInt(), group: group),
+        if (group case {'id': final num id})
+          AccountGroup(
+            id: '${id.toInt()}',
+            name: text(group['name']) ?? '#${id.toInt()}',
+            description: text(group['description']),
+            rate: switch (group['rate_multiplier']) {
+              final num rate => rate.toDouble(),
+              _ => null,
+            },
+            platform: text(group['platform']),
+          ),
     ];
-    final group =
-        groups.where((g) => g.group['platform'] == 'anthropic').firstOrNull ??
-        groups.firstOrNull;
+  }
+
+  @override
+  Future<AccountKey> create(String name, {AccountGroup? group}) async {
+    // A key without a group reaches no models: without one picked, the
+    // first group the user may use, Anthropic's first (BaoCode speaks it
+    // best).
+    if (group == null) {
+      final groups = await this.groups();
+      group =
+          groups.where((g) => g.platform == 'anthropic').firstOrNull ??
+          groups.firstOrNull;
+    }
     await _call(
       'POST',
       '/keys',
       // Its pages send one with each write; the site wants it.
       headers: {'Idempotency-Key': _idempotencyKey()},
-      json: {'name': name, 'group_id': ?group?.id},
+      json: {'name': name, 'group_id': ?int.tryParse(group?.id ?? '')},
     );
     final made = await keys();
     // Listed newest first.

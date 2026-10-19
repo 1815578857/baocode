@@ -7,11 +7,13 @@ import '../../channel/account/channel_account.dart';
 import '../../channel/channel_gate.dart';
 import '../../ide/ide_button.dart';
 import '../../ide/ide_dialog.dart';
+import '../../ide/ide_input.dart';
 import '../../ide/ide_menu.dart';
 import '../../l10n/l10n.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
 import '../../workspace/editor_launcher.dart' show openExternal;
+import 'model_dialogs.dart' show ModelDialogFrame;
 import 'settings_dropdown.dart';
 import 'settings_widgets.dart';
 
@@ -86,22 +88,18 @@ class _AccountView extends StatelessWidget {
   }
 
   Future<void> _create(BuildContext context) async {
-    final l10n = context.l10n;
-    final result = await showIdeInputDialog(
-      context,
-      message: l10n.channelAccountCreateKey,
-      buttons: [l10n.channelAccountCreateKey],
-      inputs: [
-        IdeDialogInput(
-          placeholder: l10n.channelAccountKeyName,
-          value: ChannelAccount.keyName,
-        ),
-      ],
-      type: IdeDialogType.info,
+    final groups = await account.groups();
+    if (!context.mounted) return;
+    final made = await showGeneralDialog<({String name, AccountGroup? group})>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: context.l10n.commonDismiss,
+      barrierColor: const Color(0x80000000),
+      transitionDuration: Duration.zero,
+      pageBuilder: (context, _, _) => _CreateKeyDialog(groups: groups),
     );
-    if (result == null || result.button != 0) return;
-    final name = result.values.first.trim();
-    await account.create(name.isEmpty ? ChannelAccount.keyName : name);
+    if (made == null) return;
+    await account.create(made.name, group: made.group);
   }
 
   @override
@@ -430,4 +428,126 @@ class _InUse extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// A key's name and its group, to make it with: the groups the site lets
+/// the user make one in, each its models at its price; Anthropic's first
+/// picked (BaoCode speaks it best). Without any read, the site picks.
+class _CreateKeyDialog extends StatefulWidget {
+  const _CreateKeyDialog({required this.groups});
+
+  final List<AccountGroup> groups;
+
+  @override
+  State<_CreateKeyDialog> createState() => _CreateKeyDialogState();
+}
+
+class _CreateKeyDialogState extends State<_CreateKeyDialog> {
+  late final TextEditingController _name = TextEditingController(
+    text: ChannelAccount.keyName,
+  );
+  late AccountGroup? _group =
+      widget.groups.where((g) => g.platform == 'anthropic').firstOrNull ??
+      widget.groups.firstOrNull;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  void _make() {
+    final name = _name.text.trim();
+    Navigator.pop(context, (
+      name: name.isEmpty ? ChannelAccount.keyName : name,
+      group: _group,
+    ));
+  }
+
+  /// [group] as listed: its name, and its price where it is not the
+  /// site's own (`×1.5`).
+  static String _label(AccountGroup group) => switch (group.rate) {
+    final rate? when rate != 1 =>
+      // 1.50 as 1.5, 2.00 as 2.
+      '${group.name}  ×${rate.toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '')}',
+    _ => group.name,
+  };
+
+  Widget _field(String label, Widget input) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
+        ),
+        const SizedBox(height: 4),
+        input,
+      ],
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final group = _group;
+    return ModelDialogFrame(
+      title: l10n.channelAccountCreateKey,
+      onSubmit: _make,
+      actions: [
+        IdeButton(label: l10n.channelAccountCreateKey, onPressed: _make),
+        IdeButton(
+          label: l10n.commonCancel,
+          secondary: true,
+          onPressed: () => Navigator.pop(context),
+        ),
+      ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _field(
+            l10n.channelAccountKeyName,
+            IdeInputBox(
+              controller: _name,
+              autofocus: true,
+              placeholder: ChannelAccount.keyName,
+              semanticsLabel: l10n.channelAccountKeyName,
+              onSubmitted: (_) => _make(),
+            ),
+          ),
+          if (group != null)
+            _field(
+              l10n.channelAccountKeyGroup,
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: SettingsDropdown(
+                  current: _label(group),
+                  semanticLabel:
+                      '${l10n.channelAccountKeyGroup}: ${_label(group)}',
+                  entries: () => [
+                    for (final each in widget.groups)
+                      IdeMenuAction(
+                        _label(each),
+                        checked: each.id == group.id,
+                        onSelected: () => setState(() => _group = each),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          if (group?.description case final description?)
+            Text(
+              description,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.45,
+                color: AppColors.textMuted,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
