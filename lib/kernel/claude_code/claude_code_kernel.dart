@@ -462,21 +462,18 @@ class ClaudeCodeKernel
     });
   }
 
-  Future<void> _launch() async {
-    await _history;
-    // One process at a time on a session: the last one, if restarted.
-    await _stopped;
-    _setHealth(const KernelHealth(KernelHealthStatus.starting));
-    try {
-      // On a provider of the user's: its model as it is asked for, the
-      // environment that points Claude Code at it, and compaction within
-      // the model's window. A model of one gone falls back to the CLI's.
-      final custom = _custom;
-      final effort = switch (custom) {
-        (_, final info) => _effortFor(info),
-        null => _effort,
-      };
-      final model = switch (custom) {
+  /// What a process started now is on: the provider, the model as it is
+  /// asked for, and the effort. A model of a provider gone falls back to
+  /// the CLI's.
+  ({String provider, String? model, String? effort}) get _launchTarget {
+    final custom = _custom;
+    final effort = switch (custom) {
+      (_, final info) => _effortFor(info),
+      null => _effort,
+    };
+    return (
+      provider: _providerKey,
+      model: switch (custom) {
         (final provider, final info) => requestedModel(
           provider,
           info,
@@ -485,7 +482,23 @@ class ClaudeCodeKernel
         ),
         null when parseModelRef(_model) != null => null,
         null => _model,
-      };
+      },
+      effort: effort,
+    );
+  }
+
+  Future<void> _launch() async {
+    await _history;
+    // One process at a time on a session: the last one, if restarted.
+    await _stopped;
+    _setHealth(const KernelHealth(KernelHealthStatus.starting));
+    try {
+      // On a provider of the user's: its model as it is asked for, the
+      // environment that points Claude Code at it, and compaction within
+      // the model's window.
+      final custom = _custom;
+      final target = _launchTarget;
+      final (:model, :effort, provider: _) = target;
       // Through the proxy, the effort goes with the model's name; to
       // Anthropic's API, as Claude Code's own, if it is one of its.
       final direct = custom == null || !custom.$1.protocol.proxied;
@@ -506,7 +519,7 @@ class ClaudeCodeKernel
         }
       }
       final workspace = _workspace;
-      _launchedProvider = _providerKey;
+      _launchedProvider = target.provider;
       _launchedWindow = _autocompact;
       _launchedSuggestions = PromptSuggestions.current();
       final sdkServers = ClaudeSdkTools.servers;
@@ -556,6 +569,12 @@ class ClaudeCodeKernel
       if (_mode != _cliMode) {
         _cliMode = _mode;
         await control.request('set_permission_mode', {'mode': _mode});
+      }
+      // Another model picked as it started (back in view, say), which it
+      // was not told: nothing was said to it yet, so it starts again on it.
+      if (_launchTarget != target) {
+        _teardown();
+        return await _launch();
       }
       _setHealth(KernelHealth.ready);
       _syncGoal();
@@ -739,8 +758,9 @@ class ClaudeCodeKernel
   ///
   /// So is another provider, or one whose setup changed: the session goes
   /// on, resumed, on it. That even with tasks at work in the background
-  /// (a server it started), which end with the process: the user agreed
-  /// to the restart, and the message is not for the provider before.
+  /// (a server it started), which end with the process, or the CLI still
+  /// saying it is at work past its turn: the user agreed to the restart,
+  /// and the message is not for the provider before.
   void _applyWindow() {
     if (!_running) return;
     final otherProvider = _providerKey != _launchedProvider;
@@ -749,7 +769,7 @@ class ClaudeCodeKernel
         PromptSuggestions.current() == _launchedSuggestions) {
       return;
     }
-    if (otherProvider ? _working : _busy) return;
+    if (!otherProvider && _busy) return;
     _teardown();
     _translator.endTasks();
     _setHealth(KernelHealth.idle);
@@ -2556,6 +2576,14 @@ class ClaudeCodeKernel
 
   String get _providerKey => _providerKeyOf(_model);
 
+  /// What the conversation is on now: the process's provider while one
+  /// runs, whatever is picked since (a model of one removed, say), else
+  /// the one picked. A model of another is not told that process: one on
+  /// a provider takes Claude Code's names ("opus") for the provider's
+  /// model (`ANTHROPIC_DEFAULT_OPUS_MODEL`).
+  String get _onProvider =>
+      _transport != null ? _launchedProvider : _providerKey;
+
   /// Whether the conversation has begun: going on with it on another
   /// provider is a restart.
   bool get _conversationStarted => _sent.isNotEmpty || _context.resume != null;
@@ -2588,7 +2616,7 @@ class ClaudeCodeKernel
 
   @override
   bool switchRestarts(String model) =>
-      _conversationStarted && _providerKeyOf(model) != _providerKey;
+      _conversationStarted && _providerKeyOf(model) != _onProvider;
 
   /// Switches to [id], an option of [model], on the effort and context it
   /// was last on (those of the model in use noted first, unless [keep] is
@@ -2599,15 +2627,17 @@ class ClaudeCodeKernel
   void _selectModel(String id, {bool keep = true}) {
     if (keep) _keepModelSettings();
     final target = _providers.resolve(id);
-    final sameProvider = _providerKeyOf(id) == _providerKey;
+    final sameProvider = _providerKeyOf(id) == _onProvider;
     // Its own effort and context, if it had them: not the one before's.
     if (_pickedWindows[id] case final window?) _window = window;
     final recalled = _pickedEfforts[id];
     if (recalled != null) _effort = recalled;
+    final variant = target != null
+        ? null
+        : _pickedWindows[id] == null
+        ? _variantOf(id)
+        : _variantFor(id, long: _window! > _windows['200k']!);
     if (sameProvider && target == null) {
-      final variant = _pickedWindows[id] == null
-          ? _variantOf(id)
-          : _variantFor(id, long: _window! > _windows['200k']!);
       final effort =
           recalled != null &&
               recalled != _appliedEffort &&
@@ -2647,7 +2677,7 @@ class ClaudeCodeKernel
       ]);
       return;
     }
-    _model = target == null ? _variantOf(id)?.value ?? id : id;
+    _model = variant?.value ?? id;
     if (_running && !_busy && !_conversationStarted) {
       restart();
       return;
@@ -2890,6 +2920,12 @@ class ClaudeCodeKernel
           ? variants.where((v) => v.long == long).firstOrNull
           : _variantOf(model);
       _window = _pickedWindows[model] = window;
+      // Claude Code's model, picked on another provider's: switched to as
+      // that is (see _selectModel).
+      if (_providerKeyOf(model) != _onProvider) {
+        _selectModel(model, keep: false);
+        return;
+      }
       // Taken up with the next message (see _applyWindow); the model,
       // now.
       _change([?_modelChange(variant?.value)]);
@@ -3133,6 +3169,13 @@ class ClaudeCodeKernel
           else
             ?_thinkingSettings(id),
         ]);
+        return;
+      }
+      // Claude Code's model, picked on another provider's: switched to as
+      // that is (see _selectModel).
+      if (_providerKeyOf(model) != _onProvider) {
+        _effort = _appliedEffort = id;
+        _selectModel(model, keep: false);
         return;
       }
       final switched = _modelChange(_variantOf(model)?.value);
