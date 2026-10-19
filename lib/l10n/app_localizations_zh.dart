@@ -9028,7 +9028,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '让 agent 用你自己的浏览器，沿用你的登录状态：在你共享给它的标签页里打开网页、读取内容、点击和输入。它的每一步操作都能在侧边栏里看到。';
 
   @override
-  String get browserSettingsUnsupported => '浏览器功能目前只支持 macOS 和 Windows。';
+  String get browserSettingsUnsupported => '浏览器功能只支持 macOS、Windows 和 Linux。';
 
   @override
   String get browserSettingsEnabled => '允许 agent 使用浏览器';
@@ -9053,6 +9053,13 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get browserSettingsNotRunningDescription =>
       '打开装有 BaoCode 扩展的浏览器，会自动连接。';
+
+  @override
+  String get browserSettingsSandboxed => 'Snap 和 Flatpak 装的浏览器连不上';
+
+  @override
+  String get browserSettingsSandboxedDescription =>
+      '它们的沙箱不让 BaoCode 的辅助程序运行。请改用浏览器官方的 .deb 或 .rpm 安装包，例如从 google.com/chrome 下载 Google Chrome。';
 
   @override
   String browserSettingsConnected(String browser) {

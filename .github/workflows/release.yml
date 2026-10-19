@@ -267,6 +267,11 @@ jobs:
         run: |
           sudo apt-get install -y ./build/installers/BaoCode-*.deb
           log="$RUNNER_TEMP/launch.log"
+          # A browser's folder, for the host's manifest to be written in; the
+          # socket in a runtime folder of the user's alone, as on a desktop.
+          mkdir -p "$HOME/.config/google-chrome"
+          export XDG_RUNTIME_DIR="$RUNNER_TEMP/runtime"
+          mkdir -m 700 "$XDG_RUNTIME_DIR"
           BAOCODE_DATA_DIR="$RUNNER_TEMP/launch-data" \
             dbus-run-session -- xvfb-run -a /opt/baocode/baocode > "$log" 2>&1 &
           sleep 15
@@ -276,6 +281,27 @@ jobs:
             exit 1
           fi
           echo "BaoCode is running after 15 seconds"
+          # The browser extension's host: where the manifest says, and
+          # reaching the BaoCode running.
+          manifest="$HOME/.config/google-chrome/NativeMessagingHosts/dev.baocode.browser.json"
+          cat "$manifest"
+          grep -q '"path": "/opt/baocode/baocode-browser-host"' "$manifest"
+          python3 - << 'EOF'
+          import json, signal, struct, subprocess
+          signal.alarm(10)
+          host = subprocess.Popen(
+              ["/opt/baocode/baocode-browser-host",
+               "chrome-extension://jfjagocghaaheooicmdnhcholmgdkngk/"],
+              stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+          while True:
+              n = struct.unpack("<I", host.stdout.read(4))[0]
+              said = json.loads(host.stdout.read(n))
+              print("host said", said)
+              if said == {"type": "bridge", "connected": True}:
+                  break
+          host.stdin.close()
+          host.wait()
+          EOF
           pkill -x baocode || true
       - uses: actions/upload-artifact@v4
         with:

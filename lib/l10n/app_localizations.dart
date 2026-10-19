@@ -15576,7 +15576,7 @@ abstract class AppLocalizations {
   /// No description provided for @browserSettingsUnsupported.
   ///
   /// In en, this message translates to:
-  /// **'The browser is available on macOS and Windows only for now.'**
+  /// **'The browser is available on macOS, Windows and Linux only.'**
   String get browserSettingsUnsupported;
 
   /// No description provided for @browserSettingsEnabled.
@@ -15620,6 +15620,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open a browser with BaoCode\'s extension: it connects automatically.'**
   String get browserSettingsNotRunningDescription;
+
+  /// No description provided for @browserSettingsSandboxed.
+  ///
+  /// In en, this message translates to:
+  /// **'Snap and Flatpak browsers can\'t connect'**
+  String get browserSettingsSandboxed;
+
+  /// No description provided for @browserSettingsSandboxedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Their sandbox keeps BaoCode\'s helper from running. Install the browser from its own .deb or .rpm package instead, such as Google Chrome from google.com/chrome.'**
+  String get browserSettingsSandboxedDescription;
 
   /// A browser connected, by its name (Google Chrome, Microsoft Edge…).
   ///

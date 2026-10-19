@@ -9544,7 +9544,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get browserSettingsUnsupported =>
-      'The browser is available on macOS and Windows only for now.';
+      'The browser is available on macOS, Windows and Linux only.';
 
   @override
   String get browserSettingsEnabled => 'Let Agents Use the Browser';
@@ -9569,6 +9569,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get browserSettingsNotRunningDescription =>
       'Open a browser with BaoCode\'s extension: it connects automatically.';
+
+  @override
+  String get browserSettingsSandboxed =>
+      'Snap and Flatpak browsers can\'t connect';
+
+  @override
+  String get browserSettingsSandboxedDescription =>
+      'Their sandbox keeps BaoCode\'s helper from running. Install the browser from its own .deb or .rpm package instead, such as Google Chrome from google.com/chrome.';
 
   @override
   String browserSettingsConnected(String browser) {
