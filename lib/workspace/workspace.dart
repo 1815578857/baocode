@@ -2602,7 +2602,7 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
   /// without the usage limit has gone on, nothing to continue then.
   final Set<AgentThread> _turnsRun = {};
 
-  /// Offers to continue [thread] once the usage limit it hit resets; one
+  /// Lists [thread] to go on once the usage limit it hit resets; one
   /// gone on since, or switched to another provider (whose limits are its
   /// own), is no longer to be.
   void _noteLimit(AgentThread thread) {
@@ -2620,12 +2620,7 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
     }
     final ran = _turnsRun.remove(thread);
     if (session.usageLimitResetsAt case final at?) {
-      resumes.hit(
-        sessionId: id,
-        title: thread.title,
-        project: thread.project.name,
-        resetsAt: at,
-      );
+      resumes.hit(sessionId: id, resetsAt: at);
     } else if (ran) {
       resumes.remove(id);
     }

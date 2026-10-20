@@ -165,7 +165,6 @@ class AppSettings {
         return ModelsSettingsPage(
           providers: ModelProviders.current,
           workspace: workspace,
-          settings: files?.settings,
         );
       case SettingsSection.network:
         return NetworkSettingsPage(settings: files?.settings);
