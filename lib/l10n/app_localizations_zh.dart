@@ -6323,7 +6323,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modelsRoleSubagentDescription =>
-      'CLAUDE_CODE_SUBAGENT_MODEL：所有子 Agent 使用的模型，优先于子 Agent 定义或调用时指定的模型（定义为 inherit 的除外）。';
+      'CLAUDE_CODE_SUBAGENT_MODEL：所有子 Agent 使用的模型，优先于子 Agent 定义或调用时指定的模型（定义为 inherit 的除外）。也可以选其他上游的模型，请求会经 BaoCode 的本地代理发过去。';
+
+  @override
+  String get modelsRoleMissing => '这个模型已不在它的上游里，子 Agent 的请求会失败。';
 
   @override
   String get modelsAdvanced => '高级';
@@ -9486,6 +9489,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get channelSetupWaiting => '网页显示完成后，这里会自动继续。不小心关掉了网页，可以重新打开。';
+
+  @override
+  String get channelSetupOpenFailedTitle => '浏览器没有打开';
+
+  @override
+  String get channelSetupOpenFailed => '复制下面的网址，粘贴到浏览器里打开。网页显示完成后，这里会自动继续。';
+
+  @override
+  String get channelSetupAddressCopied => '已复制';
 
   @override
   String get channelSetupOffline => '连不上 baocode.dev，需要联网才能完成设置。';

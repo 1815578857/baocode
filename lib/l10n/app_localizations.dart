@@ -10932,8 +10932,14 @@ abstract class AppLocalizations {
   /// No description provided for @modelsRoleSubagentDescription.
   ///
   /// In en, this message translates to:
-  /// **'CLAUDE_CODE_SUBAGENT_MODEL: the model every subagent runs on, over the one its definition or the agent\'s call names (but inherit).'**
+  /// **'CLAUDE_CODE_SUBAGENT_MODEL: the model every subagent runs on, over the one its definition or the agent\'s call names (but inherit). It may be another upstream\'s: BaoCode\'s local proxy sends its requests there.'**
   String get modelsRoleSubagentDescription;
+
+  /// Under a role that picks another upstream's model, once that upstream or model is gone.
+  ///
+  /// In en, this message translates to:
+  /// **'This model is no longer one of its upstream\'s: subagents\' requests to it will fail.'**
+  String get modelsRoleMissing;
 
   /// No description provided for @modelsAdvanced.
   ///
@@ -16406,6 +16412,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Once the page says it\'s done, BaoCode continues on its own. Closed the page by mistake? Open it again.'**
   String get channelSetupWaiting;
+
+  /// No description provided for @channelSetupOpenFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your browser didn\'t open'**
+  String get channelSetupOpenFailedTitle;
+
+  /// No description provided for @channelSetupOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy this address and open it in your browser. Once the page says it\'s done, BaoCode continues on its own.'**
+  String get channelSetupOpenFailed;
+
+  /// No description provided for @channelSetupAddressCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get channelSetupAddressCopied;
 
   /// No description provided for @channelSetupOffline.
   ///
