@@ -98,17 +98,24 @@ const attribution = (() => {
   // on its own by the channel build's first start, would find nothing. So
   // there a download, a channel kept, goes by /dl/ in a tab of its own,
   // the channel with it: the Worker keeps it in a cookie of baocode.dev's
-  // own (site-worker/index.js), and picks the build.
+  // own (site-worker/index.js), and picks the build. A link off the site
+  // (GitHub, the Chrome Web Store by /dl/) opens in a tab of its own too:
+  // most sites refuse to show in a frame.
   let framedChannel = null;
   if (window.top !== window) {
     ready.then((r) => { framedChannel = r?.source === 'channel' ? r.value : null; });
     const DESKTOP = new Set(['windows', 'macos-arm64', 'macos-x64', 'linux-x64', 'linux-arm64']);
+    const newTab = (a) => { a.target = '_blank'; a.rel = 'noopener'; };
     document.addEventListener('click', (event) => {
-      const a = event.target.closest?.('a[data-file]');
-      if (!a || !framedChannel || !DESKTOP.has(a.dataset.file)) return;
-      a.href = `https://baocode.dev/dl/${a.dataset.file}?ch=${encodeURIComponent(framedChannel)}`;
-      a.target = '_blank';
-      a.rel = 'noopener';
+      const a = event.target.closest?.('a[href]');
+      if (!a) return;
+      if (a.hasAttribute('data-file')) {
+        if (!framedChannel || !DESKTOP.has(a.dataset.file)) return;
+        a.href = `https://baocode.dev/dl/${a.dataset.file}?ch=${encodeURIComponent(framedChannel)}`;
+        newTab(a);
+      } else if (a.origin !== location.origin || a.pathname.startsWith('/dl/')) {
+        newTab(a);
+      }
     }, true);
   }
 
