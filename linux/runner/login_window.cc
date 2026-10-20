@@ -11,6 +11,7 @@ namespace {
 FlMethodChannel* channel = nullptr;
 GtkWindow* owner = nullptr;
 
+#ifdef HAVE_WEBKIT
 const char* map_string(FlValue* args, const char* key) {
   if (args == nullptr || fl_value_get_type(args) != FL_VALUE_TYPE_MAP) {
     return nullptr;
@@ -21,6 +22,7 @@ const char* map_string(FlValue* args, const char* key) {
   }
   return fl_value_get_string(value);
 }
+#endif
 
 void respond(FlMethodCall* call, FlValue* result) {
   g_autoptr(FlMethodResponse) response =
