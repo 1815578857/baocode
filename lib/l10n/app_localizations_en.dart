@@ -8751,6 +8751,23 @@ class AppLocalizationsEn extends AppLocalizations {
       'While the agent works, a line under the reply with how long the turn has taken, how fast the model writes and the tokens so far, changing as it goes. The figures under a finished turn always show.';
 
   @override
+  String usageLimitScheduled(String time) {
+    return 'Usage limit reached · continues automatically after it resets at $time';
+  }
+
+  @override
+  String usageLimitTomorrow(String time) {
+    return 'tomorrow $time';
+  }
+
+  @override
+  String get resumeAfterResetPrompt =>
+      'The usage limit has reset. Continue where you left off.';
+
+  @override
+  String get resumeAfterLimitToggle => 'Continue After Limit Reset';
+
+  @override
   String stashPolishFailed(String error) {
     return 'Could not polish: $error';
   }

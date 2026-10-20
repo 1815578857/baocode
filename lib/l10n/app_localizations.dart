@@ -14229,6 +14229,30 @@ abstract class AppLocalizations {
   /// **'While the agent works, a line under the reply with how long the turn has taken, how fast the model writes and the tokens so far, changing as it goes. The figures under a finished turn always show.'**
   String get generalSettingsLiveTurnStatsDescription;
 
+  /// No description provided for @usageLimitScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage limit reached · continues automatically after it resets at {time}'**
+  String usageLimitScheduled(String time);
+
+  /// No description provided for @usageLimitTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'tomorrow {time}'**
+  String usageLimitTomorrow(String time);
+
+  /// No description provided for @resumeAfterResetPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'The usage limit has reset. Continue where you left off.'**
+  String get resumeAfterResetPrompt;
+
+  /// No description provided for @resumeAfterLimitToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue After Limit Reset'**
+  String get resumeAfterLimitToggle;
+
   /// No description provided for @stashPolishFailed.
   ///
   /// In en, this message translates to:
