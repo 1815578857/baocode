@@ -64,6 +64,7 @@ import 'models/model_welcome.dart';
 import 'network/network_proxy.dart';
 import 'notifications/attention_host.dart';
 import 'notifications/attention_settings.dart';
+import 'platform/memory_budget.dart';
 import 'platform/app_platform.dart';
 import 'platform/data_dir.dart';
 import 'platform/error_log.dart';
@@ -144,6 +145,7 @@ Future<void> main(List<String> arguments) async {
   unawaited(reapLspProcesses());
   unawaited(reapPtyProcesses());
   WidgetsFlutterBinding.ensureInitialized();
+  MemoryBudget.apply();
   if (!kIsWeb) AppEventWatch.start();
   // The Windows app's own logs go beside it.
   if (errors != null) unawaited(errors.shareWithHost());
