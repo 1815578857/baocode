@@ -130,7 +130,9 @@ jobs:
   ios:
     name: Build for iOS, to TestFlight
     needs: check
-    runs-on: macos-15
+    # App Store Connect takes only apps built with the iOS 26 SDK or later
+    # (Xcode 26): macos-15's Xcode 16 builds are refused at upload.
+    runs-on: macos-26
     environment: release
     env:
       MARKETING: ${{ needs.check.outputs.marketing }}
@@ -219,6 +221,7 @@ jobs:
       - name: Build the IPA
         working-directory: mobile
         run: |
+          xcodebuild -version
           flutter build ipa --release --build-number "$GITHUB_RUN_NUMBER" \
             --export-options-plist "$RUNNER_TEMP/ExportOptions.plist"
           mkdir -p ../out
