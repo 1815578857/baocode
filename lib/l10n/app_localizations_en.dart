@@ -1662,6 +1662,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sidePanelSource => 'Source';
 
   @override
+  String get commandOpenDetails => 'Open details';
+
+  @override
   String get sidePanelNoOriginal =>
       'The file before the agent\'s changes is not known: showing it as it is.';
 
