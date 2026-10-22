@@ -6284,6 +6284,12 @@ abstract class AppLocalizations {
   /// **'Open Anyway'**
   String get placeholderOpenAnyway;
 
+  /// No description provided for @changeOpenWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Open With'**
+  String get changeOpenWith;
+
   /// Hands a file the IDE does not show (a PDF, a video…) to the app the system opens it with.
   ///
   /// In en, this message translates to:
@@ -10815,6 +10821,12 @@ abstract class AppLocalizations {
   /// **'Edit…'**
   String get modelsEdit;
 
+  /// No description provided for @modelsDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate…'**
+  String get modelsDuplicate;
+
   /// No description provided for @modelsRemove.
   ///
   /// In en, this message translates to:
@@ -11054,6 +11066,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'x-session-id: my-session'**
   String get modelsHeadersPlaceholder;
+
+  /// No description provided for @modelsDuplicateProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate Upstream'**
+  String get modelsDuplicateProvider;
+
+  /// No description provided for @modelsDuplicateProviderDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'A copy of this upstream, with its models, settings and key.'**
+  String get modelsDuplicateProviderDescription;
+
+  /// No description provided for @modelsDuplicateName.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} Copy'**
+  String modelsDuplicateName(String name);
 
   /// No description provided for @modelsDelete.
   ///
