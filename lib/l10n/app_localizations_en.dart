@@ -10388,9 +10388,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'A project that is a Git repository on GitHub or GitLab (signed in under Accounts): its open issues are stashes, each once, kept in step both ways. A stash deleted, or unlinked from its issue, does not come back.';
 
   @override
-  String get stashIssueSyncAuto => 'Auto: all if you can push, else yours';
-
-  @override
   String get stashIssueSyncMine => 'Only those assigned to or opened by me';
 
   @override
@@ -10492,4 +10489,67 @@ class AppLocalizationsEn extends AppLocalizations {
   String stashImplementIssue(String issue) {
     return 'It is issue $issue: the pull request should say it fixes it.';
   }
+
+  @override
+  String get stashIssueSyncAll => 'All open issues';
+
+  @override
+  String get stashIssueChecking => 'Looking for its repository…';
+
+  @override
+  String get stashIssueRefresh => 'Refresh now';
+
+  @override
+  String get stashIssuePublishButton => 'Publish as Issue';
+
+  @override
+  String get stashIssuePushButton => 'Push to Issue';
+
+  @override
+  String get stashIssueLoading => 'Loading…';
+
+  @override
+  String get stashSyncing => 'Syncing issues…';
+
+  @override
+  String stashSyncingRepo(String repo, int index, int total) {
+    return 'Syncing the issues of $repo ($index/$total)…';
+  }
+
+  @override
+  String get stashSyncTooltip => 'Sync issues now';
+
+  @override
+  String stashSyncTooltipLast(String time) {
+    return 'Sync issues now · last at $time';
+  }
+
+  @override
+  String stashSyncFailed(String repo, String error) {
+    return 'Could not sync the issues of $repo: $error';
+  }
+
+  @override
+  String stashSyncSignIn(String forge, String repo, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Sign in to $forge for the issues of $repo and $count more repositories to be stashes.',
+      one: 'Sign in to $forge for the issues of $repo to be stashes.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stashSyncingEmpty => 'Syncing the projects\' issues…';
+
+  @override
+  String get stashFilterAnyIssue => 'Any source';
+
+  @override
+  String get stashFilterIssue => 'Issues';
+
+  @override
+  String get stashFilterNotIssue => 'Local only';
 }

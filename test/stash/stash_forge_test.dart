@@ -170,8 +170,10 @@ void main() {
   );
 
   group('kept in step with the projects\' issues', () {
-    var canPush = true;
     late List<Map<String, Object?>> open;
+
+    /// The lists asked for, by their `since`.
+    late List<String?> listed;
     Map<String, Object?> issue(int number, String title, String body) => {
       'number': number,
       'title': title,
@@ -180,16 +182,17 @@ void main() {
     };
 
     setUp(() {
-      canPush = true;
+      listed = [];
       open = [issue(3, 'Uploads fail', 'On 503.'), issue(4, 'Dark mode', '')];
       http
-        ..on(
-          'GET',
-          'https://api.github.com/repos/o/r',
-          (_) => {
-            'permissions': {'push': canPush},
-          },
-        )
+        ..on('GET', 'https://api.github.com/repos/o/r/issues', (request) {
+          listed.add(request.url.queryParameters['since']);
+          return [
+            ...open,
+            // A pull request, as GitHub lists them among issues.
+            {...issue(7, 'Retry', ''), 'pull_request': {}},
+          ];
+        })
         ..on('GET', 'https://api.github.com/search/issues', (request) {
           final q = request.url.queryParameters['q']!;
           if (q.contains('author:@me')) return {'items': open.take(1).toList()};
@@ -221,11 +224,69 @@ void main() {
       expect(forge.stashOf(issueUrl), isNull);
     });
 
-    test('only the user\'s where they cannot push', () async {
-      canPush = false;
+    test('every open one by default, the first time; then those changed '
+        'since, a closed one closing its stash, none made of it', () async {
+      await forge.sync();
+      expect(store.notes, hasLength(2));
+      expect(listed, [null]);
+      open = [
+        {...issue(4, 'Dark mode', ''), 'state': 'closed'},
+        {...issue(5, 'Old one', ''), 'state': 'closed'},
+      ];
+      await forge.sync();
+      expect(listed, hasLength(2));
+      expect(listed.last, isNotNull);
+      expect(store.notes, hasLength(2));
+      final dark = forge.stashOf('https://github.com/o/r/issues/4')!;
+      expect(dark.status, StashStatus.done);
+      expect(forge.lastSynced, isNotNull);
+      expect(forge.syncFailures, isEmpty);
+      // All again when asked.
+      await forge.sync(full: true);
+      expect(listed.last, isNull);
+    });
+
+    test('only the user\'s when the settings say', () async {
+      forge.dispose();
+      forge = StashForge(
+        store: store,
+        workspace: Workspace.mock(),
+        accounts: accounts,
+        remotes: (folder) async => switch (folder) {
+          '~/code/baocode' => ['git@github.com:o/r.git'],
+          _ => const [],
+        },
+        issueSync: () => StashIssueSync.mine,
+      );
       await forge.sync();
       expect([for (final note in store.notes) note.issue], [issueUrl]);
     });
+
+    test(
+      'a repository that fails, or a forge not signed in to, is told',
+      () async {
+        http.on(
+          'GET',
+          'https://api.github.com/repos/o/r/issues',
+          (_) => const ForgeResponse(403, '{"message":"rate limited"}'),
+        );
+        forge.dispose();
+        forge = StashForge(
+          store: store,
+          workspace: Workspace.mock(),
+          accounts: accounts,
+          remotes: (folder) async => switch (folder) {
+            '~/code/baocode' => ['git@github.com:o/r.git'],
+            '~/code/cursor-docs' => ['git@gitlab.com:g/docs.git'],
+            _ => const [],
+          },
+        );
+        await forge.sync();
+        expect(forge.syncFailures.values.single.message, 'rate limited');
+        expect([for (final repo in forge.unsignedRepos) repo.path], ['g/docs']);
+        expect(forge.syncing, isFalse);
+      },
+    );
 
     test('none when turned off', () async {
       forge.dispose();
@@ -425,6 +486,26 @@ void main() {
       },
       {'o/site': made.path, 'o/api': '/code/api'},
     );
+  });
+
+  test('all of a repository\'s issues, page by page', () async {
+    http.on('GET', 'https://api.github.com/repos/o/r/issues', (request) {
+      final page = int.parse(request.url.queryParameters['page']!);
+      return [
+        for (var i = 0; i < (page == 1 ? ForgeApi.pageSize : 3); i++)
+          {'number': page * 1000 + i, 'title': 'T', 'state': 'open'},
+      ];
+    });
+    final items = await accounts
+        .apiFor('github.com')!
+        .allIssues(
+          const ForgeRepo(
+            kind: ForgeKind.github,
+            host: 'github.com',
+            path: 'o/r',
+          ),
+        );
+    expect(items, hasLength(ForgeApi.pageSize + 3));
   });
 
   test('the pull requests a conversation links to', () {

@@ -19,6 +19,7 @@ import '../icons/project_icon_view.dart';
 import '../ide/ide_button.dart' show IdeButtonColors;
 import '../ide/ide_commands.dart' show ideUsesMacKeys;
 import '../ide/ide_hover.dart';
+import '../ide/ide_spinning.dart';
 import '../ide/ide_list.dart';
 import '../l10n/l10n.dart';
 import '../keybindings/chat_keybindings.dart';
@@ -3396,9 +3397,13 @@ class SidebarIconButton extends StatelessWidget {
     this.size = 24,
     this.command,
     this.keyContext = ChatKeys.chatLayout,
+    this.spinning = false,
   });
 
   final IconData icon;
+
+  /// Its icon turning: what it started still goes on.
+  final bool spinning;
 
   /// What it does: its label, and its hover's text.
   final String tooltip;
@@ -3440,11 +3445,14 @@ class SidebarIconButton extends StatelessWidget {
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(5),
               ),
-              child: Icon(
+              child: switch (Icon(
                 icon,
                 size: size * 0.65,
                 color: hovered ? AppColors.text : AppColors.textMuted,
-              ),
+              )) {
+                final icon when spinning => IdeSpinning(icon),
+                final icon => icon,
+              },
             ),
           ),
         ),

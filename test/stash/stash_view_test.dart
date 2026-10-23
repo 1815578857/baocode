@@ -19,6 +19,7 @@ import 'package:baocode/theme/app_theme.dart';
 import 'package:baocode/theme/codicons.dart';
 import 'package:baocode/workspace/workspace.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -549,6 +550,31 @@ void main() {
     expect(opened, isNull);
     await tester.tap(inList('Uploads retry three times now.'));
     expect(opened, thread);
+    await unmount(tester);
+  });
+
+  testWidgets('a row hovered offers what is done with it: done, and back', (
+    tester,
+  ) async {
+    final note = (await tester.runAsync(
+      () => store.create(body: 'Retry uploads'),
+    ))!;
+    await pumpView(tester);
+    final row = find.text('Retry uploads').first;
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(tester.getCenter(row));
+    await tester.pump();
+    Finder action(String tooltip) => find.byWidgetPredicate(
+      (widget) => widget is IdeHover && widget.message == tooltip,
+    );
+    expect(action('Implement in BaoCode'), findsOneWidget);
+    expect(action('More'), findsWidgets);
+    await tester.tap(action('Mark Done'));
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump();
+    expect(store.byId(note.id)!.status, StashStatus.done);
     await unmount(tester);
   });
 

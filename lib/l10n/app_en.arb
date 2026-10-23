@@ -7168,8 +7168,7 @@
   "aboutOpen": "Open",
   "stashSettingsIssueSync": "Issues as stashes",
   "stashSettingsIssueSyncDescription": "A project that is a Git repository on GitHub or GitLab (signed in under Accounts): its open issues are stashes, each once, kept in step both ways. A stash deleted, or unlinked from its issue, does not come back.",
-  "stashIssueSyncAuto": "Auto: all if you can push, else yours",
-  "stashIssueSyncMine": "Only those assigned to or opened by me",
+    "stashIssueSyncMine": "Only those assigned to or opened by me",
   "stashIssueSyncOff": "Off: imported or published ones only",
   "stashIssueLocal": "Local only",
   "stashIssueAllow": "Allow publishing as an issue",
@@ -7251,5 +7250,64 @@
         "type": "String"
       }
     }
-  }
+  },
+  "stashIssueSyncAll": "All open issues",
+  "stashIssueChecking": "Looking for its repository…",
+  "stashIssueRefresh": "Refresh now",
+  "stashIssuePublishButton": "Publish as Issue",
+  "stashIssuePushButton": "Push to Issue",
+  "stashIssueLoading": "Loading…",
+  "stashSyncing": "Syncing issues…",
+  "stashSyncingRepo": "Syncing the issues of {repo} ({index}/{total})…",
+  "@stashSyncingRepo": {
+    "placeholders": {
+      "repo": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "stashSyncTooltip": "Sync issues now",
+  "stashSyncTooltipLast": "Sync issues now · last at {time}",
+  "@stashSyncTooltipLast": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "stashSyncFailed": "Could not sync the issues of {repo}: {error}",
+  "@stashSyncFailed": {
+    "placeholders": {
+      "repo": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "stashSyncSignIn": "{count, plural, =1{Sign in to {forge} for the issues of {repo} to be stashes.} other{Sign in to {forge} for the issues of {repo} and {count} more repositories to be stashes.}}",
+  "@stashSyncSignIn": {
+    "placeholders": {
+      "forge": {
+        "type": "String"
+      },
+      "repo": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stashSyncingEmpty": "Syncing the projects' issues…",
+  "stashFilterAnyIssue": "Any source",
+  "stashFilterIssue": "Issues",
+  "stashFilterNotIssue": "Local only"
 }

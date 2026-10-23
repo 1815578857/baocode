@@ -190,9 +190,17 @@ abstract class ForgeApi {
   /// Closes the issue [ref].
   Future<void> close(ForgeRef ref);
 
-  /// Whether the user can push to [repo] (maintains it: all its issues
-  /// theirs to see to).
-  Future<bool> canPush(ForgeRepo repo);
+  /// [repo]'s issues, the most recently updated first, page by page up to
+  /// [most]: the open ones, or (since [since]) all changed since, closed
+  /// ones too. Not its pull requests.
+  Future<List<ForgeItem>> allIssues(
+    ForgeRepo repo, {
+    DateTime? since,
+    int most = 1000,
+  });
+
+  /// How many a page of [allIssues] asks for.
+  static const pageSize = 100;
 
   /// Opens an issue in [repo], as the user: [title], [body] its
   /// description.
@@ -431,12 +439,34 @@ class GitHubApi extends ForgeApi {
   );
 
   @override
-  Future<bool> canPush(ForgeRepo repo) async {
-    final json = await _call('GET', '/repos/${repo.path}') as Map;
-    return switch (json['permissions']) {
-      {'push': true} => true,
-      _ => false,
-    };
+  Future<List<ForgeItem>> allIssues(
+    ForgeRepo repo, {
+    DateTime? since,
+    int most = 1000,
+  }) async {
+    final items = <ForgeItem>[];
+    for (var page = 1; items.length < most; page++) {
+      final json = await _call(
+        'GET',
+        '/repos/${repo.path}/issues',
+        query: {
+          'state': since == null ? 'open' : 'all',
+          'since': ?since?.toUtc().toIso8601String(),
+          'sort': 'updated',
+          'direction': 'desc',
+          'per_page': '${ForgeApi.pageSize}',
+          'page': '$page',
+        },
+      ) as List;
+      for (final issue in json) {
+        // Pull requests are issues to GitHub.
+        if (issue is Map && issue['pull_request'] == null) {
+          items.add(_issue(repo, issue));
+        }
+      }
+      if (json.length < ForgeApi.pageSize) break;
+    }
+    return items.take(most).toList();
   }
 
   @override
@@ -684,15 +714,33 @@ class GitLabApi extends ForgeApi {
   );
 
   @override
-  Future<bool> canPush(ForgeRepo repo) async {
-    final json = await _call('GET', _project(repo)) as Map;
-    final permissions = json['permissions'];
-    if (permissions is! Map) return false;
-    int level(Object? access) =>
-        access is Map ? (access['access_level'] as num?)?.toInt() ?? 0 : 0;
-    // Developer (30) and up.
-    return level(permissions['project_access']) >= 30 ||
-        level(permissions['group_access']) >= 30;
+  Future<List<ForgeItem>> allIssues(
+    ForgeRepo repo, {
+    DateTime? since,
+    int most = 1000,
+  }) async {
+    final items = <ForgeItem>[];
+    for (var page = 1; items.length < most; page++) {
+      final json = await _call(
+        'GET',
+        '${_project(repo)}/issues',
+        query: {
+          if (since == null) 'state': 'opened',
+          'updated_after': ?since?.toUtc().toIso8601String(),
+          'scope': 'all',
+          'with_labels_details': 'true',
+          'order_by': 'updated_at',
+          'sort': 'desc',
+          'per_page': '${ForgeApi.pageSize}',
+          'page': '$page',
+        },
+      ) as List;
+      for (final issue in json) {
+        if (issue is Map) items.add(_item(repo, issue));
+      }
+      if (json.length < ForgeApi.pageSize) break;
+    }
+    return items.take(most).toList();
   }
 
   @override

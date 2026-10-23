@@ -17013,12 +17013,6 @@ abstract class AppLocalizations {
   /// **'A project that is a Git repository on GitHub or GitLab (signed in under Accounts): its open issues are stashes, each once, kept in step both ways. A stash deleted, or unlinked from its issue, does not come back.'**
   String get stashSettingsIssueSyncDescription;
 
-  /// No description provided for @stashIssueSyncAuto.
-  ///
-  /// In en, this message translates to:
-  /// **'Auto: all if you can push, else yours'**
-  String get stashIssueSyncAuto;
-
   /// No description provided for @stashIssueSyncMine.
   ///
   /// In en, this message translates to:
@@ -17162,6 +17156,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'It is issue {issue}: the pull request should say it fixes it.'**
   String stashImplementIssue(String issue);
+
+  /// No description provided for @stashIssueSyncAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All open issues'**
+  String get stashIssueSyncAll;
+
+  /// No description provided for @stashIssueChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for its repository…'**
+  String get stashIssueChecking;
+
+  /// No description provided for @stashIssueRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh now'**
+  String get stashIssueRefresh;
+
+  /// No description provided for @stashIssuePublishButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish as Issue'**
+  String get stashIssuePublishButton;
+
+  /// No description provided for @stashIssuePushButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Push to Issue'**
+  String get stashIssuePushButton;
+
+  /// No description provided for @stashIssueLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading…'**
+  String get stashIssueLoading;
+
+  /// No description provided for @stashSyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing issues…'**
+  String get stashSyncing;
+
+  /// No description provided for @stashSyncingRepo.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing the issues of {repo} ({index}/{total})…'**
+  String stashSyncingRepo(String repo, int index, int total);
+
+  /// No description provided for @stashSyncTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync issues now'**
+  String get stashSyncTooltip;
+
+  /// No description provided for @stashSyncTooltipLast.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync issues now · last at {time}'**
+  String stashSyncTooltipLast(String time);
+
+  /// No description provided for @stashSyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not sync the issues of {repo}: {error}'**
+  String stashSyncFailed(String repo, String error);
+
+  /// No description provided for @stashSyncSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Sign in to {forge} for the issues of {repo} to be stashes.} other{Sign in to {forge} for the issues of {repo} and {count} more repositories to be stashes.}}'**
+  String stashSyncSignIn(String forge, String repo, int count);
+
+  /// No description provided for @stashSyncingEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing the projects\' issues…'**
+  String get stashSyncingEmpty;
+
+  /// No description provided for @stashFilterAnyIssue.
+  ///
+  /// In en, this message translates to:
+  /// **'Any source'**
+  String get stashFilterAnyIssue;
+
+  /// No description provided for @stashFilterIssue.
+  ///
+  /// In en, this message translates to:
+  /// **'Issues'**
+  String get stashFilterIssue;
+
+  /// No description provided for @stashFilterNotIssue.
+  ///
+  /// In en, this message translates to:
+  /// **'Local only'**
+  String get stashFilterNotIssue;
 }
 
 class _AppLocalizationsDelegate

@@ -9825,9 +9825,6 @@ class AppLocalizationsZh extends AppLocalizations {
       '项目是 GitHub / GitLab 上的 Git 仓库（并已在「账号」中登录）时，它的未关闭 issue 会成为 Stash，一个 issue 只对应一条，双向保持一致。删除或取消关联的不会再被拉回来。';
 
   @override
-  String get stashIssueSyncAuto => '自动：可推送的仓库同步全部，其余只同步我的';
-
-  @override
   String get stashIssueSyncMine => '只同步指派给我或我创建的';
 
   @override
@@ -9914,4 +9911,66 @@ class AppLocalizationsZh extends AppLocalizations {
   String stashImplementIssue(String issue) {
     return '它对应 issue $issue，提 PR 时写明修复了它。';
   }
+
+  @override
+  String get stashIssueSyncAll => '全部打开的 issue';
+
+  @override
+  String get stashIssueChecking => '正在查找仓库…';
+
+  @override
+  String get stashIssueRefresh => '立即刷新';
+
+  @override
+  String get stashIssuePublishButton => '发布为 issue';
+
+  @override
+  String get stashIssuePushButton => '推送到 issue';
+
+  @override
+  String get stashIssueLoading => '正在获取…';
+
+  @override
+  String get stashSyncing => '正在同步 issue…';
+
+  @override
+  String stashSyncingRepo(String repo, int index, int total) {
+    return '正在同步 $repo 的 issue（$index/$total）…';
+  }
+
+  @override
+  String get stashSyncTooltip => '立即同步 issue';
+
+  @override
+  String stashSyncTooltipLast(String time) {
+    return '立即同步 issue · 上次 $time';
+  }
+
+  @override
+  String stashSyncFailed(String repo, String error) {
+    return '同步 $repo 的 issue 失败：$error';
+  }
+
+  @override
+  String stashSyncSignIn(String forge, String repo, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '登录 $forge 后，$repo 等 $count 个仓库的 issue 会同步为 Stash。',
+      one: '登录 $forge 后，$repo 的 issue 会同步为 Stash。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stashSyncingEmpty => '正在同步项目的 issue…';
+
+  @override
+  String get stashFilterAnyIssue => '所有来源';
+
+  @override
+  String get stashFilterIssue => '来自 issue';
+
+  @override
+  String get stashFilterNotIssue => '仅本地';
 }
