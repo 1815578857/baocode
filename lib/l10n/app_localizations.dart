@@ -10902,7 +10902,7 @@ abstract class AppLocalizations {
   /// No description provided for @modelsRolesDescription.
   ///
   /// In en, this message translates to:
-  /// **'Which model Claude Code uses for each part of its work. Unset, the model picked stands in.'**
+  /// **'Which model Claude Code uses for each part of its work. Unset, the model picked stands in. All but the main model may be another upstream\'s: BaoCode\'s local proxy sends their requests there.'**
   String get modelsRolesDescription;
 
   /// No description provided for @modelsRoleUnset.
@@ -10974,13 +10974,13 @@ abstract class AppLocalizations {
   /// No description provided for @modelsRoleSubagentDescription.
   ///
   /// In en, this message translates to:
-  /// **'CLAUDE_CODE_SUBAGENT_MODEL: the model every subagent runs on, over the one its definition or the agent\'s call names (but inherit). It may be another upstream\'s: BaoCode\'s local proxy sends its requests there.'**
+  /// **'CLAUDE_CODE_SUBAGENT_MODEL: the model every subagent runs on, over the one its definition or the agent\'s call names (but inherit).'**
   String get modelsRoleSubagentDescription;
 
   /// Under a role that picks another upstream's model, once that upstream or model is gone.
   ///
   /// In en, this message translates to:
-  /// **'This model is no longer one of its upstream\'s: subagents\' requests to it will fail.'**
+  /// **'This model is no longer one of its upstream\'s: requests to it will fail.'**
   String get modelsRoleMissing;
 
   /// No description provided for @modelsAdvanced.
@@ -11348,6 +11348,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Image models are not offered in the model picker: agents make pictures with them through the generate_image tool.'**
   String get modelsKindDescription;
+
+  /// No description provided for @modelsEndpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Endpoint'**
+  String get modelsEndpoint;
+
+  /// The endpoint choice of a model that follows its upstream's protocol, that protocol's name in it.
+  ///
+  /// In en, this message translates to:
+  /// **'As the upstream ({protocol})'**
+  String modelsEndpointUpstream(String protocol);
+
+  /// No description provided for @modelsEndpointDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Which API this model\'s requests go to, at the upstream\'s base URL and with its key: on a relay that serves several, its Claude models at the Anthropic one and its GPT at Responses, say.'**
+  String get modelsEndpointDescription;
 
   /// No description provided for @modelsImageBadge.
   ///
