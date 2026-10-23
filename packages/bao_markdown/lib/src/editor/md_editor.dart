@@ -1464,9 +1464,21 @@ class MarkdownEditorState extends State<MarkdownEditor>
     if (!_hasInput || _applyingRemote) return;
     final start = _remoteStart;
     final value = _windowValue();
-    if (value == _remote && start == _remoteStart) return;
+    if (start == _remoteStart && _sameAsRemote(value)) return;
     _remote = value;
     _connection!.setEditingState(value);
+  }
+
+  /// Whether [value] is what the platform has: a composing region of no
+  /// length (Windows starts composing with one) is none. Told it again as
+  /// it composes, Windows ends what it composes, and what it composes next
+  /// goes in before it, not over it.
+  bool _sameAsRemote(TextEditingValue value) {
+    bool none(TextRange range) => !range.isValid || range.isCollapsed;
+    return value.text == _remote.text &&
+        value.selection == _remote.selection &&
+        (value.composing == _remote.composing ||
+            (none(value.composing) && none(_remote.composing)));
   }
 
   bool _applyingRemote = false;

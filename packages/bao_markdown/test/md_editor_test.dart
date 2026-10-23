@@ -380,6 +380,61 @@ void main() {
     expect(configuration['viewId'], tester.view.viewId);
   });
 
+  testWidgets('what Windows composes is not told back to it as it composes', (
+    tester,
+  ) async {
+    final controller = MarkdownController();
+    final state = await _pump(tester, controller);
+    state.requestFocus();
+    await tester.pump();
+    tester.testTextInput.log.clear();
+    // As Windows' input method sends it: composing starts with a region of
+    // no length, grows, is committed, and the next word starts after it.
+    void compose(String old, int at, List<String> steps, String done) {
+      state.updateEditingValueWithDeltas([
+        TextEditingDeltaNonTextUpdate(
+          oldText: old,
+          selection: TextSelection.collapsed(offset: at),
+          composing: TextRange.collapsed(at),
+        ),
+      ]);
+      var text = old;
+      var end = at;
+      for (final step in [...steps, done]) {
+        state.updateEditingValueWithDeltas([
+          TextEditingDeltaReplacement(
+            oldText: text,
+            replacementText: step,
+            replacedRange: TextRange(start: at, end: end),
+            selection: TextSelection.collapsed(offset: at + step.length),
+            composing: TextRange(start: at, end: at + step.length),
+          ),
+        ]);
+        text = text.replaceRange(at, end, step);
+        end = at + step.length;
+      }
+      state.updateEditingValueWithDeltas([
+        TextEditingDeltaNonTextUpdate(
+          oldText: text,
+          selection: TextSelection.collapsed(offset: end),
+          composing: TextRange.empty,
+        ),
+      ]);
+    }
+
+    compose('', 0, ['z', 'zh', 'zhi', "zhi'j", "zhi'jie"], '直接');
+    compose('直接', 2, ['z', 'zu', 'zuo'], '做');
+    await tester.pump();
+    expect(controller.text, '直接做');
+    expect(controller.selection, const TextSelection.collapsed(offset: 3));
+    expect(
+      tester.testTextInput.log.where(
+        (call) => call.method == 'TextInput.setEditingState',
+      ),
+      isEmpty,
+    );
+  });
+
   testWidgets('copied as it shows, pasted back as its markdown', (
     tester,
   ) async {
