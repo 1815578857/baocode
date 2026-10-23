@@ -14,6 +14,7 @@ import 'package:baocode/customize/customize_view.dart';
 import 'package:baocode/customize/mcp_probe.dart';
 import 'package:baocode/settings/pages/customize_page.dart';
 import 'package:baocode/ide/ide_code_editor.dart';
+import 'package:baocode/ide/ide_input.dart';
 import 'package:baocode/ide/markdown/markdown_preview.dart';
 import 'package:baocode/keybindings/keybinding_service.dart';
 import 'package:baocode/main.dart';
@@ -220,6 +221,20 @@ void main() {
     );
     expect(_inView(find.text('Save')), findsNothing);
     expect(_markdown(tester).controller.text, contains('Body'));
+    // Its front matter a form: a value edited in its field, written back
+    // as Enter ends it.
+    final fields = _inView(find.byType(IdeInputBox));
+    expect(fields, findsNWidgets(2));
+    await tester.enterText(
+      find.descendant(of: fields.at(1), matching: find.byType(TextField)),
+      'Reads PDFs: all of them\n',
+    );
+    await tester.pump();
+    expect(
+      _markdown(tester).controller.text,
+      contains('description: "Reads PDFs: all of them"\n'),
+    );
+    expect(_inView(find.text('Unsaved changes')), findsOneWidget);
     // Edited there: unsaved, then saved with ⌘S.
     await tester.tap(_inView(find.byType(MarkdownEditor)));
     await tester.pump();

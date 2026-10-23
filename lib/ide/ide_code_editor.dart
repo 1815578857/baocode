@@ -678,7 +678,12 @@ class IdeCodeEditorState extends State<IdeCodeEditor> {
         backgroundColor: widget.background ?? colors['editor.background'],
         selectionColor: colors['editor.selectionBackground'],
         caretColor: colors['editorCursor.foreground'],
-        theme: EditorViewTheme.fromColors(colors.get),
+        // The gutter on its background too, where it lies on a page.
+        theme: EditorViewTheme.fromColors(
+          (id) => id == 'editorGutter.background' && widget.background != null
+              ? widget.background
+              : colors.get(id),
+        ),
         styledLines: _highlight?.styledLines,
         showMinimap: false,
         decorations: [
