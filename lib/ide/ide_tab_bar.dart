@@ -353,10 +353,12 @@ class MarkdownSwitch extends StatelessWidget {
     super.key,
     required this.preview,
     required this.onChanged,
+    this.padding = const EdgeInsets.only(left: 6, right: 2),
   });
 
   final bool preview;
   final ValueChanged<bool> onChanged;
+  final EdgeInsets padding;
 
   @override
   Widget build(BuildContext context) {
@@ -395,7 +397,7 @@ class MarkdownSwitch extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(left: 6, right: 2),
+      padding: padding,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

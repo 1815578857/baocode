@@ -212,11 +212,13 @@ void main() {
     final preview = _inView(find.byType(IdeMarkdownPreview));
     expect(preview, findsOneWidget);
     expect(_inView(find.byType(IdeCodeEditor)), findsNothing);
-    // Its actions flush right, over the editor's right edge (#149).
+    // Its actions flush right, over the editor's right edge (#149); Save
+    // only once there is something to save.
     expect(
-      tester.getTopRight(_inView(find.text('Save'))).dx,
+      tester.getTopRight(_inView(find.byIcon(Icons.more_horiz_rounded))).dx,
       moreOrLessEquals(tester.getTopRight(preview).dx, epsilon: 16),
     );
+    expect(_inView(find.text('Save')), findsNothing);
     expect(_markdown(tester).controller.text, contains('Body'));
     // Edited there: unsaved, then saved with ⌘S.
     await tester.tap(_inView(find.byType(MarkdownEditor)));
@@ -225,6 +227,7 @@ void main() {
     markdown.replace(markdown.length, markdown.length, '\nMore');
     await tester.pump();
     expect(_inView(find.text('Unsaved changes')), findsOneWidget);
+    expect(_inView(find.text('Save')), findsOneWidget);
     await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
     await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
     await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
