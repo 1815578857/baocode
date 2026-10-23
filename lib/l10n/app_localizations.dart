@@ -17258,6 +17258,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Write something first, then implement it in BaoCode'**
   String get stashImplementEmpty;
+
+  /// No description provided for @stashIssueDuplicateBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'{issue}, of stash {stash} merged into this one, is still open. Close it as a duplicate?'**
+  String stashIssueDuplicateBanner(String issue, String stash);
+
+  /// No description provided for @stashIssueCloseDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Close as duplicate…'**
+  String get stashIssueCloseDuplicate;
+
+  /// No description provided for @stashIssueDuplicateNoIssue.
+  ///
+  /// In en, this message translates to:
+  /// **'Merged into another note; closing as a duplicate.'**
+  String get stashIssueDuplicateNoIssue;
+
+  /// No description provided for @stashNewsOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'New issue'**
+  String get stashNewsOpened;
+
+  /// No description provided for @stashNewsChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Changed on the forge'**
+  String get stashNewsChanged;
+
+  /// No description provided for @stashNewsCommented.
+  ///
+  /// In en, this message translates to:
+  /// **'New comments'**
+  String get stashNewsCommented;
+
+  /// No description provided for @stashNewsClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed on the forge'**
+  String get stashNewsClosed;
+
+  /// No description provided for @stashNewsReopened.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopened on the forge'**
+  String get stashNewsReopened;
+
+  /// No description provided for @stashNewsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 update} other{{count} updates}}'**
+  String stashNewsCount(int count);
+
+  /// No description provided for @stashNewsCountTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Show only the stashes with updates'**
+  String get stashNewsCountTooltip;
+
+  /// No description provided for @stashNewsCountTooltipOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing only those with updates; click for all'**
+  String get stashNewsCountTooltipOn;
+
+  /// No description provided for @stashFilterNews.
+  ///
+  /// In en, this message translates to:
+  /// **'With updates'**
+  String get stashFilterNews;
+
+  /// No description provided for @stashMarkAllSeen.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all as seen'**
+  String get stashMarkAllSeen;
+
+  /// No description provided for @stashIssueComments.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 comment} other{{count} comments}}'**
+  String stashIssueComments(int count);
+
+  /// No description provided for @stashIssueDiscussion.
+  ///
+  /// In en, this message translates to:
+  /// **'Discussion'**
+  String get stashIssueDiscussion;
+
+  /// No description provided for @stashIssueDiscussionAll.
+  ///
+  /// In en, this message translates to:
+  /// **'See all {count} on {forge}'**
+  String stashIssueDiscussionAll(int count, String forge);
+
+  /// No description provided for @stashIssueDiscussionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the comments.'**
+  String get stashIssueDiscussionFailed;
+
+  /// No description provided for @stashIssueDiscussionLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the comments…'**
+  String get stashIssueDiscussionLoading;
+
+  /// No description provided for @stashDeleteAndClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete and close {issue}…'**
+  String stashDeleteAndClose(String issue);
+
+  /// No description provided for @stashDeleteOpenIssue.
+  ///
+  /// In en, this message translates to:
+  /// **'Its issue {issue} stays open on the forge unless closed too.'**
+  String stashDeleteOpenIssue(String issue);
+
+  /// No description provided for @stashIssueInSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Same as {issue}'**
+  String stashIssueInSync(String issue);
+
+  /// No description provided for @stashIssueSyncedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'synced {time}'**
+  String stashIssueSyncedAt(String time);
+
+  /// No description provided for @stashIssueNotPushed.
+  ///
+  /// In en, this message translates to:
+  /// **'Changed here, not pushed yet'**
+  String get stashIssueNotPushed;
+
+  /// No description provided for @stashIssueRemoteNewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Changed on the forge'**
+  String get stashIssueRemoteNewer;
+
+  /// No description provided for @stashIssueBothChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Changed both here and on the forge'**
+  String get stashIssueBothChanged;
+
+  /// No description provided for @stashIssueDiscussionEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No comments yet'**
+  String get stashIssueDiscussionEmpty;
 }
 
 class _AppLocalizationsDelegate

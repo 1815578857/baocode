@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:baocode/forge/forge_accounts.dart';
 import 'package:baocode/ide/ide_list.dart' show IdeListColors;
 import 'package:baocode/l10n/l10n.dart';
 import 'package:baocode/models/model_providers.dart';
+import 'package:baocode/models/secret_store.dart';
 import 'package:baocode/stash/stash_ai.dart';
 import 'package:baocode/stash/stash_controller.dart';
 import 'package:baocode/stash/stash_disk.dart';
@@ -24,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../forge/forge_test.dart' show FakeForgeHttp;
 import '../workspace/project_workspace_test.dart' show FakeWorkspaceDirectories;
 
 void main() {
@@ -596,6 +599,59 @@ void main() {
     await tester.runAsync(() => Future<void>.delayed(Duration.zero));
     await tester.pump();
     expect(store.byId(note.id)!.status, StashStatus.done);
+    await unmount(tester);
+  });
+
+  testWidgets('what is new about a stash\'s issue is told on its row and '
+      'over the list till it is shown', (tester) async {
+    controller.dispose();
+    controller = StashController(
+      store: store,
+      workspace: Workspace.mock(),
+      host: StashHost(channel: const MethodChannel('test/stash-view')),
+      accounts: ForgeAccounts(
+        http: FakeForgeHttp(),
+        secrets: MemorySecretStore(),
+      ),
+    );
+    final ids = (await tester.runAsync(() async {
+      final quiet = await store.create(body: 'Quiet one');
+      final told = await store.create(body: 'Told one');
+      await store.update(told.id, (note) {
+        // Not two collected: no merge asked of the model.
+        note.status = StashStatus.requirement;
+        note.issues.add(
+          const StashIssueLink(
+            url: 'https://github.com/o/r/issues/3',
+            state: 'open',
+            comments: 2,
+          ),
+        );
+        note.issue = 'https://github.com/o/r/issues/3';
+        note.news = StashNews.commented;
+      });
+      return [quiet.id, told.id];
+    }))!;
+    await pumpView(tester);
+    expect(find.text('1 update'), findsOneWidget);
+    expect(find.textContaining('2 comments'), findsOneWidget);
+
+    // Only those with news, then all again.
+    await tester.tap(find.text('1 update'));
+    await tester.pump();
+    expect(find.text('Quiet one'), findsNothing);
+    await tester.tap(find.text('1 update'));
+    await tester.pump();
+    expect(find.text('Quiet one'), findsOneWidget);
+
+    await tester.tap(find.text('Told one'));
+    await tester.pump();
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump();
+    expect(store.byId(ids.last)!.news, isNull);
+    expect(find.text('1 update'), findsNothing);
+    // Still said in the stash while it shows.
+    expect(find.text('New comments'), findsOneWidget);
     await unmount(tester);
   });
 

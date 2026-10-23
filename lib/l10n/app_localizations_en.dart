@@ -10556,4 +10556,112 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get stashImplementEmpty =>
       'Write something first, then implement it in BaoCode';
+
+  @override
+  String stashIssueDuplicateBanner(String issue, String stash) {
+    return '$issue, of stash $stash merged into this one, is still open. Close it as a duplicate?';
+  }
+
+  @override
+  String get stashIssueCloseDuplicate => 'Close as duplicate…';
+
+  @override
+  String get stashIssueDuplicateNoIssue =>
+      'Merged into another note; closing as a duplicate.';
+
+  @override
+  String get stashNewsOpened => 'New issue';
+
+  @override
+  String get stashNewsChanged => 'Changed on the forge';
+
+  @override
+  String get stashNewsCommented => 'New comments';
+
+  @override
+  String get stashNewsClosed => 'Closed on the forge';
+
+  @override
+  String get stashNewsReopened => 'Reopened on the forge';
+
+  @override
+  String stashNewsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count updates',
+      one: '1 update',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stashNewsCountTooltip => 'Show only the stashes with updates';
+
+  @override
+  String get stashNewsCountTooltipOn =>
+      'Showing only those with updates; click for all';
+
+  @override
+  String get stashFilterNews => 'With updates';
+
+  @override
+  String get stashMarkAllSeen => 'Mark all as seen';
+
+  @override
+  String stashIssueComments(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count comments',
+      one: '1 comment',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stashIssueDiscussion => 'Discussion';
+
+  @override
+  String stashIssueDiscussionAll(int count, String forge) {
+    return 'See all $count on $forge';
+  }
+
+  @override
+  String get stashIssueDiscussionFailed => 'Couldn\'t load the comments.';
+
+  @override
+  String get stashIssueDiscussionLoading => 'Loading the comments…';
+
+  @override
+  String stashDeleteAndClose(String issue) {
+    return 'Delete and close $issue…';
+  }
+
+  @override
+  String stashDeleteOpenIssue(String issue) {
+    return 'Its issue $issue stays open on the forge unless closed too.';
+  }
+
+  @override
+  String stashIssueInSync(String issue) {
+    return 'Same as $issue';
+  }
+
+  @override
+  String stashIssueSyncedAt(String time) {
+    return 'synced $time';
+  }
+
+  @override
+  String get stashIssueNotPushed => 'Changed here, not pushed yet';
+
+  @override
+  String get stashIssueRemoteNewer => 'Changed on the forge';
+
+  @override
+  String get stashIssueBothChanged => 'Changed both here and on the forge';
+
+  @override
+  String get stashIssueDiscussionEmpty => 'No comments yet';
 }

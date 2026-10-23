@@ -17,6 +17,7 @@ import '../theme/workbench_theme.dart' show themeColors;
 import '../workspace/editor_launcher.dart' show openExternal;
 import 'stash_forge.dart';
 import 'stash_note.dart';
+import 'stash_thread_view.dart' show stashDateText;
 import 'stash_view.dart' show StashBanner, StashChip;
 
 // A stash and the issue it is (docs/stash.md): a stash of a project that
@@ -98,6 +99,23 @@ class StashIssueChip extends StatelessWidget {
   final StashForge forge;
   final StashNote note;
 
+  /// How it stands with its issue: the same, or which side changed; when
+  /// last synced.
+  String _syncHint(AppLocalizations l10n, String tag) {
+    final here = note.changedHere;
+    final there = forge.remoteChanged(note);
+    return [
+      switch ((here, there)) {
+        (true, true) => l10n.stashIssueBothChanged,
+        (true, false) => l10n.stashIssueNotPushed,
+        (false, true) => l10n.stashIssueRemoteNewer,
+        (false, false) => l10n.stashIssueInSync(tag),
+      },
+      if (forge.lastSynced case final at?)
+        l10n.stashIssueSyncedAt(stashDateText(at)),
+    ].join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: forge,
@@ -133,6 +151,7 @@ class StashIssueChip extends StatelessWidget {
               ? null
               : ForgeStateIcon(ref.kind, state, size: 12),
           label: [ref?.fullTag ?? url, if (note.changedHere) '•'].join(' '),
+          tooltip: _syncHint(l10n, ref?.fullTag ?? url),
           active: true,
           onTap: (anchor) => unawaited(
             showIdeMenu(

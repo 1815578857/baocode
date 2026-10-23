@@ -224,7 +224,8 @@ class StashForge extends ChangeNotifier {
     bool differs(StashIssueLink link, ForgeItem item) =>
         link.title != item.title ||
         link.state != item.state.name ||
-        link.checks != item.checks?.name;
+        link.checks != item.checks?.name ||
+        link.comments != item.comments;
     bool ownDiffers(StashNote note) => switch (note.ownIssue) {
       final url? => switch (answers[url]) {
         final item? => _remoteHash(item) != note.syncedRemote,
@@ -251,18 +252,28 @@ class StashForge extends ChangeNotifier {
       for (final (i, link) in note.issues.indexed) {
         final item = answers[link.url];
         if (item == null || !differs(link, item)) continue;
+        final mine = _writing.contains(link.url);
         // Its own issue closed or opened again: so is it.
         if (link.url == own && link.state != null) {
           final was = ForgeState.parse(link.state)?.isOpen;
           if (was == true && !item.state.isOpen) {
             note.status = StashStatus.done;
-          } else if (was == false &&
-              item.state.isOpen &&
-              note.status == StashStatus.done) {
-            note.status = note.threads.isNotEmpty
-                ? StashStatus.implementing
-                : StashStatus.collected;
+            if (!mine) note.news = StashNews.closed;
+          } else if (was == false && item.state.isOpen) {
+            if (note.status == StashStatus.done) {
+              note.status = note.threads.isNotEmpty
+                  ? StashStatus.implementing
+                  : StashStatus.collected;
+            }
+            if (!mine) note.news = StashNews.reopened;
           }
+        }
+        // Said more about on its own issue.
+        if (link.url == own &&
+            !mine &&
+            link.comments != null &&
+            item.comments > link.comments!) {
+          note.news ??= StashNews.commented;
         }
         note.issues[i] = StashIssueLink(
           url: link.url,
@@ -272,6 +283,8 @@ class StashForge extends ChangeNotifier {
           session: link.session,
           // A state that changed asks anew.
           answered: link.state == item.state.name && link.answered,
+          comments: item.comments,
+          mergedFrom: link.mergedFrom,
         );
         changed = true;
       }
@@ -300,6 +313,8 @@ class StashForge extends ChangeNotifier {
       return true;
     }
     if (note.changedHere) return false;
+    // Changed since it was last seen the same: news (not the first time).
+    if (note.syncedRemote != null) note.news ??= StashNews.changed;
     note
       ..title = item.title
       ..body = note.withIssueText(item.body)
@@ -340,11 +355,75 @@ class StashForge extends ChangeNotifier {
     if (note.status == StashStatus.done)
       for (final link in note.issues)
         if (!link.answered &&
+            // Asked of as duplicates, by [duplicateIssues].
+            (link.mergedFrom == null || link.url == note.ownIssue) &&
             refOf(link.url)?.kind == ForgeItemKind.issue &&
             (stateOf(link)?.isOpen ?? false) &&
             canAsk(link.url))
           link,
   ];
+
+  /// [note]'s issues that were those of stashes merged into it, still
+  /// open: the same thing, to close as its duplicates? (Asked once.)
+  List<StashIssueLink> duplicateIssues(StashNote note) => [
+    for (final link in note.issues)
+      if (link.mergedFrom != null &&
+          !link.answered &&
+          link.url != note.ownIssue &&
+          refOf(link.url)?.kind == ForgeItemKind.issue &&
+          (stateOf(link)?.isOpen ?? false) &&
+          canAsk(link.url))
+        link,
+  ];
+
+  /// [url]'s last comments, as asked lately (in [fresh]); asked again when
+  /// [force]d, or when it has more than then. [total], how many it has as
+  /// last synced, where it was not asked since.
+  Future<List<ForgeComment>> commentsOf(
+    String url, {
+    bool force = false,
+    int? total,
+  }) {
+    final ref = refOf(url);
+    final api = ref == null ? null : accounts.apiOf(ref);
+    if (ref == null || api == null) {
+      return Future.error(const ForgeException('Not signed in.', status: 401));
+    }
+    total = _items[url]?.comments ?? total;
+    final known = _comments[url];
+    if (!force &&
+        known != null &&
+        known.total == total &&
+        _clock().difference(known.at) < fresh) {
+      return known.comments;
+    }
+    final asked = api.comments(ref, total: total);
+    _comments[url] = (at: _clock(), total: total, comments: asked);
+    // Failed: asked again next time.
+    unawaited(
+      asked.then<void>(
+        (_) {},
+        onError: (Object _) {
+          if (identical(_comments[url]?.comments, asked)) {
+            _comments.remove(url);
+          }
+        },
+      ),
+    );
+    return asked;
+  }
+
+  final Map<
+    String,
+    ({DateTime at, int? total, Future<List<ForgeComment>> comments})
+  >
+  _comments = {};
+
+  /// [id]'s stash's news seen (its detail shown).
+  Future<void> seen(int id) async {
+    if (store.byId(id)?.news == null) return;
+    await store.update(id, (note) => note.news = null, touch: false);
+  }
 
   /// What [links] of [id]'s stash asked was answered (or set aside).
   Future<void> answer(int id, Iterable<String> links) async {
@@ -378,19 +457,32 @@ class StashForge extends ChangeNotifier {
     String url, {
     String text = '',
     bool close = false,
+    bool duplicate = false,
   }) async {
     final ref = refOf(url);
     final api = ref == null ? null : accounts.apiOf(ref);
     if (ref == null || api == null) {
       throw const ForgeException('Not signed in.', status: 401);
     }
-    if (text.trim().isNotEmpty) await api.comment(ref, text.trim());
-    if (close && ref.kind == ForgeItemKind.issue) await api.close(ref);
-    // As it is now first: a state changed asks anew, but this one the user
-    // just answered.
-    await _ask([url], force: true);
+    // What changes there, from here till it is asked anew, the user's:
+    // not news to them (a sync between asking too).
+    _writing.add(url);
+    try {
+      if (text.trim().isNotEmpty) await api.comment(ref, text.trim());
+      if (close && ref.kind == ForgeItemKind.issue) {
+        await api.close(ref, duplicate: duplicate);
+      }
+      // As it is now first: a state changed asks anew, but this one the
+      // user just answered.
+      await _ask([url], force: true);
+    } finally {
+      _writing.remove(url);
+    }
     await answer(id, [url]);
   }
+
+  /// What the user is writing on: its changes theirs, not news.
+  final Set<String> _writing = {};
 
   /// What should not go out in [text] before the user says so: paths on
   /// this machine, and what looks like a secret (an API key, a token, a
@@ -618,7 +710,8 @@ class StashForge extends ChangeNotifier {
           }
           // Closed before it was a stash: none.
           if (!item.state.isOpen) continue;
-          await _create(item, project: project.path);
+          // Not the first time: one opened since, news to the user.
+          await _create(item, project: project.path, news: since != null);
         }
         _syncedAt[repo] = started;
         _syncFailures.remove(repo);
@@ -640,7 +733,11 @@ class StashForge extends ChangeNotifier {
 
   /// A stash that is [item]'s issue, about [project]: its title and text
   /// the issue's.
-  Future<StashNote> _create(ForgeItem item, {String? project}) async {
+  Future<StashNote> _create(
+    ForgeItem item, {
+    String? project,
+    bool news = false,
+  }) async {
     final url = item.ref.url.toString();
     final note = await store.create(body: item.body.trim(), project: project);
     await store.update(note.id, (note) {
@@ -648,9 +745,15 @@ class StashForge extends ChangeNotifier {
         ..title = item.title
         ..issue = url
         ..synced = StashNote.syncHash(item.title, item.body)
-        ..syncedRemote = _remoteHash(item);
+        ..syncedRemote = _remoteHash(item)
+        ..news = news ? StashNews.opened : null;
       note.issues.add(
-        StashIssueLink(url: url, title: item.title, state: item.state.name),
+        StashIssueLink(
+          url: url,
+          title: item.title,
+          state: item.state.name,
+          comments: item.comments,
+        ),
       );
     }, touch: false);
     _items[url] = item;
@@ -737,6 +840,8 @@ class StashForge extends ChangeNotifier {
       note.syncedRemote = null;
       note.synced = null;
       _takeOwn(note, item!);
+      // Asked for: not news.
+      note.news = null;
     });
     notifyListeners();
   }
