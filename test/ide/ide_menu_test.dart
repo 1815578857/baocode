@@ -105,32 +105,30 @@ void main() {
 
   // #198: the window drags itself by the header Windows draws, so a first
   // item over it could not be chosen.
-  testWidgets(
-    'long dropdown stays below the window\'s own header on Windows',
-    (tester) async {
-      var chosen = false;
-      await _open(
-        tester,
-        size: size,
-        anchor: const Rect.fromLTWH(400, 300, 100, 26),
-        entries: [
-          IdeMenuAction('First', onSelected: () => chosen = true),
-          for (var i = 0; i < 50; i++) IdeMenuAction('Sound $i'),
-        ],
-      );
-      final panel = tester.getRect(_panels);
-      expect(panel.top, AppMetrics.headerHeight + 8);
-      expect(panel.bottom, size.height - 8);
-      expect(
-        tester.getRect(find.text('First')).top,
-        greaterThan(AppMetrics.headerHeight),
-      );
-      await tester.tap(find.text('First'));
-      await tester.pumpAndSettle();
-      expect(chosen, isTrue);
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.windows),
-  );
+  testWidgets('long dropdown stays below the window\'s own header on Windows', (
+    tester,
+  ) async {
+    var chosen = false;
+    await _open(
+      tester,
+      size: size,
+      anchor: const Rect.fromLTWH(400, 300, 100, 26),
+      entries: [
+        IdeMenuAction('First', onSelected: () => chosen = true),
+        for (var i = 0; i < 50; i++) IdeMenuAction('Sound $i'),
+      ],
+    );
+    final panel = tester.getRect(_panels);
+    expect(panel.top, AppMetrics.headerHeight);
+    expect(panel.bottom, size.height - 8);
+    expect(
+      tester.getRect(find.text('First')).top,
+      greaterThan(AppMetrics.headerHeight),
+    );
+    await tester.tap(find.text('First'));
+    await tester.pumpAndSettle();
+    expect(chosen, isTrue);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   testWidgets('wide right-aligned dropdown stays inside the inset', (
     tester,

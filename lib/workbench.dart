@@ -4381,9 +4381,12 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       showGeneralDialog<void>(
         context: context,
         barrierColor: Colors.transparent,
+        // Over the whole window, header included: below it, as the IDE's.
         pageBuilder: (context, _, _) => Padding(
           padding: EdgeInsets.only(
-            top: WindowControls.drawsHeader ? 0 : AppMetrics.titleBarHeight,
+            top: WindowControls.drawsHeader
+                ? WindowControls.headerInset
+                : AppMetrics.titleBarHeight,
           ),
           child: IdeQuickInput.pick(key: key, pick: pick, onClose: hide),
         ),
