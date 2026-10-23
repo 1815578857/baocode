@@ -10014,13 +10014,13 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get stashNewsCountTooltip => '只看有新动态的 Stash';
+  String get stashNewsCountTooltip => '只看与你有关的新动态：你的 issue 和 PR、指派给你的、@ 你的';
 
   @override
-  String get stashNewsCountTooltipOn => '正在只看有新动态的，点一下看全部';
+  String get stashNewsCountTooltipOn => '正在只看与你有关的新动态，点一下看全部';
 
   @override
-  String get stashFilterNews => '有新动态';
+  String get stashFilterNews => '与你有关的动态';
 
   @override
   String get stashMarkAllSeen => '全部标为已读';
@@ -10080,4 +10080,91 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get stashIssueDiscussionEmpty => '还没有评论';
+
+  @override
+  String get stashNewsMerged => 'PR 已合并';
+
+  @override
+  String get stashNewsChangesRequested => 'PR 被要求修改';
+
+  @override
+  String get stashNewsChecksFailed => 'PR 检查没通过';
+
+  @override
+  String get stashNewsMarked => '标为未读';
+
+  @override
+  String stashNewsOther(String news) {
+    return '$news（与你无关）';
+  }
+
+  @override
+  String stashNewsSidebar(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 条与你有关的新动态',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stashFilterAllNews => '所有新动态';
+
+  @override
+  String get stashMarkSeen => '标为已读';
+
+  @override
+  String get stashMarkUnseen => '标为未读';
+
+  @override
+  String stashPullChecksFailedBanner(String pull) {
+    return '$pull 的检查没通过。';
+  }
+
+  @override
+  String stashPullChangesBanner(String pull) {
+    return '$pull 被要求修改。';
+  }
+
+  @override
+  String stashPullMergedBanner(String pull) {
+    return '$pull 已合并。这条也完成了吗？';
+  }
+
+  @override
+  String get stashPullFix => '回到对话修复';
+
+  @override
+  String get stashPullView => '查看';
+
+  @override
+  String stashPullFixChecks(String pull) {
+    return '$pull 的检查没通过，看看哪里失败了并修复。';
+  }
+
+  @override
+  String stashPullFixChanges(String pull) {
+    return '$pull 被要求修改，看一下评审意见并照着改。';
+  }
+
+  @override
+  String stashWriteManyTitle(int count) {
+    return '回复 $count 个 issue';
+  }
+
+  @override
+  String stashWriteCloseManyTitle(int count) {
+    return '关闭 $count 个 issue';
+  }
+
+  @override
+  String stashDeleteOpenIssues(int count, String issues) {
+    return '它们的 issue $issues 在远端还开着，除非一并关闭。';
+  }
+
+  @override
+  String stashDeleteAndCloseMany(int count) {
+    return '删除并关闭 $count 个 issue…';
+  }
 }

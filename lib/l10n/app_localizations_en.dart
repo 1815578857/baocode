@@ -10596,14 +10596,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get stashNewsCountTooltip => 'Show only the stashes with updates';
+  String get stashNewsCountTooltip =>
+      'Show only the updates about you: your issues and pull requests, those assigned to you or naming you';
 
   @override
   String get stashNewsCountTooltipOn =>
-      'Showing only those with updates; click for all';
+      'Showing only the updates about you; click for all';
 
   @override
-  String get stashFilterNews => 'With updates';
+  String get stashFilterNews => 'About you';
 
   @override
   String get stashMarkAllSeen => 'Mark all as seen';
@@ -10664,4 +10665,92 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stashIssueDiscussionEmpty => 'No comments yet';
+
+  @override
+  String get stashNewsMerged => 'Pull request merged';
+
+  @override
+  String get stashNewsChangesRequested => 'Changes requested';
+
+  @override
+  String get stashNewsChecksFailed => 'Checks failed';
+
+  @override
+  String get stashNewsMarked => 'Marked as unread';
+
+  @override
+  String stashNewsOther(String news) {
+    return '$news (not about you)';
+  }
+
+  @override
+  String stashNewsSidebar(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count updates about you',
+      one: '1 update about you',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stashFilterAllNews => 'Any updates';
+
+  @override
+  String get stashMarkSeen => 'Mark as Read';
+
+  @override
+  String get stashMarkUnseen => 'Mark as Unread';
+
+  @override
+  String stashPullChecksFailedBanner(String pull) {
+    return 'The checks of $pull failed.';
+  }
+
+  @override
+  String stashPullChangesBanner(String pull) {
+    return 'Changes were requested on $pull.';
+  }
+
+  @override
+  String stashPullMergedBanner(String pull) {
+    return '$pull was merged. Is this done too?';
+  }
+
+  @override
+  String get stashPullFix => 'Fix in Its Conversation';
+
+  @override
+  String get stashPullView => 'View';
+
+  @override
+  String stashPullFixChecks(String pull) {
+    return 'The checks of $pull failed. Find out what failed and fix it.';
+  }
+
+  @override
+  String stashPullFixChanges(String pull) {
+    return 'Changes were requested on $pull. Read the review and make them.';
+  }
+
+  @override
+  String stashWriteManyTitle(int count) {
+    return 'Comment on $count issues';
+  }
+
+  @override
+  String stashWriteCloseManyTitle(int count) {
+    return 'Close $count issues';
+  }
+
+  @override
+  String stashDeleteOpenIssues(int count, String issues) {
+    return 'Their issues $issues stay open on the forge unless closed too.';
+  }
+
+  @override
+  String stashDeleteAndCloseMany(int count) {
+    return 'Delete and close $count issues…';
+  }
 }

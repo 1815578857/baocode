@@ -92,7 +92,9 @@ enum _Time { all, today, week, month }
 
 /// The stashes shown by their issue (see StashForge): all, those that
 /// are one, those that are not.
-enum _IssueFilter { all, issue, local, news }
+/// Which a stash's issue makes shown: any, those that are one, those not,
+/// those with news about the user, with any news.
+enum _IssueFilter { all, issue, local, news, allNews }
 
 class StashViewState extends State<StashView>
     with _StashActions, SingleTickerProviderStateMixin {
@@ -381,13 +383,21 @@ class StashViewState extends State<StashView>
         if (note.news != null && !note.isBlank) note,
   ];
 
+  /// Of [_news], those about the user ([StashNote.newsMine]).
+  List<StashNote> get _newsMine => [
+    for (final note in _news)
+      if (note.newsMine) note,
+  ];
+
   Future<void> _seenAll() async {
     final forge = _controller.forge;
     if (forge == null) return;
     for (final note in _news) {
       await forge.seen(note.id);
     }
-    if (mounted && _issueFilter == _IssueFilter.news) {
+    if (mounted &&
+        (_issueFilter == _IssueFilter.news ||
+            _issueFilter == _IssueFilter.allNews)) {
       _filter(() => _issueFilter = _IssueFilter.all);
     }
   }
@@ -408,7 +418,8 @@ class StashViewState extends State<StashView>
       _IssueFilter.all => true,
       _IssueFilter.issue => note.ownIssue != null,
       _IssueFilter.local => note.ownIssue == null,
-      _IssueFilter.news => note.news != null,
+      _IssueFilter.news => note.news != null && note.newsMine,
+      _IssueFilter.allNews => note.news != null,
     };
     final among = store.notes.where(
       (note) =>
@@ -787,7 +798,7 @@ class StashViewState extends State<StashView>
               '$count',
               style: TextStyle(color: AppColors.textFaint, fontSize: 12),
             ),
-            if (_news case final news when news.isNotEmpty) ...[
+            if (_newsMine case final news when news.isNotEmpty) ...[
               const SizedBox(width: 10),
               _NewsPill(
                 count: news.length,
@@ -1265,6 +1276,7 @@ class StashViewState extends State<StashView>
         _IssueFilter.issue => l10n.stashFilterIssue,
         _IssueFilter.local => l10n.stashFilterNotIssue,
         _IssueFilter.news => l10n.stashFilterNews,
+        _IssueFilter.allNews => l10n.stashFilterAllNews,
       };
 
   Widget _buildPickedBar(AppLocalizations l10n) {
@@ -1366,17 +1378,21 @@ mixin _StashActions<T extends StatefulWidget> on State<T> {
   Future<void> _delete(List<int> ids) async {
     final l10n = context.l10n;
     final forge = _controller.forge;
-    // One stash's issue still open there: closed too, if the user says so
-    // (and what goes there written by them first).
-    final note = ids.length == 1 ? _controller.store.byId(ids.single) : null;
-    final own = note?.ownIssue;
-    final link = own == null ? null : note!.issueOf(own);
-    final open =
-        forge != null &&
-        link != null &&
-        forge.canAsk(link.url) &&
-        (forge.stateOf(link)?.isOpen ?? false);
-    final tag = own == null ? null : forge?.refOf(own)?.fullTag ?? own;
+    // Their issues still open there: closed too, if the user says so (and
+    // what goes there written by them first).
+    final open = <(StashNote, StashIssueLink)>[
+      if (forge != null)
+        for (final id in ids)
+          if (_controller.store.byId(id) case final note?)
+            if (note.ownIssue case final own?)
+              if (note.issueOf(own) case final link?
+                  when forge.canAsk(link.url) &&
+                      (forge.stateOf(link)?.isOpen ?? false))
+                (note, link),
+    ];
+    final tags = [
+      for (final (_, link) in open) forge?.refOf(link.url)?.fullTag ?? link.url,
+    ];
     final choice = await showIdeDialog(
       context,
       message: ids.length == 1
@@ -1384,16 +1400,27 @@ mixin _StashActions<T extends StatefulWidget> on State<T> {
           : l10n.stashDeleteMany(ids.length),
       detail: [
         l10n.stashDeleteDetail,
-        if (open) l10n.stashDeleteOpenIssue(tag!),
+        if (tags.length == 1)
+          l10n.stashDeleteOpenIssue(tags.single)
+        else if (tags.isNotEmpty)
+          l10n.stashDeleteOpenIssues(tags.length, tags.join(', ')),
       ].join('\n\n'),
-      buttons: [l10n.stashDelete, if (open) l10n.stashDeleteAndClose(tag!)],
+      buttons: [
+        l10n.stashDelete,
+        if (tags.length == 1)
+          l10n.stashDeleteAndClose(tags.single)
+        else if (tags.isNotEmpty)
+          l10n.stashDeleteAndCloseMany(tags.length),
+      ],
     );
-    if (choice == 1 && open && mounted) {
+    if (choice == 1 && open.isNotEmpty && forge != null && mounted) {
+      final (note, link) = open.first;
       final closed = await showStashWriteDialog(
         context,
         forge: forge,
-        note: note!,
+        note: note,
         link: link,
+        others: open.sublist(1),
         close: true,
       );
       if (!closed) return;
@@ -1467,6 +1494,21 @@ mixin _StashActions<T extends StatefulWidget> on State<T> {
             onSelected: () => unawaited(_controller.open(note.id)),
           ),
         ],
+        if (_controller.forge case final forge?)
+          if (ids.any((id) => _controller.store.byId(id)?.news != null))
+            IdeMenuAction(
+              l10n.stashMarkSeen,
+              onSelected: () => unawaited(
+                Future.wait([for (final id in ids) forge.seen(id)]),
+              ),
+            )
+          else
+            IdeMenuAction(
+              l10n.stashMarkUnseen,
+              onSelected: () => unawaited(
+                Future.wait([for (final id in ids) forge.markUnseen(id)]),
+              ),
+            ),
         IdeMenuAction(
           l10n.stashStatus,
           submenu: _statusEntries(ids, current: several ? null : note.status),
@@ -1595,6 +1637,9 @@ class _StashDetailState extends State<StashDetail> with _StashActions {
   /// while it stays.
   StashNews? _news;
 
+  /// The stash whose news was last seen here.
+  int? _seenOf;
+
   @override
   StashController get _controller => widget.controller;
 
@@ -1657,13 +1702,18 @@ class _StashDetailState extends State<StashDetail> with _StashActions {
     final l10n = context.l10n;
     final note = _controller.store.byId(widget.id);
     if (note == null) return const SizedBox.shrink();
-    if (note.news case final news? when _controller.forge != null) {
-      _news = news;
+    // Seen as it shows; but marked to come back to while it does, left
+    // so.
+    if (note.news case final news?
+        when _controller.forge != null &&
+            !(news == StashNews.marked && _seenOf == note.id)) {
+      if (news != StashNews.marked) _news = news;
       final id = note.id;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_controller.forge?.seen(id));
       });
     }
+    _seenOf = note.id;
     final suggested = note.suggestedProject;
     final clarifying = _controller.clarifying(note.id);
     final failure = _controller.clarifyFailure(note.id);
@@ -1823,6 +1873,7 @@ class _StashDetailState extends State<StashDetail> with _StashActions {
               key: ValueKey(('issues', note.id)),
               forge: forge,
               note: note,
+              onOpenAgent: widget.onOpenAgent,
             ),
           ),
         if (_controller.forge case final forge? when note.ownIssue != null)
@@ -1960,6 +2011,10 @@ String stashNewsLabel(AppLocalizations l10n, StashNews news) => switch (news) {
   StashNews.commented => l10n.stashNewsCommented,
   StashNews.closed => l10n.stashNewsClosed,
   StashNews.reopened => l10n.stashNewsReopened,
+  StashNews.merged => l10n.stashNewsMerged,
+  StashNews.changesRequested => l10n.stashNewsChangesRequested,
+  StashNews.checksFailed => l10n.stashNewsChecksFailed,
+  StashNews.marked => l10n.stashNewsMarked,
 };
 
 IconData _statusIcon(StashStatus status) => switch (status) {
@@ -2032,12 +2087,18 @@ class _StashRow extends StatelessWidget {
                 children: [
                   if (note.news case final news? when forge != null) ...[
                     IdeHover(
-                      message: stashNewsLabel(l10n, news),
+                      message: note.newsMine
+                          ? stashNewsLabel(l10n, news)
+                          : l10n.stashNewsOther(stashNewsLabel(l10n, news)),
+                      // About the user: filled; else a ring, quieter.
                       child: Container(
                         width: 7,
                         height: 7,
                         decoration: BoxDecoration(
-                          color: AppColors.accent,
+                          color: note.newsMine ? AppColors.accent : null,
+                          border: note.newsMine
+                              ? null
+                              : Border.all(color: AppColors.textFaint),
                           shape: BoxShape.circle,
                         ),
                       ),

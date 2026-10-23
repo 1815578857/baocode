@@ -380,6 +380,92 @@ void main() {
       expect(store.byId(id)!.status, StashStatus.collected);
     });
 
+    test(
+      'what is about the user told as theirs, the rest quieter; their '
+      'own comments not news; one gone and another written still is',
+      () async {
+        Map<String, Object?> by(String login, Map<String, Object?> issue) => {
+          ...issue,
+          'user': {'login': login},
+        };
+        var said = <String, List<Map<String, Object?>>>{};
+        Map<String, Object?> comment(String login, String body, int minute) => {
+          'user': {'login': login},
+          'body': body,
+          'created_at': '2026-10-23T10:${'$minute'.padLeft(2, '0')}:00Z',
+        };
+        for (final number in [3, 4]) {
+          http.on(
+            'GET',
+            'https://api.github.com/repos/o/r/issues/$number/comments',
+            (_) => said['$number'] ?? const [],
+          );
+        }
+        open = [
+          by('leo', issue(3, 'Uploads fail', 'On 503.')),
+          by('ana', issue(4, 'Dark mode', '')),
+        ];
+        await forge.sync();
+        final mine = forge.stashOf(issueUrl)!.id;
+        final theirs = forge.stashOf('https://github.com/o/r/issues/4')!.id;
+
+        // The user's own comment; another's on another's issue.
+        said = {
+          '3': [comment('leo', 'Looking into it.', 1)],
+          '4': [comment('bob', 'Same here.', 2)],
+        };
+        open = [
+          {...open[0], 'comments': 1, 'updated_at': '2026-10-23T10:01:00Z'},
+          {...open[1], 'comments': 1, 'updated_at': '2026-10-23T10:02:00Z'},
+        ];
+        await forge.sync();
+        expect(store.byId(mine)!.news, isNull);
+        expect(store.byId(theirs)!.news, StashNews.commented);
+        expect(store.byId(theirs)!.newsMine, isFalse);
+        await forge.seen(theirs);
+
+        // Naming the user: theirs.
+        said['4'] = [...said['4']!, comment('bob', 'cc @leo', 3)];
+        open[1] = {
+          ...open[1],
+          'comments': 2,
+          'updated_at': '2026-10-23T10:03:00Z',
+        };
+        await forge.sync();
+        expect(store.byId(theirs)!.news, StashNews.commented);
+        expect(store.byId(theirs)!.newsMine, isTrue);
+        expect(
+          StashNote.decode(theirs, store.byId(theirs)!.encode()).newsMine,
+          isTrue,
+        );
+        await forge.seen(theirs);
+        expect(store.byId(theirs)!.newsMine, isFalse);
+
+        // Another's on the user's issue: theirs; one gone and another
+        // written, as many as before.
+        said['3'] = [...said['3']!, comment('carl', 'Fails for me too.', 4)];
+        open[0] = {
+          ...open[0],
+          'comments': 2,
+          'updated_at': '2026-10-23T10:04:00Z',
+        };
+        await forge.sync();
+        expect(store.byId(mine)!.news, StashNews.commented);
+        expect(store.byId(mine)!.newsMine, isTrue);
+        await forge.seen(mine);
+        said['3'] = [said['3']!.last, comment('dan', 'And here.', 5)];
+        open[0] = {...open[0], 'updated_at': '2026-10-23T10:05:00Z'};
+        await forge.sync();
+        expect(store.byId(mine)!.news, StashNews.commented);
+
+        // Marked to come back to, and seen.
+        await forge.seen(mine);
+        await forge.markUnseen(mine);
+        expect(store.byId(mine)!.news, StashNews.marked);
+        expect(store.byId(mine)!.newsMine, isTrue);
+      },
+    );
+
     test('what is new about them is told till seen: one opened since, '
         'changed there, commented on, closed; not what the user did', () async {
       await forge.sync();
@@ -645,6 +731,75 @@ void main() {
           ),
         );
     expect(items, hasLength(ForgeApi.pageSize + 3));
+  });
+
+  test('a pull request of it failing, changes asked of it, merged: told, '
+      'and asked about', () async {
+    var checks = 'success';
+    var review = 'APPROVED';
+    var merged = false;
+    http
+      ..on(
+        'GET',
+        'https://api.github.com/repos/o/r/pulls/7',
+        (_) => {
+          'number': 7,
+          'title': 'Retry uploads',
+          'state': merged ? 'closed' : 'open',
+          'merged_at': merged ? '2026-10-23T10:00:00Z' : null,
+          'user': {'login': 'leo'},
+          'head': {'sha': 'abc', 'ref': 'retry'},
+        },
+      )
+      ..on(
+        'GET',
+        'https://api.github.com/repos/o/r/commits/abc/check-runs',
+        (_) => {
+          'check_runs': [
+            {'status': 'completed', 'conclusion': checks},
+          ],
+        },
+      )
+      ..on(
+        'GET',
+        'https://api.github.com/repos/o/r/pulls/7/reviews',
+        (_) => [
+          {
+            'state': review,
+            'user': {'login': 'ana'},
+          },
+        ],
+      );
+    final note = await store.create(body: 'Fixed in $pullUrl');
+    forge.start();
+    await settle();
+    expect(store.byId(note.id)!.news, isNull);
+    expect(forge.pullsToFix(store.byId(note.id)!), isEmpty);
+
+    checks = 'failure';
+    await forge.refresh(force: true);
+    await settle();
+    expect(store.byId(note.id)!.news, StashNews.checksFailed);
+    expect(store.byId(note.id)!.newsMine, isTrue);
+    expect(forge.pullsToFix(store.byId(note.id)!).single.url, pullUrl);
+    await forge.seen(note.id);
+    await forge.answer(note.id, [pullUrl]);
+    expect(forge.pullsToFix(store.byId(note.id)!), isEmpty);
+
+    // Asked anew: changes asked for now.
+    review = 'CHANGES_REQUESTED';
+    await forge.refresh(force: true);
+    await settle();
+    expect(store.byId(note.id)!.news, StashNews.changesRequested);
+    expect(forge.pullsToFix(store.byId(note.id)!), hasLength(1));
+    await forge.seen(note.id);
+
+    merged = true;
+    await forge.refresh(force: true);
+    await settle();
+    expect(store.byId(note.id)!.news, StashNews.merged);
+    expect(forge.pullsToFix(store.byId(note.id)!), isEmpty);
+    expect(forge.mergedPulls(store.byId(note.id)!).single.url, pullUrl);
   });
 
   test('the pull requests a conversation links to', () {

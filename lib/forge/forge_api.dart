@@ -92,6 +92,16 @@ enum ForgeChecks {
       values.where((checks) => checks.name == value).firstOrNull;
 }
 
+/// What a pull request's reviewers say, together: changes asked for while
+/// any's latest review asks for them; else approved when any approved.
+enum ForgeReview {
+  approved,
+  changesRequested;
+
+  static ForgeReview? parse(Object? value) =>
+      values.where((review) => review.name == value).firstOrNull;
+}
+
 @immutable
 class ForgeLabel {
   const ForgeLabel(this.name, {this.color});
@@ -123,6 +133,7 @@ class ForgeItem {
     this.comments = 0,
     this.updated,
     this.checks,
+    this.review,
     this.branch,
   });
 
@@ -140,6 +151,9 @@ class ForgeItem {
 
   /// A pull request's, when it has any.
   final ForgeChecks? checks;
+
+  /// A pull request's, when it was reviewed.
+  final ForgeReview? review;
 
   /// A pull request's branch.
   final String? branch;
@@ -355,8 +369,41 @@ class GitHubApi extends ForgeApi {
           ? ForgeState.draft
           : ForgeState.open,
       checks: sha == null ? null : await _checks(repo, sha),
+      review: await _review(repo, ref.number),
       branch: (json['head'] as Map?)?['ref'] as String?,
     );
+  }
+
+  /// Pull request [number]'s reviews, together (see [ForgeReview]): each
+  /// reviewer's latest that approves, asks for changes or was dismissed.
+  Future<ForgeReview?> _review(String repo, int number) async {
+    try {
+      final json = await _call(
+        'GET',
+        '$repo/pulls/$number/reviews',
+        query: {'per_page': '100'},
+      ) as List;
+      final latest = <String, String>{};
+      for (final review in json.whereType<Map>()) {
+        final state = review['state'] as String?;
+        final user = (review['user'] as Map?)?['login'] as String?;
+        if (user == null ||
+            !const {
+              'APPROVED',
+              'CHANGES_REQUESTED',
+              'DISMISSED',
+            }.contains(state)) {
+          continue;
+        }
+        latest[user] = state!;
+      }
+      if (latest.values.contains('CHANGES_REQUESTED')) {
+        return ForgeReview.changesRequested;
+      }
+      return latest.values.contains('APPROVED') ? ForgeReview.approved : null;
+    } on ForgeException {
+      return null;
+    }
   }
 
   /// The commit [sha]'s check runs, together: failed when any failed,
@@ -389,6 +436,7 @@ class GitHubApi extends ForgeApi {
     ForgeItemKind kind = ForgeItemKind.issue,
     ForgeState? state,
     ForgeChecks? checks,
+    ForgeReview? review,
     String? branch,
   }) => ForgeItem(
     ref: ForgeRef(repo: repo, kind: kind, number: json['number'] as int),
@@ -416,6 +464,7 @@ class GitHubApi extends ForgeApi {
     comments: json['comments'] as int? ?? 0,
     updated: ForgeApi._date(json['updated_at']),
     checks: checks,
+    review: review,
     branch: branch,
   );
 
@@ -687,6 +736,10 @@ class GitLabApi extends ForgeApi {
         null || 'skipped' || 'manual' => null,
         _ => ForgeChecks.pending,
       },
+      review: switch (json['detailed_merge_status']) {
+        'requested_changes' => ForgeReview.changesRequested,
+        _ => null,
+      },
       branch: json['source_branch'] as String?,
     );
   }
@@ -697,6 +750,7 @@ class GitLabApi extends ForgeApi {
     ForgeItemKind kind = ForgeItemKind.issue,
     ForgeState? state,
     ForgeChecks? checks,
+    ForgeReview? review,
     String? branch,
   }) => ForgeItem(
     ref: ForgeRef(repo: repo, kind: kind, number: json['iid'] as int),
@@ -725,6 +779,7 @@ class GitLabApi extends ForgeApi {
     comments: json['user_notes_count'] as int? ?? 0,
     updated: ForgeApi._date(json['updated_at']),
     checks: checks,
+    review: review,
     branch: branch,
   );
 

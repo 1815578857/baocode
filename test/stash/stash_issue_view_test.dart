@@ -7,6 +7,7 @@ import 'package:baocode/stash/stash_disk.dart';
 import 'package:baocode/stash/stash_forge.dart';
 import 'package:baocode/stash/stash_forge_view.dart';
 import 'package:baocode/stash/stash_issue_view.dart';
+import 'package:baocode/stash/stash_note.dart';
 import 'package:baocode/stash/stash_store.dart';
 import 'package:baocode/workspace/workspace.dart';
 import 'package:flutter/material.dart';
@@ -237,5 +238,30 @@ void main() {
     await tester.pump();
     expect(find.textContaining('@ana'), findsOneWidget);
     expect(find.text('Still fails on 4G.'), findsOneWidget);
+  });
+
+  testWidgets('a pull request of it failing: said, to be looked at', (
+    tester,
+  ) async {
+    final note = (await tester.runAsync(() async {
+      final note = await store.create(body: 'Retry uploads');
+      await store.update(
+        note.id,
+        (note) => note.issues.add(
+          const StashIssueLink(
+            url: 'https://github.com/o/r/pull/7',
+            state: 'open',
+            checks: 'failure',
+          ),
+        ),
+      );
+      return note;
+    }))!;
+    await tester.pumpWidget(section(note.id));
+    await tester.pump();
+    expect(find.text('The checks of o/r#7 failed.'), findsOneWidget);
+    expect(find.text('View'), findsOneWidget);
+    // Not made in a conversation here: nowhere to fix it.
+    expect(find.text('Fix in Its Conversation'), findsNothing);
   });
 }
