@@ -11,8 +11,11 @@ import '../base/smooth_scroll.dart';
 import '../chat/floating/floating_placement.dart';
 import '../chat/widgets/hover_builder.dart';
 import '../ide/ide_code_editor.dart';
+import '../ide/file_service.dart' show readFileBytes;
 import '../ide/ide_dialog.dart';
 import '../ide/ide_hover.dart';
+import '../ide/ide_tab_bar.dart' show MarkdownSwitch;
+import '../ide/markdown/markdown_preview.dart';
 import '../l10n/l10n.dart';
 import '../platform/app_platform.dart';
 import '../remote/remote_location.dart';
@@ -1041,6 +1044,11 @@ class _CustomizationEditorState extends State<_CustomizationEditor> {
   /// ([Customization.detail]), made when saved.
   bool _missing = false;
 
+  /// A markdown file (a skill's, a rule's…) shows as the IDE shows one:
+  /// edited as it reads, unless switched to its source.
+  late final bool _markdown = isMarkdownPath(widget.item.path);
+  bool _source = false;
+
   Customization get _item => widget.item;
   bool get _dirty => _saved != null && _text.document.text != _saved;
   bool get _savable => _item.editable && (_dirty || _missing);
@@ -1136,6 +1144,27 @@ class _CustomizationEditorState extends State<_CustomizationEditor> {
     widget.onBack();
   }
 
+  /// The file as its preview, its text the editor's: what is typed in
+  /// either is the other's, saved as one.
+  Widget _preview() {
+    final local = widget.store.isLocal;
+    final open = widget.onOpenFile;
+    return IdeMarkdownPreview(
+      path: _item.path,
+      model: _text.document,
+      readOnly: !_item.editable,
+      // A remote host's pictures are not read from here.
+      readBytes: local
+          ? readFileBytes
+          : (path) => Future.error(UnsupportedError(path)),
+      pathContext: local ? p.context : p.posix,
+      // Its source's editor told, which keeps whether it is saved.
+      onEdited: _text.syncFromDocument,
+      onOpenFile: open == null ? null : (path, _) => open(path),
+      onOpenExternal: (uri) => unawaited(openExternal(uri.toString())),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -1197,6 +1226,12 @@ class _CustomizationEditorState extends State<_CustomizationEditor> {
                       ],
                     ),
                   ),
+                  if (_markdown)
+                    MarkdownSwitch(
+                      preview: !_source,
+                      onChanged: (preview) =>
+                          setState(() => _source = !preview),
+                    ),
                   if (widget.onOpenFile case final open? when _item.editable)
                     SidebarIconButton(
                       icon: Codicons.goToFile,
@@ -1262,12 +1297,14 @@ class _CustomizationEditorState extends State<_CustomizationEditor> {
                   ),
                   child: CallbackShortcuts(
                     bindings: {command: () => unawaited(_save())},
-                    child: IdeCodeEditor(
-                      controller: _text,
-                      path: _item.path,
-                      focusNode: _focus,
-                      readOnly: !_item.editable,
-                    ),
+                    child: _markdown && !_source
+                        ? _preview()
+                        : IdeCodeEditor(
+                            controller: _text,
+                            path: _item.path,
+                            focusNode: _focus,
+                            readOnly: !_item.editable,
+                          ),
                   ),
                 ),
               ),

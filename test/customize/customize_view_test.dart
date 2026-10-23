@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bao_markdown/bao_markdown.dart' show MarkdownEditor;
 
 import 'package:bao_editor/monaco/flutter/editor_surface.dart';
 import 'package:bao_editor/monaco/flutter/editor_surface_controller.dart';
@@ -13,6 +14,7 @@ import 'package:baocode/customize/customize_view.dart';
 import 'package:baocode/customize/mcp_probe.dart';
 import 'package:baocode/settings/pages/customize_page.dart';
 import 'package:baocode/ide/ide_code_editor.dart';
+import 'package:baocode/ide/markdown/markdown_preview.dart';
 import 'package:baocode/keybindings/keybinding_service.dart';
 import 'package:baocode/main.dart';
 import 'package:baocode/sidebar/sidebar.dart';
@@ -80,6 +82,9 @@ class _MemoryStore implements CustomizationStore {
       : null;
 
   @override
+  Future<String?> commandFile(String name, {String? project}) async => null;
+
+  @override
   Future<void> write(String path, String text) async => files[path] = text;
 
   @override
@@ -131,6 +136,10 @@ EditorSurfaceController _editor(WidgetTester tester) => tester
     .controller;
 
 String _editorText(WidgetTester tester) => _editor(tester).document.text;
+
+/// A markdown customization's preview's editor (bao_markdown's).
+MarkdownEditor _markdown(WidgetTester tester) =>
+    tester.widget<MarkdownEditor>(_inView(find.byType(MarkdownEditor)));
 
 void main() {
   testWidgets('Customize lists the skills, in place of the chat', (
@@ -199,15 +208,35 @@ void main() {
 
     await tester.tap(_inView(find.text('pdf')));
     await tester.pumpAndSettle();
-    // The IDE's editor, the skill's text in it.
-    final editor = _inView(find.byType(IdeCodeEditor));
-    expect(editor, findsOneWidget);
+    // Markdown, so the IDE's markdown editor, the skill's text in it.
+    final preview = _inView(find.byType(IdeMarkdownPreview));
+    expect(preview, findsOneWidget);
+    expect(_inView(find.byType(IdeCodeEditor)), findsNothing);
     // Its actions flush right, over the editor's right edge (#149).
     expect(
       tester.getTopRight(_inView(find.text('Save'))).dx,
-      moreOrLessEquals(tester.getTopRight(editor).dx, epsilon: 16),
+      moreOrLessEquals(tester.getTopRight(preview).dx, epsilon: 16),
     );
-    expect(_editorText(tester), contains('Body'));
+    expect(_markdown(tester).controller.text, contains('Body'));
+    // Edited there: unsaved, then saved with ⌘S.
+    await tester.tap(_inView(find.byType(MarkdownEditor)));
+    await tester.pump();
+    final markdown = _markdown(tester).controller;
+    markdown.replace(markdown.length, markdown.length, '\nMore');
+    await tester.pump();
+    expect(_inView(find.text('Unsaved changes')), findsOneWidget);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await tester.pumpAndSettle();
+    expect(store.files['/c/skills/pdf/SKILL.md'], endsWith('\nMore'));
+
+    // Its source: the IDE's editor, the same text.
+    await tester.tap(_inView(find.text('Markdown')));
+    await tester.pumpAndSettle();
+    expect(_inView(find.byType(IdeMarkdownPreview)), findsNothing);
+    expect(_inView(find.byType(IdeCodeEditor)), findsOneWidget);
+    expect(_editorText(tester), endsWith('\nMore'));
     await tester.tap(_inView(find.byType(EditorSurface)));
     await tester.pump();
     _editor(tester)
@@ -263,7 +292,7 @@ void main() {
     await tester.tap(find.text('Create'));
     await tester.pumpAndSettle();
     expect(store.files, contains('/c/skills/release-notes/SKILL.md'));
-    expect(_editorText(tester), contains('name: release-notes'));
+    expect(_markdown(tester).controller.text, contains('name: release-notes'));
   }, variant: _mac);
 
   testWidgets('MCPs and hooks say where they come from; a settings file '
@@ -400,9 +429,6 @@ void main() {
 
     await tester.tap(find.text('pdf'));
     await tester.pumpAndSettle();
-    final editor = tester
-        .widget<EditorSurface>(find.byType(EditorSurface))
-        .controller;
-    expect(editor.document.text, contains('Body'));
+    expect(_markdown(tester).controller.text, contains('Body'));
   });
 }
