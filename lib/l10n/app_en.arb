@@ -4807,7 +4807,7 @@
     }
   },
   "modelsRoles": "Roles",
-  "modelsRolesDescription": "Which model Claude Code uses for each part of its work. Unset, the model picked stands in.",
+  "modelsRolesDescription": "Which model Claude Code uses for each part of its work. Unset, the model picked stands in. All but the main model may be another upstream's: BaoCode's local proxy sends their requests there.",
   "modelsRoleUnset": "Unset",
   "modelsRoleMain": "Main Model",
   "modelsRoleMainDescription": "Used when the model a session picked of this upstream is gone.",
@@ -4819,8 +4819,8 @@
   "modelsRoleHaikuDescription": "ANTHROPIC_DEFAULT_HAIKU_MODEL: Claude Code's background work, and agents' titles.",
   "modelsRoleHaikuWarning": "Unset, background work runs on the model picked, which may be slower and cost more. Pick a small, fast model.",
   "modelsRoleSubagent": "Subagents",
-  "modelsRoleSubagentDescription": "CLAUDE_CODE_SUBAGENT_MODEL: the model every subagent runs on, over the one its definition or the agent's call names (but inherit). It may be another upstream's: BaoCode's local proxy sends its requests there.",
-  "modelsRoleMissing": "This model is no longer one of its upstream's: subagents' requests to it will fail.",
+  "modelsRoleSubagentDescription": "CLAUDE_CODE_SUBAGENT_MODEL: the model every subagent runs on, over the one its definition or the agent's call names (but inherit).",
+  "modelsRoleMissing": "This model is no longer one of its upstream's: requests to it will fail.",
   "@modelsRoleMissing": {
     "description": "Under a role that picks another upstream's model, once that upstream or model is gone."
   },
@@ -4930,6 +4930,17 @@
   "modelsKindImage": "Image generation (Images API)",
   "modelsKindImageChat": "Image generation (in a conversation)",
   "modelsKindDescription": "Image models are not offered in the model picker: agents make pictures with them through the generate_image tool.",
+  "modelsEndpoint": "Endpoint",
+  "modelsEndpointUpstream": "As the upstream ({protocol})",
+  "@modelsEndpointUpstream": {
+    "description": "The endpoint choice of a model that follows its upstream's protocol, that protocol's name in it.",
+    "placeholders": {
+      "protocol": {
+        "type": "String"
+      }
+    }
+  },
+  "modelsEndpointDescription": "Which API this model's requests go to, at the upstream's base URL and with its key: on a relay that serves several, its Claude models at the Anthropic one and its GPT at Responses, say.",
   "modelsImageBadge": "Image",
   "modelsImage": "Image model",
   "modelsImageDescription": "What agents make pictures with (the generate_image tool), unless you ask them for another; asked each time, you pick it in the conversation. Turn on image models in an upstream's list.",

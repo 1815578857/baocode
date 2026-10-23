@@ -6315,7 +6315,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get modelsRoles => '角色映射';
 
   @override
-  String get modelsRolesDescription => 'Claude Code 在各类工作中使用的模型；未设置时使用当前所选模型。';
+  String get modelsRolesDescription =>
+      'Claude Code 在各类工作中使用的模型；未设置时使用当前所选模型。除主模型外，都可以选其他上游的模型，请求会经 BaoCode 的本地代理发过去。';
 
   @override
   String get modelsRoleUnset => '未设置';
@@ -6355,10 +6356,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modelsRoleSubagentDescription =>
-      'CLAUDE_CODE_SUBAGENT_MODEL：所有子 Agent 使用的模型，优先于子 Agent 定义或调用时指定的模型（定义为 inherit 的除外）。也可以选其他上游的模型，请求会经 BaoCode 的本地代理发过去。';
+      'CLAUDE_CODE_SUBAGENT_MODEL：所有子 Agent 使用的模型，优先于子 Agent 定义或调用时指定的模型（定义为 inherit 的除外）。';
 
   @override
-  String get modelsRoleMissing => '这个模型已不在它的上游里，子 Agent 的请求会失败。';
+  String get modelsRoleMissing => '这个模型已不在它的上游里，用到它的请求会失败。';
 
   @override
   String get modelsAdvanced => '高级';
@@ -6561,6 +6562,18 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get modelsKindDescription =>
       '图片模型不出现在模型选择器里：agent 通过 generate_image 工具用它们生成图片。';
+
+  @override
+  String get modelsEndpoint => '端点类型';
+
+  @override
+  String modelsEndpointUpstream(String protocol) {
+    return '跟随上游（$protocol）';
+  }
+
+  @override
+  String get modelsEndpointDescription =>
+      '这个模型的请求发往哪种接口，Base URL 和 Key 与上游相同。中转站同时提供多种接口时，可以让 Claude 模型走 Anthropic 接口、GPT 模型走 Responses。';
 
   @override
   String get modelsImageBadge => '图片';

@@ -6731,7 +6731,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelsRolesDescription =>
-      'Which model Claude Code uses for each part of its work. Unset, the model picked stands in.';
+      'Which model Claude Code uses for each part of its work. Unset, the model picked stands in. All but the main model may be another upstream\'s: BaoCode\'s local proxy sends their requests there.';
 
   @override
   String get modelsRoleUnset => 'Unset';
@@ -6773,11 +6773,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelsRoleSubagentDescription =>
-      'CLAUDE_CODE_SUBAGENT_MODEL: the model every subagent runs on, over the one its definition or the agent\'s call names (but inherit). It may be another upstream\'s: BaoCode\'s local proxy sends its requests there.';
+      'CLAUDE_CODE_SUBAGENT_MODEL: the model every subagent runs on, over the one its definition or the agent\'s call names (but inherit).';
 
   @override
   String get modelsRoleMissing =>
-      'This model is no longer one of its upstream\'s: subagents\' requests to it will fail.';
+      'This model is no longer one of its upstream\'s: requests to it will fail.';
 
   @override
   String get modelsAdvanced => 'Advanced';
@@ -6986,6 +6986,18 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get modelsKindDescription =>
       'Image models are not offered in the model picker: agents make pictures with them through the generate_image tool.';
+
+  @override
+  String get modelsEndpoint => 'Endpoint';
+
+  @override
+  String modelsEndpointUpstream(String protocol) {
+    return 'As the upstream ($protocol)';
+  }
+
+  @override
+  String get modelsEndpointDescription =>
+      'Which API this model\'s requests go to, at the upstream\'s base URL and with its key: on a relay that serves several, its Claude models at the Anthropic one and its GPT at Responses, say.';
 
   @override
   String get modelsImageBadge => 'Image';
