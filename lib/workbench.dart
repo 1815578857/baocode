@@ -3759,6 +3759,9 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
               BrowserTools.show(tabId);
               _sidePanel.showSection(thread.session, SidePanelSection.browser);
             },
+      openFolder: embedded
+          ? null
+          : (path) => _sidePanel.openFolder(thread.session, path),
       exists: _projectFileChecks[thread.project.path] ??= fileExistsIn(
         files,
         paths: paths,
