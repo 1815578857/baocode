@@ -31,7 +31,7 @@ class StashForge extends ChangeNotifier {
     StashIssueSync Function()? issueSync,
   }) : _clock = clock ?? DateTime.now,
        _remotes = remotes ?? io.gitRemoteUrls,
-       _issueSync = issueSync ?? (() => StashIssueSync.auto);
+       _issueSync = issueSync ?? (() => StashIssueSync.all);
 
   /// The app's, once main() has made it.
   static StashForge? current;
@@ -109,7 +109,8 @@ class StashForge extends ChangeNotifier {
   void _accountsChanged() {
     _failures.clear();
     _asked.clear();
-    _pushable.clear();
+    _syncedAt.clear();
+    _syncFailures.clear();
     notifyListeners();
     unawaited(_collect());
     unawaited(sync());
@@ -158,11 +159,12 @@ class StashForge extends ChangeNotifier {
       ? _refresh(true)
       : _refreshing ??= _refresh(false).whenComplete(() => _refreshing = null);
 
-  /// Asks [id]'s stash's again, now (shown, it should be current).
-  Future<void> refreshNote(int id) async {
+  /// Asks [id]'s stash's again, now (shown, it should be current); even
+  /// those asked lately when [force]d.
+  Future<void> refreshNote(int id, {bool force = false}) async {
     final note = store.byId(id);
     if (note == null) return;
-    await _ask([for (final link in note.issues) link.url], force: false);
+    await _ask([for (final link in note.issues) link.url], force: force);
   }
 
   Future<void> _refresh(bool force) => _ask([
@@ -181,6 +183,11 @@ class StashForge extends ChangeNotifier {
         if (force || !(_asked[url]?.isAfter(now.subtract(fresh)) ?? false)) url,
     };
     final answers = <String, ForgeItem>{};
+    final started = asking.difference(_inFlight);
+    if (started.isNotEmpty) {
+      _inFlight.addAll(started);
+      notifyListeners();
+    }
     await Future.wait([
       for (final url in asking)
         if (refOf(url) case final ref?)
@@ -198,11 +205,16 @@ class StashForge extends ChangeNotifier {
                 })
                 .whenComplete(() => _asked[url] = now),
     ]);
+    _inFlight.removeAll(started);
     if (_disposed) return;
     _items.addAll(answers);
     notifyListeners();
     await _keep(answers);
   }
+
+  /// Whether [url] is being asked now (its row shows it loading).
+  bool asking(String url) => _inFlight.contains(url);
+  final Set<String> _inFlight = {};
 
   /// Keeps what [answers] say with the links (their title, state and
   /// checks), for when they cannot be asked; and a stash's own issue's
@@ -446,6 +458,33 @@ class StashForge extends ChangeNotifier {
       {for (final folder in foldersOf(project)) ...await _reposIn(folder)}
           .toList();
 
+  /// [project]'s repositories as last found, for what shows them at once:
+  /// null till they are (asked then, and told when found).
+  List<ForgeRepo>? knownReposOf(String project) {
+    final folders = foldersOf(project);
+    final now = _clock();
+    final known = [
+      for (final folder in folders)
+        if (_remotesOf[folder] case final found?
+            when now.difference(found.at) < refreshEvery)
+          found.repos,
+    ];
+    if (known.length == folders.length) {
+      return {for (final repos in known) ...repos}.toList();
+    }
+    if (_findingRepos.add(project)) {
+      unawaited(
+        reposOf(project).whenComplete(() {
+          _findingRepos.remove(project);
+          if (!_disposed) notifyListeners();
+        }),
+      );
+    }
+    return null;
+  }
+
+  final Set<String> _findingRepos = {};
+
   /// The repositories the projects are of (by their folders' Git remotes,
   /// on hosts known), each with its project: a folder's own, before a
   /// workspace it is in; those with an account first.
@@ -475,39 +514,88 @@ class StashForge extends ChangeNotifier {
 
   // --- The projects' issues, as stashes ----------------------------------------
 
-  /// Whether each repository can be pushed to by the user, as asked.
-  final Map<ForgeRepo, bool> _pushable = {};
-
   Future<void>? _syncing;
+
+  /// Whether [sync] is going on; [syncProgress] how far.
+  bool get syncing => _syncing != null;
+
+  /// The repositories [sync] went through, of how many, while it goes.
+  ({int done, int total, ForgeRepo? repo})? get syncProgress => _progress;
+  ({int done, int total, ForgeRepo? repo})? _progress;
+
+  /// When [sync] last went through every repository.
+  DateTime? get lastSynced => _lastSynced;
+  DateTime? _lastSynced;
+
+  /// Why each repository could not be synced last time, if it could not.
+  Map<ForgeRepo, ForgeException> get syncFailures =>
+      Map.unmodifiable(_syncFailures);
+  final Map<ForgeRepo, ForgeException> _syncFailures = {};
+
+  /// The projects' repositories on a forge the user is not signed in to:
+  /// their issues not stashes till they are.
+  List<ForgeRepo> get unsignedRepos => List.unmodifiable(_unsigned);
+  List<ForgeRepo> _unsigned = const [];
+
+  /// When each repository was last synced whole: after that, only what
+  /// changed since is asked (closed ones among it).
+  final Map<ForgeRepo, DateTime> _syncedAt = {};
 
   /// Makes the projects' open issues stashes (those the settings say: see
   /// [StashIssueSync]), each once: the stash its issue is, else one that
   /// links it, else a new one; never one whose stash was deleted, or that
   /// was unlinked from it ([StashStore.ignoredIssues]). Those already
-  /// stashes are kept in step (see [_keep]).
-  Future<void> sync() =>
-      _syncing ??= _sync().whenComplete(() => _syncing = null);
+  /// stashes are kept in step (see [_keep]). Every open one asked the
+  /// first time, then those changed since; all again when [full].
+  Future<void> sync({bool full = false}) {
+    if (full) _syncedAt.clear();
+    return _syncing ??= _sync().whenComplete(() {
+      _syncing = null;
+      _progress = null;
+      if (!_disposed) notifyListeners();
+    });
+  }
 
   Future<void> _sync() async {
     final mode = _issueSync();
     if (_disposed || mode == StashIssueSync.off || !store.loaded) return;
+    final repos = await repositories();
+    final signed = [
+      for (final entry in repos)
+        if (accounts.apiFor(entry.repo.host) != null) entry,
+    ];
+    _unsigned = [
+      for (final (:repo, project: _) in repos)
+        if (accounts.apiFor(repo.host) == null) repo,
+    ];
+    _progress = (done: 0, total: signed.length, repo: null);
+    notifyListeners();
     final answers = <String, ForgeItem>{};
-    for (final (:repo, :project) in await repositories()) {
-      final api = accounts.apiFor(repo.host);
-      if (api == null) continue;
+    for (final (i, (:repo, :project)) in signed.indexed) {
+      if (_disposed) return;
+      final api = accounts.apiFor(repo.host)!;
+      _progress = (done: i, total: signed.length, repo: repo);
+      notifyListeners();
+      final started = _clock();
       try {
-        final all =
-            mode == StashIssueSync.auto &&
-            (_pushable[repo] ??= await api
-                .canPush(repo)
-                .catchError((Object _) => false));
+        final since = _syncedAt[repo];
         final items = <String, ForgeItem>{};
-        for (final filter
-            in all
-                ? const [ForgeIssueFilter.all]
-                : const [ForgeIssueFilter.assigned, ForgeIssueFilter.created]) {
-          for (final item in await api.issues(repo, filter: filter)) {
+        if (mode == StashIssueSync.all) {
+          for (final item in await api.allIssues(
+            repo,
+            // A minute back: what changed as it was asked.
+            since: since?.subtract(const Duration(minutes: 1)),
+          )) {
             items[item.ref.url.toString()] = item;
+          }
+        } else {
+          for (final filter in const [
+            ForgeIssueFilter.assigned,
+            ForgeIssueFilter.created,
+          ]) {
+            for (final item in await api.issues(repo, filter: filter)) {
+              items[item.ref.url.toString()] = item;
+            }
           }
         }
         for (final MapEntry(key: url, value: item) in items.entries) {
@@ -528,13 +616,19 @@ class StashForge extends ChangeNotifier {
             }
             continue;
           }
+          // Closed before it was a stash: none.
+          if (!item.state.isOpen) continue;
           await _create(item, project: project.path);
         }
+        _syncedAt[repo] = started;
+        _syncFailures.remove(repo);
       } on ForgeException catch (error) {
+        _syncFailures[repo] = error;
         debugPrint('stash: issues of ${repo.path}: ${error.message}');
       }
     }
     if (_disposed) return;
+    _lastSynced = _clock();
     _items.addAll(answers);
     final now = _clock();
     for (final url in answers.keys) {

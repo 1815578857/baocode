@@ -36,6 +36,7 @@ import 'stash_actions.dart';
 import 'stash_ai.dart';
 import 'stash_controller.dart';
 import 'stash_editor.dart' show StashRefs;
+import 'stash_forge.dart';
 import 'stash_forge_view.dart';
 import 'stash_issue_view.dart';
 import 'stash_note.dart';
@@ -89,6 +90,10 @@ class StashView extends StatefulWidget {
 
 enum _Time { all, today, week, month }
 
+/// The stashes shown by their issue (see StashForge): all, those that
+/// are one, those that are not.
+enum _IssueFilter { all, issue, local }
+
 class StashViewState extends State<StashView>
     with _StashActions, SingleTickerProviderStateMixin {
   final TextEditingController _query = TextEditingController();
@@ -110,6 +115,14 @@ class StashViewState extends State<StashView>
   final Set<int> _picked = {};
 
   _Time _time = _Time.all;
+
+  /// Which stashes show by their issue: all, those that are one, those
+  /// that are not.
+  _IssueFilter _issueFilter = _IssueFilter.all;
+
+  /// The sync problems set aside this run ([StashForge.syncFailures], the
+  /// repositories not signed in to), by what they say.
+  final Set<String> _dismissedSync = {};
 
   /// The projects shown, by their paths ('' for none); all when empty.
   final Set<String> _projects = {};
@@ -171,6 +184,7 @@ class StashViewState extends State<StashView>
     _query.addListener(() => setState(() {}));
     _controller.addListener(_changed);
     _controller.store.addListener(_changed);
+    _controller.forge?.addListener(_changed);
     unawaited(
       _controller.store.load().then((_) {
         if (widget.initial case final id? when mounted) reveal(id);
@@ -184,6 +198,7 @@ class StashViewState extends State<StashView>
   void dispose() {
     _controller.removeListener(_changed);
     _controller.store.removeListener(_changed);
+    _controller.forge?.removeListener(_changed);
     _query.dispose();
     _shown.dispose();
     _scroll.dispose();
@@ -238,6 +253,7 @@ class StashViewState extends State<StashView>
         _projects.clear();
       }
       if (!_timeOk(note, DateTime.now())) _time = _Time.all;
+      _issueFilter = _IssueFilter.all;
       if (!_filtered.any((shown) => shown.id == id)) {
         _query.clear();
         _aiResults = null;
@@ -321,6 +337,8 @@ class StashViewState extends State<StashView>
     final kept = _controller.filters;
     if (kept == null) return;
     _time = _Time.values.asNameMap()[kept['time']] ?? _Time.all;
+    _issueFilter =
+        _IssueFilter.values.asNameMap()[kept['issue']] ?? _IssueFilter.all;
     if (kept['projects'] case final List<Object?> projects) {
       _projects.addAll(projects.whereType<String>());
     }
@@ -338,6 +356,7 @@ class StashViewState extends State<StashView>
     setState(change);
     _controller.filters = {
       'time': _time.name,
+      'issue': _issueFilter.name,
       'projects': [..._projects],
       'statuses': [for (final status in _statuses) status.name],
     };
@@ -360,12 +379,18 @@ class StashViewState extends State<StashView>
         _statuses.isEmpty || _statuses.contains(note.status);
     bool projectOk(StashNote note) =>
         _projects.isEmpty || _projects.contains(note.project ?? '');
+    bool issueOk(StashNote note) => switch (_issueFilter) {
+      _IssueFilter.all => true,
+      _IssueFilter.issue => note.ownIssue != null,
+      _IssueFilter.local => note.ownIssue == null,
+    };
     final among = store.notes.where(
       (note) =>
           !note.isBlank &&
           _timeOk(note, now) &&
           statusOk(note) &&
-          projectOk(note),
+          projectOk(note) &&
+          issueOk(note),
     );
     final ai = _aiResults;
     if (ai != null && _aiQuery == _query.text.trim()) {
@@ -764,12 +789,19 @@ class StashViewState extends State<StashView>
               tooltip: l10n.stashNewTooltip,
               onTap: () => unawaited(_new()),
             ),
-            if (_controller.forge != null)
+            if (_controller.forge case final forge?) ...[
+              SidebarIconButton(
+                icon: Codicons.sync,
+                spinning: forge.syncing,
+                tooltip: _syncTooltip(l10n, forge),
+                onTap: () => unawaited(forge.sync(full: true)),
+              ),
               SidebarIconButton(
                 icon: Codicons.issues,
                 tooltip: l10n.stashImport,
                 onTap: () => unawaited(_import()),
               ),
+            ],
             SidebarIconButton(
               icon: Codicons.folderOpened,
               tooltip: l10n.revealInFileManager,
@@ -785,6 +817,63 @@ class StashViewState extends State<StashView>
         ),
       ),
     );
+  }
+
+  String _syncTooltip(AppLocalizations l10n, StashForge forge) {
+    if (forge.syncProgress case (:final done, :final total, :final repo?)) {
+      return l10n.stashSyncingRepo(repo.path, done + 1, total);
+    }
+    if (forge.syncing) return l10n.stashSyncing;
+    return switch (forge.lastSynced) {
+      final at? => l10n.stashSyncTooltipLast(stashDateText(at)),
+      null => l10n.stashSyncTooltip,
+    };
+  }
+
+  /// Over the list: how the issues' sync goes (where it is, while it
+  /// goes), and what stops it (a repository that failed, a forge not
+  /// signed in to), each set aside for this run with its close.
+  List<Widget> _syncStatus(AppLocalizations l10n) {
+    final forge = _controller.forge;
+    if (forge == null) return const [];
+    final openSettings = accountsOpener(context);
+    final unsigned = forge.unsignedRepos;
+    final unsignedKey = 'unsigned ${unsigned.map((r) => r.host).toSet()}';
+    return [
+      for (final MapEntry(key: repo, value: error)
+          in forge.syncFailures.entries)
+        if (!_dismissedSync.contains('${repo.path} ${error.message}'))
+          StashBanner(
+            icon: Codicons.warning,
+            iconColor: themeColors['charts.yellow'],
+            text: l10n.stashSyncFailed(repo.path, error.message),
+            actions: [
+              (l10n.stashRetry, () => unawaited(forge.sync())),
+              (
+                l10n.stashDismiss,
+                () => setState(
+                  () => _dismissedSync.add('${repo.path} ${error.message}'),
+                ),
+              ),
+            ],
+          ),
+      if (unsigned.isNotEmpty && !_dismissedSync.contains(unsignedKey))
+        StashBanner(
+          icon: Codicons.account,
+          text: l10n.stashSyncSignIn(
+            unsigned.first.kind.label,
+            unsigned.first.path,
+            unsigned.length,
+          ),
+          actions: [
+            if (openSettings != null) (l10n.stashIssueSignIn, openSettings),
+            (
+              l10n.stashDismiss,
+              () => setState(() => _dismissedSync.add(unsignedKey)),
+            ),
+          ],
+        ),
+    ];
   }
 
   Widget _buildList(AppLocalizations l10n) {
@@ -831,6 +920,7 @@ class StashViewState extends State<StashView>
               const SizedBox(height: 10),
               _buildFilters(l10n),
               if (_picked.length > 1) _buildPickedBar(l10n),
+              ..._syncStatus(l10n),
               if (ai)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
@@ -902,7 +992,10 @@ class StashViewState extends State<StashView>
                     hasScrollBody: false,
                     child: Center(
                       child: Text(
-                        _controller.store.notes.isEmpty
+                        _controller.store.notes.isEmpty &&
+                                (_controller.forge?.syncing ?? false)
+                            ? l10n.stashSyncingEmpty
+                            : _controller.store.notes.isEmpty
                             ? switch (_hotkeyLabel()) {
                                 '' => l10n.stashEmptyNoHotkey,
                                 final hotkey => l10n.stashEmpty(hotkey),
@@ -971,11 +1064,24 @@ class StashViewState extends State<StashView>
             projectName: _projectName(note.project),
             onTap: () => _tap(note),
             onMenu: (position) => unawaited(_cardMenu(note, position)),
+            onImplement: (anchor) => unawaited(_implementFromRow(note, anchor)),
+            onToggleDone: () =>
+                unawaited(_setStatus([note.id], _toggledStatus(note))),
           );
         },
       ),
     ),
   ];
+
+  Future<void> _implementFromRow(StashNote note, Rect anchor) async {
+    final thread = await implementStash(
+      context,
+      _controller,
+      note.id,
+      anchor: anchor,
+    );
+    if (thread != null) widget.onOpenAgent(thread);
+  }
 
   Widget _buildFilters(AppLocalizations l10n) {
     final timeLabel = switch (_time) {
@@ -1088,9 +1194,32 @@ class StashViewState extends State<StashView>
             ]),
           ),
         ),
+        if (_controller.forge != null)
+          StashChip(
+            icon: Codicons.issues,
+            label: _issueFilterLabel(l10n, _issueFilter),
+            active: _issueFilter != _IssueFilter.all,
+            onTap: (anchor) => unawaited(
+              _filterMenu(anchor, [
+                for (final filter in _IssueFilter.values)
+                  IdeMenuAction(
+                    _issueFilterLabel(l10n, filter),
+                    checked: _issueFilter == filter,
+                    onSelected: () => _filter(() => _issueFilter = filter),
+                  ),
+              ]),
+            ),
+          ),
       ],
     );
   }
+
+  static String _issueFilterLabel(AppLocalizations l10n, _IssueFilter filter) =>
+      switch (filter) {
+        _IssueFilter.all => l10n.stashFilterAnyIssue,
+        _IssueFilter.issue => l10n.stashFilterIssue,
+        _IssueFilter.local => l10n.stashFilterNotIssue,
+      };
 
   Widget _buildPickedBar(AppLocalizations l10n) {
     final ids = [..._picked];
@@ -1668,6 +1797,8 @@ class _StashDetailState extends State<StashDetail> with _StashActions {
                   },
                 ),
               ),
+              if (_controller.forge case final forge?)
+                StashIssueButton(forge: forge, note: note),
               if (note.status != StashStatus.done)
                 IdeButton(
                   label: l10n.stashMarkDone,
@@ -1681,16 +1812,8 @@ class _StashDetailState extends State<StashDetail> with _StashActions {
                   label: l10n.stashReopen,
                   icon: Codicons.discard,
                   secondary: true,
-                  onPressed: () => unawaited(
-                    _setStatus(
-                      [note.id],
-                      note.threads.isNotEmpty
-                          ? StashStatus.implementing
-                          : note.requirement != null
-                          ? StashStatus.requirement
-                          : StashStatus.collected,
-                    ),
-                  ),
+                  onPressed: () =>
+                      unawaited(_setStatus([note.id], _toggledStatus(note))),
                 ),
             ],
           ),
@@ -1712,7 +1835,16 @@ class _StashDetailState extends State<StashDetail> with _StashActions {
   }
 }
 
-/// A status's name, as the cards and menus show it.
+/// [note]'s status marked done, or (done) not: as far as it had got.
+StashStatus _toggledStatus(StashNote note) => note.status != StashStatus.done
+    ? StashStatus.done
+    : note.threads.isNotEmpty
+    ? StashStatus.implementing
+    : note.requirement != null
+    ? StashStatus.requirement
+    : StashStatus.collected;
+
+/// A status's name, as the rows and menus show it.
 String stashStatusLabel(AppLocalizations l10n, StashStatus status) =>
     switch (status) {
       StashStatus.collected => l10n.stashStatusCollected,
@@ -1744,10 +1876,17 @@ class _StashRow extends StatelessWidget {
     required this.projectName,
     required this.onTap,
     required this.onMenu,
+    required this.onImplement,
+    required this.onToggleDone,
   });
 
   final StashNote note;
   final StashController store;
+
+  /// Its hover's actions: carried out in BaoCode (its menus under the
+  /// [Rect]), done or not.
+  final ValueChanged<Rect> onImplement;
+  final VoidCallback onToggleDone;
 
   /// Whether it is selected, as [selection] says it may have changed: the
   /// row's background drawn anew, not what is in it.
@@ -1863,17 +2002,30 @@ class _StashRow extends StatelessWidget {
           builder: (context, content) {
             // As the explorer's selected file.
             final on = selected();
+            final background = on
+                ? IdeListColors.activeSelection
+                : hovered
+                ? AppColors.hover
+                : null;
             return Container(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 9),
               decoration: BoxDecoration(
-                color: on
-                    ? IdeListColors.activeSelection
-                    : hovered
-                    ? AppColors.hover
-                    : null,
+                color: background,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: content,
+              child: hovered
+                  ? Stack(
+                      children: [
+                        content!,
+                        // Over what is at its end, on its background.
+                        Positioned(
+                          top: -2,
+                          right: 0,
+                          child: _actions(context, background),
+                        ),
+                      ],
+                    )
+                  : content,
             );
           },
           child: content,
@@ -1888,6 +2040,105 @@ class _StashRow extends StatelessWidget {
       child: row,
     );
   }
+}
+
+extension on _StashRow {
+  Widget _actions(BuildContext context, Color? background) {
+    final l10n = context.l10n;
+    final done = note.status == StashStatus.done;
+    final own = note.ownIssue;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        // Opaque: what it covers does not show through.
+        color: Color.alphaBlend(
+          background ?? Colors.transparent,
+          AppColors.background,
+        ),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Builder(
+              builder: (context) => _RowAction(
+                tooltip: l10n.stashImplement,
+                onTap: () {
+                  final box = context.findRenderObject() as RenderBox?;
+                  if (box == null) return;
+                  onImplement(box.localToGlobal(Offset.zero) & box.size);
+                },
+                child: const BaoCodeLogo(size: 14),
+              ),
+            ),
+            _RowAction(
+              tooltip: done ? l10n.stashReopen : l10n.stashMarkDone,
+              onTap: onToggleDone,
+              child: Icon(done ? Codicons.discard : Codicons.check, size: 15),
+            ),
+            if (own != null)
+              _RowAction(
+                tooltip: l10n.stashIssueOpen,
+                onTap: () => unawaited(openExternal(own)),
+                child: const Icon(Codicons.linkExternal, size: 14),
+              ),
+            Builder(
+              builder: (context) => _RowAction(
+                tooltip: l10n.stashMore,
+                onTap: () {
+                  final box = context.findRenderObject() as RenderBox?;
+                  if (box == null) return;
+                  onMenu(box.localToGlobal(box.size.bottomLeft(Offset.zero)));
+                },
+                child: const Icon(Codicons.ellipsis, size: 15),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One of a row's hover's actions: an icon, its tooltip.
+class _RowAction extends StatelessWidget {
+  const _RowAction({
+    required this.tooltip,
+    required this.onTap,
+    required this.child,
+  });
+
+  final String tooltip;
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => IdeHover(
+    message: tooltip,
+    child: HoverBuilder(
+      cursor: SystemMouseCursors.click,
+      builder: (context, hovered) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          width: 24,
+          height: 24,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: hovered ? themeColors['toolbar.hoverBackground'] : null,
+            borderRadius: BorderRadius.circular(5),
+          ),
+          child: IconTheme.merge(
+            data: IconThemeData(
+              color: hovered ? AppColors.text : AppColors.textMuted,
+            ),
+            child: child,
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 /// A stash's status as its row and detail mark it: a ring just jotted

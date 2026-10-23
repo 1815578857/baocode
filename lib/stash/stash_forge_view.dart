@@ -227,6 +227,17 @@ class _StashIssueSectionState extends State<StashIssueSection> {
     final faint = TextStyle(color: AppColors.textFaint, fontSize: 12);
     final openSettings = accountsOpener(context);
     final details = <Widget>[
+      if (_forge.asking(link.url) && item == null)
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IdeSpinning(
+              Icon(Codicons.sync, size: 11, color: AppColors.textFaint),
+            ),
+            const SizedBox(width: 4),
+            Text(l10n.stashIssueLoading, style: faint),
+          ],
+        ),
       if (state != null)
         Text(forgeStateLabel(l10n, ref.kind, state), style: faint),
       if (item?.author case final author?) Text('@$author', style: faint),
