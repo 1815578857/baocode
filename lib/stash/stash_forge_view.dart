@@ -25,7 +25,7 @@ import '../workspace/editor_launcher.dart' show openExternal;
 import '../workspace/workspace.dart' show Project;
 import 'stash_forge.dart';
 import 'stash_note.dart';
-import 'stash_thread_view.dart' show StashRowBox, stashRowIndent;
+import 'stash_thread_view.dart' show StashRowBox, stashDateText, stashRowIndent;
 import 'stash_view.dart' show StashBadge, StashBanner;
 
 /// [state]'s name, as the stashes show it.
@@ -115,14 +115,19 @@ class _StashIssueSectionState extends State<StashIssueSection> {
   void initState() {
     super.initState();
     // Shown: it should be as it is now.
-    unawaited(widget.forge.refreshNote(widget.note.id));
+    _refresh();
   }
+
+  /// After this frame: what it changes is told to those building now.
+  void _refresh() => WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (mounted) unawaited(widget.forge.refreshNote(widget.note.id));
+  });
 
   @override
   void didUpdateWidget(StashIssueSection oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.note.id != widget.note.id) {
-      unawaited(widget.forge.refreshNote(widget.note.id));
+      _refresh();
     }
   }
 
@@ -154,6 +159,25 @@ class _StashIssueSectionState extends State<StashIssueSection> {
             text: l10n.stashIssueClosedBanner(_tagOf(link)),
             actions: [
               (l10n.stashMarkDone, () => unawaited(_markDone(link))),
+              (
+                l10n.stashDismiss,
+                () => unawaited(_forge.answer(note.id, [link.url])),
+              ),
+            ],
+          ),
+        for (final link in _forge.duplicateIssues(note))
+          StashBanner(
+            icon: Codicons.merge,
+            iconColor: themeColors['charts.purple'],
+            text: l10n.stashIssueDuplicateBanner(
+              _tagOf(link),
+              '#${link.mergedFrom}',
+            ),
+            actions: [
+              (
+                l10n.stashIssueCloseDuplicate,
+                () => unawaited(_closeDuplicate(link)),
+              ),
               (
                 l10n.stashDismiss,
                 () => unawaited(_forge.answer(note.id, [link.url])),
@@ -196,13 +220,39 @@ class _StashIssueSectionState extends State<StashIssueSection> {
   String _tagOf(StashIssueLink link) =>
       _forge.refOf(link.url)?.fullTag ?? link.url;
 
+  /// [link], a stash's merged into this one, closed as this one's issue's
+  /// duplicate (or this stash's, where it is no issue): as the forge says
+  /// one is, so that it shows them linked.
+  Future<bool> _closeDuplicate(StashIssueLink link) {
+    final note = widget.note;
+    final of = switch (note.ownIssue) {
+      final own? => switch ((_forge.refOf(own), _forge.refOf(link.url))) {
+        (final mine?, final theirs?) when mine.repo == theirs.repo => mine.tag,
+        (final mine?, _) => mine.url.toString(),
+        _ => own,
+      },
+      null => null,
+    };
+    return showStashWriteDialog(
+      context,
+      forge: _forge,
+      note: note,
+      link: link,
+      close: true,
+      duplicate: true,
+      draft: of == null
+          ? context.l10n.stashIssueDuplicateNoIssue
+          : 'Duplicate of $of',
+    );
+  }
+
   Future<void> _markDone(StashIssueLink link) async {
     final id = widget.note.id;
     await _forge.store.update(id, (note) => note.status = StashStatus.done);
     await _forge.answer(id, [link.url]);
   }
 
-  Future<void> _write(
+  Future<bool> _write(
     StashIssueLink link, {
     bool close = false,
     bool draft = false,
@@ -424,6 +474,224 @@ class _Link extends StatelessWidget {
   );
 }
 
+/// Under a stash's issues: what is said on its own issue, its last
+/// comments (asked when opened, [open] at first when that is its news),
+/// each opened in the browser, all of them there.
+class StashIssueDiscussion extends StatefulWidget {
+  const StashIssueDiscussion({
+    super.key,
+    required this.forge,
+    required this.note,
+    this.open = false,
+  });
+
+  final StashForge forge;
+  final StashNote note;
+  final bool open;
+
+  @override
+  State<StashIssueDiscussion> createState() => _StashIssueDiscussionState();
+}
+
+class _StashIssueDiscussionState extends State<StashIssueDiscussion> {
+  late bool _open = widget.open;
+  Future<List<ForgeComment>>? _comments;
+
+  /// How many there were as last asked: asked anew when there are more.
+  int? _asked;
+
+  String? get _url => widget.note.ownIssue;
+
+  int? get _total {
+    final url = _url;
+    if (url == null) return null;
+    return widget.forge.itemOf(url)?.comments ??
+        widget.note.issueOf(url)?.comments;
+  }
+
+  @override
+  void didUpdateWidget(StashIssueDiscussion oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.note.ownIssue != _url) {
+      _comments = null;
+      _asked = null;
+    }
+    if (widget.open && !oldWidget.open) _open = true;
+  }
+
+  Future<List<ForgeComment>>? _ask({bool force = false}) {
+    final url = _url;
+    if (url == null) return null;
+    final total = _total;
+    if (force || _comments == null || _asked != total) {
+      _asked = total;
+      _comments = widget.forge.commentsOf(url, force: force, total: total);
+    }
+    return _comments;
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: widget.forge,
+    builder: (context, _) => _build(context),
+  );
+
+  Widget _build(BuildContext context) {
+    final l10n = context.l10n;
+    final url = _url;
+    final ref = url == null ? null : widget.forge.refOf(url);
+    if (url == null || ref == null || !widget.forge.canAsk(url)) {
+      return const SizedBox.shrink();
+    }
+    final total = _total ?? 0;
+    final faint = TextStyle(color: AppColors.textFaint, fontSize: 12);
+    final header = HoverBuilder(
+      cursor: total == 0 ? MouseCursor.defer : SystemMouseCursors.click,
+      builder: (context, hovered) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: total == 0 ? null : () => setState(() => _open = !_open),
+        child: Row(
+          children: [
+            Text(
+              l10n.stashIssueDiscussion,
+              style: TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              total == 0
+                  ? l10n.stashIssueDiscussionEmpty
+                  : l10n.stashIssueComments(total),
+              style: faint,
+            ),
+            if (total > 0) ...[
+              const SizedBox(width: 2),
+              Icon(
+                _open ? Codicons.chevronDown : Codicons.chevronRight,
+                size: 12,
+                color: hovered ? AppColors.textMuted : AppColors.textFaint,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+    if (!_open || total == 0) {
+      return Padding(padding: const EdgeInsets.only(top: 12), child: header);
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          header,
+          const SizedBox(height: 6),
+          FutureBuilder<List<ForgeComment>>(
+            future: _ask(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Row(
+                  children: [
+                    Text(
+                      l10n.stashIssueDiscussionFailed,
+                      style: faint.copyWith(
+                        color: themeColors['errorForeground'],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _Link(
+                      l10n.stashRetry,
+                      onTap: () => setState(() => _ask(force: true)),
+                    ),
+                  ],
+                );
+              }
+              final comments = snapshot.data;
+              if (comments == null) {
+                return Row(
+                  children: [
+                    IdeSpinning(
+                      Icon(Codicons.sync, size: 11, color: AppColors.textFaint),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(l10n.stashIssueDiscussionLoading, style: faint),
+                  ],
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final comment in comments) ...[
+                    _comment(comment, url, faint),
+                    const SizedBox(height: 4),
+                  ],
+                  if (total > comments.length)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: _Link(
+                        l10n.stashIssueDiscussionAll(
+                          total,
+                          ref.repo.kind.label,
+                        ),
+                        onTap: () => unawaited(openExternal(url)),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _comment(ForgeComment comment, String url, TextStyle faint) =>
+      StashRowBox(
+        onTap: () => unawaited(openExternal(comment.url ?? url)),
+        padding: const EdgeInsets.fromLTRB(8, 6, 10, 7),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '@${comment.author}',
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (comment.created case final at?)
+                    TextSpan(text: '  ·  ${stashDateText(at.toLocal())}'),
+                ],
+              ),
+              style: faint,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              _excerpt(comment.body),
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: AppColors.text, fontSize: 12.5),
+            ),
+          ],
+        ),
+      );
+
+  /// [body] as read at a glance: no quoted lines, no blank ones, no HTML
+  /// comments.
+  static String _excerpt(String body) => body
+      .replaceAll(RegExp(r'<!--.*?-->', dotAll: true), '')
+      .split('\n')
+      .map((line) => line.trimRight())
+      .where((line) => line.isNotEmpty && !line.startsWith('>'))
+      .join('\n');
+}
+
 // --- Written there -------------------------------------------------------------
 
 /// What is offered to say on [link]'s issue when [note] is done: the pull
@@ -448,30 +716,34 @@ String stashWriteDraft(
 /// Comments on [link]'s issue or pull request, and closes it when [close]
 /// is checked (an issue's): what goes shown in full, editable, and what
 /// should not go out (a path on this machine, a secret) pointed out; sent
-/// only by the user's click.
-Future<void> showStashWriteDialog(
+/// only by the user's click. Whether it went.
+Future<bool> showStashWriteDialog(
   BuildContext context, {
   required StashForge forge,
   required StashNote note,
   required StashIssueLink link,
   bool close = false,
+  bool duplicate = false,
   String draft = '',
-}) => showGeneralDialog<void>(
-  context: context,
-  // Closed by its buttons, Escape or the close button: a click beside it
-  // would lose what was typed.
-  barrierDismissible: false,
-  barrierLabel: context.l10n.commonDismiss,
-  barrierColor: const Color(0x80000000),
-  transitionDuration: Duration.zero,
-  pageBuilder: (context, _, _) => StashWriteDialog(
-    forge: forge,
-    note: note,
-    link: link,
-    close: close,
-    draft: draft,
-  ),
-);
+}) async =>
+    await showGeneralDialog<bool>(
+      context: context,
+      // Closed by its buttons, Escape or the close button: a click beside it
+      // would lose what was typed.
+      barrierDismissible: false,
+      barrierLabel: context.l10n.commonDismiss,
+      barrierColor: const Color(0x80000000),
+      transitionDuration: Duration.zero,
+      pageBuilder: (context, _, _) => StashWriteDialog(
+        forge: forge,
+        note: note,
+        link: link,
+        close: close,
+        duplicate: duplicate,
+        draft: draft,
+      ),
+    ) ??
+    false;
 
 class StashWriteDialog extends StatefulWidget {
   const StashWriteDialog({
@@ -480,6 +752,7 @@ class StashWriteDialog extends StatefulWidget {
     required this.note,
     required this.link,
     this.close = false,
+    this.duplicate = false,
     this.draft = '',
   });
 
@@ -487,6 +760,9 @@ class StashWriteDialog extends StatefulWidget {
   final StashNote note;
   final StashIssueLink link;
   final bool close;
+
+  /// Closed as a duplicate (not planned), its comment saying of which.
+  final bool duplicate;
   final String draft;
 
   @override
@@ -525,8 +801,9 @@ class _StashWriteDialogState extends State<StashWriteDialog> {
         widget.link.url,
         text: text,
         close: close,
+        duplicate: widget.duplicate,
       );
-      if (mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context, true);
     } on Object catch (error) {
       if (!mounted) return;
       setState(() {

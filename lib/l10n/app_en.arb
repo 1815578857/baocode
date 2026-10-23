@@ -7310,5 +7310,93 @@
   "stashFilterAnyIssue": "Any source",
   "stashFilterIssue": "Issues",
   "stashFilterNotIssue": "Local only",
-  "stashImplementEmpty": "Write something first, then implement it in BaoCode"
+  "stashImplementEmpty": "Write something first, then implement it in BaoCode",
+  "stashIssueDuplicateBanner": "{issue}, of stash {stash} merged into this one, is still open. Close it as a duplicate?",
+  "@stashIssueDuplicateBanner": {
+    "placeholders": {
+      "issue": {
+        "type": "String"
+      },
+      "stash": {
+        "type": "String"
+      }
+    }
+  },
+  "stashIssueCloseDuplicate": "Close as duplicate…",
+  "stashIssueDuplicateNoIssue": "Merged into another note; closing as a duplicate.",
+  "stashNewsOpened": "New issue",
+  "stashNewsChanged": "Changed on the forge",
+  "stashNewsCommented": "New comments",
+  "stashNewsClosed": "Closed on the forge",
+  "stashNewsReopened": "Reopened on the forge",
+  "stashNewsCount": "{count, plural, =1{1 update} other{{count} updates}}",
+  "@stashNewsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stashNewsCountTooltip": "Show only the stashes with updates",
+  "stashNewsCountTooltipOn": "Showing only those with updates; click for all",
+  "stashFilterNews": "With updates",
+  "stashMarkAllSeen": "Mark all as seen",
+  "stashIssueComments": "{count, plural, =1{1 comment} other{{count} comments}}",
+  "@stashIssueComments": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stashIssueDiscussion": "Discussion",
+  "stashIssueDiscussionAll": "See all {count} on {forge}",
+  "@stashIssueDiscussionAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "forge": {
+        "type": "String"
+      }
+    }
+  },
+  "stashIssueDiscussionFailed": "Couldn't load the comments.",
+  "stashIssueDiscussionLoading": "Loading the comments…",
+  "stashDeleteAndClose": "Delete and close {issue}…",
+  "@stashDeleteAndClose": {
+    "placeholders": {
+      "issue": {
+        "type": "String"
+      }
+    }
+  },
+  "stashDeleteOpenIssue": "Its issue {issue} stays open on the forge unless closed too.",
+  "@stashDeleteOpenIssue": {
+    "placeholders": {
+      "issue": {
+        "type": "String"
+      }
+    }
+  },
+  "stashIssueInSync": "Same as {issue}",
+  "@stashIssueInSync": {
+    "placeholders": {
+      "issue": {
+        "type": "String"
+      }
+    }
+  },
+  "stashIssueSyncedAt": "synced {time}",
+  "@stashIssueSyncedAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "stashIssueNotPushed": "Changed here, not pushed yet",
+  "stashIssueRemoteNewer": "Changed on the forge",
+  "stashIssueBothChanged": "Changed both here and on the forge",
+  "stashIssueDiscussionEmpty": "No comments yet"
 }

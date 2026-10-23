@@ -23,6 +23,11 @@ enum StashStatus {
       values.where((status) => status.name == value).firstOrNull ?? collected;
 }
 
+/// What happened on a stash's issue that the user has not seen, the
+/// latest: it was opened there (a stash new to the user), changed there
+/// (taken in), commented on, closed, or opened again.
+enum StashNews { opened, changed, commented, closed, reopened }
+
 /// Where in BaoCode a stash was jotted down (its shortcut pressed there,
 /// or an agent writing it): the project, its branch and the conversation.
 @immutable
@@ -159,6 +164,8 @@ class StashIssueLink {
     this.checks,
     this.session,
     this.answered = false,
+    this.comments,
+    this.mergedFrom,
   });
 
   /// Its page: `https://github.com/o/r/issues/3`.
@@ -178,6 +185,13 @@ class StashIssueLink {
   /// open, the stash done: say so there) was answered.
   final bool answered;
 
+  /// How many comments it had, as last asked.
+  final int? comments;
+
+  /// The stash it was the issue of, merged into this one: the same thing,
+  /// so it may be closed as this one's duplicate (asked of the user).
+  final int? mergedFrom;
+
   Map<String, Object?> toJson() => {
     'url': url,
     'title': ?title,
@@ -185,6 +199,8 @@ class StashIssueLink {
     'checks': ?checks,
     'session': ?session,
     if (answered) 'answered': true,
+    'comments': ?comments,
+    'mergedFrom': ?mergedFrom,
   };
 
   static StashIssueLink? fromJson(Object? json) => switch (json) {
@@ -195,6 +211,8 @@ class StashIssueLink {
       checks: json['checks'] as String?,
       session: json['session'] as String?,
       answered: json['answered'] == true,
+      comments: (json['comments'] as num?)?.toInt(),
+      mergedFrom: (json['mergedFrom'] as num?)?.toInt(),
     ),
     _ => null,
   };
@@ -205,6 +223,8 @@ class StashIssueLink {
     String? checks,
     String? session,
     bool? answered,
+    int? comments,
+    int? mergedFrom,
   }) => StashIssueLink(
     url: url,
     title: title ?? this.title,
@@ -212,6 +232,8 @@ class StashIssueLink {
     checks: checks ?? this.checks,
     session: session ?? this.session,
     answered: answered ?? this.answered,
+    comments: comments ?? this.comments,
+    mergedFrom: mergedFrom ?? this.mergedFrom,
   );
 
   @override
@@ -222,10 +244,21 @@ class StashIssueLink {
       other.state == state &&
       other.checks == checks &&
       other.session == session &&
-      other.answered == answered;
+      other.answered == answered &&
+      other.comments == comments &&
+      other.mergedFrom == mergedFrom;
 
   @override
-  int get hashCode => Object.hash(url, title, state, checks, session, answered);
+  int get hashCode => Object.hash(
+    url,
+    title,
+    state,
+    checks,
+    session,
+    answered,
+    comments,
+    mergedFrom,
+  );
 }
 
 /// One stash: a markdown file, `<id>.md`, its pictures and files in the
@@ -249,6 +282,7 @@ class StashNote {
     this.local = false,
     this.synced,
     this.syncedRemote,
+    this.news,
   }) : updated = updated ?? created,
        threads = threads ?? [],
        issues = issues ?? [];
@@ -300,6 +334,10 @@ class StashNote {
   /// when last the same: which of the two changed since.
   String? synced;
   String? syncedRemote;
+
+  /// What happened on its issue the user has not seen yet (it is shown
+  /// marked till its detail is opened): see [StashNews].
+  StashNews? news;
 
   /// The issue it is: [issue], else (imported before it was kept) the one
   /// whose card its text starts with; none when [local].
@@ -431,6 +469,7 @@ class StashNote {
     local: local,
     synced: synced,
     syncedRemote: syncedRemote,
+    news: news,
   );
 
   // --- The file ---------------------------------------------------------------
@@ -455,6 +494,7 @@ class StashNote {
       if (local) 'local': true,
       'synced': ?synced,
       'syncedRemote': ?syncedRemote,
+      'news': ?news?.name,
     };
     final buffer = StringBuffer('---\n');
     for (final MapEntry(:key, :value) in meta.entries) {
@@ -507,6 +547,7 @@ class StashNote {
       local: meta['local'] == true,
       synced: meta['synced'] as String?,
       syncedRemote: meta['syncedRemote'] as String?,
+      news: StashNews.values.asNameMap()[meta['news']],
     );
   }
 

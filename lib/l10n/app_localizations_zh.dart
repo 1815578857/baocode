@@ -9976,4 +9976,108 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get stashImplementEmpty => '先写点内容，再在 BaoCode 中实施';
+
+  @override
+  String stashIssueDuplicateBanner(String issue, String stash) {
+    return '$issue 来自合并进这条的 Stash $stash，还开着。作为重复关闭？';
+  }
+
+  @override
+  String get stashIssueCloseDuplicate => '作为重复关闭…';
+
+  @override
+  String get stashIssueDuplicateNoIssue => '已合并到另一条记录，作为重复关闭。';
+
+  @override
+  String get stashNewsOpened => '新 issue';
+
+  @override
+  String get stashNewsChanged => '远端有改动';
+
+  @override
+  String get stashNewsCommented => '有新评论';
+
+  @override
+  String get stashNewsClosed => '已在远端关闭';
+
+  @override
+  String get stashNewsReopened => '已在远端重新打开';
+
+  @override
+  String stashNewsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 条新动态',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stashNewsCountTooltip => '只看有新动态的 Stash';
+
+  @override
+  String get stashNewsCountTooltipOn => '正在只看有新动态的，点一下看全部';
+
+  @override
+  String get stashFilterNews => '有新动态';
+
+  @override
+  String get stashMarkAllSeen => '全部标为已读';
+
+  @override
+  String stashIssueComments(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 条评论',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stashIssueDiscussion => '讨论';
+
+  @override
+  String stashIssueDiscussionAll(int count, String forge) {
+    return '在 $forge 上查看全部 $count 条';
+  }
+
+  @override
+  String get stashIssueDiscussionFailed => '评论加载失败。';
+
+  @override
+  String get stashIssueDiscussionLoading => '正在加载评论…';
+
+  @override
+  String stashDeleteAndClose(String issue) {
+    return '删除并关闭 $issue…';
+  }
+
+  @override
+  String stashDeleteOpenIssue(String issue) {
+    return '它的 issue $issue 在远端还开着，除非一并关闭。';
+  }
+
+  @override
+  String stashIssueInSync(String issue) {
+    return '与 $issue 一致';
+  }
+
+  @override
+  String stashIssueSyncedAt(String time) {
+    return '$time 同步';
+  }
+
+  @override
+  String get stashIssueNotPushed => '本地有改动，尚未推送';
+
+  @override
+  String get stashIssueRemoteNewer => '远端有改动';
+
+  @override
+  String get stashIssueBothChanged => '本地和远端都改了';
+
+  @override
+  String get stashIssueDiscussionEmpty => '还没有评论';
 }

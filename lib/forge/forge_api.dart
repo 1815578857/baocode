@@ -148,6 +148,24 @@ class ForgeItem {
 /// Whose issues a list is of.
 enum ForgeIssueFilter { assigned, created, all }
 
+/// A comment on an issue or pull request.
+@immutable
+class ForgeComment {
+  const ForgeComment({
+    required this.author,
+    required this.body,
+    this.created,
+    this.url,
+  });
+
+  final String author;
+
+  /// As Markdown.
+  final String body;
+  final DateTime? created;
+  final String? url;
+}
+
 /// Who the token is of.
 @immutable
 class ForgeUser {
@@ -187,8 +205,13 @@ abstract class ForgeApi {
   /// Comments [body] on [ref].
   Future<void> comment(ForgeRef ref, String body);
 
-  /// Closes the issue [ref].
-  Future<void> close(ForgeRef ref);
+  /// Closes the issue [ref]; as not planned when [duplicate] (its
+  /// comment says of which).
+  Future<void> close(ForgeRef ref, {bool duplicate = false});
+
+  /// [ref]'s last comments (up to [most]), the oldest first; [total] how
+  /// many it has, where known (to ask for the last of them).
+  Future<List<ForgeComment>> comments(ForgeRef ref, {int? total, int most = 5});
 
   /// [repo]'s issues, the most recently updated first, page by page up to
   /// [most]: the open ones, or (since [since]) all changed since, closed
@@ -432,11 +455,46 @@ class GitHubApi extends ForgeApi {
   );
 
   @override
-  Future<void> close(ForgeRef ref) => _call(
+  Future<void> close(ForgeRef ref, {bool duplicate = false}) => _call(
     'PATCH',
     '/repos/${ref.repo.path}/issues/${ref.number}',
-    json: {'state': 'closed'},
+    json: {'state': 'closed', if (duplicate) 'state_reason': 'not_planned'},
   );
+
+  @override
+  Future<List<ForgeComment>> comments(
+    ForgeRef ref, {
+    int? total,
+    int most = 5,
+  }) async {
+    Future<List<ForgeComment>> page(int page) async {
+      final json = await _call(
+        'GET',
+        '/repos/${ref.repo.path}/issues/${ref.number}/comments',
+        query: {'per_page': '$most', 'page': '$page'},
+      ) as List;
+      return [
+        for (final comment in json)
+          if (comment is Map)
+            ForgeComment(
+              author: (comment['user'] as Map?)?['login'] as String? ?? '',
+              body: comment['body'] as String? ?? '',
+              created: ForgeApi._date(comment['created_at']),
+              url: comment['html_url'] as String?,
+            ),
+      ];
+    }
+
+    // The oldest first: the last page is the latest.
+    final last = total == null || total <= 0 ? 1 : (total + most - 1) ~/ most;
+    final comments = await page(last);
+    if (comments.length < most && last > 1) {
+      comments.insertAll(0, await page(last - 1));
+    }
+    return comments.length > most
+        ? comments.sublist(comments.length - most)
+        : comments;
+  }
 
   @override
   Future<List<ForgeItem>> allIssues(
@@ -707,11 +765,39 @@ class GitLabApi extends ForgeApi {
   );
 
   @override
-  Future<void> close(ForgeRef ref) => _call(
+  Future<void> close(ForgeRef ref, {bool duplicate = false}) => _call(
     'PUT',
     '${_project(ref.repo)}/issues/${ref.number}',
     json: {'state_event': 'close'},
   );
+
+  @override
+  Future<List<ForgeComment>> comments(
+    ForgeRef ref, {
+    int? total,
+    int most = 5,
+  }) async {
+    final kind = ref.kind == ForgeItemKind.pull ? 'merge_requests' : 'issues';
+    final json = await _call(
+      'GET',
+      '${_project(ref.repo)}/$kind/${ref.number}/notes',
+      query: {
+        'sort': 'desc',
+        'order_by': 'created_at',
+        'per_page': '${most * 4}',
+      },
+    ) as List;
+    return [
+      for (final note in json)
+        // Not those GitLab writes itself (labels changed, mentioned…).
+        if (note is Map && note['system'] != true)
+          ForgeComment(
+            author: (note['author'] as Map?)?['username'] as String? ?? '',
+            body: note['body'] as String? ?? '',
+            created: ForgeApi._date(note['created_at']),
+          ),
+    ].take(most).toList().reversed.toList();
+  }
 
   @override
   Future<List<ForgeItem>> allIssues(
