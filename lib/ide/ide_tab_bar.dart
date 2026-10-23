@@ -326,7 +326,7 @@ class _IdeTabBarState extends State<IdeTabBar> {
             final preview?,
             final onChanged?,
           ))
-            _MarkdownSwitch(preview: preview, onChanged: onChanged),
+            MarkdownSwitch(preview: preview, onChanged: onChanged),
           if (widget.active case final active?)
             Builder(
               builder: (context) => _TabBarAction(
@@ -347,9 +347,13 @@ class _IdeTabBarState extends State<IdeTabBar> {
   }
 }
 
-/// A markdown tab's Preview | Markdown switch.
-class _MarkdownSwitch extends StatelessWidget {
-  const _MarkdownSwitch({required this.preview, required this.onChanged});
+/// A markdown tab's Preview | Markdown switch (a customization's too).
+class MarkdownSwitch extends StatelessWidget {
+  const MarkdownSwitch({
+    super.key,
+    required this.preview,
+    required this.onChanged,
+  });
 
   final bool preview;
   final ValueChanged<bool> onChanged;
