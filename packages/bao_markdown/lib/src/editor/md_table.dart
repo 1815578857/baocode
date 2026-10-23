@@ -1704,14 +1704,13 @@ class _MdTableState extends State<MdTable> implements MdTableEditing {
             left: _side,
             top: _top,
             right: _bar + _barGap,
-            bottom: _bar + _barGap,
           ),
           child: table,
         ),
         Positioned(
           top: _top,
           right: 0,
-          bottom: _bar + _barGap,
+          bottom: 0,
           width: _bar,
           child: _AddBar(
             look: look,
@@ -1720,20 +1719,32 @@ class _MdTableState extends State<MdTable> implements MdTableEditing {
             onTap: _addColumn,
           ),
         ),
-        Positioned(
-          left: _side,
-          right: _bar + _barGap,
-          bottom: 0,
-          height: _bar,
-          child: _AddBar(
-            look: look,
-            plus: style.marks,
-            shown: _hovered,
-            onTap: _addRow,
-          ),
-        ),
         ...over,
       ],
+    );
+    // Under the table and out of its scroll: as wide as the table, or
+    // as what of it is in view.
+    final tableWidth = widths.fold(0.0, (sum, width) => sum + width);
+    final addRow = LayoutBuilder(
+      builder: (context, constraints) => Padding(
+        padding: const EdgeInsets.only(left: _side, top: _barGap),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: SizedBox(
+            width: math.max(
+              0.0,
+              math.min(tableWidth, constraints.maxWidth - _side),
+            ),
+            height: _bar,
+            child: _AddBar(
+              look: look,
+              plus: style.marks,
+              shown: _hovered,
+              onTap: _addRow,
+            ),
+          ),
+        ),
+      ),
     );
     return MdEmbedRegion(
       child: Focus(
@@ -1749,10 +1760,14 @@ class _MdTableState extends State<MdTable> implements MdTableEditing {
               });
             }
           },
-          // Over the table's bottom edge, the bars past it not under it.
-          child: scrolled(
-            const EdgeInsets.fromLTRB(_side + 4, 0, 4, _bar + _barGap + 2),
-            framed,
+          // Over the table's bottom edge.
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              scrolled(const EdgeInsets.fromLTRB(_side + 4, 0, 4, 2), framed),
+              addRow,
+            ],
           ),
         ),
       ),
