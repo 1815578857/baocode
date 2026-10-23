@@ -2865,5 +2865,6 @@
   "stashSyncingEmpty": "正在同步项目的 issue…",
   "stashFilterAnyIssue": "所有来源",
   "stashFilterIssue": "来自 issue",
-  "stashFilterNotIssue": "仅本地"
+  "stashFilterNotIssue": "仅本地",
+  "stashImplementEmpty": "先写点内容，再在 BaoCode 中实施"
 }

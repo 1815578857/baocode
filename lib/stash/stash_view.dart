@@ -249,7 +249,9 @@ class StashViewState extends State<StashView>
       if (_statuses.isNotEmpty && !_statuses.contains(note.status)) {
         _statuses.add(note.status);
       }
-      if (_projects.isNotEmpty && !_projects.contains(note.project ?? '')) {
+      if (_projects.isNotEmpty &&
+          !_projects.contains(note.project ?? '') &&
+          !_projects.any((project) => _controller.isAbout(note, project))) {
         _projects.clear();
       }
       if (!_timeOk(note, DateTime.now())) _time = _Time.all;
@@ -377,8 +379,13 @@ class StashViewState extends State<StashView>
     final now = DateTime.now();
     bool statusOk(StashNote note) =>
         _statuses.isEmpty || _statuses.contains(note.status);
+    // A workspace's: its folders' too.
     bool projectOk(StashNote note) =>
-        _projects.isEmpty || _projects.contains(note.project ?? '');
+        _projects.isEmpty ||
+        _projects.contains(note.project ?? '') ||
+        _projects.any(
+          (project) => project.isNotEmpty && _controller.isAbout(note, project),
+        );
     bool issueOk(StashNote note) => switch (_issueFilter) {
       _IssueFilter.all => true,
       _IssueFilter.issue => note.ownIssue != null,

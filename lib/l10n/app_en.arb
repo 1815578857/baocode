@@ -7309,5 +7309,6 @@
   "stashSyncingEmpty": "Syncing the projects' issues…",
   "stashFilterAnyIssue": "Any source",
   "stashFilterIssue": "Issues",
-  "stashFilterNotIssue": "Local only"
+  "stashFilterNotIssue": "Local only",
+  "stashImplementEmpty": "Write something first, then implement it in BaoCode"
 }

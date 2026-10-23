@@ -17252,6 +17252,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Local only'**
   String get stashFilterNotIssue;
+
+  /// No description provided for @stashImplementEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Write something first, then implement it in BaoCode'**
+  String get stashImplementEmpty;
 }
 
 class _AppLocalizationsDelegate
