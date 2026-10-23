@@ -9973,4 +9973,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get stashFilterNotIssue => '仅本地';
+
+  @override
+  String get stashImplementEmpty => '先写点内容，再在 BaoCode 中实施';
 }

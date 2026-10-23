@@ -24,6 +24,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../workspace/project_workspace_test.dart' show FakeWorkspaceDirectories;
+
 void main() {
   late StashStore store;
   late StashController controller;
@@ -551,6 +553,25 @@ void main() {
     await tester.tap(inList('Uploads retry three times now.'));
     expect(opened, thread);
     await unmount(tester);
+  });
+
+  test('a workspace\'s stashes are its folders\' too', () async {
+    final workspace = Workspace(
+      projects: const [Project('api', '/code/api')],
+      workspaceDirectories: FakeWorkspaceDirectories(),
+    );
+    final made = workspace.createWorkspace('web', ['/code/site', '/code/api'])!;
+    final about = StashController(
+      store: store,
+      workspace: workspace,
+      host: StashHost(channel: const MethodChannel('test/stash-about')),
+    );
+    addTearDown(about.dispose);
+    final api = await store.create(body: 'a', project: '/code/api');
+    final elsewhere = await store.create(body: 'b', project: '/code/other');
+    expect(about.isAbout(api, made.path), isTrue);
+    expect(about.isAbout(api, '/code/api'), isTrue);
+    expect(about.isAbout(elsewhere, made.path), isFalse);
   });
 
   testWidgets('a row hovered offers what is done with it: done, and back', (

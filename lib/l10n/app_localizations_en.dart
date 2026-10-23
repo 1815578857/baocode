@@ -10552,4 +10552,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stashFilterNotIssue => 'Local only';
+
+  @override
+  String get stashImplementEmpty =>
+      'Write something first, then implement it in BaoCode';
 }
