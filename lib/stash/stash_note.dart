@@ -23,10 +23,33 @@ enum StashStatus {
       values.where((status) => status.name == value).firstOrNull ?? collected;
 }
 
-/// What happened on a stash's issue that the user has not seen, the
-/// latest: it was opened there (a stash new to the user), changed there
-/// (taken in), commented on, closed, or opened again.
-enum StashNews { opened, changed, commented, closed, reopened }
+/// What happened on a stash's issue or pull requests that the user has
+/// not seen, the weightiest: it was opened there (a stash new to the
+/// user), changed there (taken in), commented on, closed, or opened again;
+/// a pull request of it merged, its checks failed, changes asked of it;
+/// or marked so by the user, to come back to.
+enum StashNews {
+  marked,
+  opened,
+  changed,
+  commented,
+  closed,
+  reopened,
+  merged,
+  changesRequested,
+  checksFailed;
+
+  /// Which says more: kept over another as a stash's news.
+  int get weight => switch (this) {
+    marked => 0,
+    opened => 1,
+    changed => 2,
+    commented => 3,
+    closed || reopened || merged => 4,
+    changesRequested => 5,
+    checksFailed => 6,
+  };
+}
 
 /// Where in BaoCode a stash was jotted down (its shortcut pressed there,
 /// or an agent writing it): the project, its branch and the conversation.
@@ -166,6 +189,9 @@ class StashIssueLink {
     this.answered = false,
     this.comments,
     this.mergedFrom,
+    this.review,
+    this.updated,
+    this.commentAt,
   });
 
   /// Its page: `https://github.com/o/r/issues/3`.
@@ -192,6 +218,17 @@ class StashIssueLink {
   /// so it may be closed as this one's duplicate (asked of the user).
   final int? mergedFrom;
 
+  /// A pull request's review: `approved` or `changesRequested` (a
+  /// ForgeReview's name).
+  final String? review;
+
+  /// When it was last changed there, as last asked (ISO 8601).
+  final String? updated;
+
+  /// When the latest of its comments seen was written (ISO 8601): those
+  /// after it are new.
+  final String? commentAt;
+
   Map<String, Object?> toJson() => {
     'url': url,
     'title': ?title,
@@ -201,6 +238,9 @@ class StashIssueLink {
     if (answered) 'answered': true,
     'comments': ?comments,
     'mergedFrom': ?mergedFrom,
+    'review': ?review,
+    'updated': ?updated,
+    'commentAt': ?commentAt,
   };
 
   static StashIssueLink? fromJson(Object? json) => switch (json) {
@@ -213,6 +253,9 @@ class StashIssueLink {
       answered: json['answered'] == true,
       comments: (json['comments'] as num?)?.toInt(),
       mergedFrom: (json['mergedFrom'] as num?)?.toInt(),
+      review: json['review'] as String?,
+      updated: json['updated'] as String?,
+      commentAt: json['commentAt'] as String?,
     ),
     _ => null,
   };
@@ -225,6 +268,9 @@ class StashIssueLink {
     bool? answered,
     int? comments,
     int? mergedFrom,
+    String? review,
+    String? updated,
+    String? commentAt,
   }) => StashIssueLink(
     url: url,
     title: title ?? this.title,
@@ -234,6 +280,9 @@ class StashIssueLink {
     answered: answered ?? this.answered,
     comments: comments ?? this.comments,
     mergedFrom: mergedFrom ?? this.mergedFrom,
+    review: review ?? this.review,
+    updated: updated ?? this.updated,
+    commentAt: commentAt ?? this.commentAt,
   );
 
   @override
@@ -246,7 +295,10 @@ class StashIssueLink {
       other.session == session &&
       other.answered == answered &&
       other.comments == comments &&
-      other.mergedFrom == mergedFrom;
+      other.mergedFrom == mergedFrom &&
+      other.review == review &&
+      other.updated == updated &&
+      other.commentAt == commentAt;
 
   @override
   int get hashCode => Object.hash(
@@ -258,6 +310,9 @@ class StashIssueLink {
     answered,
     comments,
     mergedFrom,
+    review,
+    updated,
+    commentAt,
   );
 }
 
@@ -283,6 +338,7 @@ class StashNote {
     this.synced,
     this.syncedRemote,
     this.news,
+    this.newsMine = false,
   }) : updated = updated ?? created,
        threads = threads ?? [],
        issues = issues ?? [];
@@ -338,6 +394,25 @@ class StashNote {
   /// What happened on its issue the user has not seen yet (it is shown
   /// marked till its detail is opened): see [StashNews].
   StashNews? news;
+
+  /// Whether [news] is about the user: their issue or pull request (theirs,
+  /// assigned to them, from their conversation), or one naming them.
+  /// What is not is shown quieter.
+  bool newsMine;
+
+  /// [news] told: kept over what it had if it says as much or more; about
+  /// the user if this or that is.
+  void tell(StashNews told, {required bool mine}) {
+    final had = news;
+    if (had == null || told.weight >= had.weight) news = told;
+    newsMine = had != null && newsMine || mine;
+  }
+
+  /// Its news seen.
+  void seen() {
+    news = null;
+    newsMine = false;
+  }
 
   /// The issue it is: [issue], else (imported before it was kept) the one
   /// whose card its text starts with; none when [local].
@@ -470,6 +545,7 @@ class StashNote {
     synced: synced,
     syncedRemote: syncedRemote,
     news: news,
+    newsMine: newsMine,
   );
 
   // --- The file ---------------------------------------------------------------
@@ -495,6 +571,7 @@ class StashNote {
       'synced': ?synced,
       'syncedRemote': ?syncedRemote,
       'news': ?news?.name,
+      if (news != null && newsMine) 'newsMine': true,
     };
     final buffer = StringBuffer('---\n');
     for (final MapEntry(:key, :value) in meta.entries) {
@@ -548,6 +625,7 @@ class StashNote {
       synced: meta['synced'] as String?,
       syncedRemote: meta['syncedRemote'] as String?,
       news: StashNews.values.asNameMap()[meta['news']],
+      newsMine: meta['newsMine'] == true,
     );
   }
 

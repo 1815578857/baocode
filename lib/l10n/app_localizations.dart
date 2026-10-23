@@ -17316,19 +17316,19 @@ abstract class AppLocalizations {
   /// No description provided for @stashNewsCountTooltip.
   ///
   /// In en, this message translates to:
-  /// **'Show only the stashes with updates'**
+  /// **'Show only the updates about you: your issues and pull requests, those assigned to you or naming you'**
   String get stashNewsCountTooltip;
 
   /// No description provided for @stashNewsCountTooltipOn.
   ///
   /// In en, this message translates to:
-  /// **'Showing only those with updates; click for all'**
+  /// **'Showing only the updates about you; click for all'**
   String get stashNewsCountTooltipOn;
 
   /// No description provided for @stashFilterNews.
   ///
   /// In en, this message translates to:
-  /// **'With updates'**
+  /// **'About you'**
   String get stashFilterNews;
 
   /// No description provided for @stashMarkAllSeen.
@@ -17414,6 +17414,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No comments yet'**
   String get stashIssueDiscussionEmpty;
+
+  /// No description provided for @stashNewsMerged.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull request merged'**
+  String get stashNewsMerged;
+
+  /// No description provided for @stashNewsChangesRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes requested'**
+  String get stashNewsChangesRequested;
+
+  /// No description provided for @stashNewsChecksFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Checks failed'**
+  String get stashNewsChecksFailed;
+
+  /// No description provided for @stashNewsMarked.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked as unread'**
+  String get stashNewsMarked;
+
+  /// No description provided for @stashNewsOther.
+  ///
+  /// In en, this message translates to:
+  /// **'{news} (not about you)'**
+  String stashNewsOther(String news);
+
+  /// No description provided for @stashNewsSidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 update about you} other{{count} updates about you}}'**
+  String stashNewsSidebar(int count);
+
+  /// No description provided for @stashFilterAllNews.
+  ///
+  /// In en, this message translates to:
+  /// **'Any updates'**
+  String get stashFilterAllNews;
+
+  /// No description provided for @stashMarkSeen.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as Read'**
+  String get stashMarkSeen;
+
+  /// No description provided for @stashMarkUnseen.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as Unread'**
+  String get stashMarkUnseen;
+
+  /// No description provided for @stashPullChecksFailedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'The checks of {pull} failed.'**
+  String stashPullChecksFailedBanner(String pull);
+
+  /// No description provided for @stashPullChangesBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes were requested on {pull}.'**
+  String stashPullChangesBanner(String pull);
+
+  /// No description provided for @stashPullMergedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'{pull} was merged. Is this done too?'**
+  String stashPullMergedBanner(String pull);
+
+  /// No description provided for @stashPullFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Fix in Its Conversation'**
+  String get stashPullFix;
+
+  /// No description provided for @stashPullView.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get stashPullView;
+
+  /// No description provided for @stashPullFixChecks.
+  ///
+  /// In en, this message translates to:
+  /// **'The checks of {pull} failed. Find out what failed and fix it.'**
+  String stashPullFixChecks(String pull);
+
+  /// No description provided for @stashPullFixChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes were requested on {pull}. Read the review and make them.'**
+  String stashPullFixChanges(String pull);
+
+  /// No description provided for @stashWriteManyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment on {count} issues'**
+  String stashWriteManyTitle(int count);
+
+  /// No description provided for @stashWriteCloseManyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Close {count} issues'**
+  String stashWriteCloseManyTitle(int count);
+
+  /// No description provided for @stashDeleteOpenIssues.
+  ///
+  /// In en, this message translates to:
+  /// **'Their issues {issues} stay open on the forge unless closed too.'**
+  String stashDeleteOpenIssues(int count, String issues);
+
+  /// No description provided for @stashDeleteAndCloseMany.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete and close {count} issues…'**
+  String stashDeleteAndCloseMany(int count);
 }
 
 class _AppLocalizationsDelegate

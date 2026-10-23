@@ -7337,9 +7337,9 @@
       }
     }
   },
-  "stashNewsCountTooltip": "Show only the stashes with updates",
-  "stashNewsCountTooltipOn": "Showing only those with updates; click for all",
-  "stashFilterNews": "With updates",
+  "stashNewsCountTooltip": "Show only the updates about you: your issues and pull requests, those assigned to you or naming you",
+  "stashNewsCountTooltipOn": "Showing only the updates about you; click for all",
+  "stashFilterNews": "About you",
   "stashMarkAllSeen": "Mark all as seen",
   "stashIssueComments": "{count, plural, =1{1 comment} other{{count} comments}}",
   "@stashIssueComments": {
@@ -7398,5 +7398,105 @@
   "stashIssueNotPushed": "Changed here, not pushed yet",
   "stashIssueRemoteNewer": "Changed on the forge",
   "stashIssueBothChanged": "Changed both here and on the forge",
-  "stashIssueDiscussionEmpty": "No comments yet"
+  "stashIssueDiscussionEmpty": "No comments yet",
+  "stashNewsMerged": "Pull request merged",
+  "stashNewsChangesRequested": "Changes requested",
+  "stashNewsChecksFailed": "Checks failed",
+  "stashNewsMarked": "Marked as unread",
+  "stashNewsOther": "{news} (not about you)",
+  "@stashNewsOther": {
+    "placeholders": {
+      "news": {
+        "type": "String"
+      }
+    }
+  },
+  "stashNewsSidebar": "{count, plural, =1{1 update about you} other{{count} updates about you}}",
+  "@stashNewsSidebar": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stashFilterAllNews": "Any updates",
+  "stashMarkSeen": "Mark as Read",
+  "stashMarkUnseen": "Mark as Unread",
+  "stashPullChecksFailedBanner": "The checks of {pull} failed.",
+  "@stashPullChecksFailedBanner": {
+    "placeholders": {
+      "pull": {
+        "type": "String"
+      }
+    }
+  },
+  "stashPullChangesBanner": "Changes were requested on {pull}.",
+  "@stashPullChangesBanner": {
+    "placeholders": {
+      "pull": {
+        "type": "String"
+      }
+    }
+  },
+  "stashPullMergedBanner": "{pull} was merged. Is this done too?",
+  "@stashPullMergedBanner": {
+    "placeholders": {
+      "pull": {
+        "type": "String"
+      }
+    }
+  },
+  "stashPullFix": "Fix in Its Conversation",
+  "stashPullView": "View",
+  "stashPullFixChecks": "The checks of {pull} failed. Find out what failed and fix it.",
+  "@stashPullFixChecks": {
+    "placeholders": {
+      "pull": {
+        "type": "String"
+      }
+    }
+  },
+  "stashPullFixChanges": "Changes were requested on {pull}. Read the review and make them.",
+  "@stashPullFixChanges": {
+    "placeholders": {
+      "pull": {
+        "type": "String"
+      }
+    }
+  },
+  "stashWriteManyTitle": "Comment on {count} issues",
+  "@stashWriteManyTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stashWriteCloseManyTitle": "Close {count} issues",
+  "@stashWriteCloseManyTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stashDeleteOpenIssues": "Their issues {issues} stay open on the forge unless closed too.",
+  "@stashDeleteOpenIssues": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "issues": {
+        "type": "String"
+      }
+    }
+  },
+  "stashDeleteAndCloseMany": "Delete and close {count} issues…",
+  "@stashDeleteAndCloseMany": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

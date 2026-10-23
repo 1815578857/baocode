@@ -616,6 +616,17 @@ void main() {
     );
     final ids = (await tester.runAsync(() async {
       final quiet = await store.create(body: 'Quiet one');
+      // News, but not about the user: not counted, quieter.
+      await store.update(quiet.id, (note) {
+        note.issue = 'https://github.com/o/r/issues/4';
+        note.issues.add(
+          const StashIssueLink(
+            url: 'https://github.com/o/r/issues/4',
+            state: 'open',
+          ),
+        );
+        note.tell(StashNews.changed, mine: false);
+      });
       final told = await store.create(body: 'Told one');
       await store.update(told.id, (note) {
         // Not two collected: no merge asked of the model.
@@ -628,12 +639,13 @@ void main() {
           ),
         );
         note.issue = 'https://github.com/o/r/issues/3';
-        note.news = StashNews.commented;
+        note.tell(StashNews.commented, mine: true);
       });
       return [quiet.id, told.id];
     }))!;
     await pumpView(tester);
     expect(find.text('1 update'), findsOneWidget);
+    expect(controller.store.byId(ids.first)!.news, StashNews.changed);
     expect(find.textContaining('2 comments'), findsOneWidget);
 
     // Only those with news, then all again.
@@ -649,6 +661,7 @@ void main() {
     await tester.runAsync(() => Future<void>.delayed(Duration.zero));
     await tester.pump();
     expect(store.byId(ids.last)!.news, isNull);
+    expect(store.byId(ids.first)!.news, StashNews.changed);
     expect(find.text('1 update'), findsNothing);
     // Still said in the stash while it shows.
     expect(find.text('New comments'), findsOneWidget);

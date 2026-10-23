@@ -22,7 +22,7 @@ import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' show themeColors;
 import '../workspace/editor_launcher.dart' show openExternal;
-import '../workspace/workspace.dart' show Project;
+import '../workspace/workspace.dart' show AgentThread, Project;
 import 'stash_forge.dart';
 import 'stash_note.dart';
 import 'stash_thread_view.dart' show StashRowBox, stashDateText, stashRowIndent;
@@ -101,10 +101,18 @@ class StashIssueBadge extends StatelessWidget {
 /// (its state, title, labels, checks), opened in the browser by a click,
 /// commented on or closed from its menu, once the user confirms what goes.
 class StashIssueSection extends StatefulWidget {
-  const StashIssueSection({super.key, required this.forge, required this.note});
+  const StashIssueSection({
+    super.key,
+    required this.forge,
+    required this.note,
+    this.onOpenAgent,
+  });
 
   final StashForge forge;
   final StashNote note;
+
+  /// Shows a conversation: a pull request's, to fix it there.
+  final ValueChanged<AgentThread>? onOpenAgent;
 
   @override
   State<StashIssueSection> createState() => _StashIssueSectionState();
@@ -184,6 +192,38 @@ class _StashIssueSectionState extends State<StashIssueSection> {
               ),
             ],
           ),
+        for (final link in _forge.pullsToFix(note))
+          StashBanner(
+            icon: _forge.checksOf(link) == ForgeChecks.failure
+                ? Codicons.error
+                : Codicons.commentDiscussion,
+            iconColor: themeColors['errorForeground'],
+            text: _forge.checksOf(link) == ForgeChecks.failure
+                ? l10n.stashPullChecksFailedBanner(_tagOf(link))
+                : l10n.stashPullChangesBanner(_tagOf(link)),
+            actions: [
+              if (_fixThread(link) case final thread?)
+                (l10n.stashPullFix, () => _fix(link, thread)),
+              (l10n.stashPullView, () => unawaited(openExternal(link.url))),
+              (
+                l10n.stashDismiss,
+                () => unawaited(_forge.answer(note.id, [link.url])),
+              ),
+            ],
+          ),
+        for (final link in _forge.mergedPulls(note))
+          StashBanner(
+            icon: Codicons.gitMerge,
+            iconColor: themeColors['charts.purple'],
+            text: l10n.stashPullMergedBanner(_tagOf(link)),
+            actions: [
+              (l10n.stashMarkDone, () => unawaited(_markDone(link))),
+              (
+                l10n.stashDismiss,
+                () => unawaited(_forge.answer(note.id, [link.url])),
+              ),
+            ],
+          ),
         for (final link in _forge.openIssues(note))
           StashBanner(
             icon: Codicons.issues,
@@ -244,6 +284,29 @@ class _StashIssueSectionState extends State<StashIssueSection> {
           ? context.l10n.stashIssueDuplicateNoIssue
           : 'Duplicate of $of',
     );
+  }
+
+  /// The conversation [link], a pull request, was made in, if it is
+  /// listed and can be shown.
+  AgentThread? _fixThread(StashIssueLink link) => switch (link.session) {
+    final session? when widget.onOpenAgent != null => _forge.threadOf(session),
+    _ => null,
+  };
+
+  /// Shows [thread], what to fix in [link] ready to be sent there (unless
+  /// something is being written there already).
+  void _fix(StashIssueLink link, AgentThread thread) {
+    final l10n = context.l10n;
+    final draft = thread.session.draft;
+    if ((draft.content ?? '').trim().isEmpty) {
+      draft.restore(
+        _forge.checksOf(link) == ForgeChecks.failure
+            ? l10n.stashPullFixChecks(link.url)
+            : l10n.stashPullFixChanges(link.url),
+        const [],
+      );
+    }
+    widget.onOpenAgent?.call(thread);
   }
 
   Future<void> _markDone(StashIssueLink link) async {
@@ -716,12 +779,14 @@ String stashWriteDraft(
 /// Comments on [link]'s issue or pull request, and closes it when [close]
 /// is checked (an issue's): what goes shown in full, editable, and what
 /// should not go out (a path on this machine, a secret) pointed out; sent
-/// only by the user's click. Whether it went.
+/// only by the user's click. Whether it went. [others], issues of other
+/// stashes written the same to (and closed) with it.
 Future<bool> showStashWriteDialog(
   BuildContext context, {
   required StashForge forge,
   required StashNote note,
   required StashIssueLink link,
+  List<(StashNote, StashIssueLink)> others = const [],
   bool close = false,
   bool duplicate = false,
   String draft = '',
@@ -738,6 +803,7 @@ Future<bool> showStashWriteDialog(
         forge: forge,
         note: note,
         link: link,
+        others: others,
         close: close,
         duplicate: duplicate,
         draft: draft,
@@ -751,6 +817,7 @@ class StashWriteDialog extends StatefulWidget {
     required this.forge,
     required this.note,
     required this.link,
+    this.others = const [],
     this.close = false,
     this.duplicate = false,
     this.draft = '',
@@ -759,6 +826,9 @@ class StashWriteDialog extends StatefulWidget {
   final StashForge forge;
   final StashNote note;
   final StashIssueLink link;
+
+  /// Written the same to with [link].
+  final List<(StashNote, StashIssueLink)> others;
   final bool close;
 
   /// Closed as a duplicate (not planned), its comment saying of which.
@@ -774,6 +844,14 @@ class _StashWriteDialogState extends State<StashWriteDialog> {
   late bool _close = widget.close;
   var _sending = false;
   String? _error;
+
+  /// What it is written to: [StashWriteDialog.link], then the others;
+  /// those written to already (one failed) not again.
+  late final List<(StashNote, StashIssueLink)> _targets = [
+    (widget.note, widget.link),
+    ...widget.others,
+  ];
+  final Set<String> _written = {};
 
   @override
   void dispose() {
@@ -796,13 +874,17 @@ class _StashWriteDialogState extends State<StashWriteDialog> {
       _error = null;
     });
     try {
-      await widget.forge.write(
-        widget.note.id,
-        widget.link.url,
-        text: text,
-        close: close,
-        duplicate: widget.duplicate,
-      );
+      for (final (note, link) in _targets) {
+        if (_written.contains(link.url)) continue;
+        await widget.forge.write(
+          note.id,
+          link.url,
+          text: text,
+          close: close,
+          duplicate: widget.duplicate,
+        );
+        _written.add(link.url);
+      }
       if (mounted) Navigator.pop(context, true);
     } on Object catch (error) {
       if (!mounted) return;
@@ -824,8 +906,13 @@ class _StashWriteDialogState extends State<StashWriteDialog> {
         ? null
         : widget.forge.accounts.accountFor(ref.repo.host);
     final muted = TextStyle(color: AppColors.textMuted, fontSize: 12);
+    final many = _targets.length > 1;
     return ModelDialogFrame(
-      title: close && text.isEmpty
+      title: many
+          ? close && text.isEmpty
+                ? l10n.stashWriteCloseManyTitle(_targets.length)
+                : l10n.stashWriteManyTitle(_targets.length)
+          : close && text.isEmpty
           ? l10n.stashWriteCloseTitle(ref?.fullTag ?? widget.link.url)
           : l10n.stashWriteTitle(ref?.fullTag ?? widget.link.url),
       actions: [
@@ -852,7 +939,20 @@ class _StashWriteDialogState extends State<StashWriteDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (widget.forge.itemOf(widget.link.url)?.title ?? widget.link.title
+            if (many) ...[
+              for (final (_, link) in _targets)
+                Text(
+                  [
+                    widget.forge.refOf(link.url)?.fullTag ?? link.url,
+                    ?widget.forge.itemOf(link.url)?.title ?? link.title,
+                  ].join('  '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: muted,
+                ),
+              const SizedBox(height: 8),
+            ] else if (widget.forge.itemOf(widget.link.url)?.title ??
+                    widget.link.title
                 case final title?) ...[
               Text(title, style: muted),
               const SizedBox(height: 8),
