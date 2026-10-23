@@ -662,9 +662,19 @@ class _PreviewEmbeds extends MarkdownEmbeds {
     final Widget shown;
     switch (embed.kind) {
       case MdLineKind.frontMatter:
-        // Its properties, clicked into as text; YAML they do not read as.
+        // Its properties, each value on its line edited in a field (its
+        // source the place for the rest); YAML they do not read as.
         if (parseFrontMatterProperties(embed.code) case final properties?) {
-          return MarkdownFrontMatter(properties: properties);
+          return MdEmbedRegion(
+            child: MarkdownFrontMatter(
+              properties: properties,
+              onChanged: state.widget.readOnly
+                  ? null
+                  : (key, value) => embed.replace(
+                      setFrontMatterValue(embed.source, key, value),
+                    ),
+            ),
+          );
         }
         shown = MarkdownCodeBlock(code: embed.code, language: 'yaml');
       case MdLineKind.fenceOpen:
