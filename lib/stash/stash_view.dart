@@ -756,7 +756,8 @@ class StashViewState extends State<StashView>
       },
       child: Container(
         width: _sashWidth,
-        alignment: Alignment.centerRight,
+        // Against the list: its scrollbar at the line.
+        alignment: Alignment.centerLeft,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 100),
           width: dragging ? IdeModernUI.gap : 1,
