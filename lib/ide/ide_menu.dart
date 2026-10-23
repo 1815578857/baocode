@@ -15,7 +15,7 @@
 // (platform/theme/browser/defaultStyles.ts `defaultMenuStyles`).
 //
 // Deviations: no mnemonics; menus keep an 8px inset from the window's
-// edges (on Windows, from below the app's own header) and scroll when
+// edges (on Windows, stay below the app's own header) and scroll when
 // taller than the available height.
 
 import 'dart:async';
@@ -25,7 +25,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../l10n/l10n.dart';
-import '../theme/app_theme.dart' show AppMetrics;
 import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' show themeColors;
 import '../workspace/window_controls.dart';
@@ -582,11 +581,10 @@ class _MenuLayout extends SingleChildLayoutDelegate {
   final bool submenu;
   final bool alignRight;
 
-  /// The window's own header on Windows stays above the menus, as above the
-  /// settings dialog: the window drags itself by that strip, so an item
-  /// drawn over it could not be clicked.
+  /// The window's own header on Windows stays above the menus (see
+  /// [WindowControls.headerInset]).
   static double get _topInset =>
-      _edgeInset + (WindowControls.drawsHeader ? AppMetrics.headerHeight : 0);
+      math.max(_edgeInset, WindowControls.headerInset);
 
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
