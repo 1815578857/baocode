@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show precisionErrorTolerance;
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -2337,14 +2339,16 @@ class MarkdownEditorState extends State<MarkdownEditor>
           padding: widget.padding,
           // A jump far off (to the caret, by the scrollbar) lays out the
           // lines it lands on, not all those before them.
-          sliver: SuperSliverList(
-            listController: _list,
-            extentEstimation: _estimate,
-            delegate: SliverChildBuilderDelegate(
-              _row,
-              childCount: lines.lineCount,
-              findChildIndexCallback: _indexOfKey,
-              addAutomaticKeepAlives: false,
+          sliver: _KeepTopLine(
+            sliver: SuperSliverList(
+              listController: _list,
+              extentEstimation: _estimate,
+              delegate: SliverChildBuilderDelegate(
+                _row,
+                childCount: lines.lineCount,
+                findChildIndexCallback: _indexOfKey,
+                addAutomaticKeepAlives: false,
+              ),
             ),
           ),
         ),
@@ -2423,6 +2427,50 @@ class MarkdownEditorState extends State<MarkdownEditor>
         ),
       ),
     );
+  }
+}
+
+/// Keeps the line at the top of the view where it is when lines above it
+/// change height after they were laid out (an image shown once it is
+/// read, a diagram once drawn): the list moves the view only for lines it
+/// lays out anew, and the lines under them would jump down.
+class _KeepTopLine extends SingleChildRenderObjectWidget {
+  const _KeepTopLine({required Widget sliver}) : super(child: sliver);
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderKeepTopLine();
+}
+
+class _RenderKeepTopLine extends RenderProxySliver {
+  @override
+  void performLayout() {
+    final list = child;
+    if (list is! RenderSliverMultiBoxAdaptor) return super.performLayout();
+    final top = constraints.scrollOffset;
+    // The first line in view (the last to start above its top), and where
+    // it was.
+    RenderBox? anchor;
+    double? was;
+    for (var box = list.firstChild; box != null; box = list.childAfter(box)) {
+      final offset = list.childScrollOffset(box);
+      if (offset == null) continue;
+      if (offset > top && anchor != null) break;
+      anchor = box;
+      was = offset;
+      if (offset > top) break;
+    }
+    list.layout(constraints, parentUsesSize: true);
+    geometry = list.geometry;
+    // At the top the lines are where they are; the list's own correction
+    // first.
+    if (anchor == null || top <= 0 || anchor.parent != list) return;
+    if (geometry!.scrollOffsetCorrection != null) return;
+    final now = list.childScrollOffset(anchor);
+    if (now == null) return;
+    final shift = math.max(now - was!, -top);
+    if (shift.abs() > precisionErrorTolerance) {
+      geometry = SliverGeometry(scrollOffsetCorrection: shift);
+    }
   }
 }
 
