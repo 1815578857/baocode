@@ -256,6 +256,7 @@ class MarkdownEditorState extends State<MarkdownEditor>
     _ownFocus?.dispose();
     _ownScroll?.dispose();
     _paint.dispose();
+    _tableCellChanges.dispose();
     super.dispose();
   }
 
@@ -326,6 +327,32 @@ class MarkdownEditorState extends State<MarkdownEditor>
 
   void detachTable(int lineId, MdTableEditing table) {
     if (identical(_tables[lineId], table)) _tables.remove(lineId);
+  }
+
+  /// The editor of a table's cell being typed in (or held open, see
+  /// [holdTableCell]); none while none is.
+  MarkdownEditorState? get tableCell {
+    for (final table in _tables.values) {
+      if (table.cellEditor case final editor?) return editor;
+    }
+    return null;
+  }
+
+  /// Told as a table's cell is opened or closed, focused or left, and as
+  /// its text or its caret changes: what is over it (a link's bar) goes
+  /// with it.
+  Listenable get tableCellChanges => _tableCellChanges;
+  final _tableCellChanges = ValueNotifier(0);
+
+  /// What a table tells of its cell (see [tableCellChanges]).
+  void tableCellChanged() => _tableCellChanges.value++;
+
+  /// While [held], the cell being typed in stays open without the keyboard
+  /// (a link's address typed in a bar over it, say).
+  void holdTableCell(bool held) {
+    for (final table in _tables.values) {
+      table.cellHeld = held;
+    }
   }
 
   bool _tableEntryScheduled = false;
