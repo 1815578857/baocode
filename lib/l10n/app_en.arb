@@ -4246,8 +4246,6 @@
   "generalSettingsMainWindowLast": "Where you left off",
   "generalSettingsWindows": "Windows",
   "generalSettingsIde": "Fast IDE",
-  "generalSettingsAutoOpenChanges": "Show agent changes as diffs",
-  "generalSettingsAutoOpenChangesDescription": "While the IDE shows, a file the agent changes opens as a diff of it against its text before, as the agent edits it.",
   "explorerExcludeSetting": "Hidden files and folders",
   "explorerExcludeSettingDescription": "Files and folders the explorer does not show, comma separated: a name (`node_modules`, `*.log`) matches anywhere, a path (`build/**`, `src/generated`) matches within the folder.",
   "explorerExcludeSettingPlaceholder": "e.g. .git, node_modules, *.log",
