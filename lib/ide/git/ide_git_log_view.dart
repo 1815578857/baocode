@@ -152,6 +152,17 @@ class IdeGitLogController extends ChangeNotifier {
   /// The row [reveal] asked to be scrolled to, until the log takes it.
   String? _reveal;
 
+  String? _editingMessage;
+
+  /// The commit whose message is edited in its details (Edit Commit
+  /// Message), if any.
+  String? get editingMessage => _editingMessage;
+  set editingMessage(String? id) {
+    if (id == _editingMessage) return;
+    _editingMessage = id;
+    notifyListeners();
+  }
+
   /// Selects [id]'s row and has the log scroll to it, where it is loaded
   /// (a commit pressed in an editor's annotations).
   void reveal(String id) {
@@ -1805,6 +1816,15 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
         if (ref.kind == IdeGitRefKind.branch && ref.name != head?.branch)
           ref.name,
     ];
+    final isHead = _isHead(git, commit);
+    // In the current branch's history: what rewrites it can.
+    final inBranch = head?.branch != null && _inHeadHistory(git, commit);
+    final parent = commit.parentIds.firstOrNull;
+    final child = _childOf(git, commit);
+    IdeMenuAction reset(String label, IdeGitResetMode mode) => IdeMenuAction(
+      label,
+      onSelected: () => unawaited(_reset(git, commit, mode)),
+    );
     return showIdeMenu(
       context,
       position: position,
@@ -1821,8 +1841,23 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
               Clipboard.setData(ClipboardData(text: commit.message)),
             ),
           ),
+          IdeMenuAction(
+            l10n.gitLogCopyPatch,
+            onSelected: () => unawaited(
+              _run(() async {
+                final patch = await git.service.patch(commit.id);
+                await Clipboard.setData(ClipboardData(text: patch));
+              }),
+            ),
+          ),
         ],
         [
+          if (!isHead && !inBranch)
+            IdeMenuAction(
+              l10n.gitLogCherryPick,
+              onSelected: () =>
+                  unawaited(_run(() => git.cherryPick([commit.id]))),
+            ),
           for (final branch in branches)
             IdeMenuAction(
               l10n.gitLogCheckoutBranch(branch),
@@ -1834,22 +1869,235 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                 unawaited(_run(() => git.checkout(commit.id, detached: true))),
           ),
           IdeMenuAction(
-            l10n.gitLogNewBranch,
-            onSelected: () => unawaited(_newBranch(git, commit)),
+            l10n.gitLogCompareWithLocal,
+            onSelected: () => unawaited(_compareWithLocal(git, commit)),
           ),
         ],
         [
+          if (head?.branch != null)
+            IdeMenuAction(
+              l10n.gitLogResetToHere,
+              submenu: [
+                reset(l10n.gitLogResetSoft, IdeGitResetMode.soft),
+                reset(l10n.gitLogResetMixed, IdeGitResetMode.mixed),
+                reset(l10n.gitLogResetHard, IdeGitResetMode.hard),
+                reset(l10n.gitLogResetKeep, IdeGitResetMode.keep),
+              ],
+            ),
+          IdeMenuAction(
+            l10n.gitLogRevertCommit,
+            onSelected: () => unawaited(_run(() => git.revert([commit.id]))),
+          ),
           // The last commit, not pushed yet: undone, its changes and its
           // message back to commit again.
-          if (_isHead(git, commit) &&
-              (head?.upstream == null || head!.ahead > 0))
+          if (isHead && (head?.upstream == null || head!.ahead > 0))
             IdeMenuAction(
               l10n.gitLogUndoCommit,
               onSelected: () => unawaited(_undoCommit(git, commit)),
             ),
+          if (isHead || inBranch)
+            IdeMenuAction(
+              l10n.gitLogEditMessage,
+              onSelected: () => _log.editingMessage = commit.id,
+            ),
+          if (inBranch && commit.parentIds.length == 1)
+            IdeMenuAction(
+              l10n.gitLogDropCommit,
+              onSelected: () => unawaited(_drop(git, commit)),
+            ),
+        ],
+        [
+          if (_outgoing(git).contains(commit.id))
+            IdeMenuAction(
+              l10n.gitLogPushUpToHere,
+              onSelected: () => unawaited(_run(() => git.pushUpTo(commit.id))),
+            ),
+        ],
+        [
+          IdeMenuAction(
+            l10n.gitLogNewBranch,
+            onSelected: () => unawaited(_newBranch(git, commit)),
+          ),
+          IdeMenuAction(
+            l10n.gitLogNewTag,
+            onSelected: () => unawaited(_newTag(git, commit)),
+          ),
+        ],
+        [
+          IdeMenuAction(
+            l10n.gitLogGoToChild,
+            enabled: child != null,
+            onSelected: () => _select(child!, reveal: true),
+          ),
+          IdeMenuAction(
+            l10n.gitLogGoToParent,
+            enabled: parent != null,
+            onSelected: () => _select(parent!, reveal: true),
+          ),
         ],
       ]),
     );
+  }
+
+  /// Whether [commit] is HEAD's or one before it, by the graph's first
+  /// parents.
+  static bool _inHeadHistory(IdeGitRepository git, IdeGitCommit commit) {
+    final rows = git.graph ?? const <IdeGraphRow>[];
+    final byId = {for (final row in rows) row.commit.id: row.commit};
+    var at = rows
+        .where((row) => row.kind == IdeGraphRowKind.head)
+        .firstOrNull
+        ?.commit;
+    while (at != null) {
+      if (at.id == commit.id) return true;
+      final parent = at.parentIds.firstOrNull;
+      at = parent == null ? null : byId[parent];
+    }
+    return false;
+  }
+
+  /// The commits of HEAD's not pushed yet: as many as it is ahead, down
+  /// its first parents.
+  static Set<String> _outgoing(IdeGitRepository git) {
+    final head = git.state?.head;
+    if (head == null || head.upstream == null || head.ahead == 0) return {};
+    final rows = git.graph ?? const <IdeGraphRow>[];
+    final byId = {for (final row in rows) row.commit.id: row.commit};
+    var at = rows
+        .where((row) => row.kind == IdeGraphRowKind.head)
+        .firstOrNull
+        ?.commit;
+    final ids = <String>{};
+    while (at != null && ids.length < head.ahead) {
+      ids.add(at.id);
+      final parent = at.parentIds.firstOrNull;
+      at = parent == null ? null : byId[parent];
+    }
+    return ids;
+  }
+
+  /// The commit loaded whose first parent [commit] is, if any.
+  static String? _childOf(IdeGitRepository git, IdeGitCommit commit) {
+    for (final row in git.graph ?? const <IdeGraphRow>[]) {
+      if (row.commit.parentIds.contains(commit.id)) return row.commit.id;
+    }
+    return null;
+  }
+
+  /// Reset Current Branch to Here; Hard, once confirmed.
+  Future<void> _reset(
+    IdeGitRepository git,
+    IdeGitCommit commit,
+    IdeGitResetMode mode,
+  ) async {
+    if (mode == IdeGitResetMode.hard) {
+      final l10n = context.l10n;
+      final answer = await showIdeDialog(
+        context,
+        message: l10n.gitLogResetHardConfirm(
+          git.state?.head.branch ?? 'HEAD',
+          commit.shortId,
+        ),
+        buttons: [l10n.gitLogResetButton],
+      );
+      if (answer != 0) return;
+    }
+    await _run(() => git.reset(commit.id, mode));
+  }
+
+  /// Edit Commit Message's save: [commit] given [message]; then the
+  /// branch's tip selected, where the commit is now.
+  Future<void> _reword(
+    IdeGitRepository git,
+    IdeGitCommit commit,
+    String message,
+  ) async {
+    final trimmed = message.trim();
+    if (trimmed.isEmpty || trimmed == commit.message.trim()) {
+      _log.editingMessage = null;
+      return;
+    }
+    var done = false;
+    await _run(() async {
+      await git.reword(commit, trimmed);
+      done = true;
+    });
+    if (!mounted || !done) return;
+    _log.editingMessage = null;
+    final head = await git.service.revParse('HEAD');
+    if (mounted && head != null) _select(head, reveal: true);
+  }
+
+  /// Drop Commit, once confirmed.
+  Future<void> _drop(IdeGitRepository git, IdeGitCommit commit) async {
+    final l10n = context.l10n;
+    final answer = await showIdeDialog(
+      context,
+      message: l10n.gitLogDropConfirm(commit.shortId, commit.subject),
+      buttons: [l10n.gitLogDropButton],
+    );
+    if (answer != 0) return;
+    await _run(() => git.drop(commit));
+  }
+
+  /// New Tag: asks for a name and a message, then tags [commit].
+  Future<void> _newTag(IdeGitRepository git, IdeGitCommit commit) async {
+    final l10n = context.l10n;
+    final result = await showIdeInputDialog(
+      context,
+      message: l10n.gitLogNewTagAt(commit.shortId),
+      buttons: [l10n.gitLogCreateTag],
+      inputs: [
+        IdeDialogInput(placeholder: l10n.gitTagName),
+        IdeDialogInput(placeholder: l10n.gitTagMessage),
+      ],
+      type: IdeDialogType.question,
+    );
+    if (result == null || result.button != 0) return;
+    final name = ideSanitizeBranchName(result.values.first);
+    if (name.isEmpty) return;
+    await _run(
+      () => git.tag(name, commit.id, message: result.values.last.trim()),
+    );
+  }
+
+  /// Compare with Local: the files [commit] and the working tree differ
+  /// in, in the table's place, the commit's side against the file's.
+  Future<void> _compareWithLocal(
+    IdeGitRepository git,
+    IdeGitCommit commit,
+  ) async {
+    final l10n = context.l10n;
+    final List<IdeGitCommitChange> changes;
+    try {
+      changes = await git.service.changesSince(commit.id);
+    } catch (error) {
+      _report(error);
+      return;
+    }
+    if (!mounted) return;
+    if (changes.isEmpty) {
+      widget.notifications.notify(IdeSeverity.info, l10n.gitLogNoDifferences);
+      return;
+    }
+    final files = widget.host.files;
+    Future<String> show(String path) =>
+        git.service.show(commit.id, path).catchError((Object _) => '');
+    _log.showDiff([
+      for (final change in changes)
+        IdeGitDiffFile(
+          path: change.path,
+          status: ideCommitChangeStatus(change.status),
+          original: () => change.status == 'A'
+              ? Future.value('')
+              : show(change.originalPath ?? change.path),
+          modified: () => change.status == 'D'
+              ? Future.value('')
+              : files.read(change.path).catchError((Object _) => ''),
+          originalLabel: commit.shortId,
+          modifiedLabel: l10n.gitChangeWorkingTree,
+        ),
+    ], 0);
   }
 
   static bool _isHead(IdeGitRepository git, IdeGitCommit commit) {
@@ -1921,6 +2169,7 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                 root: state.root,
                 border: _border,
                 onSelect: (id) => _select(id, reveal: true),
+                onReword: (message) => _reword(git, row.commit, message),
                 onOpenDiff: (files, index) {
                   if (widget.onOpenDiff case final open?) {
                     open(files[index]);
@@ -1980,6 +2229,7 @@ class _CommitDetails extends StatelessWidget {
     required this.root,
     required this.border,
     required this.onSelect,
+    required this.onReword,
     required this.onOpenDiff,
     this.onOpen,
     this.onAddToChat,
@@ -1987,6 +2237,9 @@ class _CommitDetails extends StatelessWidget {
 
   final IdeGitRepository git;
   final IdeGraphRow row;
+
+  /// Saves the message edited (Edit Commit Message).
+  final Future<void> Function(String message) onReword;
   final IdeGitLogController log;
   final String root;
   final Color border;
@@ -2043,57 +2296,65 @@ class _CommitDetails extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    // The message, in a box of its own.
-                    Container(
-                      constraints: const BoxConstraints(maxHeight: 140),
-                      padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: border),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: SingleChildScrollView(
-                              child: Text.rich(
-                                TextSpan(
-                                  children: [
-                                    TextSpan(
-                                      text: commit.subject,
-                                      style: TextStyle(color: foreground),
-                                    ),
-                                    if (body.isNotEmpty)
+                    // The message, in a box of its own; edited in place.
+                    if (log.editingMessage == commit.id)
+                      _MessageEditor(
+                        message: message,
+                        border: border,
+                        onSave: onReword,
+                        onCancel: () => log.editingMessage = null,
+                      )
+                    else
+                      Container(
+                        constraints: const BoxConstraints(maxHeight: 140),
+                        padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: border),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: SingleChildScrollView(
+                                child: Text.rich(
+                                  TextSpan(
+                                    children: [
                                       TextSpan(
-                                        text: '\n$body',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: description,
-                                        ),
+                                        text: commit.subject,
+                                        style: TextStyle(color: foreground),
                                       ),
-                                  ],
-                                ),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  height: 1.45,
+                                      if (body.isNotEmpty)
+                                        TextSpan(
+                                          text: '\n$body',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: description,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    height: 1.45,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          IdeActionButton(
-                            icon: Codicons.copy,
-                            tooltip: l10n.scmCopyCommitMessage,
-                            size: 20,
-                            iconSize: 14,
-                            onPressed: () => unawaited(
-                              Clipboard.setData(
-                                ClipboardData(text: commit.message),
+                            IdeActionButton(
+                              icon: Codicons.copy,
+                              tooltip: l10n.scmCopyCommitMessage,
+                              size: 20,
+                              iconSize: 14,
+                              onPressed: () => unawaited(
+                                Clipboard.setData(
+                                  ClipboardData(text: commit.message),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 10),
                     Text(
                       l10n.gitLogAuthor,
@@ -3501,6 +3762,98 @@ class _SashState extends State<_Sash> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Edit Commit Message in a commit's details: the message in a box to
+/// edit, saved with the button or Ctrl/Cmd+Enter, left with Escape.
+class _MessageEditor extends StatefulWidget {
+  const _MessageEditor({
+    required this.message,
+    required this.border,
+    required this.onSave,
+    required this.onCancel,
+  });
+
+  final String message;
+  final Color border;
+  final Future<void> Function(String message) onSave;
+  final VoidCallback onCancel;
+
+  @override
+  State<_MessageEditor> createState() => _MessageEditorState();
+}
+
+class _MessageEditorState extends State<_MessageEditor> {
+  late final TextEditingController _text = TextEditingController(
+    text: widget.message,
+  );
+  final FocusNode _focus = FocusNode(debugLabel: 'commit message edit');
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Past the menu's giving the focus back to where it was.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _text.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await widget.onSave(_text.text);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        IdeInputBox(
+          controller: _text,
+          focusNode: _focus,
+          minLines: 3,
+          maxLines: 10,
+          shortcuts: {
+            const SingleActivator(LogicalKeyboardKey.enter, meta: true): _save,
+            const SingleActivator(LogicalKeyboardKey.enter, control: true):
+                _save,
+            const SingleActivator(LogicalKeyboardKey.escape): widget.onCancel,
+          },
+        ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            IdeButton(
+              label: l10n.commonCancel,
+              secondary: true,
+              onPressed: _saving ? null : widget.onCancel,
+            ),
+            const SizedBox(width: 6),
+            IdeButton(
+              label: l10n.commonSave,
+              spinning: _saving,
+              onPressed: _saving ? null : () => unawaited(_save()),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

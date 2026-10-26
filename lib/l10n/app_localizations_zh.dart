@@ -10585,4 +10585,87 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitCloseAnnotations => '关闭注释';
+
+  @override
+  String get gitLogCopyPatch => '复制为补丁';
+
+  @override
+  String get gitLogCherryPick => '拣选到当前分支（Cherry-Pick）';
+
+  @override
+  String get gitLogCompareWithLocal => '与本地比较';
+
+  @override
+  String get gitLogResetToHere => '将当前分支重置到这里';
+
+  @override
+  String get gitLogResetSoft => 'Soft：改动留在暂存区';
+
+  @override
+  String get gitLogResetMixed => 'Mixed：改动留在工作区，不暂存';
+
+  @override
+  String get gitLogResetHard => 'Hard：丢弃改动';
+
+  @override
+  String get gitLogResetKeep => 'Keep：保留本地未提交的改动';
+
+  @override
+  String gitLogResetHardConfirm(String branch, String commit) {
+    return '把“$branch”重置到 $commit，并丢弃之后的所有改动（不论是否已提交）？';
+  }
+
+  @override
+  String get gitLogResetButton => '重置';
+
+  @override
+  String get gitLogRevertCommit => '还原提交（Revert）';
+
+  @override
+  String get gitLogEditMessage => '修改提交信息…';
+
+  @override
+  String get gitLogDropCommit => '删除提交';
+
+  @override
+  String gitLogDropConfirm(String commit, String subject) {
+    return '从分支中拿掉 $commit“$subject”？';
+  }
+
+  @override
+  String get gitLogDropButton => '删除';
+
+  @override
+  String get gitLogPushUpToHere => '推送到这里为止';
+
+  @override
+  String get gitLogNewTag => '新建标签…';
+
+  @override
+  String gitLogNewTagAt(String commit) {
+    return '在 $commit 新建标签';
+  }
+
+  @override
+  String get gitTagName => '标签名';
+
+  @override
+  String get gitTagMessage => '说明（可选，填了就是附注标签）';
+
+  @override
+  String get gitLogCreateTag => '创建标签';
+
+  @override
+  String get gitLogGoToParent => '转到父提交';
+
+  @override
+  String get gitLogGoToChild => '转到子提交';
+
+  @override
+  String gitLogComparedWithLocal(String commit) {
+    return '$commit ↔ 本地';
+  }
+
+  @override
+  String get gitLogNoDifferences => '与工作区没有差异';
 }

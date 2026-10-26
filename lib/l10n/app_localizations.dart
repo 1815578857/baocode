@@ -18272,6 +18272,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close Annotations'**
   String get gitCloseAnnotations;
+
+  /// No description provided for @gitLogCopyPatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy as Patch'**
+  String get gitLogCopyPatch;
+
+  /// No description provided for @gitLogCherryPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Cherry-Pick'**
+  String get gitLogCherryPick;
+
+  /// No description provided for @gitLogCompareWithLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare with Local'**
+  String get gitLogCompareWithLocal;
+
+  /// No description provided for @gitLogResetToHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Current Branch to Here'**
+  String get gitLogResetToHere;
+
+  /// No description provided for @gitLogResetSoft.
+  ///
+  /// In en, this message translates to:
+  /// **'Soft: keep the changes staged'**
+  String get gitLogResetSoft;
+
+  /// No description provided for @gitLogResetMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed: keep the changes, not staged'**
+  String get gitLogResetMixed;
+
+  /// No description provided for @gitLogResetHard.
+  ///
+  /// In en, this message translates to:
+  /// **'Hard: discard the changes'**
+  String get gitLogResetHard;
+
+  /// No description provided for @gitLogResetKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep: keep the local changes'**
+  String get gitLogResetKeep;
+
+  /// No description provided for @gitLogResetHardConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset “{branch}” to {commit} and discard every change since, committed or not?'**
+  String gitLogResetHardConfirm(String branch, String commit);
+
+  /// No description provided for @gitLogResetButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get gitLogResetButton;
+
+  /// No description provided for @gitLogRevertCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Revert Commit'**
+  String get gitLogRevertCommit;
+
+  /// No description provided for @gitLogEditMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Commit Message…'**
+  String get gitLogEditMessage;
+
+  /// No description provided for @gitLogDropCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop Commit'**
+  String get gitLogDropCommit;
+
+  /// No description provided for @gitLogDropConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Take {commit} “{subject}” out of the branch?'**
+  String gitLogDropConfirm(String commit, String subject);
+
+  /// No description provided for @gitLogDropButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop'**
+  String get gitLogDropButton;
+
+  /// No description provided for @gitLogPushUpToHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Push All up to Here'**
+  String get gitLogPushUpToHere;
+
+  /// No description provided for @gitLogNewTag.
+  ///
+  /// In en, this message translates to:
+  /// **'New Tag…'**
+  String get gitLogNewTag;
+
+  /// No description provided for @gitLogNewTagAt.
+  ///
+  /// In en, this message translates to:
+  /// **'New tag at {commit}'**
+  String gitLogNewTagAt(String commit);
+
+  /// No description provided for @gitTagName.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag name'**
+  String get gitTagName;
+
+  /// No description provided for @gitTagMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message (optional: an annotated tag)'**
+  String get gitTagMessage;
+
+  /// No description provided for @gitLogCreateTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Tag'**
+  String get gitLogCreateTag;
+
+  /// No description provided for @gitLogGoToParent.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Parent Commit'**
+  String get gitLogGoToParent;
+
+  /// No description provided for @gitLogGoToChild.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Child Commit'**
+  String get gitLogGoToChild;
+
+  /// No description provided for @gitLogComparedWithLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'{commit} ↔ Local'**
+  String gitLogComparedWithLocal(String commit);
+
+  /// No description provided for @gitLogNoDifferences.
+  ///
+  /// In en, this message translates to:
+  /// **'No differences from the working tree'**
+  String get gitLogNoDifferences;
 }
 
 class _AppLocalizationsDelegate

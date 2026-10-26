@@ -235,6 +235,11 @@ class IdeGitHead {
   final bool unborn;
 }
 
+/// How Reset Current Branch to Here leaves the changes (`git reset`):
+/// staged, in the working tree, gone, or kept where the commits do not
+/// touch them.
+enum IdeGitResetMode { soft, mixed, hard, keep }
+
 /// A repository's status.
 class IdeGitState {
   IdeGitState({

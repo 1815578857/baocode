@@ -304,6 +304,39 @@ class IdeGitRepository extends ChangeNotifier {
   Future<void> undoCommit(IdeGitCommit head) =>
       _operate(() => service.undoCommit(head));
 
+  /// Cherry-picks [commits] (oldest first) onto HEAD.
+  Future<void> cherryPick(List<String> commits) =>
+      _operate(() => service.cherryPick(commits));
+
+  /// Reverts [commits] (newest first), a commit each.
+  Future<void> revert(List<String> commits) =>
+      _operate(() => service.revert(commits));
+
+  /// Reset Current Branch to Here.
+  Future<void> reset(String commit, IdeGitResetMode mode) =>
+      _operate(() => service.reset(commit, mode));
+
+  /// New Tag at [commit].
+  Future<void> tag(String name, String commit, {String? message}) =>
+      _operate(() => service.tag(name, commit, message: message));
+
+  /// Edit Commit Message of [commit] in the current branch.
+  Future<void> reword(IdeGitCommit commit, String message) =>
+      _operate(() => service.reword(commit, message));
+
+  /// Drop Commit: [commit] taken out of the current branch.
+  Future<void> drop(IdeGitCommit commit) =>
+      _operate(() => service.drop(commit));
+
+  /// Push All up to Here: the current branch's commits up to [commit].
+  Future<void> pushUpTo(String commit) => _operate(() async {
+    final upstream = _state?.head.upstream;
+    if (upstream == null) {
+      throw const IdeGitException('The branch has no upstream.');
+    }
+    await service.pushUpTo(commit, upstream);
+  });
+
   /// Stages the untracked changes too, then commits everything: VS Code's
   /// smart commit with `git.smartCommitChanges: all`. Past the status's
   /// limit, not all of them are known: the whole tree is staged.

@@ -11183,4 +11183,87 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitCloseAnnotations => 'Close Annotations';
+
+  @override
+  String get gitLogCopyPatch => 'Copy as Patch';
+
+  @override
+  String get gitLogCherryPick => 'Cherry-Pick';
+
+  @override
+  String get gitLogCompareWithLocal => 'Compare with Local';
+
+  @override
+  String get gitLogResetToHere => 'Reset Current Branch to Here';
+
+  @override
+  String get gitLogResetSoft => 'Soft: keep the changes staged';
+
+  @override
+  String get gitLogResetMixed => 'Mixed: keep the changes, not staged';
+
+  @override
+  String get gitLogResetHard => 'Hard: discard the changes';
+
+  @override
+  String get gitLogResetKeep => 'Keep: keep the local changes';
+
+  @override
+  String gitLogResetHardConfirm(String branch, String commit) {
+    return 'Reset “$branch” to $commit and discard every change since, committed or not?';
+  }
+
+  @override
+  String get gitLogResetButton => 'Reset';
+
+  @override
+  String get gitLogRevertCommit => 'Revert Commit';
+
+  @override
+  String get gitLogEditMessage => 'Edit Commit Message…';
+
+  @override
+  String get gitLogDropCommit => 'Drop Commit';
+
+  @override
+  String gitLogDropConfirm(String commit, String subject) {
+    return 'Take $commit “$subject” out of the branch?';
+  }
+
+  @override
+  String get gitLogDropButton => 'Drop';
+
+  @override
+  String get gitLogPushUpToHere => 'Push All up to Here';
+
+  @override
+  String get gitLogNewTag => 'New Tag…';
+
+  @override
+  String gitLogNewTagAt(String commit) {
+    return 'New tag at $commit';
+  }
+
+  @override
+  String get gitTagName => 'Tag name';
+
+  @override
+  String get gitTagMessage => 'Message (optional: an annotated tag)';
+
+  @override
+  String get gitLogCreateTag => 'Create Tag';
+
+  @override
+  String get gitLogGoToParent => 'Go to Parent Commit';
+
+  @override
+  String get gitLogGoToChild => 'Go to Child Commit';
+
+  @override
+  String gitLogComparedWithLocal(String commit) {
+    return '$commit ↔ Local';
+  }
+
+  @override
+  String get gitLogNoDifferences => 'No differences from the working tree';
 }

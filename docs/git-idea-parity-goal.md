@@ -57,19 +57,19 @@ Git 日志和 IDEA 式提交面板已经上线（#328）。用户反馈 IDEA 的
 | 按路径筛选 | ❌ | |
 | 左侧分支树（本地 / 远程，收藏，搜索） | ❌ | |
 | 提交详情：文件树、所在分支 | ✅ | |
-| Cherry-pick（可多选） | ❌ | |
-| Revert Commit | ❌ | |
-| Reset Current Branch to Here（soft / mixed / hard / keep） | ❌ | |
+| Cherry-pick（可多选） | 🟡 | 单个提交可以；日志还不能多选 |
+| Revert Commit | ✅ | |
+| Reset Current Branch to Here（soft / mixed / hard / keep） | ✅ | Hard 先确认 |
 | Undo Commit | ✅ | |
-| 修改提交信息（任意提交） | ❌ | |
-| Fixup / Squash Into / Drop | ❌ | |
+| 修改提交信息（任意提交） | ✅ | 在详情里原地编辑，不弹窗；旧提交用 amend! + autosquash，不开编辑器、自动 stash；之后有合并提交时拒绝 |
+| Fixup / Squash Into / Drop | 🟡 | Drop 已有（先确认）；Fixup / Squash 等日志支持多选后做 |
 | 交互式变基（拖动排序，pick / reword / squash / fixup / drop） | ❌ | |
-| New Branch / New Tag | 🟡 | 能新建分支，不能打标签 |
+| New Branch / New Tag | ✅ | 标签可带说明（附注标签） |
 | Checkout Revision | ✅ | |
-| Compare with Local；多选两次提交互相比较 | ❌ | |
-| Create Patch / 复制为补丁 | ❌ | |
-| Push All up to Here | ❌ | |
-| 跳到父提交 / 子提交 | ❌ | |
+| Compare with Local；多选两次提交互相比较 | 🟡 | 与本地比较已有（日志区 diff）；两次提交互比要多选 |
+| Create Patch / 复制为补丁 | ✅ | 复制为补丁（format-patch） |
+| Push All up to Here | ✅ | 只对未推送的提交显示 |
+| 跳到父提交 / 子提交 | ✅ | |
 
 ## 五、分支
 | IDEA | 状态 | 说明 |
