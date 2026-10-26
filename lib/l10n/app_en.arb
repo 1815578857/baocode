@@ -7718,7 +7718,6 @@
   "@gitLogLinesOf": {"placeholders": {"file": {"type": "String"}, "start": {"type": "int"}, "end": {"type": "int"}}},
   "gitShowHistory": "Show History",
   "gitShowHistoryForSelection": "Show History for Selection",
-  "gitBranches": "Branches",
   "gitShowBranches": "Show Branches",
   "gitHideBranches": "Hide Branches",
   "gitBranchesFilter": "Filter branches",
@@ -7765,5 +7764,14 @@
   "@gitTagDeleted": {"placeholders": {"name": {"type": "String"}}},
   "gitBranchRestore": "Restore",
   "gitBranchCompared": "“{name}” has {ahead} commits “{current}” has not; “{current}” has {behind} it has not.",
-  "@gitBranchCompared": {"placeholders": {"name": {"type": "String"}, "current": {"type": "String"}, "ahead": {"type": "int"}, "behind": {"type": "int"}}}
+  "@gitBranchCompared": {"placeholders": {"name": {"type": "String"}, "current": {"type": "String"}, "ahead": {"type": "int"}, "behind": {"type": "int"}}},
+  "gitBranchesRecent": "Recent",
+  "gitBranchesSearch": "Search for branches and actions",
+  "gitUpdateProject": "Update Project",
+  "gitCommitEllipsis": "Commit…",
+  "gitPushEllipsis": "Push…",
+  "gitNewBranchEllipsis": "New Branch…",
+  "gitCheckoutRevision": "Checkout Tag or Revision…",
+  "gitBranchesTitle": "Git Branches",
+  "gitRevisionPlaceholder": "A tag, a branch or a commit hash"
 }

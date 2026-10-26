@@ -1,0 +1,127 @@
+// JetBrains IDEs' branch popup, from the status bar's branch: the
+// repository's actions, then the recent, local and remote branches, typed
+// to narrow; a branch opens its actions.
+
+import 'package:baocode/ide/git/git_service.dart';
+import 'package:baocode/ide/git/ide_git_branch_popup.dart';
+import 'package:baocode/ide/ide_status_bar.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import '../workbench/fake_files.dart';
+import 'fake_git.dart';
+
+final _main = 'a' * 40;
+final _feature = 'b' * 40;
+
+void main() {
+  late FakeGit git;
+
+  setUp(() {
+    git = FakeGit(testRoot)
+      ..status = '## main...origin/main\x00'
+      ..log = gitLogRecord(_main, [], 'Main work', refs: 'HEAD -> refs/heads/main')
+      ..forEachRef = [
+        gitRefRecord('refs/heads/main', _main, upstream: 'origin/main'),
+        gitRefRecord('refs/heads/feature', _feature),
+        gitRefRecord('refs/heads/old', _feature),
+        gitRefRecord('refs/remotes/origin/main', _main),
+        gitRefRecord('refs/remotes/origin/topic', _feature),
+      ].join('\n');
+    git.refs['HEAD'] = _main;
+    git.answers['reflog'] = const IdeGitOutput(
+      0,
+      'checkout: moving from feature to main\n'
+      'commit: Main work\n'
+      'checkout: moving from main to feature\n',
+    );
+  });
+
+  Finder inPopup(Finder finder) =>
+      find.descendant(of: find.byType(IdeGitBranchPopup), matching: finder);
+
+  /// The popup's rows' texts, in order.
+  List<String> rows(WidgetTester tester) => [
+    for (final text in tester.widgetList<Text>(
+      inPopup(
+        find.descendant(of: find.byType(ListView), matching: find.byType(Text)),
+      ),
+    ))
+      text.data!,
+  ];
+
+  Future<void> open(WidgetTester tester) async {
+    await pumpWorkbench(tester, const {'a.dart': 'a'}, git: git.repository());
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(IdeStatusBar),
+        matching: find.text('main'),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('the actions, then the recent, local and remote branches', (
+    tester,
+  ) async {
+    await open(tester);
+    expect(rows(tester), [
+      'Update Project',
+      'Commit…',
+      'Push…',
+      'New Branch…',
+      'Checkout Tag or Revision…',
+      'Recent',
+      'feature',
+      'Local Branches',
+      'main',
+      'feature',
+      'old',
+      'Remote Branches',
+      'origin/main',
+      'origin/topic',
+    ]);
+  });
+
+  testWidgets('typed, the branches that match; Enter opens the actions of '
+      'the one selected, which close the popup', (tester) async {
+    await open(tester);
+    await tester.enterText(inPopup(find.byType(EditableText)), 'top');
+    await tester.pumpAndSettle();
+    expect(rows(tester), ['Remote Branches', 'origin/topic']);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Checkout'));
+    await tester.pumpAndSettle();
+    expect(find.byType(IdeGitBranchPopup), findsNothing);
+    expect(git.callsTo('checkout').last, [
+      'checkout',
+      '-q',
+      '--track',
+      'origin/topic',
+    ]);
+  });
+
+  testWidgets('Down and Enter run an action; Escape closes', (tester) async {
+    await open(tester);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(find.byType(IdeGitBranchPopup), findsNothing);
+    expect(git.callsTo('push').last, ['push', 'origin', 'main:main']);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(IdeStatusBar),
+        matching: find.text('main'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(IdeGitBranchPopup), findsNothing);
+  });
+}

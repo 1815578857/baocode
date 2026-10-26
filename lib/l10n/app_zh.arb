@@ -3075,7 +3075,6 @@
   "gitLogLinesOf": "{file}：第 {start}–{end} 行",
   "gitShowHistory": "显示历史",
   "gitShowHistoryForSelection": "显示所选内容的历史",
-  "gitBranches": "分支",
   "gitShowBranches": "显示分支",
   "gitHideBranches": "隐藏分支",
   "gitBranchesFilter": "筛选分支",
@@ -3108,5 +3107,14 @@
   "gitBranchDeleted": "已删除分支“{name}”。",
   "gitTagDeleted": "已删除标签“{name}”。",
   "gitBranchRestore": "恢复",
-  "gitBranchCompared": "“{name}”有 {ahead} 个“{current}”没有的提交；“{current}”有 {behind} 个它没有的提交。"
+  "gitBranchCompared": "“{name}”有 {ahead} 个“{current}”没有的提交；“{current}”有 {behind} 个它没有的提交。",
+  "gitBranchesRecent": "最近",
+  "gitBranchesSearch": "搜索分支和操作",
+  "gitUpdateProject": "更新项目",
+  "gitCommitEllipsis": "提交…",
+  "gitPushEllipsis": "推送…",
+  "gitNewBranchEllipsis": "新建分支…",
+  "gitCheckoutRevision": "检出标签或修订…",
+  "gitBranchesTitle": "Git 分支",
+  "gitRevisionPlaceholder": "标签、分支或提交哈希"
 }

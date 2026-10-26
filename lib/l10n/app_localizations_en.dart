@@ -4409,7 +4409,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitCheckoutDetached => 'Checkout detached...';
 
   @override
-  String get gitBranches => 'Branches';
+  String get gitBranches => 'branches';
 
   @override
   String get gitRemoteBranches => 'remote branches';
@@ -11451,4 +11451,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String gitBranchCompared(String name, String current, int ahead, int behind) {
     return '“$name” has $ahead commits “$current” has not; “$current” has $behind it has not.';
   }
+
+  @override
+  String get gitBranchesRecent => 'Recent';
+
+  @override
+  String get gitBranchesSearch => 'Search for branches and actions';
+
+  @override
+  String get gitUpdateProject => 'Update Project';
+
+  @override
+  String get gitCommitEllipsis => 'Commit…';
+
+  @override
+  String get gitPushEllipsis => 'Push…';
+
+  @override
+  String get gitNewBranchEllipsis => 'New Branch…';
+
+  @override
+  String get gitCheckoutRevision => 'Checkout Tag or Revision…';
+
+  @override
+  String get gitBranchesTitle => 'Git Branches';
+
+  @override
+  String get gitRevisionPlaceholder => 'A tag, a branch or a commit hash';
 }

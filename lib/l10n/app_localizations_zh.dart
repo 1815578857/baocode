@@ -10853,4 +10853,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String gitBranchCompared(String name, String current, int ahead, int behind) {
     return '“$name”有 $ahead 个“$current”没有的提交；“$current”有 $behind 个它没有的提交。';
   }
+
+  @override
+  String get gitBranchesRecent => '最近';
+
+  @override
+  String get gitBranchesSearch => '搜索分支和操作';
+
+  @override
+  String get gitUpdateProject => '更新项目';
+
+  @override
+  String get gitCommitEllipsis => '提交…';
+
+  @override
+  String get gitPushEllipsis => '推送…';
+
+  @override
+  String get gitNewBranchEllipsis => '新建分支…';
+
+  @override
+  String get gitCheckoutRevision => '检出标签或修订…';
+
+  @override
+  String get gitBranchesTitle => 'Git 分支';
+
+  @override
+  String get gitRevisionPlaceholder => '标签、分支或提交哈希';
 }

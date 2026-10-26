@@ -7230,7 +7230,7 @@ abstract class AppLocalizations {
   /// No description provided for @gitBranches.
   ///
   /// In en, this message translates to:
-  /// **'Branches'**
+  /// **'branches'**
   String get gitBranches;
 
   /// No description provided for @gitRemoteBranches.
@@ -18704,6 +18704,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'“{name}” has {ahead} commits “{current}” has not; “{current}” has {behind} it has not.'**
   String gitBranchCompared(String name, String current, int ahead, int behind);
+
+  /// No description provided for @gitBranchesRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get gitBranchesRecent;
+
+  /// No description provided for @gitBranchesSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search for branches and actions'**
+  String get gitBranchesSearch;
+
+  /// No description provided for @gitUpdateProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Project'**
+  String get gitUpdateProject;
+
+  /// No description provided for @gitCommitEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit…'**
+  String get gitCommitEllipsis;
+
+  /// No description provided for @gitPushEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'Push…'**
+  String get gitPushEllipsis;
+
+  /// No description provided for @gitNewBranchEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'New Branch…'**
+  String get gitNewBranchEllipsis;
+
+  /// No description provided for @gitCheckoutRevision.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout Tag or Revision…'**
+  String get gitCheckoutRevision;
+
+  /// No description provided for @gitBranchesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Git Branches'**
+  String get gitBranchesTitle;
+
+  /// No description provided for @gitRevisionPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'A tag, a branch or a commit hash'**
+  String get gitRevisionPlaceholder;
 }
 
 class _AppLocalizationsDelegate

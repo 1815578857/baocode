@@ -985,6 +985,25 @@ class IdeGitService {
 
   // --- Branches (JetBrains' branch popup, the log's branch tree) ----------
 
+  /// The branches checked out of late, the latest first, by the reflog's
+  /// `checkout: moving from <a> to <b>`: the branch popup's Recent.
+  Future<List<String>> recentBranches({int limit = 8}) async {
+    await _requireRoot();
+    final output = await _git(['reflog', '-n', '500', '--format=%gs']);
+    if (output.exitCode != 0) return const [];
+    final pattern = RegExp(r'^checkout: moving from (.+) to (.+)$');
+    final names = <String>[];
+    for (final line in output.stdout.split('\n')) {
+      final match = pattern.firstMatch(line.trim());
+      if (match == null) continue;
+      for (final name in [match[2]!, match[1]!]) {
+        if (!names.contains(name)) names.add(name);
+      }
+      if (names.length >= limit) break;
+    }
+    return names;
+  }
+
   /// Renames the branch [from] to [to]: `git branch -m`.
   Future<void> renameBranch(String from, String to) async {
     await _requireRoot();

@@ -74,7 +74,7 @@ Git 日志和 IDEA 式提交面板已经上线（#328）。用户反馈 IDEA 的
 ## 五、分支
 | IDEA | 状态 | 说明 |
 |---|---|---|
-| 分支弹窗：最近、本地、远程、搜索 | 🟡 | 日志的分支树已有全部分支操作；状态栏 / 输入框下的弹窗还是 VS Code 式 |
+| 分支弹窗：最近、本地、远程、搜索 | ✅ | 状态栏的分支、日志工具栏的分支、命令面板「Git 分支」都会打开；最近用过的分支取自 reflog；VS Code 的「签出到…」仍在命令面板 |
 | Checkout / New Branch from | ✅ | |
 | Checkout and Rebase onto Current | ✅ | |
 | Compare with Current / Show Diff with Working Tree | ✅ | 先提示双方各多几个提交，再列出不同的文件 |

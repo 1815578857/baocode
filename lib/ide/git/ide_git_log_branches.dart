@@ -31,320 +31,43 @@ extension _Branches on IdeGitLogViewState {
     _log.reveal(commit);
   }
 
-  /// [ref]'s actions (JetBrains' branch popup's for it); [refs], all of
-  /// them, for its upstream's choice.
+  /// [ref]'s actions, as the branch popup has them, and the log's own.
   List<IdeMenuEntry> _branchMenu(
     IdeGitRepository git,
     IdeGitRef ref,
     List<IdeGitRef> refs,
-  ) {
-    final l10n = context.l10n;
-    final current = git.state?.head.branch;
-    final here = current ?? 'HEAD';
-    final local = ref.kind == IdeGitRefKind.branch;
-    final remote = ref.kind == IdeGitRefKind.remote;
-    final tag = ref.kind == IdeGitRefKind.tag;
-    final isCurrent = local && ref.name == current;
-    void run(Future<void> Function() operation) => unawaited(_run(operation));
-    final upstreams = [
-      for (final other in refs)
-        if (other.kind == IdeGitRefKind.remote && !other.name.endsWith('/HEAD'))
-          other,
-    ];
-    return ideMenuGroups([
-      [
-        if (!isCurrent)
-          IdeMenuAction(
-            l10n.gitBranchCheckout,
-            onSelected: () => run(() => _checkoutRef(git, ref, refs)),
-          ),
-        IdeMenuAction(
-          l10n.gitBranchNewFrom(ref.name),
-          onSelected: () => unawaited(_newBranchFrom(git, ref)),
-        ),
-        if (local && !isCurrent && current != null)
-          IdeMenuAction(
-            l10n.gitBranchCheckoutRebase(here),
-            onSelected: () =>
-                run(() => git.rebaseOnto(current, branch: ref.name)),
-          ),
-      ],
-      [
-        if (!isCurrent)
-          IdeMenuAction(
-            l10n.gitBranchCompare(here),
-            onSelected: () => unawaited(_compareWithHead(git, ref)),
-          ),
-        IdeMenuAction(
-          l10n.gitBranchDiffWorkingTree,
-          onSelected: () =>
-              unawaited(_compareWithLocal(git, ref.name, ref.name)),
-        ),
-      ],
-      [
-        if (!isCurrent && current != null) ...[
-          IdeMenuAction(
-            l10n.gitBranchRebaseOnto(here, ref.name),
-            onSelected: () => run(() => git.rebaseOnto(ref.name)),
-          ),
-          IdeMenuAction(
-            l10n.gitBranchMerge(ref.name, here),
-            onSelected: () => run(() => git.merge(ref.name)),
-          ),
-        ],
-        if (remote && current != null) ...[
-          IdeMenuAction(
-            l10n.gitBranchPullRebase(here),
-            onSelected: () => run(() => git.pullInto(ref.name, rebase: true)),
-          ),
-          IdeMenuAction(
-            l10n.gitBranchPullMerge(here),
-            onSelected: () => run(() => git.pullInto(ref.name, rebase: false)),
-          ),
-        ],
-      ],
-      [
-        if (local && ref.upstream != null)
-          IdeMenuAction(
-            l10n.gitBranchUpdate,
-            onSelected: () => run(
-              isCurrent
-                  ? git.pull
-                  : () => git.updateBranch(ref.name, ref.upstream!),
-            ),
-          ),
-        if (local)
-          IdeMenuAction(
-            ref.upstream == null
-                ? l10n.gitBranchPush
-                : l10n.gitBranchPushTo(ref.upstream!),
-            onSelected: () =>
-                run(() => git.pushBranch(ref.name, upstream: ref.upstream)),
-          ),
-        if (local && upstreams.isNotEmpty)
-          IdeMenuAction(
-            l10n.gitBranchUpstream,
-            submenu: [
-              for (final upstream in upstreams.take(30))
-                IdeMenuAction(
-                  upstream.name,
-                  checked: upstream.name == ref.upstream,
-                  onSelected: () =>
-                      run(() => git.setUpstream(ref.name, upstream.name)),
-                ),
-              if (ref.upstream != null) ...[
-                const IdeMenuSeparator(),
-                IdeMenuAction(
-                  l10n.gitBranchUnsetUpstream,
-                  onSelected: () => run(() => git.setUpstream(ref.name, null)),
-                ),
-              ],
-            ],
-          ),
-        if (local)
-          IdeMenuAction(
-            l10n.gitBranchRename,
-            onSelected: () => unawaited(_renameBranch(git, ref)),
-          ),
-      ],
-      [
-        IdeMenuAction(
-          _log.isFavorite(git, ref.id)
-              ? l10n.gitBranchUnfavorite
-              : l10n.gitBranchFavorite,
-          onSelected: () => _log.toggleFavorite(git, ref.id),
-        ),
-        IdeMenuAction(
-          l10n.gitBranchShowOnly,
-          checked: git.graphBranch == ref.id,
-          onSelected: () => git.graphBranch = ref.id,
-        ),
-      ],
-      [
-        if (!isCurrent)
-          IdeMenuAction(
-            tag ? l10n.gitTagDelete : l10n.gitBranchDelete,
-            onSelected: () => unawaited(_deleteRef(git, ref)),
-          ),
-      ],
-    ]);
-  }
+  ) => IdeGitBranchActions(
+    context,
+    git,
+    _LogBranchHost(this),
+  ).menu(ref, refs, showOnly: git.graphBranch == ref.id);
+}
 
-  /// Checkout: a branch; a remote one as the local branch of its name,
-  /// made to track it where there is none; a tag, detached.
-  Future<void> _checkoutRef(
-    IdeGitRepository git,
-    IdeGitRef ref,
-    List<IdeGitRef> refs,
-  ) async {
-    switch (ref.kind) {
-      case IdeGitRefKind.branch:
-        await git.checkout(ref.name);
-      case IdeGitRefKind.remote:
-        final name = ref.name.substring(ref.name.indexOf('/') + 1);
-        final local = refs.any(
-          (other) => other.kind == IdeGitRefKind.branch && other.name == name,
-        );
-        await (local ? git.checkout(name) : git.checkoutTracking(ref.name));
-      case IdeGitRefKind.tag:
-        await git.checkout(ref.name, detached: true);
-      case IdeGitRefKind.head:
-        return;
-    }
-  }
+/// What the branch actions do in the log: a comparison in the table's
+/// place, the operations as the log's.
+class _LogBranchHost implements IdeGitBranchHost {
+  _LogBranchHost(this.view);
 
-  /// New Branch from: asks for its name, then makes it there and checks
-  /// it out.
-  Future<void> _newBranchFrom(IdeGitRepository git, IdeGitRef ref) async {
-    final l10n = context.l10n;
-    final suggested = ref.kind == IdeGitRefKind.remote
-        ? ref.name.substring(ref.name.indexOf('/') + 1)
-        : '';
-    final result = await showIdeInputDialog(
-      context,
-      message: l10n.gitBranchNewFrom(ref.name),
-      buttons: [l10n.branchBarCreateButton],
-      inputs: [
-        IdeDialogInput(placeholder: l10n.gitBranchName, value: suggested),
-      ],
-      type: IdeDialogType.question,
-    );
-    if (result == null || result.button != 0) return;
-    final name = ideSanitizeBranchName(result.values.first);
-    if (name.isEmpty) return;
-    await _run(() => git.branch(name, ref: ref.name));
-  }
+  final IdeGitLogViewState view;
 
-  Future<void> _renameBranch(IdeGitRepository git, IdeGitRef ref) async {
-    final l10n = context.l10n;
-    final result = await showIdeInputDialog(
-      context,
-      message: l10n.gitBranchRenameTitle(ref.name),
-      buttons: [l10n.gitBranchRenameButton],
-      inputs: [
-        IdeDialogInput(placeholder: l10n.gitBranchName, value: ref.name),
-      ],
-      type: IdeDialogType.question,
-    );
-    if (result == null || result.button != 0) return;
-    final name = ideSanitizeBranchName(result.values.first);
-    if (name.isEmpty || name == ref.name) return;
-    final favorite = _log.isFavorite(git, ref.id);
-    var done = false;
-    await _run(() async {
-      await git.renameBranch(ref.name, name);
-      done = true;
-    });
-    // A favorite stays one by its new name.
-    if (done && favorite) {
-      _log
-        ..toggleFavorite(git, ref.id)
-        ..toggleFavorite(git, 'refs/heads/$name');
-    }
-  }
+  @override
+  IdeNotifications get notifications => view.widget.notifications;
 
-  /// Delete: a branch at once, then Restore offered; one with commits
-  /// merged nowhere else, once confirmed; a remote one, once confirmed.
-  Future<void> _deleteRef(IdeGitRepository git, IdeGitRef ref) async {
-    final l10n = context.l10n;
-    final commit = ref.commit;
-    switch (ref.kind) {
-      case IdeGitRefKind.head:
-        return;
-      case IdeGitRefKind.remote:
-        final answer = await showIdeDialog(
-          context,
-          message: l10n.gitBranchDeleteRemoteConfirm(ref.name),
-          buttons: [l10n.gitBranchDeleteButton],
-        );
-        if (answer != 0) return;
-        final remote = ref.remote ?? ref.name.split('/').first;
-        await _run(
-          () => git.deleteRemoteBranch(
-            remote,
-            ref.name.substring(remote.length + 1),
-          ),
-        );
-        return;
-      case IdeGitRefKind.tag:
-        var deleted = false;
-        await _run(() async {
-          await git.deleteTag(ref.name);
-          deleted = true;
-        });
-        if (deleted && commit != null) {
-          _restorable(
-            l10n.gitTagDeleted(ref.name),
-            () => git.tag(ref.name, commit),
-          );
-        }
-        return;
-      case IdeGitRefKind.branch:
-        var deleted = false;
-        try {
-          await git.deleteBranch(ref.name);
-          deleted = true;
-        } on IdeGitNotMergedException {
-          if (!mounted) return;
-          final answer = await showIdeDialog(
-            context,
-            message: l10n.gitBranchNotMergedConfirm(ref.name),
-            buttons: [l10n.gitBranchDeleteButton],
-          );
-          if (answer != 0) return;
-          await _run(() async {
-            await git.deleteBranch(ref.name, force: true);
-            deleted = true;
-          });
-        } catch (error) {
-          _report(error);
-        }
-        if (deleted && commit != null) {
-          _restorable(
-            l10n.gitBranchDeleted(ref.name),
-            () => git.createBranchAt(ref.name, commit),
-          );
-        }
-    }
-  }
+  @override
+  IdeFileService get files => view.widget.host.files;
 
-  /// [message], with Restore running [restore].
-  void _restorable(String message, Future<void> Function() restore) {
-    if (!mounted) return;
-    widget.notifications.notify(
-      IdeSeverity.info,
-      message,
-      primary: [
-        IdeNotificationAction(
-          context.l10n.gitBranchRestore,
-          () => unawaited(_run(restore)),
-        ),
-      ],
-    );
-  }
+  @override
+  IdeGitFavoriteBranches get favoriteBranches => view._log.favoriteBranches;
 
-  /// Compare with Current: how many commits each has the other has not,
-  /// and the files they differ in, HEAD's side against [ref]'s.
-  Future<void> _compareWithHead(IdeGitRepository git, IdeGitRef ref) async {
-    final here = git.state?.head.branch ?? 'HEAD';
-    try {
-      final counts = await git.service.compareWithHead(ref.name);
-      if (!mounted) return;
-      widget.notifications.notify(
-        IdeSeverity.info,
-        context.l10n.gitBranchCompared(
-          ref.name,
-          here,
-          counts.ahead,
-          counts.behind,
-        ),
-      );
-    } catch (error) {
-      _report(error);
-      return;
-    }
-    await _compareCommits(git, ('HEAD', here), (ref.name, ref.name));
-  }
+  @override
+  Future<void> run(Future<void> Function() operation) => view._run(operation);
+
+  @override
+  void showDiff(List<IdeGitDiffFile> files) => view._log.showDiff(files, 0);
+
+  @override
+  void showOnly(IdeGitRepository git, IdeGitRef ref) =>
+      git.graphBranch = ref.id;
 }
 
 /// The branch tree: a filter over HEAD's branch, the local branches, the
