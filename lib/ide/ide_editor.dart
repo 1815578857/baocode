@@ -50,6 +50,8 @@ import 'git/git_line_changes.dart';
 import 'git/git_model.dart' show IdeGitBlameInformation, IdeGitLogLines;
 import 'ide_agent_edits.dart';
 import 'ide_line_change_popup.dart';
+import 'ide_code_diff.dart'
+    show IdeDiffRevertArrow, ideDiffChangeTop, ideDiffRevertEdit;
 import 'ide_diff_options.dart';
 import 'ide_commands.dart';
 import 'ide_find_widget.dart';
@@ -2749,8 +2751,68 @@ class IdeEditorState extends State<IdeEditor> {
         );
       },
       modified: (context, side) => _surface(colors, side: side),
+      overlay: widget.active.readOnly
+          ? null
+          : (context, layout) => _revertArrows(diff, layout),
     );
   }
+
+  /// JetBrains' `>>` by each change of a diff tab whose file can be edited
+  /// (on the split side by side, at the file's left edge inline): the
+  /// change reverted in the file, unsaved as any edit.
+  Widget _revertArrows(IdeOriginalDiff diff, DiffEditorLayout layout) =>
+      ListenableBuilder(
+        listenable: _viewTick,
+        builder: (context, _) {
+          final view = switch (_surfaceKey.currentState) {
+            final EditorSurfaceView view => view,
+            _ => null,
+          };
+          final area = view?.textArea;
+          final controller = _nativeController;
+          final mappings = diff.model.mappings;
+          final original = diff.model.originalSnapshot;
+          if (view == null ||
+              area == null ||
+              controller == null ||
+              mappings == null ||
+              original == null) {
+            return const SizedBox.shrink();
+          }
+          final snapshot = controller.document.snapshot;
+          const size = 16.0;
+          return Stack(
+            children: [
+              for (final change in mappings)
+                if (ideDiffChangeTop(view, snapshot, change) case final top?
+                    when top >= area.top - 2 && top + size <= area.bottom)
+                  Positioned(
+                    key: ObjectKey(change),
+                    left: layout.sideBySide
+                        ? layout.splitLeft - size / 2
+                        : layout.modifiedLeft + 2,
+                    top: top + (view.lineHeight - size) / 2,
+                    width: size,
+                    height: size,
+                    child: IdeDiffRevertArrow(
+                      added: change.original.isEmpty,
+                      onTap: () {
+                        controller.applyEdits([
+                          ideDiffRevertEdit(
+                            change,
+                            original,
+                            controller.document.snapshot,
+                          ),
+                        ]);
+                        // Shown reverted at once, not after the debounce.
+                        diff.model.refresh();
+                      },
+                    ),
+                  ),
+            ],
+          );
+        },
+      );
 
   @override
   Widget build(BuildContext context) {

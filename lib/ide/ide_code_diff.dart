@@ -263,14 +263,8 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
   void revert(LineRangeMapping change) {
     final original = _diff.model.originalSnapshot;
     if (original == null || widget.onEdit == null) return;
-    final modified = _modified.document.snapshot;
-    final spans = agentHunkSpans(change, original, modified);
     _modified.applyEdits([
-      EditorOffsetEdit(
-        spans.modifiedStart,
-        spans.modifiedEnd,
-        original.text.substring(spans.originalStart, spans.originalEnd),
-      ),
+      ideDiffRevertEdit(change, original, _modified.document.snapshot),
     ]);
     // Shown reverted at once, not after the edit's debounce.
     _diff.model.refresh();
@@ -476,7 +470,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
           return Stack(
             children: [
               for (final (index, change) in mappings.indexed)
-                if (_topOf(view, snapshot, change) case final top?
+                if (ideDiffChangeTop(view, snapshot, change) case final top?
                     when top >= area.top - 2 && top + size <= area.bottom) ...[
                   if (widget.onEdit != null)
                     Positioned(
@@ -485,7 +479,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
                       top: top + (view.lineHeight - size) / 2,
                       width: size,
                       height: size,
-                      child: _RevertArrow(
+                      child: IdeDiffRevertArrow(
                         added: change.original.isEmpty,
                         onTap: () => revert(change),
                       ),
@@ -510,33 +504,53 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
           );
         },
       );
+}
 
-  /// Where [change] starts in the modified editor: the bottom of the line
-  /// before it (the top of the deleted code over it, inline).
-  static double? _topOf(
-    EditorSurfaceView view,
-    DocumentSnapshot text,
-    LineRangeMapping change,
-  ) {
-    final start = change.modified.startLineNumber;
-    if (start <= 1) return view.caretRectAt(0)?.top;
-    final line = (start - 2).clamp(0, text.lineCount - 1);
-    return view.caretRectAt(text.lineStarts[line])?.bottom;
-  }
+/// The edit taking [change] out of [modified]: its lines as [original] has
+/// them.
+EditorOffsetEdit ideDiffRevertEdit(
+  LineRangeMapping change,
+  DocumentSnapshot original,
+  DocumentSnapshot modified,
+) {
+  final spans = agentHunkSpans(change, original, modified);
+  return EditorOffsetEdit(
+    spans.modifiedStart,
+    spans.modifiedEnd,
+    original.text.substring(spans.originalStart, spans.originalEnd),
+  );
+}
+
+/// Where [change] starts in the modified editor [view] of [text]: the
+/// bottom of the line before it (the top of the deleted code over it,
+/// inline).
+double? ideDiffChangeTop(
+  EditorSurfaceView view,
+  DocumentSnapshot text,
+  LineRangeMapping change,
+) {
+  final start = change.modified.startLineNumber;
+  if (start <= 1) return view.caretRectAt(0)?.top;
+  final line = (start - 2).clamp(0, text.lineCount - 1);
+  return view.caretRectAt(text.lineStarts[line])?.bottom;
 }
 
 /// JetBrains' `>>` by a change (`×` for lines only added): reverts it.
-class _RevertArrow extends StatefulWidget {
-  const _RevertArrow({required this.added, required this.onTap});
+class IdeDiffRevertArrow extends StatefulWidget {
+  const IdeDiffRevertArrow({
+    super.key,
+    required this.added,
+    required this.onTap,
+  });
 
   final bool added;
   final VoidCallback onTap;
 
   @override
-  State<_RevertArrow> createState() => _RevertArrowState();
+  State<IdeDiffRevertArrow> createState() => _IdeDiffRevertArrowState();
 }
 
-class _RevertArrowState extends State<_RevertArrow> {
+class _IdeDiffRevertArrowState extends State<IdeDiffRevertArrow> {
   bool _hover = false;
 
   @override

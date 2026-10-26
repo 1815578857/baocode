@@ -208,4 +208,31 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('3 / 3'), findsOneWidget);
   });
+
+  testWidgets("a diff tab's arrows revert a change in the file, unsaved", (
+    tester,
+  ) async {
+    final workspace = await pumpWorkbench(
+      tester,
+      const {'lib/a.dart': _disk},
+      git: git.repository(),
+      nativeEditor: true,
+    );
+    await tester.pumpAndSettle();
+    await workspace.openDiff(
+      inRoot('lib/a.dart'),
+      label: 'a.dart (HEAD)',
+      original: () async => _head,
+    );
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Revert'), findsNWidgets(2));
+    await tester.tap(find.byTooltip('Revert').first);
+    await tester.pumpAndSettle();
+    final doc = workspace.documents.singleWhere(
+      (doc) => doc.path == inRoot('lib/a.dart'),
+    );
+    expect(doc.model.text, 'one\ntwo\nthree\nfour\nfive\nSIX\n');
+    expect(doc.dirty, isTrue);
+    expect(find.byTooltip('Revert'), findsOneWidget);
+  });
 }
