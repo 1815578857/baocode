@@ -7,7 +7,6 @@ import 'package:baocode/ide/git/ide_git_commit_panel.dart';
 import 'package:baocode/ide/git/ide_git_rebase_dialog.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart' show Offset, Size;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../workbench/fake_files.dart';
