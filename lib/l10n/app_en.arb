@@ -7870,6 +7870,8 @@
   "gitMergeDiscardButton": "Discard",
   "gitDiffExcludeChange": "Leave This Change Out of the Commit",
   "gitDiffIncludeChange": "Include This Change in the Commit",
+  "gitDiffExcludeLine": "Leave This Line Out of the Commit",
+  "gitDiffIncludeLine": "Include This Line in the Commit",
   "gitChangelistActive": "active",
   "gitChangelistMoveTo": "Move to Another Changelist",
   "gitChangelistNew": "New Changelist…",

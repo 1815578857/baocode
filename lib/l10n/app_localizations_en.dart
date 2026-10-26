@@ -11738,6 +11738,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitDiffIncludeChange => 'Include This Change in the Commit';
 
   @override
+  String get gitDiffExcludeLine => 'Leave This Line Out of the Commit';
+
+  @override
+  String get gitDiffIncludeLine => 'Include This Line in the Commit';
+
+  @override
   String get gitChangelistActive => 'active';
 
   @override

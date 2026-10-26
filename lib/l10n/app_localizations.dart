@@ -19155,6 +19155,18 @@ abstract class AppLocalizations {
   /// **'Include This Change in the Commit'**
   String get gitDiffIncludeChange;
 
+  /// No description provided for @gitDiffExcludeLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave This Line Out of the Commit'**
+  String get gitDiffExcludeLine;
+
+  /// No description provided for @gitDiffIncludeLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Include This Line in the Commit'**
+  String get gitDiffIncludeLine;
+
   /// No description provided for @gitChangelistActive.
   ///
   /// In en, this message translates to:

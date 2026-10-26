@@ -3183,6 +3183,8 @@
   "gitMergeDiscardButton": "放弃",
   "gitDiffExcludeChange": "这处改动不提交",
   "gitDiffIncludeChange": "提交这处改动",
+  "gitDiffExcludeLine": "这一行不提交",
+  "gitDiffIncludeLine": "提交这一行",
   "gitChangelistActive": "当前",
   "gitChangelistMoveTo": "移到其他变更列表",
   "gitChangelistNew": "新建变更列表…",

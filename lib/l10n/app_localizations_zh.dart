@@ -11117,6 +11117,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitDiffIncludeChange => '提交这处改动';
 
   @override
+  String get gitDiffExcludeLine => '这一行不提交';
+
+  @override
+  String get gitDiffIncludeLine => '提交这一行';
+
+  @override
   String get gitChangelistActive => '当前';
 
   @override

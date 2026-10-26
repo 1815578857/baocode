@@ -43,6 +43,48 @@ void main() {
     expect(await ideGitPartialText(_original, _modified, {}), _modified);
   });
 
+  test("a change's lines left unchecked stay out", () async {
+    final hunk = _keys(_original, _modified).last;
+    String line(int n, {bool removed = false}) =>
+        ideGitLineKey(hunk, n, removed: removed);
+    // e → E, f: f left out.
+    expect(
+      await ideGitPartialText(_original, _modified, {line(1)}),
+      'a\nB\nc\nd\nE\n',
+    );
+    // e kept, E left out: f put in after it.
+    expect(
+      await ideGitPartialText(_original, _modified, {
+        line(0, removed: true),
+        line(0),
+      }),
+      'a\nB\nc\nd\ne\nf\n',
+    );
+    // At the end of a text with no line break after it.
+    final last = _keys('a\nb', 'a\nX\nY').single;
+    expect(
+      await ideGitPartialText('a\nb', 'a\nX\nY', {
+        ideGitLineKey(last, 1, removed: false),
+      }),
+      'a\nX',
+    );
+    expect(
+      await ideGitPartialText('a\nb', 'a\nX\nY', {
+        ideGitLineKey(last, 0, removed: true),
+        ideGitLineKey(last, 0, removed: false),
+      }),
+      'a\nb\nY',
+    );
+  });
+
+  test("a change's own check box takes its lines along", () {
+    final selection = IdeGitHunkSelection()
+      ..setIncluded('a', ideGitLineKey('k', 0, removed: false), false);
+    expect(selection.isPartial('a'), isTrue);
+    selection.setIncluded('a', 'k', true);
+    expect(selection.isPartial('a'), isFalse);
+  });
+
   test("what of a file goes, as git diff writes it", () async {
     final lines = [for (var i = 1; i <= 12; i++) 'l$i'];
     final changed = [...lines]
