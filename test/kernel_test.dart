@@ -615,6 +615,98 @@ void main() {
       expect(edits['/p/untold.txt'], isNull);
     });
 
+    test("a subagent's edits, sent without their patches, are told from "
+        'their input; its commands and its end, as files that may have '
+        'changed', () {
+      final events = <KernelEvent>[];
+      var seq = 0;
+      final translator = ClaudeTranslator(
+        emit: events.add,
+        nextSeq: () => ++seq,
+      );
+      void call(
+        String id,
+        String name,
+        Map<String, Object?> input, {
+        String? parent,
+        Object? result,
+      }) {
+        translator
+          ..translate({
+            'type': 'assistant',
+            'parent_tool_use_id': parent,
+            'message': {
+              'id': 'msg-$id',
+              'role': 'assistant',
+              'content': [
+                {'type': 'tool_use', 'id': id, 'name': name, 'input': input},
+              ],
+            },
+          })
+          ..translate({
+            'type': 'user',
+            'parent_tool_use_id': parent,
+            'message': {
+              'role': 'user',
+              'content': [
+                {'type': 'tool_result', 'tool_use_id': id, 'content': 'ok'},
+              ],
+            },
+            'tool_use_result': ?result,
+          });
+      }
+
+      translator.translate({
+        'type': 'assistant',
+        'parent_tool_use_id': null,
+        'message': {
+          'id': 'msg-agent',
+          'role': 'assistant',
+          'content': [
+            {
+              'type': 'tool_use',
+              'id': 'agent-1',
+              'name': 'Agent',
+              'input': {'description': 'Make files', 'prompt': 'make them'},
+            },
+          ],
+        },
+      });
+      call('w1', 'Write', {
+        'file_path': '/p/a.txt',
+        'content': 'one\ntwo\n',
+      }, parent: 'agent-1');
+      call('e1', 'Edit', {
+        'file_path': '/p/b.txt',
+        'old_string': 'x',
+        'new_string': 'y\nz',
+      }, parent: 'agent-1');
+      expect(
+        [
+          for (final event in events.whereType<FileEdited>())
+            (event.change.path, event.change.added, event.change.removed),
+        ],
+        [('/p/a.txt', 2, 0), ('/p/b.txt', 2, 1)],
+      );
+      expect(events.whereType<FilesMayHaveChanged>(), isEmpty);
+
+      call('b1', 'Bash', {'command': 'echo c > c.txt'}, parent: 'agent-1');
+      expect(events.whereType<FilesMayHaveChanged>(), hasLength(1));
+      call('agent-1', 'Agent', {
+        'description': 'Make files',
+        'prompt': 'make them',
+      }, result: {'status': 'completed', 'content': []});
+      expect(events.whereType<FilesMayHaveChanged>(), hasLength(2));
+
+      // A kept session's, replayed: nothing to look at.
+      events.clear();
+      translator.replaying = true;
+      call('w2', 'Write', {'file_path': '/p/d.txt', 'content': 'd'});
+      call('b2', 'Bash', {'command': 'true'});
+      expect(events.whereType<FileEdited>(), isEmpty);
+      expect(events.whereType<FilesMayHaveChanged>(), isEmpty);
+    });
+
     test('each round of planning is one card; a plan sent back gives way '
         'to the next', () {
       final transcript = Transcript();

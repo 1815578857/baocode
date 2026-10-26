@@ -1200,6 +1200,9 @@ class ClaudeTranslator {
           _putAgent(id);
           return;
         }
+        // What it did by commands, or edits whose patches it did not
+        // send, is looked for.
+        if (!replaying) emit(FilesMayHaveChanged(nextSeq()));
         agent.item = agent.item.copyWith(
           status: outcome == _Outcome.done
               ? CommandStatus.succeeded
@@ -1219,6 +1222,12 @@ class ClaudeTranslator {
       case 'Edit' || 'MultiEdit' || 'Write' || 'NotebookEdit'
           when outcome == _Outcome.done && structured != null:
         if (_diff(id, tool, structured)) return;
+      // A subagent's: its result has no patch, the input says what it did.
+      case 'Edit' || 'MultiEdit' || 'Write' || 'NotebookEdit'
+          when outcome == _Outcome.done && !replaying:
+        if (_editOf(tool) case final change?) {
+          emit(FileEdited(nextSeq(), change, turnId: turnId));
+        }
       case 'Grep' || 'Glob' when outcome == _Outcome.done:
         final matches = _matches(tool.name, structured, text);
         final item = _toolItem(tool, outcome) as ToolCallItem;
@@ -1265,6 +1274,7 @@ class ClaudeTranslator {
           );
           return;
         }
+        if (!replaying) emit(FilesMayHaveChanged(nextSeq()));
         final stdout = _string(structured?['stdout']) ?? '';
         final stderr = _string(structured?['stderr']) ?? '';
         final output = structured == null
@@ -1300,6 +1310,35 @@ class ClaudeTranslator {
       ),
       parent: tool.parent,
     );
+  }
+
+  /// An edit as its input tells it, for one whose result has no patch (a
+  /// subagent's): the file, and its lines as the input has them (the
+  /// review counts them again from the files).
+  static FileChange? _editOf(_Tool tool) {
+    final input = tool.input;
+    final path = _string(input['file_path']) ?? _string(input['notebook_path']);
+    if (path == null) return null;
+    int lines(Object? text) => switch (text) {
+      final String text when text.isNotEmpty =>
+        '\n'.allMatches(text).length + (text.endsWith('\n') ? 0 : 1),
+      _ => 0,
+    };
+    var added = 0;
+    var removed = 0;
+    switch (tool.name) {
+      case 'Write':
+        added = lines(input['content']);
+      case 'Edit':
+        added = lines(input['new_string']);
+        removed = lines(input['old_string']);
+      case 'MultiEdit':
+        for (final edit in _list(input['edits']).whereType<Map>()) {
+          added += lines(edit['new_string']);
+          removed += lines(edit['old_string']);
+        }
+    }
+    return FileChange(path: path, added: added, removed: removed);
   }
 
   /// An edit's result as a diff card and a pending change; false when it
