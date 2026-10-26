@@ -5031,6 +5031,52 @@ exec /usr/bin/env "\$@"
       expect(storage.fork(id, into, before: 'nope'), throwsStateError);
       expect(storage.fork('../p', into), throwsArgumentError);
     });
+
+    test('a folder\'s sessions move to another\'s, with what is kept beside '
+        'them and its memory; a folder dashed alike keeps its own', () async {
+      final root = await Directory.systemTemp.createTemp('baocode-move-');
+      addTearDown(() => root.delete(recursive: true));
+      final config = '${root.path}/config';
+      final from = '${root.path}/old/app';
+      final alike = '${root.path}/old-app';
+      final to = '${root.path}/new/app';
+      Directory(to).createSync(recursive: true);
+      String dir(String cwd) =>
+          '$config/projects/${cwd.replaceAll(RegExp('[^a-zA-Z0-9]'), '-')}';
+      void session(String id, String cwd) => File('${dir(from)}/$id.jsonl')
+        ..createSync(recursive: true)
+        ..writeAsStringSync(
+          [
+            {'type': 'custom-title', 'customTitle': 'T', 'sessionId': id},
+            {
+              'type': 'user',
+              'cwd': cwd,
+              'message': {'role': 'user', 'content': 'hi'},
+            },
+            {'type': 'assistant', 'cwd': '$cwd/lib', 'message': {}},
+          ].map((line) => '${jsonEncode(line)}\n').join(),
+        );
+      session('mine', from);
+      session('theirs', alike);
+      File('${dir(from)}/mine/subagents/a.jsonl').createSync(recursive: true);
+      File('${dir(from)}/memory/MEMORY.md').createSync(recursive: true);
+
+      final moved = await ClaudeStorage(configDir: config)
+          .moveSessions(from, to);
+
+      expect(moved, 1);
+      final file = File('${dir(to)}/mine.jsonl');
+      final lines = [
+        for (final line in file.readAsLinesSync())
+          (jsonDecode(line) as Map).cast<String, Object?>(),
+      ];
+      expect(lines.map((line) => line['cwd']), [null, to, '$to/lib']);
+      expect(lines.first['customTitle'], 'T');
+      expect(File('${dir(to)}/mine/subagents/a.jsonl').existsSync(), isTrue);
+      expect(File('${dir(to)}/memory/MEMORY.md').existsSync(), isTrue);
+      expect(File('${dir(from)}/mine.jsonl').existsSync(), isFalse);
+      expect(File('${dir(from)}/theirs.jsonl').existsSync(), isTrue);
+    });
   });
 
   group('control channel', () {

@@ -1529,6 +1529,14 @@ class _SidebarState extends State<Sidebar>
           onSelected: () => unawaited(
             showWorkspaceDialog(context, workspace: _workspace, editing: multi),
           ),
+        )
+      else
+        SidebarMenuItem(
+          l10n.sidebarEditProject,
+          icon: Icons.edit_outlined,
+          onSelected: () => unawaited(
+            showProjectDialog(context, workspace: _workspace, project: project),
+          ),
         ),
       SidebarMenuItem(
         l10n.sidebarRevealIn(Editor.folder.localizedPlatformLabel(l10n)),

@@ -7501,6 +7501,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sidebarDeleteWorkspace => '删除工作区';
 
   @override
+  String get sidebarEditProject => '编辑项目…';
+
+  @override
+  String get projectEditTitle => '编辑项目';
+
+  @override
+  String get projectLocation => '项目地址';
+
+  @override
+  String get projectLocationDescription =>
+      '文件夹搬走或改名后，把地址改成新位置，这个项目的对话会一起迁移过去。不会移动文件夹本身。';
+
+  @override
+  String projectChooseFolder(String app) {
+    return '在$app中选择…';
+  }
+
+  @override
+  String get projectFolderNotFound => '这个地址没有文件夹。';
+
+  @override
+  String get projectRelocateBusy => '这个项目还有对话在运行，或在单独的窗口中打开，结束后再改地址。';
+
+  @override
+  String get projectRelocateFailed => '没能迁移这个项目的对话。';
+
+  @override
+  String get projectRelocating => '正在迁移对话…';
+
+  @override
   String ideWorkspaceTitle(String name) {
     return '$name（工作区）';
   }
