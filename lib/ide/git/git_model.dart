@@ -668,6 +668,7 @@ class IdeGitRef {
     this.details,
     this.ahead,
     this.behind,
+    this.upstream,
   });
 
   /// `refs/heads/main`.
@@ -690,6 +691,9 @@ class IdeGitRef {
   /// none or is level with it.
   final int? ahead;
   final int? behind;
+
+  /// A branch's upstream: `origin/main`.
+  final String? upstream;
 }
 
 /// The `git for-each-ref` format [parseGitRefs] reads (upstream
@@ -699,7 +703,8 @@ class IdeGitRef {
 const ideGitRefsFormat =
     '%(refname)%00%(objectname)%00%(*objectname)%00%(parent)%00%(*parent)'
     '%00%(authorname)%00%(*authorname)%00%(committerdate:raw)'
-    '%00%(*committerdate:raw)%00%(subject)%00%(*subject)%00%(upstream:track)';
+    '%00%(*committerdate:raw)%00%(subject)%00%(*subject)%00%(upstream:track)'
+    '%00%(upstream:short)';
 
 /// Parses `git for-each-ref --format=<ideGitRefsFormat>` (upstream
 /// `parseRefs`): the local branches, remote branches and tags, an annotated
@@ -729,6 +734,7 @@ List<IdeGitRef> parseGitRefs(String output) {
     final date = either(5, 4);
     final subject = either(7, 6);
     final status = field(8);
+    final upstream = field(9);
     final commitDetails =
         parents.isNotEmpty &&
             subject.isNotEmpty &&
@@ -753,6 +759,7 @@ List<IdeGitRef> parseGitRefs(String output) {
           details: commitDetails,
           ahead: status.isEmpty ? null : int.tryParse(track?[1] ?? '') ?? 0,
           behind: status.isEmpty ? null : int.tryParse(track?[2] ?? '') ?? 0,
+          upstream: upstream.isEmpty ? null : upstream,
         ),
       );
     } else if (remoteHeadRegex.firstMatch(ref) case final remote?) {
@@ -1512,4 +1519,15 @@ IdeGitWorktree? ideWorktreeOf(
     }
   }
   return found;
+}
+
+/// A branch not deleted for its commits merged nowhere else (`git branch
+/// -d`'s "not fully merged"): deleted only once confirmed.
+class IdeGitNotMergedException implements Exception {
+  const IdeGitNotMergedException(this.branch);
+
+  final String branch;
+
+  @override
+  String toString() => 'The branch $branch is not fully merged.';
 }

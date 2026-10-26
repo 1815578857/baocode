@@ -55,7 +55,7 @@ Git 日志和 IDEA 式提交面板已经上线（#328）。用户反馈 IDEA 的
 |---|---|---|
 | 图谱、搜索、按分支 / 作者 / 日期筛选、高亮 | ✅ | |
 | 按路径筛选 | ✅ | 「路径」筛选：当前文件、所在文件夹、最近用过的；Git 会改写父提交，分支线仍然连着 |
-| 左侧分支树（本地 / 远程，收藏，搜索） | ❌ | |
+| 左侧分支树（本地 / 远程，收藏，搜索） | ✅ | 单击选中分支最新的提交，双击只看这个分支；右键是分支操作；收藏随窗口状态保存 |
 | 提交详情：文件树、所在分支 | ✅ | |
 | Cherry-pick（可多选） | ✅ | 日志支持 Cmd/Ctrl 点选、Shift 连选、Shift+方向键 |
 | Revert Commit | ✅ | |
@@ -74,14 +74,14 @@ Git 日志和 IDEA 式提交面板已经上线（#328）。用户反馈 IDEA 的
 ## 五、分支
 | IDEA | 状态 | 说明 |
 |---|---|---|
-| 分支弹窗：最近、本地、远程、搜索 | 🟡 | 输入框下的分支菜单只列本地分支 |
+| 分支弹窗：最近、本地、远程、搜索 | 🟡 | 日志的分支树已有全部分支操作；状态栏 / 输入框下的弹窗还是 VS Code 式 |
 | Checkout / New Branch from | ✅ | |
-| Checkout and Rebase onto Current | ❌ | |
-| Compare with Current / Show Diff with Working Tree | ❌ | |
-| Rebase Current onto / Merge into Current | ❌ | |
-| Pull into Current Using Rebase / Merge | ❌ | |
-| 推送某个分支、重命名、删除、设置上游 | ❌ | |
-| 收藏分支 | ❌ | |
+| Checkout and Rebase onto Current | ✅ | |
+| Compare with Current / Show Diff with Working Tree | ✅ | 先提示双方各多几个提交，再列出不同的文件 |
+| Rebase Current onto / Merge into Current | ✅ | |
+| Pull into Current Using Rebase / Merge | ✅ | |
+| 推送某个分支、重命名、删除、设置上游 | ✅ | 删除后可以「恢复」；没合并的分支要确认才删 |
+| 收藏分支 | ✅ | |
 | Update Project（选 merge 或 rebase，自动 stash） | 🟡 | 只有 pull |
 | 领先 / 落后计数 | ✅ | |
 

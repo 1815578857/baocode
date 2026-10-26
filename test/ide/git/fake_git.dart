@@ -171,7 +171,7 @@ String gitBlameEntry(
 
 /// A [ideGitRefsFormat] line: [ref] at [commit] (40 hex digits), which
 /// [author] committed at [time] with [subject]; [track] its upstream's
-/// tracking (`[ahead 1]`).
+/// tracking (`[ahead 1]`), [upstream] its upstream (`origin/main`).
 String gitRefRecord(
   String ref,
   String commit, {
@@ -179,6 +179,7 @@ String gitRefRecord(
   String subject = 'Change',
   int time = 1767225600,
   String track = '',
+  String upstream = '',
 }) => [
   ref,
   commit,
@@ -193,6 +194,7 @@ String gitRefRecord(
   subject,
   '',
   track,
+  upstream,
 ].join('\x00');
 
 /// A [ideGitLogFormat] record.

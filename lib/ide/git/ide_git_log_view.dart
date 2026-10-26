@@ -36,6 +36,7 @@ import '../ide_menu.dart';
 import '../ide_modern_ui.dart';
 import '../ide_notifications.dart';
 import '../ide_spinning.dart';
+import 'git_branch_tree.dart';
 import 'git_change_editor.dart';
 import 'git_checkout.dart' show ideSanitizeBranchName;
 import 'git_graph_painter.dart';
@@ -45,6 +46,8 @@ import 'git_service.dart';
 import 'ide_scm_view.dart';
 import 'scm_host.dart';
 import 'scm_tree.dart';
+
+part 'ide_git_log_branches.dart';
 
 /// The id of the log's first row, the local changes.
 const ideGitWorkingTreeId = 'scm-log-working-tree';
@@ -126,6 +129,11 @@ class IdeGitWorktreeChoice {
 /// diff open, the panes' sizes, how files list, and each commit's files,
 /// line counts and branches once read.
 class IdeGitLogController extends ChangeNotifier {
+  IdeGitLogController({IdeGitFavoriteBranches? favoriteBranches})
+    : favoriteBranches = favoriteBranches ?? IdeGitFavoriteBranches() {
+    this.favoriteBranches.addListener(notifyListeners);
+  }
+
   final FocusNode focusNode = FocusNode(debugLabel: 'git log');
   final FocusNode searchFocus = FocusNode(debugLabel: 'git log search');
   final ScrollController scroll = SmoothScrollController();
@@ -288,6 +296,55 @@ class IdeGitLogController extends ChangeNotifier {
   /// The paths the log was last filtered by, the latest first.
   final List<String> recentPaths = [];
 
+  /// The branch tree beside the log, where it is wide enough.
+  bool _branchTreeShown = true;
+  bool get branchTreeShown => _branchTreeShown;
+  set branchTreeShown(bool value) {
+    if (value == _branchTreeShown) return;
+    _branchTreeShown = value;
+    notifyListeners();
+  }
+
+  /// The branch tree's width.
+  double branchTreeWidth = 220;
+
+  void resizeBranchTree(double width) {
+    branchTreeWidth = width.clamp(140, 480);
+    notifyListeners();
+  }
+
+  /// What the branch tree is narrowed to.
+  final TextEditingController branchFilter = TextEditingController();
+
+  void branchFilterChanged() => notifyListeners();
+
+  /// The branch tree's groups and folders folded, by key.
+  final Set<String> foldedBranches = {...ideGitBranchTreeFolded};
+
+  void toggleBranchFolder(String key) {
+    if (!foldedBranches.remove(key)) foldedBranches.add(key);
+    notifyListeners();
+  }
+
+  /// The branch tree's row selected, by key.
+  String? _branchSelected;
+  String? get branchSelected => _branchSelected;
+  set branchSelected(String? key) {
+    if (key == _branchSelected) return;
+    _branchSelected = key;
+    notifyListeners();
+  }
+
+  /// The favorite refs of each repository: first in the branch tree,
+  /// starred.
+  final IdeGitFavoriteBranches favoriteBranches;
+
+  bool isFavorite(IdeGitRepository git, String ref) =>
+      favoriteBranches.of(git.service.root).contains(ref);
+
+  void toggleFavorite(IdeGitRepository git, String ref) =>
+      favoriteBranches.toggle(git.service.root, ref);
+
   void rememberPath(String path) {
     recentPaths
       ..remove(path)
@@ -335,6 +392,8 @@ class IdeGitLogController extends ChangeNotifier {
     scroll.dispose();
     search.dispose();
     fileFilter.dispose();
+    branchFilter.dispose();
+    favoriteBranches.removeListener(notifyListeners);
     super.dispose();
   }
 }
@@ -679,13 +738,24 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
             final main = _main(git, state);
             final details = _details(git, state);
             if (wide) {
+              final tree = _branchTreeFits(constraints.maxWidth)
+                  ? math.min(_log.branchTreeWidth, constraints.maxWidth * .3)
+                  : null;
               final width = math.min(
                 _log.detailsWidth,
-                constraints.maxWidth - 360,
+                constraints.maxWidth - 360 - (tree ?? 0),
               );
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (tree != null) ...[
+                    SizedBox(width: tree, child: _branchPane(git)),
+                    _Sash(
+                      vertical: false,
+                      color: _border,
+                      onDrag: (delta) => _log.resizeBranchTree(tree + delta),
+                    ),
+                  ],
                   Expanded(child: main),
                   _Sash(
                     vertical: false,
@@ -718,6 +788,14 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     ],
   );
 
+  /// Whether the branch tree shows beside the log [width] wide: where it
+  /// is wanted and leaves the log room.
+  bool _branchTreeFits(double width) =>
+      _log.branchTreeShown && width >= _branchTreeWidth;
+
+  /// Below this width, no branch tree.
+  static const _branchTreeWidth = 1000.0;
+
   // --- Toolbar -------------------------------------------------------------
 
   Widget _toolbar(IdeGitRepository git, IdeGitState state) => LayoutBuilder(
@@ -731,6 +809,20 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Row(
               children: [
+                if (constraints.maxWidth >= _branchTreeWidth) ...[
+                  IdeActionButton(
+                    icon: _log.branchTreeShown
+                        ? Codicons.layoutSidebarLeft
+                        : Codicons.layoutSidebarLeftOff,
+                    tooltip: _log.branchTreeShown
+                        ? context.l10n.gitHideBranches
+                        : context.l10n.gitShowBranches,
+                    checked: _log.branchTreeShown,
+                    onPressed: () =>
+                        _log.branchTreeShown = !_log.branchTreeShown,
+                  ),
+                  const SizedBox(width: 6),
+                ],
                 Expanded(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -2047,7 +2139,8 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
           ),
           IdeMenuAction(
             l10n.gitLogCompareWithLocal,
-            onSelected: () => unawaited(_compareWithLocal(git, commit)),
+            onSelected: () =>
+                unawaited(_compareWithLocal(git, commit.id, commit.shortId)),
           ),
         ],
         [
@@ -2155,8 +2248,13 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
           if (commits.length == 2)
             IdeMenuAction(
               l10n.gitLogCompareCommits,
-              onSelected: () =>
-                  unawaited(_compareCommits(git, commits.last, commits.first)),
+              onSelected: () => unawaited(
+                _compareCommits(
+                  git,
+                  (commits.last.id, commits.last.shortId),
+                  (commits.first.id, commits.first.shortId),
+                ),
+              ),
             ),
         ],
         [
@@ -2190,17 +2288,24 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
   /// side against [to]'s, in the table's place.
   Future<void> _compareCommits(
     IdeGitRepository git,
-    IdeGitCommit from,
-    IdeGitCommit to,
+    (String id, String label) from,
+    (String id, String label) to,
   ) async {
     final List<IdeGitCommitChange> changes;
     try {
-      changes = await git.service.changesSince(from.id, other: to.id);
+      changes = await git.service.changesSince(from.$1, other: to.$1);
     } catch (error) {
       _report(error);
       return;
     }
-    if (!mounted || changes.isEmpty) return;
+    if (!mounted) return;
+    if (changes.isEmpty) {
+      widget.notifications.notify(
+        IdeSeverity.info,
+        context.l10n.gitLogNoDifferences,
+      );
+      return;
+    }
     Future<String> show(String ref, String path) =>
         git.service.show(ref, path).catchError((Object _) => '');
     _log.showDiff([
@@ -2210,12 +2315,12 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
           status: ideCommitChangeStatus(change.status),
           original: () => change.status == 'A'
               ? Future.value('')
-              : show(from.id, change.originalPath ?? change.path),
+              : show(from.$1, change.originalPath ?? change.path),
           modified: () => change.status == 'D'
               ? Future.value('')
-              : show(to.id, change.path),
-          originalLabel: from.shortId,
-          modifiedLabel: to.shortId,
+              : show(to.$1, change.path),
+          originalLabel: from.$2,
+          modifiedLabel: to.$2,
         ),
     ], 0);
   }
@@ -2342,16 +2447,18 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     );
   }
 
-  /// Compare with Local: the files [commit] and the working tree differ
-  /// in, in the table's place, the commit's side against the file's.
+  /// Compare with Local: the files [revision] (a commit, a branch) and
+  /// the working tree differ in, in the table's place, its side against
+  /// the file's.
   Future<void> _compareWithLocal(
     IdeGitRepository git,
-    IdeGitCommit commit,
+    String revision,
+    String label,
   ) async {
     final l10n = context.l10n;
     final List<IdeGitCommitChange> changes;
     try {
-      changes = await git.service.changesSince(commit.id);
+      changes = await git.service.changesSince(revision);
     } catch (error) {
       _report(error);
       return;
@@ -2363,7 +2470,7 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     }
     final files = widget.host.files;
     Future<String> show(String path) =>
-        git.service.show(commit.id, path).catchError((Object _) => '');
+        git.service.show(revision, path).catchError((Object _) => '');
     _log.showDiff([
       for (final change in changes)
         IdeGitDiffFile(
@@ -2375,7 +2482,7 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
           modified: () => change.status == 'D'
               ? Future.value('')
               : files.read(change.path).catchError((Object _) => ''),
-          originalLabel: commit.shortId,
+          originalLabel: label,
           modifiedLabel: l10n.gitChangeWorkingTree,
         ),
     ], 0);

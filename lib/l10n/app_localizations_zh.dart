@@ -10726,4 +10726,131 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitShowHistoryForSelection => '显示所选内容的历史';
+
+  @override
+  String get gitShowBranches => '显示分支';
+
+  @override
+  String get gitHideBranches => '隐藏分支';
+
+  @override
+  String get gitBranchesFilter => '筛选分支';
+
+  @override
+  String get gitBranchesHead => 'HEAD（当前分支）';
+
+  @override
+  String get gitBranchCheckout => '检出';
+
+  @override
+  String gitBranchNewFrom(String name) {
+    return '从“$name”新建分支…';
+  }
+
+  @override
+  String gitBranchCheckoutRebase(String current) {
+    return '检出并变基到“$current”上';
+  }
+
+  @override
+  String gitBranchCompare(String current) {
+    return '与“$current”比较';
+  }
+
+  @override
+  String get gitBranchDiffWorkingTree => '与工作区比较';
+
+  @override
+  String gitBranchRebaseOnto(String current, String name) {
+    return '把“$current”变基到“$name”上';
+  }
+
+  @override
+  String gitBranchMerge(String name, String current) {
+    return '把“$name”合并到“$current”';
+  }
+
+  @override
+  String gitBranchPullRebase(String current) {
+    return '拉取到“$current”（变基）';
+  }
+
+  @override
+  String gitBranchPullMerge(String current) {
+    return '拉取到“$current”（合并）';
+  }
+
+  @override
+  String get gitBranchUpdate => '更新';
+
+  @override
+  String get gitBranchPush => '推送';
+
+  @override
+  String gitBranchPushTo(String upstream) {
+    return '推送到 $upstream';
+  }
+
+  @override
+  String get gitBranchUpstream => '上游分支';
+
+  @override
+  String get gitBranchUnsetUpstream => '取消上游';
+
+  @override
+  String get gitBranchRename => '重命名…';
+
+  @override
+  String gitBranchRenameTitle(String name) {
+    return '重命名分支“$name”';
+  }
+
+  @override
+  String get gitBranchRenameButton => '重命名';
+
+  @override
+  String get gitBranchFavorite => '加入收藏';
+
+  @override
+  String get gitBranchUnfavorite => '取消收藏';
+
+  @override
+  String get gitBranchShowOnly => '日志里只看它';
+
+  @override
+  String get gitBranchDelete => '删除';
+
+  @override
+  String get gitTagDelete => '删除标签';
+
+  @override
+  String get gitBranchDeleteButton => '删除';
+
+  @override
+  String gitBranchDeleteRemoteConfirm(String name) {
+    return '删除远程上的分支“$name”？';
+  }
+
+  @override
+  String gitBranchNotMergedConfirm(String name) {
+    return '“$name”有还没合并到其他分支的提交。仍然删除？';
+  }
+
+  @override
+  String gitBranchDeleted(String name) {
+    return '已删除分支“$name”。';
+  }
+
+  @override
+  String gitTagDeleted(String name) {
+    return '已删除标签“$name”。';
+  }
+
+  @override
+  String get gitBranchRestore => '恢复';
+
+  @override
+  String gitBranchCompared(String name, String current, int ahead, int behind) {
+    return '“$name”有 $ahead 个“$current”没有的提交；“$current”有 $behind 个它没有的提交。';
+  }
 }

@@ -983,6 +983,140 @@ class IdeGitService {
     }
   }
 
+  // --- Branches (JetBrains' branch popup, the log's branch tree) ----------
+
+  /// Renames the branch [from] to [to]: `git branch -m`.
+  Future<void> renameBranch(String from, String to) async {
+    await _requireRoot();
+    _check(
+      await _git(['branch', '-m', from, to]),
+      'Cannot rename the branch $from.',
+    );
+  }
+
+  /// Deletes the branch [name]: `git branch -d`, or `-D` with [force].
+  /// Throws an [IdeGitNotMergedException] where it has commits merged
+  /// nowhere and not [force].
+  Future<void> deleteBranch(String name, {bool force = false}) async {
+    await _requireRoot();
+    final output = await _git(['branch', force ? '-D' : '-d', name]);
+    if (!force &&
+        output.exitCode != 0 &&
+        output.stderr.contains('not fully merged')) {
+      throw IdeGitNotMergedException(name);
+    }
+    _check(output, 'Cannot delete the branch $name.');
+  }
+
+  /// Deletes the branch [name] of [remote]: `git push --delete`.
+  Future<void> deleteRemoteBranch(String remote, String name) async {
+    await _requireRoot();
+    _check(
+      await _git(['push', remote, '--delete', name]),
+      'Cannot delete $remote/$name.',
+    );
+  }
+
+  /// Deletes the tag [name]: `git tag -d`.
+  Future<void> deleteTag(String name) async {
+    await _requireRoot();
+    _check(await _git(['tag', '-d', name]), 'Cannot delete the tag $name.');
+  }
+
+  /// Makes the branch [name] at [commit] (no checkout): Restore after a
+  /// branch's deleted.
+  Future<void> createBranchAt(String name, String commit) async {
+    await _requireRoot();
+    _check(
+      await _git(['branch', name, commit]),
+      'Cannot create the branch $name.',
+    );
+  }
+
+  /// Merges [ref] into the current branch: `git merge --no-edit`.
+  Future<void> merge(String ref) async {
+    await _requireRoot();
+    _check(await _git(['merge', '--no-edit', ref]), 'Cannot merge $ref.');
+  }
+
+  /// Rebases [branch] (the current one when null) onto [onto]:
+  /// `git rebase --autostash <onto> [<branch>]`; with a branch, it is
+  /// checked out.
+  Future<void> rebaseOnto(String onto, {String? branch}) async {
+    await _requireRoot();
+    _check(
+      await _git(['rebase', '--autostash', onto, ?branch]),
+      'Cannot rebase onto $onto.',
+    );
+  }
+
+  /// Pulls [branch] of [remote] into the current branch, by rebase or by
+  /// merge.
+  Future<void> pullInto(
+    String remote,
+    String branch, {
+    required bool rebase,
+  }) async {
+    await _requireRoot();
+    _check(
+      await _git([
+        'pull',
+        rebase ? '--rebase' : '--no-rebase',
+        '--autostash',
+        remote,
+        branch,
+      ]),
+      'Cannot pull $remote/$branch.',
+    );
+  }
+
+  /// Fast-forwards the branch [name], not checked out, to its upstream
+  /// [upstream] (`remote/branch`): `git fetch <remote> <branch>:<name>`.
+  Future<void> updateBranch(String name, String upstream) async {
+    await _requireRoot();
+    final slash = upstream.indexOf('/');
+    if (slash <= 0) throw IdeGitException('No remote in $upstream.');
+    _check(
+      await _git([
+        'fetch',
+        upstream.substring(0, slash),
+        '${upstream.substring(slash + 1)}:$name',
+      ]),
+      'Cannot update $name.',
+    );
+  }
+
+  /// Sets the branch [name]'s upstream to [upstream], or unsets it.
+  Future<void> setUpstream(String name, String? upstream) async {
+    await _requireRoot();
+    _check(
+      await _git([
+        'branch',
+        if (upstream == null)
+          '--unset-upstream'
+        else
+          '--set-upstream-to=$upstream',
+        name,
+      ]),
+      'Cannot set the upstream of $name.',
+    );
+  }
+
+  /// How many commits [ref] has that HEAD has not, and HEAD has that it
+  /// has not: `git rev-list --left-right --count`.
+  Future<({int ahead, int behind})> compareWithHead(String ref) async {
+    await _requireRoot();
+    final output = _check(
+      await _git(['rev-list', '--left-right', '--count', '$ref...HEAD']),
+      'Cannot compare $ref with HEAD.',
+    );
+    final counts = output.stdout.trim().split(RegExp(r'\s+'));
+    return (
+      ahead: int.tryParse(counts.first) ?? 0,
+      behind: counts.length > 1 ? int.tryParse(counts[1]) ?? 0 : 0,
+    );
+  }
+
   /// Pushes the current branch up to [commit] to its upstream
   /// ([upstream], `remote/branch`): `git push <remote> <commit>:<branch>`.
   Future<void> pushUpTo(String commit, String upstream) async {

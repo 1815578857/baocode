@@ -4409,7 +4409,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitCheckoutDetached => 'Checkout detached...';
 
   @override
-  String get gitBranches => 'branches';
+  String get gitBranches => 'Branches';
 
   @override
   String get gitRemoteBranches => 'remote branches';
@@ -11324,4 +11324,131 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitShowHistoryForSelection => 'Show History for Selection';
+
+  @override
+  String get gitShowBranches => 'Show Branches';
+
+  @override
+  String get gitHideBranches => 'Hide Branches';
+
+  @override
+  String get gitBranchesFilter => 'Filter branches';
+
+  @override
+  String get gitBranchesHead => 'HEAD (Current Branch)';
+
+  @override
+  String get gitBranchCheckout => 'Checkout';
+
+  @override
+  String gitBranchNewFrom(String name) {
+    return 'New Branch from “$name”…';
+  }
+
+  @override
+  String gitBranchCheckoutRebase(String current) {
+    return 'Checkout and Rebase onto “$current”';
+  }
+
+  @override
+  String gitBranchCompare(String current) {
+    return 'Compare with “$current”';
+  }
+
+  @override
+  String get gitBranchDiffWorkingTree => 'Show Diff with Working Tree';
+
+  @override
+  String gitBranchRebaseOnto(String current, String name) {
+    return 'Rebase “$current” onto “$name”';
+  }
+
+  @override
+  String gitBranchMerge(String name, String current) {
+    return 'Merge “$name” into “$current”';
+  }
+
+  @override
+  String gitBranchPullRebase(String current) {
+    return 'Pull into “$current” Using Rebase';
+  }
+
+  @override
+  String gitBranchPullMerge(String current) {
+    return 'Pull into “$current” Using Merge';
+  }
+
+  @override
+  String get gitBranchUpdate => 'Update';
+
+  @override
+  String get gitBranchPush => 'Push';
+
+  @override
+  String gitBranchPushTo(String upstream) {
+    return 'Push to $upstream';
+  }
+
+  @override
+  String get gitBranchUpstream => 'Upstream';
+
+  @override
+  String get gitBranchUnsetUpstream => 'Unset Upstream';
+
+  @override
+  String get gitBranchRename => 'Rename…';
+
+  @override
+  String gitBranchRenameTitle(String name) {
+    return 'Rename the branch “$name”';
+  }
+
+  @override
+  String get gitBranchRenameButton => 'Rename';
+
+  @override
+  String get gitBranchFavorite => 'Add to Favorites';
+
+  @override
+  String get gitBranchUnfavorite => 'Remove from Favorites';
+
+  @override
+  String get gitBranchShowOnly => 'Show Only This in the Log';
+
+  @override
+  String get gitBranchDelete => 'Delete';
+
+  @override
+  String get gitTagDelete => 'Delete Tag';
+
+  @override
+  String get gitBranchDeleteButton => 'Delete';
+
+  @override
+  String gitBranchDeleteRemoteConfirm(String name) {
+    return 'Delete the branch “$name” on its remote?';
+  }
+
+  @override
+  String gitBranchNotMergedConfirm(String name) {
+    return '“$name” has commits merged into no other branch. Delete it anyway?';
+  }
+
+  @override
+  String gitBranchDeleted(String name) {
+    return 'Deleted the branch “$name”.';
+  }
+
+  @override
+  String gitTagDeleted(String name) {
+    return 'Deleted the tag “$name”.';
+  }
+
+  @override
+  String get gitBranchRestore => 'Restore';
+
+  @override
+  String gitBranchCompared(String name, String current, int ahead, int behind) {
+    return '“$name” has $ahead commits “$current” has not; “$current” has $behind it has not.';
+  }
 }

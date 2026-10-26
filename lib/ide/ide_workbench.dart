@@ -60,6 +60,7 @@ import 'file_views.dart';
 import 'file_service.dart'
     show IdeFileListing, IdeHostFiles, localizedFileError, readFileBytes;
 import 'git/commit_message.dart';
+import 'git/git_branch_tree.dart' show IdeGitFavoriteBranches;
 import 'git/git_change_editor.dart';
 import 'git/git_checkout.dart';
 import 'git/git_model.dart';
@@ -453,7 +454,14 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   String? _activeKey;
 
   /// The Source Control view's message and state, while other views show.
-  late IdeScmSession _scm = IdeScmSession(settings: widget.settings);
+  /// The favorite branches of the window's repositories, kept with its
+  /// state.
+  final IdeGitFavoriteBranches _favoriteBranches = IdeGitFavoriteBranches();
+
+  late IdeScmSession _scm = IdeScmSession(
+    settings: widget.settings,
+    favoriteBranches: _favoriteBranches,
+  );
 
   /// The explorer's open panes (Folders first, then Outline and Timeline,
   /// collapsed as VS Code starts them), and what the timeline follows.
@@ -697,6 +705,11 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     _sidebarWidth = size('sidebarWidth') ?? _sidebarWidth;
     _chatWidth = size('chatWidth') ?? _chatWidth;
     _panelHeight = size('panelHeight');
+    if (kept['gitFavoriteBranches'] case final Object json) {
+      final favorites = IdeGitFavoriteBranches.fromJson(json);
+      _favoriteBranches.restore(favorites);
+      favorites.dispose();
+    }
     if (kept['view'] case final String name) {
       _view = IdeSideView.values.asNameMap()[name] ?? _view;
     }
@@ -739,6 +752,8 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       ..._layout.toJson(),
       'view': _view.name,
       if (_markdownSources.isNotEmpty) 'markdownSource': [..._markdownSources],
+      if (!_favoriteBranches.isEmpty)
+        'gitFavoriteBranches': _favoriteBranches.toJson(),
       'editors': editors,
       if (editors.contains(active)) 'active': active,
     };
@@ -1087,6 +1102,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       ];
     }
     _restoreView();
+    _favoriteBranches.addListener(_keepViewSoon);
     _attach();
     _lifecycle = AppLifecycleListener(
       onResume: () => unawaited(_git?.refresh()),
@@ -1257,7 +1273,12 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     if (identical(git, _git)) return;
     _git?.removeListener(_gitChanged);
     _scmSessions[_git] = _scm;
-    _scm = _scmSessions.remove(git) ?? IdeScmSession(settings: widget.settings);
+    _scm =
+        _scmSessions.remove(git) ??
+        IdeScmSession(
+          settings: widget.settings,
+          favoriteBranches: _favoriteBranches,
+        );
     _git = git?..addListener(_gitChanged);
     _gitChanged();
     if (mounted) setState(() {});
@@ -1292,7 +1313,10 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     }
     _scmSessions.clear();
     _scm.dispose();
-    _scm = IdeScmSession(settings: widget.settings);
+    _scm = IdeScmSession(
+      settings: widget.settings,
+      favoriteBranches: _favoriteBranches,
+    );
     _explorer.dispose();
     _fileIndex.dispose();
     _languages?.removeListener(_languagesChanged);
@@ -1497,6 +1521,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     _referencesList.dispose();
     _sidebarFocus.dispose();
     _chatFocus.dispose();
+    _favoriteBranches.dispose();
     super.dispose();
   }
 
@@ -3783,7 +3808,10 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
             ? _scm
             : _scmSessions.putIfAbsent(
                 git,
-                () => IdeScmSession(settings: widget.settings),
+                () => IdeScmSession(
+                  settings: widget.settings,
+                  favoriteBranches: _favoriteBranches,
+                ),
               ),
         notifications: _notifications,
         onOpen: (path, {focusEditor = false}) {

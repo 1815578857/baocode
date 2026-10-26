@@ -69,6 +69,7 @@ import 'git_graph_painter.dart';
 import 'git_model.dart';
 import 'git_repository.dart';
 import 'git_service.dart';
+import 'git_branch_tree.dart' show IdeGitFavoriteBranches;
 import 'ide_git_log_view.dart';
 import 'scm_host.dart';
 import 'scm_tree.dart';
@@ -80,7 +81,11 @@ import 'scm_tree.dart';
 enum IdeScmSort { name, path, status }
 
 class IdeScmSession {
-  IdeScmSession({this.settings});
+  IdeScmSession({this.settings, this.favoriteBranches});
+
+  /// The favorite branches of each repository, by its folder, which the
+  /// window keeps (see [IdeGitLogController.favoriteBranches]).
+  final IdeGitFavoriteBranches? favoriteBranches;
 
   /// settings.json, where the choices made in its dialogs (Always, Never,
   /// Don't Show Again) are kept as VS Code keeps them; none under test,
@@ -153,7 +158,9 @@ class IdeScmSession {
   );
 
   /// The Git log's (see ide_git_log_view.dart).
-  late final IdeGitLogController log = IdeGitLogController();
+  late final IdeGitLogController log = IdeGitLogController(
+    favoriteBranches: favoriteBranches,
+  );
 
   void dispose() {
     generating?.complete();
