@@ -11570,4 +11570,104 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitConflictAcceptIncoming => 'Accept Incoming (Theirs)';
+
+  @override
+  String get gitConflictMerge => 'Merge…';
+
+  @override
+  String gitMergeTitle(String path) {
+    return 'Merge Revisions for $path';
+  }
+
+  @override
+  String get gitMergeOurs => 'Current (Ours)';
+
+  @override
+  String get gitMergeResult => 'Result';
+
+  @override
+  String get gitMergeTheirs => 'Incoming (Theirs)';
+
+  @override
+  String gitMergeConflictsLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count conflicts left',
+      one: '1 conflict left',
+      zero: 'All conflicts resolved',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String gitMergeChangesApplied(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes applied without conflict',
+      one: '1 change applied without conflict',
+      zero: '',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get gitMergePrevious => 'Previous Conflict';
+
+  @override
+  String get gitMergeNext => 'Next Conflict';
+
+  @override
+  String get gitMergeApply => 'Apply';
+
+  @override
+  String get gitMergeAppend => 'Append';
+
+  @override
+  String get gitMergeIgnore => 'Ignore';
+
+  @override
+  String get gitMergeAi => 'Merge with AI';
+
+  @override
+  String get gitMergeAiAll => 'Merge Conflicts with AI';
+
+  @override
+  String gitMergeAiFailed(String error) {
+    return 'AI could not merge the conflict: $error';
+  }
+
+  @override
+  String get gitMergeAiNoAnswer => 'the reply had no merged lines';
+
+  @override
+  String get gitMergeAcceptOurs => 'Accept Current';
+
+  @override
+  String get gitMergeAcceptTheirs => 'Accept Incoming';
+
+  @override
+  String gitMergeUnresolved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count conflicts are not resolved.',
+      one: '1 conflict is not resolved.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get gitMergeUnresolvedDetail =>
+      'Save the result as it is and mark the file resolved?';
+
+  @override
+  String get gitMergeSaveAnyway => 'Save and Mark Resolved';
+
+  @override
+  String get gitMergeDiscard => 'Discard the merge result?';
+
+  @override
+  String get gitMergeDiscardButton => 'Discard';
 }

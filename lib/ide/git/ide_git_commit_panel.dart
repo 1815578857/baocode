@@ -36,6 +36,7 @@ import 'commit_message.dart';
 import 'git_model.dart';
 import 'git_repository.dart';
 import 'git_service.dart';
+import 'ide_git_merge_dialog.dart';
 import 'ide_scm_view.dart' show IdeScmSession;
 import 'scm_host.dart';
 import 'scm_tree.dart';
@@ -279,6 +280,17 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
   Future<void> push() => _run(() async {
     if (_git case final git?) await ideGitPushOrPublish(git);
   });
+
+  /// [resource]'s conflict in the merge dialog.
+  Future<void> _mergeConflict(IdeGitRepository git, IdeGitResource resource) =>
+      showIdeGitMergeDialog(
+        context,
+        git: git,
+        resource: resource,
+        host: widget.host,
+        notifications: widget.notifications,
+        ai: widget.commitMessage,
+      );
 
   Future<void> _run(Future<void> Function() operation) async {
     try {
@@ -1165,9 +1177,14 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
             _setCollapsed(row, !collapsed);
         }
       },
-      onDoubleTap: row is _FileRow
-          ? () => unawaited(_show(row, editor: true))
-          : null,
+      onDoubleTap: switch (row) {
+        // A conflict: its merge, where both sides have the file.
+        _FileRow(:final resource)
+            when row.kind == _Kind.conflicts && ideGitMergeable(resource) =>
+          () => unawaited(_mergeConflict(git, resource)),
+        _FileRow() => () => unawaited(_show(row, editor: true)),
+        _ => null,
+      },
       onContextMenu: (position) {
         _listFocus.requestFocus();
         _select(row);
@@ -1294,6 +1311,11 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
               onSelected: () => unawaited(_run(() => git.stage(untracked))),
             ),
           if (conflicts.isNotEmpty) ...[
+            if (resource != null && ideGitMergeable(resource))
+              IdeMenuAction(
+                l10n.gitConflictMerge,
+                onSelected: () => unawaited(_mergeConflict(git, resource)),
+              ),
             IdeMenuAction(
               l10n.gitConflictAcceptCurrent,
               onSelected: () =>
