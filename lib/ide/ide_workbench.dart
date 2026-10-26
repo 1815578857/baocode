@@ -93,6 +93,7 @@ import 'ide_image_preview.dart';
 import 'markdown/markdown_paste.dart';
 import 'markdown/markdown_preview.dart';
 import 'ide_explorer.dart';
+import 'ide_folder_compare.dart';
 import 'ide_hover.dart';
 import 'ide_layout.dart';
 import 'ide_list.dart' show IdeKeyboardList;
@@ -1789,6 +1790,127 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     } catch (error) {
       _report(error);
     }
+  }
+
+  /// Compare Files: [original]'s text against [modified]'s. Two folders:
+  /// the files they differ in, stepped through as a commit's are in the
+  /// Git log's place (picked from a list outside a repository).
+  Future<void> _compareFiles(
+    String original,
+    String modified, {
+    bool folders = false,
+  }) async {
+    final l10n = context.l10n;
+    final workspace = widget.workspace;
+    final files = workspace.files;
+    if (!folders) {
+      await workspace.openDiff(
+        modified,
+        label: l10n.compareFilesLabel(
+          p.basename(original),
+          p.basename(modified),
+        ),
+        original: () => files.read(original),
+      );
+      return;
+    }
+    final List<IdeFolderDifference> differences;
+    try {
+      differences = await ideCompareFolders(files, original, modified);
+    } catch (error) {
+      _report(error);
+      return;
+    }
+    if (!mounted) return;
+    if (differences.isEmpty) {
+      _notifications.notify(
+        IdeSeverity.info,
+        l10n.compareFoldersSame(p.basename(original), p.basename(modified)),
+      );
+      return;
+    }
+    String at(String folder, String path) =>
+        p.joinAll([folder, ...path.split('/')]);
+    Future<String> read(String path) =>
+        files.read(path).catchError((Object _) => '');
+    final git = workspace.gitAt(modified) ?? workspace.gitAt(original);
+    if (git != null) {
+      workspace.selectRepository(git);
+      _showView(IdeSideView.sourceControl);
+      _scm.log.showDiff([
+        for (final (:path, :change) in differences)
+          IdeGitDiffFile(
+            path: at(
+              change == IdeFolderChange.deleted ? original : modified,
+              path,
+            ),
+            status: switch (change) {
+              IdeFolderChange.added => IdeGitStatus.untracked,
+              IdeFolderChange.deleted => IdeGitStatus.deleted,
+              IdeFolderChange.modified => IdeGitStatus.modified,
+            },
+            originalLabel: p.basename(original),
+            modifiedLabel: p.basename(modified),
+            original: () async =>
+                change == IdeFolderChange.added ? '' : read(at(original, path)),
+            modified: () async => change == IdeFolderChange.deleted
+                ? ''
+                : read(at(modified, path)),
+            write: change == IdeFolderChange.deleted
+                ? null
+                : (text) => files.write(at(modified, path), text),
+            onOpenInEditor: change == IdeFolderChange.deleted
+                ? null
+                : () => unawaited(_open(at(modified, path))),
+          ),
+      ], 0);
+      return;
+    }
+    final items = {
+      for (final difference in differences)
+        IdeQuickPickItem(
+          label: difference.path,
+          description: switch (difference.change) {
+            IdeFolderChange.added => l10n.compareFoldersOnlyIn(
+              p.basename(modified),
+            ),
+            IdeFolderChange.deleted => l10n.compareFoldersOnlyIn(
+              p.basename(original),
+            ),
+            IdeFolderChange.modified => l10n.compareFoldersModified,
+          },
+        ): difference,
+    };
+    _showQuickModel(
+      IdeQuickPick(
+        placeholder: l10n.compareFoldersPick(
+          p.basename(original),
+          p.basename(modified),
+        ),
+        sortByLabel: false,
+        items: items.keys.toList(),
+        onDidAccept: (item) {
+          final difference = items[item];
+          if (difference == null) return;
+          final (:path, :change) = difference;
+          unawaited(
+            workspace.openDiff(
+              at(change == IdeFolderChange.deleted ? original : modified, path),
+              label: l10n.compareFilesLabel(
+                p.basename(original),
+                p.basename(modified),
+              ),
+              original: () async => change == IdeFolderChange.added
+                  ? ''
+                  : read(at(original, path)),
+              modified: change == IdeFolderChange.deleted
+                  ? () async => ''
+                  : null,
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _showHistory(String path, [IdeGitLogLines? lines]) {
@@ -4162,17 +4284,15 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                                 ? null
                                 : _openInTerminal,
                             onShowHistory: _showHistory,
-                            onCompareFiles: (original, modified) => unawaited(
-                              widget.workspace.openDiff(
-                                modified,
-                                label: context.l10n.compareFilesLabel(
-                                  p.basename(original),
-                                  p.basename(modified),
-                                ),
-                                original: () =>
-                                    widget.workspace.files.read(original),
-                              ),
-                            ),
+                            onCompareFiles:
+                                (original, modified, {folders = false}) =>
+                                    unawaited(
+                                      _compareFiles(
+                                        original,
+                                        modified,
+                                        folders: folders,
+                                      ),
+                                    ),
                           ),
                   ),
                 IdePane(

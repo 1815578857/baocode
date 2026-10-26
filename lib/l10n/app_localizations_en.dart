@@ -12151,6 +12151,24 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String compareFoldersSame(String original, String modified) {
+    return '“$original” and “$modified” have the same files.';
+  }
+
+  @override
+  String compareFoldersPick(String original, String modified) {
+    return 'Files “$original” and “$modified” differ in';
+  }
+
+  @override
+  String compareFoldersOnlyIn(String name) {
+    return 'Only in “$name”';
+  }
+
+  @override
+  String get compareFoldersModified => 'Changed';
+
+  @override
   String get explorerCompareSelected => 'Compare Selected';
 
   @override

@@ -19833,6 +19833,30 @@ abstract class AppLocalizations {
   /// **'Compare with \'{name}\''**
   String explorerCompareWithSelected(String name);
 
+  /// No description provided for @compareFoldersSame.
+  ///
+  /// In en, this message translates to:
+  /// **'“{original}” and “{modified}” have the same files.'**
+  String compareFoldersSame(String original, String modified);
+
+  /// No description provided for @compareFoldersPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Files “{original}” and “{modified}” differ in'**
+  String compareFoldersPick(String original, String modified);
+
+  /// No description provided for @compareFoldersOnlyIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Only in “{name}”'**
+  String compareFoldersOnlyIn(String name);
+
+  /// No description provided for @compareFoldersModified.
+  ///
+  /// In en, this message translates to:
+  /// **'Changed'**
+  String get compareFoldersModified;
+
   /// No description provided for @explorerCompareSelected.
   ///
   /// In en, this message translates to:

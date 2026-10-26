@@ -11498,6 +11498,24 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String compareFoldersSame(String original, String modified) {
+    return '“$original”和“$modified”的文件完全相同。';
+  }
+
+  @override
+  String compareFoldersPick(String original, String modified) {
+    return '“$original”和“$modified”不同的文件';
+  }
+
+  @override
+  String compareFoldersOnlyIn(String name) {
+    return '只在“$name”里';
+  }
+
+  @override
+  String get compareFoldersModified => '有改动';
+
+  @override
   String get explorerCompareSelected => '比较所选文件';
 
   @override

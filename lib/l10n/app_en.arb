@@ -8004,6 +8004,13 @@
   "explorerSelectForCompare": "Select for Compare",
   "explorerCompareWithSelected": "Compare with '{name}'",
   "@explorerCompareWithSelected": {"placeholders": {"name": {"type": "String"}}},
+  "compareFoldersSame": "“{original}” and “{modified}” have the same files.",
+  "@compareFoldersSame": {"placeholders": {"original": {"type": "String"}, "modified": {"type": "String"}}},
+  "compareFoldersPick": "Files “{original}” and “{modified}” differ in",
+  "@compareFoldersPick": {"placeholders": {"original": {"type": "String"}, "modified": {"type": "String"}}},
+  "compareFoldersOnlyIn": "Only in “{name}”",
+  "@compareFoldersOnlyIn": {"placeholders": {"name": {"type": "String"}}},
+  "compareFoldersModified": "Changed",
   "explorerCompareSelected": "Compare Selected",
   "compareFilesLabel": "{original} \u2194 {modified}",
   "@compareFilesLabel": {"placeholders": {"original": {"type": "String"}, "modified": {"type": "String"}}}

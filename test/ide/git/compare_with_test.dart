@@ -1,7 +1,10 @@
 // JetBrains IDEs' Compare with… from the editor's menu: the file against
-// a branch or tag, a revision of it, or the clipboard, in a diff tab.
+// a branch or tag, a revision of it, or the clipboard, in a diff tab; and
+// from the explorer's, two files or two folders.
 
 import 'package:bao_editor/monaco/flutter/editor_surface.dart';
+import 'package:baocode/ide/ide_code_diff.dart';
+import 'package:flutter/widgets.dart' show Size;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -113,6 +116,81 @@ void main() {
     await menu('b.dart', "Compare with 'a.dart'");
     expect(
       find.textContaining('a.dart ↔ b.dart', findRichText: true),
+      findsWidgets,
+    );
+  });
+
+  testWidgets('two folders: the files they differ in, stepped through in '
+      "the log's place", (tester) async {
+    await pumpWorkbench(
+      tester,
+      const {
+        'left/x.txt': '1\n',
+        'left/same.txt': 's\n',
+        'right/x.txt': '2\n',
+        'right/same.txt': 's\n',
+        'right/new.txt': 'n\n',
+      },
+      git: git.repository(),
+      size: const Size(1800, 900),
+    );
+    await tester.pumpAndSettle();
+    Future<void> menu(String name, String item) async {
+      await tester.tapAt(
+        tester.getCenter(find.text(name).first),
+        buttons: kSecondaryMouseButton,
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(item));
+      await tester.pumpAndSettle();
+    }
+
+    await menu('left', 'Select for Compare');
+    await menu('right', "Compare with 'left'");
+    expect(find.byType(IdeCodeDiff), findsOneWidget);
+    // new.txt, only on the right, and x.txt.
+    expect(find.text('1 / 2'), findsOneWidget);
+    expect(
+      tester.widget<IdeCodeDiff>(find.byType(IdeCodeDiff)).modified,
+      'n\n',
+    );
+  });
+
+  testWidgets('two folders outside a repository: picked from a list', (
+    tester,
+  ) async {
+    await pumpWorkbench(tester, const {
+      'left/x.txt': '1\n',
+      'right/x.txt': '2\n',
+      'right/new.txt': 'n\n',
+    });
+    await tester.pumpAndSettle();
+    await tester.tapAt(
+      tester.getCenter(find.text('right').first),
+      buttons: kSecondaryMouseButton,
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Select for Compare'));
+    await tester.pumpAndSettle();
+    await tester.tapAt(
+      tester.getCenter(find.text('left').first),
+      buttons: kSecondaryMouseButton,
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Compare with 'right'"));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Only in “right”', findRichText: true),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Changed', findRichText: true), findsOneWidget);
+    await tester.tap(find.textContaining('Changed', findRichText: true));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('right ↔ left', findRichText: true),
       findsWidgets,
     );
   });
