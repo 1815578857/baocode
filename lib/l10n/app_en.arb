@@ -7975,5 +7975,6 @@
   "@gitAskAiChangesPrompt": {"placeholders": {"paths": {"type": "String"}}},
   "gitAskAiConflicts": "Ask AI to Resolve the Conflicts",
   "gitAskAiConflictsPrompt": "Resolve the merge conflicts in {paths}: keep what both sides meant, then tell me what you chose. Don't stage or commit.",
-  "@gitAskAiConflictsPrompt": {"placeholders": {"paths": {"type": "String"}}}
+  "@gitAskAiConflictsPrompt": {"placeholders": {"paths": {"type": "String"}}},
+  "gitLogFixup": "Fixup with Checked Changes"
 }

@@ -421,6 +421,10 @@ class IdeGitRepository extends ChangeNotifier {
   Future<void> squash(List<IdeGitCommit> commits) =>
       _operate(() => service.squash(commits));
 
+  /// Fixup: the `fixup!` commit at HEAD squashed into [commit].
+  Future<void> autosquash(IdeGitCommit commit) =>
+      _operate(() => service.autosquash(commit));
+
   /// Drop Commit: [commit] taken out of the current branch.
   Future<void> drop(IdeGitCommit commit) =>
       _operate(() => service.drop(commit));

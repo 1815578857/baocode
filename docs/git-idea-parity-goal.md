@@ -62,7 +62,7 @@ Git 日志和 IDEA 式提交面板已经上线（#328）。用户反馈 IDEA 的
 | Reset Current Branch to Here（soft / mixed / hard / keep） | ✅ | Hard 先确认 |
 | Undo Commit | ✅ | |
 | 修改提交信息（任意提交） | ✅ | 在详情里原地编辑，不弹窗；旧提交用 amend! + autosquash，不开编辑器、自动 stash；之后有合并提交时拒绝 |
-| Fixup / Squash Into / Drop | 🟡 | Drop（先确认）、多选相邻提交 Squash 已有；Fixup（把本地改动并进某个提交）放到提交面板阶段 |
+| Fixup / Squash Into / Drop | ✅ | 日志右键「用勾选的改动修正 (Fixup)」：把改动面板里勾选的改动提交成 `fixup!` 再 autosquash 进那个提交，失败时撤回；Drop（先确认）；多选相邻提交 Squash；更多组合用交互式变基 |
 | 交互式变基（拖动排序，pick / reword / squash / fixup / drop） | ✅ | 日志右键「从这里开始交互式变基」：最新的在上，P/R/E/S/F/D 设动作，拖动或 Alt+↑↓ 调顺序，可多选；下方改提交信息即为 reword；改信息存进 Git 对象再由 exec 写入，中途停下（edit、冲突）继续后也不丢；「让 AI 整理」建议 fixup / squash / reword，检查后再开始 |
 | New Branch / New Tag | ✅ | 标签可带说明（附注标签） |
 | Checkout Revision | ✅ | |

@@ -3278,5 +3278,6 @@
   "gitAskAiChanges": "问 AI 这些改动",
   "gitAskAiChangesPrompt": "审查我在 {paths} 中还没提交的改动（`git diff HEAD -- {paths}`）：说明它们做了什么，指出有问题的地方。",
   "gitAskAiConflicts": "让 AI 解决冲突",
-  "gitAskAiConflictsPrompt": "解决 {paths} 中的合并冲突：保留双方各自的意图，然后告诉我你是怎么取舍的。不要暂存或提交。"
+  "gitAskAiConflictsPrompt": "解决 {paths} 中的合并冲突：保留双方各自的意图，然后告诉我你是怎么取舍的。不要暂存或提交。",
+  "gitLogFixup": "用勾选的改动修正 (Fixup)"
 }

@@ -1298,6 +1298,22 @@ class IdeGitService {
     );
   }
 
+  /// JetBrains' Fixup: the `fixup!` commit just made (HEAD) squashed into
+  /// [commit] (`rebase -i --autosquash`, no editor), the changes not
+  /// committed set aside meanwhile; where the rebase fails, the fixup
+  /// commit undone, its changes staged.
+  Future<void> autosquash(IdeGitCommit commit) async {
+    await _requireRoot();
+    await _requireLinearSince(commit);
+    await _rebaseFrom(
+      commit,
+      ['-i', '--autosquash'],
+      undo: () async {
+        await _git(['reset', '--soft', 'HEAD~']);
+      },
+    );
+  }
+
   /// Takes [commit] out of the branch: the commits after it rebased onto
   /// its parent (`git rebase --onto`), the changes not committed set aside
   /// meanwhile.

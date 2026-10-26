@@ -19730,6 +19730,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resolve the merge conflicts in {paths}: keep what both sides meant, then tell me what you chose. Don\'t stage or commit.'**
   String gitAskAiConflictsPrompt(String paths);
+
+  /// No description provided for @gitLogFixup.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixup with Checked Changes'**
+  String get gitLogFixup;
 }
 
 class _AppLocalizationsDelegate

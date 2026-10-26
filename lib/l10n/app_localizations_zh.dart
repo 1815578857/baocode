@@ -11435,4 +11435,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String gitAskAiConflictsPrompt(String paths) {
     return '解决 $paths 中的合并冲突：保留双方各自的意图，然后告诉我你是怎么取舍的。不要暂存或提交。';
   }
+
+  @override
+  String get gitLogFixup => '用勾选的改动修正 (Fixup)';
 }

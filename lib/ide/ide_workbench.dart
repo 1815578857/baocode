@@ -3881,6 +3881,8 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       notifications: _notifications,
       ai: widget.commitMessage,
       onAsk: widget.onAskInChat == null ? null : _askInChat,
+      onFixup: (git, commit) async =>
+          _scmKey.currentState?.fixupInto(git, commit),
       onOpen: (path) {
         _leaveGitLog();
         unawaited(_open(path, focusEditor: true));

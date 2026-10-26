@@ -12080,4 +12080,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String gitAskAiConflictsPrompt(String paths) {
     return 'Resolve the merge conflicts in $paths: keep what both sides meant, then tell me what you chose. Don\'t stage or commit.';
   }
+
+  @override
+  String get gitLogFixup => 'Fixup with Checked Changes';
 }

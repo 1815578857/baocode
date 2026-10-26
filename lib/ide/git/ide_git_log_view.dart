@@ -595,7 +595,13 @@ class IdeGitLogView extends StatefulWidget {
     this.border,
     this.ai,
     this.onAsk,
+    this.onFixup,
   });
+
+  /// Commits the local changes checked into a commit (Fixup); not offered
+  /// when null.
+  final Future<void> Function(IdeGitRepository git, IdeGitCommit commit)?
+  onFixup;
 
   /// The model that cleans up a branch in an interactive rebase; not
   /// offered when null.
@@ -2294,6 +2300,13 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
             IdeMenuAction(
               l10n.gitLogEditMessage,
               onSelected: () => _log.editingMessage = commit.id,
+            ),
+          if ((isHead || inBranch) &&
+              commit.parentIds.length == 1 &&
+              widget.onFixup != null)
+            IdeMenuAction(
+              l10n.gitLogFixup,
+              onSelected: () => unawaited(widget.onFixup!(git, commit)),
             ),
           if (inBranch && commit.parentIds.length == 1)
             IdeMenuAction(
