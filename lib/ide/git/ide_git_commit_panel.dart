@@ -34,6 +34,7 @@ import '../ide_menu.dart';
 import '../ide_notifications.dart';
 import 'commit_message.dart';
 import 'git_model.dart';
+import 'git_partial.dart';
 import 'git_repository.dart';
 import 'git_service.dart';
 import 'ide_git_merge_dialog.dart';
@@ -56,6 +57,7 @@ class IdeGitCommitPanel extends StatefulWidget {
     this.trash,
     this.commitMessage,
     this.onTreeViewChanged,
+    this.hunks,
   });
 
   /// The IDE's workspace, or the chat window's side panel's project.
@@ -98,6 +100,10 @@ class IdeGitCommitPanel extends StatefulWidget {
 
   /// Told when Group by Directory is turned on or off, to remember it.
   final ValueChanged<bool>? onTreeViewChanged;
+
+  /// The changes left unchecked in the diffs' check boxes: a file with
+  /// some is committed in part. None offered when null.
+  final IdeGitHunkSelection? hunks;
 
   static const rowHeight = 22.0;
 
@@ -209,6 +215,7 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
     _messageText = _session.message.text;
     _session.message.addListener(_messageChanged);
     _listFocus.addListener(_rebuild);
+    widget.hunks?.addListener(_rebuild);
   }
 
   @override
@@ -220,11 +227,16 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
       _messageText = widget.session.message.text;
       _validation = null;
     }
+    if (!identical(oldWidget.hunks, widget.hunks)) {
+      oldWidget.hunks?.removeListener(_rebuild);
+      widget.hunks?.addListener(_rebuild);
+    }
   }
 
   @override
   void dispose() {
     _session.message.removeListener(_messageChanged);
+    widget.hunks?.removeListener(_rebuild);
     _listFocus.dispose();
     _inputFocus.dispose();
     _scroll.dispose();
@@ -334,13 +346,15 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
       _sessionOf(git).included[resource.path] ??
       resource.status != IdeGitStatus.untracked;
 
-  /// Whether [files] are checked: all (true), none (false), or some (null).
+  /// Whether [files] are checked: all (true), none (false), or some (null),
+  /// as a file some of whose changes are left out is.
   bool? _checkedOf(IdeGitRepository git, List<IdeGitResource> files) {
     var all = true;
     var none = true;
     for (final file in files) {
       if (_isChecked(git, file)) {
         none = false;
+        if (_isPartial(file)) all = false;
       } else {
         all = false;
       }
@@ -360,7 +374,14 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
       }
       _validation = null;
     });
+    // Checked or unchecked whole.
+    widget.hunks?.clear([for (final file in files) file.path]);
   }
+
+  /// Whether some of [file]'s changes are left out of the commit.
+  bool _isPartial(IdeGitResource file) =>
+      (widget.hunks?.isPartial(file.path) ?? false) &&
+      ideGitPartialCommittable(file);
 
   /// The files to commit in [git]: the checked ones still changed.
   List<IdeGitResource> _toCommit(IdeGitRepository git) {
@@ -665,8 +686,9 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
         await _git?.commitResources(message, const [], amend: true);
       }
       for (final (git, files) in work) {
-        await git.commitResources(message, files, amend: amend);
+        await _commitIn(git, message, files, amend: amend);
         _sessionOf(git).included.clear();
+        widget.hunks?.clear([for (final file in files) file.path]);
       }
       _session
         ..message.clear()
@@ -683,6 +705,50 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
       if (mounted) widget.notifications.notify(IdeSeverity.error, '$error');
     } finally {
       if (mounted) setState(() => _committing = false);
+    }
+  }
+
+  /// Commits [files] in [git]: those some of whose changes are left out
+  /// with the others alone (none of a file, where all are left out).
+  Future<void> _commitIn(
+    IdeGitRepository git,
+    String message,
+    List<IdeGitResource> files, {
+    required bool amend,
+  }) async {
+    final hunks = widget.hunks;
+    final nothing = context.l10n.gitCommitNothingSelected;
+    final partial = <String, String>{};
+    final whole = <IdeGitResource>[];
+    for (final file in files) {
+      if (hunks == null || !_isPartial(file)) {
+        whole.add(file);
+        continue;
+      }
+      final (original, modified) = await (
+        git.service.show('HEAD', file.path),
+        widget.host.files.read(file.path, force: true),
+      ).wait;
+      final text = await ideGitPartialText(
+        original,
+        modified,
+        hunks.excluded(file.path),
+      );
+      if (text == modified) {
+        whole.add(file);
+      } else if (text != original) {
+        partial[file.path] = text;
+      }
+    }
+    if (partial.isEmpty && whole.isEmpty && !amend) {
+      // Every change left out: `git commit --only` with no paths would
+      // commit what is staged.
+      throw IdeGitException(nothing);
+    }
+    if (partial.isEmpty) {
+      await git.commitResources(message, whole, amend: amend);
+    } else {
+      await git.commitPartial(message, whole, partial, amend: amend);
     }
   }
 

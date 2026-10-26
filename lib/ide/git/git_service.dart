@@ -26,11 +26,14 @@ import 'git_service_stub.dart'
 export 'package:bao_remote/git.dart';
 
 /// Runs `git` with [arguments] in [workingDirectory]; with [limit], reads
-/// only that many NUL-terminated records of its output (`runGit`'s).
+/// only that many NUL-terminated records of its output (`runGit`'s); [stdin]
+/// is written to it, and [environment] added to its.
 typedef IdeGitRunner = Future<IdeGitOutput> Function(
   List<String> arguments, {
   required String workingDirectory,
   int? limit,
+  String? stdin,
+  Map<String, String>? environment,
 });
 
 /// Changes under the repository at [repositoryRoot].
@@ -84,10 +87,14 @@ class IdeGitService {
     List<String> arguments, {
     String? cwd,
     int? limit,
+    String? stdin,
+    Map<String, String>? environment,
   }) => _run(
     arguments,
     workingDirectory: cwd ?? _repositoryRoot ?? root,
     limit: limit,
+    stdin: stdin,
+    environment: environment,
   );
 
   static IdeGitOutput _check(IdeGitOutput output, String what) {
@@ -287,12 +294,7 @@ class IdeGitService {
     final kept = _relative(top, paths);
     if (kept.isNotEmpty) {
       _check(
-        await _git([
-          'checkout',
-          ours ? '--ours' : '--theirs',
-          '--',
-          ...kept,
-        ]),
+        await _git(['checkout', ours ? '--ours' : '--theirs', '--', ...kept]),
         'Cannot take ${ours ? 'the current' : 'the incoming'} version.',
       );
       _check(
@@ -330,7 +332,11 @@ class IdeGitService {
             ? '--skip'
             : '--continue',
       ]),
-      'Cannot ${abort ? 'abort' : skip ? 'skip' : 'continue'} the '
+      'Cannot ${abort
+          ? 'abort'
+          : skip
+          ? 'skip'
+          : 'continue'} the '
       '${operation.command}.',
     );
   }
@@ -456,6 +462,71 @@ class IdeGitService {
         if (message.isEmpty && amend) '--no-edit' else ...['-m', message],
         if (relative.isNotEmpty) ...['--only', '--', ...relative],
       ]),
+      'Cannot commit.',
+    );
+  }
+
+  /// Commits [paths] as they are in the working tree and each of
+  /// [partial]'s files with its text there (some of its changes left out),
+  /// whatever is staged, as [commitPaths] does: through an index of its
+  /// own (`GIT_INDEX_FILE`) made from HEAD's, the repository's then given
+  /// what was committed of them. [amend] replaces the last commit.
+  Future<void> commitPartial(
+    String message,
+    Iterable<String> paths,
+    Map<String, String> partial, {
+    bool amend = false,
+  }) async {
+    final top = await _requireRoot();
+    final indexPath = _check(
+      await _git(['rev-parse', '--git-path', 'baocode-commit-index']),
+      'Cannot commit.',
+    ).stdout.trim();
+    final environment = {
+      'GIT_INDEX_FILE': pathContext.isAbsolute(indexPath)
+          ? indexPath
+          : pathContext.join(top, indexPath),
+    };
+    Future<IdeGitOutput> git(List<String> arguments, {String? stdin}) async =>
+        _check(
+          await _git(arguments, stdin: stdin, environment: environment),
+          'Cannot commit.',
+        );
+    final head = await _git(['rev-parse', '--verify', '-q', 'HEAD']);
+    await git(['read-tree', if (head.exitCode == 0) 'HEAD' else '--empty']);
+    final whole = _relative(top, paths);
+    if (whole.isNotEmpty) await git(['add', '-A', '--', ...whole]);
+    final parts = <String>[];
+    for (final MapEntry(key: path, value: text) in partial.entries) {
+      final relative = _relative(top, [path]).single;
+      parts.add(relative);
+      final blob = (await git([
+        'hash-object',
+        '-w',
+        '--path',
+        relative,
+        '--stdin',
+      ], stdin: text)).stdout.trim();
+      // Its mode as committed.
+      final listed = (await git(['ls-files', '-s', '--', relative])).stdout;
+      final mode = listed.isEmpty ? '100644' : listed.split(' ').first;
+      await git([
+        'update-index',
+        '--add',
+        '--cacheinfo',
+        '$mode,$blob,$relative',
+      ]);
+    }
+    await git([
+      'commit',
+      '--quiet',
+      if (amend) '--amend',
+      if (message.isEmpty && amend) '--no-edit' else ...['-m', message],
+    ]);
+    // The repository's index: the files as committed, the rest of the
+    // partial ones' changes left unstaged.
+    _check(
+      await _git(['reset', '-q', '--', ...whole, ...parts]),
       'Cannot commit.',
     );
   }

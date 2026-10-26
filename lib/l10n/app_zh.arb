@@ -3165,5 +3165,7 @@
   "gitMergeUnresolvedDetail": "按现在的结果保存，并把文件标记为已解决？",
   "gitMergeSaveAnyway": "保存并标记为已解决",
   "gitMergeDiscard": "放弃这次合并的结果？",
-  "gitMergeDiscardButton": "放弃"
+  "gitMergeDiscardButton": "放弃",
+  "gitDiffExcludeChange": "这处改动不提交",
+  "gitDiffIncludeChange": "提交这处改动"
 }

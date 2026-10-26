@@ -7830,5 +7830,7 @@
   "gitMergeUnresolvedDetail": "Save the result as it is and mark the file resolved?",
   "gitMergeSaveAnyway": "Save and Mark Resolved",
   "gitMergeDiscard": "Discard the merge result?",
-  "gitMergeDiscardButton": "Discard"
+  "gitMergeDiscardButton": "Discard",
+  "gitDiffExcludeChange": "Leave This Change Out of the Commit",
+  "gitDiffIncludeChange": "Include This Change in the Commit"
 }

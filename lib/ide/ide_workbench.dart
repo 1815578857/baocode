@@ -71,6 +71,7 @@ import 'git/ide_git_branch_popup.dart';
 import 'git/git_change_editor.dart';
 import 'git/git_checkout.dart';
 import 'git/git_model.dart';
+import 'git/git_partial.dart' show IdeGitHunkSelection;
 import 'git/git_repository.dart';
 import 'git/ide_git_commit_panel.dart';
 import 'git/ide_git_log_view.dart';
@@ -464,6 +465,9 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   /// The favorite branches of the window's repositories, kept with its
   /// state.
   final IdeGitFavoriteBranches _favoriteBranches = IdeGitFavoriteBranches();
+
+  /// The changes left unchecked in the Commit panel's diffs.
+  final IdeGitHunkSelection _hunks = IdeGitHunkSelection();
 
   late IdeScmSession _scm = IdeScmSession(
     settings: widget.settings,
@@ -1529,6 +1533,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     _sidebarFocus.dispose();
     _chatFocus.dispose();
     _favoriteBranches.dispose();
+    _hunks.dispose();
     super.dispose();
   }
 
@@ -1766,6 +1771,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
               unawaited(_openChange(change, focusEditor: true));
             },
             write: _writeFromDiff,
+            hunks: _hunks,
           ),
         // The keys go on walking the changes.
       ],
@@ -3855,6 +3861,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
             ? WindowControls.moveToTrash
             : null,
         commitMessage: widget.commitMessage,
+        hunks: _hunks,
       ),
     ),
     IdeSideView.debug => switch (_debug) {

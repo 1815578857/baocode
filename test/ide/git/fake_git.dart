@@ -69,6 +69,10 @@ class FakeGit {
   /// What a command waits for before it answers, e.g. a push under way.
   Future<void>? Function(List<String> arguments)? hold;
 
+  /// What was written to Git, and the environments it was given, in order.
+  final List<String> stdins = [];
+  final List<Map<String, String>> environments = [];
+
   List<List<String>> callsTo(String command) => [
     for (final call in calls)
       if (call.first == command) call,
@@ -78,12 +82,16 @@ class FakeGit {
     List<String> arguments, {
     required String workingDirectory,
     int? limit,
+    String? stdin,
+    Map<String, String>? environment,
   }) async {
     // The operation under way, read with each status: not counted.
     if (arguments case ['log', '--no-walk', '--source', ...]) {
       return IdeGitOutput(0, operation == null ? '' : '$operation\n');
     }
     calls.add(arguments);
+    if (stdin != null) stdins.add(stdin);
+    if (environment != null) environments.add(environment);
     await hold?.call(arguments);
     onCommand?.call(arguments);
     if (answers[arguments.first] case final answer?) return answer;

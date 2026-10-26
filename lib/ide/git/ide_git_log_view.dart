@@ -44,6 +44,7 @@ import 'git_change_editor.dart';
 import 'git_checkout.dart' show ideSanitizeBranchName;
 import 'git_graph_painter.dart';
 import 'git_model.dart';
+import 'git_partial.dart';
 import 'git_repository.dart';
 import 'git_service.dart';
 import 'ide_scm_view.dart';
@@ -72,6 +73,7 @@ class IdeGitDiffFile {
     this.commitId,
     this.onOpenInEditor,
     this.write,
+    this.checks,
   });
 
   final String path;
@@ -90,6 +92,10 @@ class IdeGitDiffFile {
   /// Writes its modified side, the file, once edited in the diff; read
   /// only when null.
   final Future<void> Function(String text)? write;
+
+  /// A check box by each change, to leave it out of a commit; none when
+  /// null.
+  final IdeDiffChecks? checks;
 }
 
 /// The files a diff steps through, [index] the one shown; [focus]: it
@@ -504,12 +510,22 @@ IdeGitDiffFile ideLocalDiffFile(
   VoidCallback? onOpenInEditor,
   Future<void> Function(String path, String text, {String? expectedText})?
   write,
+  IdeGitHunkSelection? hunks,
 }) {
-  final editor = IdeGitChangeEditor.of(
+  // With check boxes, as a commit of it takes it: HEAD against the file.
+  final partial = hunks != null && ideGitPartialCommittable(resource);
+  final changeEditor = IdeGitChangeEditor.of(
     resource,
     staged: state.group(IdeGitGroup.staged),
     l10n: l10n,
   );
+  final editor = partial
+      ? IdeGitChangeEditor(
+          label: changeEditor.label,
+          left: IdeGitSide(resource.path, 'HEAD'),
+          right: IdeGitSide(resource.path),
+        )
+      : changeEditor;
   Future<String> Function() side(IdeGitSide? side) => switch (side) {
     null => () => Future.value(''),
     IdeGitSide(isFile: true, :final path) => () => read(
@@ -553,6 +569,7 @@ IdeGitDiffFile ideLocalDiffFile(
         }),
       _ => null,
     },
+    checks: partial ? hunks.checksOf(resource.path) : null,
   );
 }
 
@@ -3662,6 +3679,7 @@ class _DiffBodyState extends State<_DiffBody> {
         start: widget.start,
         onEdit: widget.file.write,
         position: widget.position,
+        checks: widget.file.checks,
       );
     },
   );

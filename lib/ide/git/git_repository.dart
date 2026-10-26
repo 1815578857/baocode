@@ -293,6 +293,28 @@ class IdeGitRepository extends ChangeNotifier {
     }, amend: amend);
   });
 
+  /// Commits [resources] as [commitResources] does, and each of [partial]'s
+  /// files with its text there: some of its changes, the others left in
+  /// the working tree.
+  Future<void> commitPartial(
+    String message,
+    Iterable<IdeGitResource> resources,
+    Map<String, String> partial, {
+    bool amend = false,
+  }) => _operate(
+    () => service.commitPartial(
+      message,
+      {
+        for (final resource in resources) ...[
+          resource.path,
+          ?resource.originalPath,
+        ],
+      },
+      partial,
+      amend: amend,
+    ),
+  );
+
   /// Rolls [resources] back to the last commit (JetBrains' Rollback):
   /// untracked files deleted, or moved to the Trash when [trash] does;
   /// files added since left untracked; the others as they were committed.

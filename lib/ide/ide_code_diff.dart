@@ -17,6 +17,7 @@ import '../theme/app_theme.dart';
 import '../theme/code_font.dart';
 import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' hide ColorScheme;
+import 'git/git_partial.dart' show ideGitHunkKeys;
 import 'ide_agent_edits.dart' show agentHunkSpans;
 import 'ide_code_editor.dart' show IdeCodeHighlights;
 import 'ide_diff_options.dart';
@@ -27,6 +28,13 @@ import 'ide_workspace.dart' show IdeDiffOriginal;
 /// Where a diff opens: at its first change, or (stepped back into from the
 /// next file) at its last.
 enum IdeDiffStart { first, last }
+
+/// The check boxes by a diff's changes (JetBrains' partial commit): whether
+/// each, by its key ([ideGitHunkKeys]), goes in the commit.
+abstract interface class IdeDiffChecks implements Listenable {
+  bool isIncluded(String key);
+  void setIncluded(String key, bool included);
+}
 
 /// A change, [original] against [modified], in the IDE's diff editor
 /// ([DiffEditor]), as JetBrains IDEs' diff viewer shows one: side by side
@@ -48,6 +56,7 @@ class IdeCodeDiff extends StatefulWidget {
     this.onCopy,
     this.onEdit,
     this.position,
+    this.checks,
   });
 
   final String path;
@@ -66,6 +75,10 @@ class IdeCodeDiff extends StatefulWidget {
   /// Told the change stepped to (-1 before any) and how many there are,
   /// for a toolbar to show.
   final ValueNotifier<({int current, int count})>? position;
+
+  /// A check box by each change, where the changes can be left out of a
+  /// commit; whitespace then counts, as it does for the commit.
+  final IdeDiffChecks? checks;
 
   /// How long typing goes on before what is typed is written.
   static const writeDelay = Duration(milliseconds: 400);
@@ -117,13 +130,21 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
     super.initState();
     _themes.addListener(_changed);
     _options.addListener(_optionsChanged);
-    _ignoreTrimWhitespace = _options.ignoreTrimWhitespace;
+    widget.checks?.addListener(_changed);
+    _ignoreTrimWhitespace = _ignoresWhitespace;
     _open(widget.modified);
   }
+
+  bool get _ignoresWhitespace =>
+      widget.checks == null && _options.ignoreTrimWhitespace;
 
   @override
   void didUpdateWidget(IdeCodeDiff oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.checks, widget.checks)) {
+      oldWidget.checks?.removeListener(_changed);
+      widget.checks?.addListener(_changed);
+    }
     if (oldWidget.original != widget.original ||
         oldWidget.modified != widget.modified ||
         oldWidget.path != widget.path) {
@@ -142,6 +163,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
     _flush();
     _themes.removeListener(_changed);
     _options.removeListener(_optionsChanged);
+    widget.checks?.removeListener(_changed);
     _close();
     _ownTextMate?.dispose();
     _ownPosition.dispose();
@@ -198,7 +220,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
 
   /// Whitespace ignored or not: compared again, the text as it is now.
   void _optionsChanged() {
-    final ignore = _options.ignoreTrimWhitespace;
+    final ignore = _ignoresWhitespace;
     if (ignore != _ignoreTrimWhitespace) {
       _ignoreTrimWhitespace = ignore;
       final text = _modified.document.text;
@@ -377,7 +399,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
         sashHover: colors.get('sash.hoverBorder'),
         sideBySide: _options.sideBySide,
         highlight: _options.highlight,
-        overlay: editable ? _revertArrows : null,
+        overlay: editable || widget.checks != null ? _overlay : null,
         original: (context, side) {
           final controller = _diff.controller;
           if (controller == null) return const SizedBox.expand();
@@ -420,39 +442,69 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
     );
   }
 
-  /// A revert arrow by each change, at its top: on the split side by side,
-  /// at the modified editor's left edge inline.
-  Widget _revertArrows(BuildContext context, DiffEditorLayout layout) =>
+  /// By each change, at its top: a revert arrow where the file can be
+  /// edited (on the split side by side, at the modified editor's left edge
+  /// inline), and a check box where it can be left out of a commit (at the
+  /// modified editor's left edge, the arrow then after it inline).
+  Widget _overlay(BuildContext context, DiffEditorLayout layout) =>
       ListenableBuilder(
         listenable: _viewTick,
         builder: (context, _) {
           final view = _view;
           final area = view?.textArea;
           final mappings = _diff.model.mappings;
-          if (view == null || area == null || mappings == null) {
+          final original = _diff.model.originalSnapshot;
+          if (view == null ||
+              area == null ||
+              mappings == null ||
+              original == null) {
             return const SizedBox.shrink();
           }
           final snapshot = _modified.document.snapshot;
           const size = 16.0;
-          final left = layout.sideBySide
+          final checks = widget.checks;
+          final mapped = _diff.model.mappedSnapshot;
+          // Keyed by the text they were found in; none while it was edited
+          // since.
+          final keys = checks != null && identical(mapped, snapshot)
+              ? ideGitHunkKeys(original, snapshot, mappings)
+              : null;
+          final arrowLeft = layout.sideBySide
               ? layout.splitLeft - size / 2
-              : layout.modifiedLeft + 2;
+              : layout.modifiedLeft + (checks == null ? 2 : 22);
           return Stack(
             children: [
-              for (final change in mappings)
+              for (final (index, change) in mappings.indexed)
                 if (_topOf(view, snapshot, change) case final top?
-                    when top >= area.top - 2 && top + size <= area.bottom)
-                  Positioned(
-                    key: ObjectKey(change),
-                    left: left,
-                    top: top + (view.lineHeight - size) / 2,
-                    width: size,
-                    height: size,
-                    child: _RevertArrow(
-                      added: change.original.isEmpty,
-                      onTap: () => revert(change),
+                    when top >= area.top - 2 && top + size <= area.bottom) ...[
+                  if (widget.onEdit != null)
+                    Positioned(
+                      key: ObjectKey(change),
+                      left: arrowLeft,
+                      top: top + (view.lineHeight - size) / 2,
+                      width: size,
+                      height: size,
+                      child: _RevertArrow(
+                        added: change.original.isEmpty,
+                        onTap: () => revert(change),
+                      ),
                     ),
-                  ),
+                  if (keys != null)
+                    Positioned(
+                      key: ObjectKey((change, 'check')),
+                      left: layout.modifiedLeft + 2,
+                      top: top + (view.lineHeight - size) / 2,
+                      width: size,
+                      height: size,
+                      child: _HunkCheck(
+                        checked: checks!.isIncluded(keys[index]),
+                        onTap: () => checks.setIncluded(
+                          keys[index],
+                          !checks.isIncluded(keys[index]),
+                        ),
+                      ),
+                    ),
+                ],
             ],
           );
         },
@@ -511,6 +563,54 @@ class _RevertArrowState extends State<_RevertArrow> {
               color: _hover
                   ? colors['editor.foreground']
                   : colors['editorLineNumber.foreground'],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// JetBrains' check box by a change: whether it goes in the commit.
+class _HunkCheck extends StatelessWidget {
+  const _HunkCheck({required this.checked, required this.onTap});
+
+  final bool checked;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = themeColors;
+    final l10n = context.l10n;
+    final accent =
+        colors.get('checkbox.selectBackground') ?? colors['button.background'];
+    return IdeHover(
+      message: checked ? l10n.gitDiffExcludeChange : l10n.gitDiffIncludeChange,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Center(
+            child: Container(
+              width: 13,
+              height: 13,
+              decoration: BoxDecoration(
+                color: checked ? accent : colors.get('checkbox.background'),
+                border: Border.all(
+                  color: checked
+                      ? accent
+                      : colors.get('checkbox.border') ??
+                            colors['editorLineNumber.foreground'],
+                ),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: checked
+                  ? Icon(
+                      Codicons.check,
+                      size: 11,
+                      color: colors['button.foreground'],
+                    )
+                  : null,
             ),
           ),
         ),

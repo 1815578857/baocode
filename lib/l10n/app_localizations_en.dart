@@ -11670,4 +11670,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitMergeDiscardButton => 'Discard';
+
+  @override
+  String get gitDiffExcludeChange => 'Leave This Change Out of the Commit';
+
+  @override
+  String get gitDiffIncludeChange => 'Include This Change in the Commit';
 }

@@ -19052,6 +19052,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Discard'**
   String get gitMergeDiscardButton;
+
+  /// No description provided for @gitDiffExcludeChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave This Change Out of the Commit'**
+  String get gitDiffExcludeChange;
+
+  /// No description provided for @gitDiffIncludeChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Include This Change in the Commit'**
+  String get gitDiffIncludeChange;
 }
 
 class _AppLocalizationsDelegate

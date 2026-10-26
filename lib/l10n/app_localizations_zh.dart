@@ -11057,4 +11057,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitMergeDiscardButton => '放弃';
+
+  @override
+  String get gitDiffExcludeChange => '这处改动不提交';
+
+  @override
+  String get gitDiffIncludeChange => '提交这处改动';
 }
