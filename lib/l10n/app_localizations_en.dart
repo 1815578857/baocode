@@ -12003,4 +12003,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitCloneCommand => 'Clone Repository…';
+
+  @override
+  String get gitReviewWithAi => 'Review Changes with AI';
+
+  @override
+  String get gitReviewStop => 'Stop the Review';
+
+  @override
+  String get gitReviewBeforeCommit => 'Review with AI Before Committing';
+
+  @override
+  String get gitReviewRunning => 'Reviewing the changes…';
+
+  @override
+  String get gitReviewClean => 'No problems found';
+
+  @override
+  String gitReviewFound(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count problems found',
+      one: '1 problem found',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get gitReviewCommitAnyway => 'Commit Anyway';
+
+  @override
+  String get gitReviewCommitAndPushAnyway => 'Commit and Push Anyway';
+
+  @override
+  String gitReviewFailed(String error) {
+    return 'Could not review the changes: $error';
+  }
 }

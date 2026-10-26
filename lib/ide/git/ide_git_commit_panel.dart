@@ -37,6 +37,7 @@ import 'commit_message.dart';
 import 'git_changelists.dart';
 import 'git_model.dart';
 import 'git_partial.dart';
+import 'git_review.dart';
 import 'git_repository.dart';
 import 'git_service.dart';
 import 'ide_git_log_view.dart' show IdeGitDiffFile;
@@ -64,7 +65,12 @@ class IdeGitCommitPanel extends StatefulWidget {
     this.hunks,
     this.changelists,
     this.onShowDiff,
+    this.onOpenAt,
   });
+
+  /// Opens a file in the editor at a line (a review's problem); [onOpen]
+  /// at its top when null.
+  final Future<void> Function(String path, int line)? onOpenAt;
 
   /// The IDE's workspace, or the chat window's side panel's project.
   final IdeScmHost host;
@@ -400,6 +406,13 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
           onSelected: () =>
               setState(() => _session.runHooks = !_session.runHooks),
         ),
+        if (widget.commitMessage != null)
+          IdeMenuAction(
+            l10n.gitReviewBeforeCommit,
+            checked: _session.aiReview,
+            onSelected: () =>
+                setState(() => _session.aiReview = !_session.aiReview),
+          ),
       ],
     );
   }
@@ -956,8 +969,8 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
 
   /// Commits the files checked in each repository with the message (Amend:
   /// into the last commit); then, with [push], pushes them.
-  Future<void> _commit({bool push = false}) async {
-    if (_committing) return;
+  Future<void> _commit({bool push = false, bool reviewed = false}) async {
+    if (_committing || _session.reviewing != null) return;
     final l10n = context.l10n;
     final message = _session.message.text.trim();
     final amend = _session.amend;
@@ -978,7 +991,17 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
       );
       return;
     }
-    setState(() => _committing = true);
+    // Reviewed first, where asked: held back where something is wrong.
+    if (!reviewed &&
+        _session.aiReview &&
+        widget.commitMessage != null &&
+        work.isNotEmpty) {
+      return _review(hold: push);
+    }
+    setState(() {
+      _committing = true;
+      _session.reviewHeldPush = null;
+    });
     // In the history, whether the commit is made or not (a hook says no).
     if (message.isNotEmpty) _session.rememberMessage(message);
     final options = _session.commitOptions;
@@ -1114,6 +1137,265 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
     ];
   }
 
+  /// What the commit would take of [git] (its checked files' diff): HEAD
+  /// against the working tree (with no HEAD yet, what is staged); a file
+  /// committed in part, against what of it is.
+  Future<String> _commitDiff(IdeGitRepository git, IdeGitState state) async {
+    final files = _toCommit(git);
+    final unborn = state.head.unborn;
+    final partial = [
+      if (!unborn)
+        for (final file in files)
+          if (_isPartial(file)) file,
+    ];
+    final whole = await git.service.diff(
+      staged: unborn,
+      paths: unborn
+          ? null
+          : [
+              for (final file in files)
+                if (file.status != IdeGitStatus.untracked &&
+                    !partial.contains(file))
+                  file.path,
+            ],
+      untracked: [
+        for (final file in files)
+          if (file.status == IdeGitStatus.untracked) file.path,
+      ],
+    );
+    final parts = StringBuffer();
+    for (final file in partial) {
+      final (original, modified) = await (
+        git.service.show('HEAD', file.path),
+        widget.host.files.read(file.path, force: true),
+      ).wait;
+      final text = await ideGitPartialText(
+        original,
+        modified,
+        widget.hunks!.excluded(file.path),
+      );
+      parts.write(
+        await ideGitUnifiedDiff(
+          git.service.pathContext.relative(file.path, from: git.service.root),
+          original,
+          text,
+        ),
+      );
+    }
+    return partial.isEmpty ? whole : '$whole$parts';
+  }
+
+  /// The model's review of what the commit would take; [hold], the commit
+  /// it holds back (with Push, or not), made at once where nothing blocks
+  /// it. Again while it runs, stops it.
+  Future<void> _review({bool? hold}) async {
+    final model = widget.commitMessage;
+    if (model == null) return;
+    if (_session.reviewing case final running?) {
+      running.complete();
+      return;
+    }
+    final cancel = _session.reviewing = Completer<void>();
+    setState(() {
+      _session
+        ..review = null
+        ..reviewHeldPush = null;
+    });
+    final l10n = context.l10n;
+    try {
+      final diffs = StringBuffer();
+      for (final git in _repositories) {
+        final state = git.state;
+        if (state == null || _toCommit(git).isEmpty) continue;
+        diffs.write(await _commitDiff(git, state));
+      }
+      if (cancel.isCompleted) return;
+      if (diffs.toString().trim().isEmpty) {
+        widget.notifications.notify(
+          IdeSeverity.info,
+          l10n.scmNoChangesToGenerate,
+        );
+        return;
+      }
+      final reply = await model(
+        ideGitReviewPrompt(diffs.toString(), message: _session.message.text),
+        cancel: cancel.future,
+      );
+      if (cancel.isCompleted || !mounted) return;
+      final problems = ideGitReviewProblems(reply);
+      if (hold != null && !problems.any((problem) => problem.blocks)) {
+        _session.reviewing = null;
+        setState(() => _session.review = problems.isEmpty ? null : problems);
+        await _commit(push: hold, reviewed: true);
+        return;
+      }
+      setState(() {
+        _session
+          ..review = problems
+          ..reviewHeldPush = hold;
+      });
+    } on IdeCommitMessageCancelled {
+      // Stopped.
+    } catch (error) {
+      if (!cancel.isCompleted) {
+        widget.notifications.notify(
+          IdeSeverity.error,
+          l10n.gitReviewFailed('$error'),
+        );
+      }
+    } finally {
+      if (identical(_session.reviewing, cancel)) _session.reviewing = null;
+      if (mounted) setState(() {});
+    }
+  }
+
+  /// The review under way, or what it found (each problem a click from
+  /// its line), and Commit Anyway for the commit it holds back.
+  Widget? _reviewBox(BuildContext context) {
+    final problems = _session.review;
+    final running = _session.reviewing != null;
+    if (problems == null && !running) return null;
+    final l10n = context.l10n;
+    final colors = themeColors;
+    final description = IdeListColors.description;
+    final held = _session.reviewHeldPush;
+    final header = Row(
+      children: [
+        if (running)
+          IdeSpinning(Icon(Codicons.loading, size: 14, color: description))
+        else
+          Icon(
+            problems!.isEmpty ? Codicons.pass : Codicons.checklist,
+            size: 14,
+            color: problems.isEmpty
+                ? colors['testing.iconPassed']
+                : description,
+          ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            running
+                ? l10n.gitReviewRunning
+                : problems!.isEmpty
+                ? l10n.gitReviewClean
+                : l10n.gitReviewFound(problems.length),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        ),
+        if (held != null && !running) ...[
+          IdeButton(
+            label: held
+                ? l10n.gitReviewCommitAndPushAnyway
+                : l10n.gitReviewCommitAnyway,
+            secondary: true,
+            onPressed: () => unawaited(_commit(push: held, reviewed: true)),
+          ),
+          const SizedBox(width: 4),
+        ],
+        IdeActionButton(
+          icon: running ? Codicons.debugStop : Codicons.close,
+          tooltip: running ? l10n.gitReviewStop : l10n.dialogCloseDialog,
+          size: 20,
+          iconSize: 14,
+          onPressed: running
+              ? () => _session.reviewing?.complete()
+              : () => setState(() {
+                  _session
+                    ..review = null
+                    ..reviewHeldPush = null;
+                }),
+        ),
+      ],
+    );
+    final git = _git;
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 160),
+      padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: colors.get('panel.border') ?? Colors.transparent,
+        ),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          header,
+          if (problems != null && problems.isNotEmpty)
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.only(top: 2),
+                children: [
+                  for (final problem in problems)
+                    IdeListRow(
+                      height: 22,
+                      tooltip: problem.message,
+                      onTap: git == null
+                          ? null
+                          : () {
+                              final path = git.service.pathContext.join(
+                                git.service.root,
+                                git.service.pathContext.joinAll(
+                                  problem.path.split('/'),
+                                ),
+                              );
+                              unawaited(
+                                problem.line != null && widget.onOpenAt != null
+                                    ? widget.onOpenAt!(path, problem.line!)
+                                    : widget.onOpen(path, focusEditor: true),
+                              );
+                            },
+                      builder: (context, hovered) => Row(
+                        children: [
+                          Icon(
+                            switch (problem.severity) {
+                              IdeGitReviewSeverity.error => Codicons.error,
+                              IdeGitReviewSeverity.warning => Codicons.warning,
+                              IdeGitReviewSeverity.info => Codicons.info,
+                            },
+                            size: 14,
+                            color: switch (problem.severity) {
+                              IdeGitReviewSeverity.error =>
+                                colors['editorError.foreground'],
+                              IdeGitReviewSeverity.warning =>
+                                colors['editorWarning.foreground'],
+                              IdeGitReviewSeverity.info =>
+                                colors['editorInfo.foreground'],
+                            },
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(text: problem.message),
+                                  TextSpan(
+                                    text:
+                                        '  ${problem.path}${problem.line == null ? '' : ':${problem.line}'}',
+                                    style: TextStyle(color: description),
+                                  ),
+                                ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   /// Generates the commit message from what the commit would take (the
   /// checked files' diff); again while it runs, cancels it.
   Future<void> _generateMessage() async {
@@ -1129,51 +1411,7 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
     final cancel = _session.generating = Completer<void>();
     setState(() {});
     try {
-      final files = _toCommit(git);
-      // The files checked, as the commit takes them: HEAD against the
-      // working tree (with no HEAD yet, what is staged); a file committed
-      // in part, against what of it is.
-      final unborn = state.head.unborn;
-      final partial = [
-        if (!unborn)
-          for (final file in files)
-            if (_isPartial(file)) file,
-      ];
-      final whole = await git.service.diff(
-        staged: unborn,
-        paths: unborn
-            ? null
-            : [
-                for (final file in files)
-                  if (file.status != IdeGitStatus.untracked &&
-                      !partial.contains(file))
-                    file.path,
-              ],
-        untracked: [
-          for (final file in files)
-            if (file.status == IdeGitStatus.untracked) file.path,
-        ],
-      );
-      final parts = StringBuffer();
-      for (final file in partial) {
-        final (original, modified) = await (
-          git.service.show('HEAD', file.path),
-          widget.host.files.read(file.path, force: true),
-        ).wait;
-        final text = await ideGitPartialText(
-          original,
-          modified,
-          widget.hunks!.excluded(file.path),
-        );
-        parts.write(
-          await ideGitUnifiedDiff(
-            git.service.pathContext.relative(file.path, from: git.service.root),
-            original,
-            text,
-          ),
-        );
-      }
-      final diff = partial.isEmpty ? whole : '$whole$parts';
+      final diff = await _commitDiff(git, state);
       if (cancel.isCompleted) return;
       if (diff.trim().isEmpty) {
         widget.notifications.notify(
@@ -2180,6 +2418,10 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
                 ),
             ],
           ),
+          if (_reviewBox(context) case final box?) ...[
+            const SizedBox(height: 6),
+            box,
+          ],
           const SizedBox(height: 6),
           Expanded(
             child: LayoutBuilder(
@@ -2213,6 +2455,17 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
                       unawaited(_commit()),
                 },
                 toggles: [
+                  if (widget.commitMessage != null)
+                    IdeActionButton(
+                      icon: _session.reviewing == null
+                          ? Codicons.checklist
+                          : Codicons.debugStop,
+                      tooltip: _session.reviewing == null
+                          ? l10n.gitReviewWithAi
+                          : l10n.gitReviewStop,
+                      size: 20,
+                      onPressed: () => unawaited(_review()),
+                    ),
                   IdeActionButton(
                     icon: Codicons.history,
                     tooltip: l10n.gitCommitMessageHistory,

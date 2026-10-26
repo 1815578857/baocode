@@ -19628,6 +19628,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clone Repository…'**
   String get gitCloneCommand;
+
+  /// No description provided for @gitReviewWithAi.
+  ///
+  /// In en, this message translates to:
+  /// **'Review Changes with AI'**
+  String get gitReviewWithAi;
+
+  /// No description provided for @gitReviewStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the Review'**
+  String get gitReviewStop;
+
+  /// No description provided for @gitReviewBeforeCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Review with AI Before Committing'**
+  String get gitReviewBeforeCommit;
+
+  /// No description provided for @gitReviewRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewing the changes…'**
+  String get gitReviewRunning;
+
+  /// No description provided for @gitReviewClean.
+  ///
+  /// In en, this message translates to:
+  /// **'No problems found'**
+  String get gitReviewClean;
+
+  /// No description provided for @gitReviewFound.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 problem found} other{{count} problems found}}'**
+  String gitReviewFound(int count);
+
+  /// No description provided for @gitReviewCommitAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit Anyway'**
+  String get gitReviewCommitAnyway;
+
+  /// No description provided for @gitReviewCommitAndPushAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit and Push Anyway'**
+  String get gitReviewCommitAndPushAnyway;
+
+  /// No description provided for @gitReviewFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not review the changes: {error}'**
+  String gitReviewFailed(String error);
 }
 
 class _AppLocalizationsDelegate

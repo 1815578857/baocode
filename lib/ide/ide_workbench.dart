@@ -3905,6 +3905,10 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         hunks: _hunks,
         changelists: _changelists,
         onShowDiff: (files, index) => _scm.log.showDiff(files, index),
+        onOpenAt: (path, line) {
+          _leaveGitLog();
+          return _open(path, line: line, center: true, focusEditor: true);
+        },
       ),
     ),
     IdeSideView.debug => switch (_debug) {

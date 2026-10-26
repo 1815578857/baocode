@@ -3261,5 +3261,14 @@
   "gitCloneBrowse": "浏览…",
   "gitCloneButton": "克隆",
   "gitCloning": "正在克隆…",
-  "gitCloneCommand": "克隆仓库…"
+  "gitCloneCommand": "克隆仓库…",
+  "gitReviewWithAi": "用 AI 审查改动",
+  "gitReviewStop": "停止审查",
+  "gitReviewBeforeCommit": "提交前用 AI 审查",
+  "gitReviewRunning": "正在审查改动…",
+  "gitReviewClean": "没有发现问题",
+  "gitReviewFound": "发现 {count} 个问题",
+  "gitReviewCommitAnyway": "仍然提交",
+  "gitReviewCommitAndPushAnyway": "仍然提交并推送",
+  "gitReviewFailed": "审查失败：{error}"
 }

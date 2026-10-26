@@ -7951,5 +7951,16 @@
   "gitCloneBrowse": "Browse…",
   "gitCloneButton": "Clone",
   "gitCloning": "Cloning…",
-  "gitCloneCommand": "Clone Repository…"
+  "gitCloneCommand": "Clone Repository…",
+  "gitReviewWithAi": "Review Changes with AI",
+  "gitReviewStop": "Stop the Review",
+  "gitReviewBeforeCommit": "Review with AI Before Committing",
+  "gitReviewRunning": "Reviewing the changes…",
+  "gitReviewClean": "No problems found",
+  "gitReviewFound": "{count, plural, =1{1 problem found} other{{count} problems found}}",
+  "@gitReviewFound": {"placeholders": {"count": {"type": "int"}}},
+  "gitReviewCommitAnyway": "Commit Anyway",
+  "gitReviewCommitAndPushAnyway": "Commit and Push Anyway",
+  "gitReviewFailed": "Could not review the changes: {error}",
+  "@gitReviewFailed": {"placeholders": {"error": {"type": "String"}}}
 }

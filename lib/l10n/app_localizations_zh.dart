@@ -11370,4 +11370,35 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitCloneCommand => '克隆仓库…';
+
+  @override
+  String get gitReviewWithAi => '用 AI 审查改动';
+
+  @override
+  String get gitReviewStop => '停止审查';
+
+  @override
+  String get gitReviewBeforeCommit => '提交前用 AI 审查';
+
+  @override
+  String get gitReviewRunning => '正在审查改动…';
+
+  @override
+  String get gitReviewClean => '没有发现问题';
+
+  @override
+  String gitReviewFound(int count) {
+    return '发现 $count 个问题';
+  }
+
+  @override
+  String get gitReviewCommitAnyway => '仍然提交';
+
+  @override
+  String get gitReviewCommitAndPushAnyway => '仍然提交并推送';
+
+  @override
+  String gitReviewFailed(String error) {
+    return '审查失败：$error';
+  }
 }
