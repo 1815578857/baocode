@@ -93,6 +93,7 @@ import 'ide_image_preview.dart';
 import 'markdown/markdown_paste.dart';
 import 'markdown/markdown_preview.dart';
 import 'ide_explorer.dart';
+import 'ide_code_diff.dart' show IdeDiffAgentMarks;
 import 'ide_folder_compare.dart';
 import 'ide_hover.dart';
 import 'ide_layout.dart';
@@ -1969,12 +1970,26 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
             },
             write: _writeFromDiff,
             hunks: _hunks,
+            agent: _agentMarksOf(change.path),
           ),
         // The keys go on walking the changes.
       ],
       resources.indexOf(resource),
       focus: false,
     );
+  }
+
+  /// What an agent changed in the file at [path] and is not yet kept, and
+  /// what the turns that changed it were asked, for its diff to mark.
+  IdeDiffAgentMarks? _agentMarksOf(String path) {
+    final edits = widget.agentEdits;
+    final edit = edits?.of(path);
+    if (edits == null || edit == null) return null;
+    final turns = <String, String>{
+      for (final turn in edits.turnEdits)
+        if (turn.path == path) turn.turn: turn.request,
+    };
+    return IdeDiffAgentMarks(edit.base, turns.values.toList());
   }
 
   /// The agents' changes in a changelist of the turn that made them, named

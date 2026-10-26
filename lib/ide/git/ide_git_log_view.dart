@@ -76,6 +76,7 @@ class IdeGitDiffFile {
     this.onOpenInEditor,
     this.write,
     this.checks,
+    this.agent,
   });
 
   final String path;
@@ -98,6 +99,9 @@ class IdeGitDiffFile {
   /// A check box by each change, to leave it out of a commit; none when
   /// null.
   final IdeDiffChecks? checks;
+
+  /// The agent's change in the file, its parts marked.
+  final IdeDiffAgentMarks? agent;
 }
 
 /// The files a diff steps through, [index] the one shown; [focus]: it
@@ -513,6 +517,7 @@ IdeGitDiffFile ideLocalDiffFile(
   Future<void> Function(String path, String text, {String? expectedText})?
   write,
   IdeGitHunkSelection? hunks,
+  IdeDiffAgentMarks? agent,
 }) {
   // With check boxes, as a commit of it takes it: HEAD against the file.
   final partial = hunks != null && ideGitPartialCommittable(resource);
@@ -572,6 +577,8 @@ IdeGitDiffFile ideLocalDiffFile(
       _ => null,
     },
     checks: partial ? hunks.checksOf(resource.path) : null,
+    // Its parts the agent made, where the file is on the right.
+    agent: right != null && right.isFile ? agent : null,
   );
 }
 
@@ -3764,6 +3771,7 @@ class _DiffBodyState extends State<_DiffBody> {
         onEdit: widget.file.write,
         position: widget.position,
         checks: widget.file.checks,
+        agent: widget.file.agent,
       );
     },
   );
