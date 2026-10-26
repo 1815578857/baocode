@@ -3120,5 +3120,15 @@
   "gitUpdateProjectDetail": "把每个仓库的当前分支更新到它的上游：合并上游的新提交，或者把本分支自己的提交变基到上面。期间本地改动会先暂存（stash）。",
   "gitUpdateMerge": "合并",
   "gitUpdateRebase": "变基",
-  "gitDontAskAgain": "不再询问"
+  "gitDontAskAgain": "不再询问",
+  "gitPushTitle": "推送提交",
+  "gitPushTags": "推送标签",
+  "gitPushForce": "强制推送",
+  "gitPushForceConfirm": "强制推送到 {targets}？",
+  "gitPushForceDetail": "远程上的内容会被你推送的替换（with lease：只在远程还是上次获取时的样子才会覆盖，别人更新的提交不会丢）。",
+  "gitPushNothing": "没有要推送的提交",
+  "gitPushRemote": "远程",
+  "gitPushNew": "新分支",
+  "gitPushSelectCommit": "选一个提交，查看它的文件",
+  "gitPushEllipsisCommand": "推送…"
 }

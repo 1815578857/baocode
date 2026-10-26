@@ -10893,4 +10893,37 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitDontAskAgain => '不再询问';
+
+  @override
+  String get gitPushTitle => '推送提交';
+
+  @override
+  String get gitPushTags => '推送标签';
+
+  @override
+  String get gitPushForce => '强制推送';
+
+  @override
+  String gitPushForceConfirm(String targets) {
+    return '强制推送到 $targets？';
+  }
+
+  @override
+  String get gitPushForceDetail =>
+      '远程上的内容会被你推送的替换（with lease：只在远程还是上次获取时的样子才会覆盖，别人更新的提交不会丢）。';
+
+  @override
+  String get gitPushNothing => '没有要推送的提交';
+
+  @override
+  String get gitPushRemote => '远程';
+
+  @override
+  String get gitPushNew => '新分支';
+
+  @override
+  String get gitPushSelectCommit => '选一个提交，查看它的文件';
+
+  @override
+  String get gitPushEllipsisCommand => '推送…';
 }

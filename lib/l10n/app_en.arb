@@ -7777,5 +7777,16 @@
   "gitUpdateProjectDetail": "Bring each repository's current branch up to its upstream: merge its new commits in, or rebase the branch's own onto them. Local changes are stashed meanwhile.",
   "gitUpdateMerge": "Merge",
   "gitUpdateRebase": "Rebase",
-  "gitDontAskAgain": "Don't ask again"
+  "gitDontAskAgain": "Don't ask again",
+  "gitPushTitle": "Push Commits",
+  "gitPushTags": "Push tags",
+  "gitPushForce": "Force Push",
+  "gitPushForceConfirm": "Force push to {targets}?",
+  "@gitPushForceConfirm": {"placeholders": {"targets": {"type": "String"}}},
+  "gitPushForceDetail": "What is there is replaced by what you push (with lease: only as last fetched, so nobody's newer commits are lost).",
+  "gitPushNothing": "Nothing to push",
+  "gitPushRemote": "Remote",
+  "gitPushNew": "new",
+  "gitPushSelectCommit": "Select a commit to see its files",
+  "gitPushEllipsisCommand": "Push…"
 }

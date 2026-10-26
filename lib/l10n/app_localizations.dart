@@ -18782,6 +18782,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Don\'t ask again'**
   String get gitDontAskAgain;
+
+  /// No description provided for @gitPushTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Push Commits'**
+  String get gitPushTitle;
+
+  /// No description provided for @gitPushTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Push tags'**
+  String get gitPushTags;
+
+  /// No description provided for @gitPushForce.
+  ///
+  /// In en, this message translates to:
+  /// **'Force Push'**
+  String get gitPushForce;
+
+  /// No description provided for @gitPushForceConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Force push to {targets}?'**
+  String gitPushForceConfirm(String targets);
+
+  /// No description provided for @gitPushForceDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'What is there is replaced by what you push (with lease: only as last fetched, so nobody\'s newer commits are lost).'**
+  String get gitPushForceDetail;
+
+  /// No description provided for @gitPushNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to push'**
+  String get gitPushNothing;
+
+  /// No description provided for @gitPushRemote.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote'**
+  String get gitPushRemote;
+
+  /// No description provided for @gitPushNew.
+  ///
+  /// In en, this message translates to:
+  /// **'new'**
+  String get gitPushNew;
+
+  /// No description provided for @gitPushSelectCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a commit to see its files'**
+  String get gitPushSelectCommit;
+
+  /// No description provided for @gitPushEllipsisCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Push…'**
+  String get gitPushEllipsisCommand;
 }
 
 class _AppLocalizationsDelegate

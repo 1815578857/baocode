@@ -11491,4 +11491,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitDontAskAgain => 'Don\'t ask again';
+
+  @override
+  String get gitPushTitle => 'Push Commits';
+
+  @override
+  String get gitPushTags => 'Push tags';
+
+  @override
+  String get gitPushForce => 'Force Push';
+
+  @override
+  String gitPushForceConfirm(String targets) {
+    return 'Force push to $targets?';
+  }
+
+  @override
+  String get gitPushForceDetail =>
+      'What is there is replaced by what you push (with lease: only as last fetched, so nobody\'s newer commits are lost).';
+
+  @override
+  String get gitPushNothing => 'Nothing to push';
+
+  @override
+  String get gitPushRemote => 'Remote';
+
+  @override
+  String get gitPushNew => 'new';
+
+  @override
+  String get gitPushSelectCommit => 'Select a commit to see its files';
+
+  @override
+  String get gitPushEllipsisCommand => 'Push…';
 }

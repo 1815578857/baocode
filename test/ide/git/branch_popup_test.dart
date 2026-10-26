@@ -4,6 +4,7 @@
 
 import 'package:baocode/ide/git/git_service.dart';
 import 'package:baocode/ide/git/ide_git_branch_popup.dart';
+import 'package:baocode/ide/git/ide_git_push_dialog.dart';
 import 'package:baocode/ide/ide_status_bar.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -111,7 +112,11 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
     expect(find.byType(IdeGitBranchPopup), findsNothing);
-    expect(git.callsTo('push').last, ['push', 'origin', 'main:main']);
+    // Push…: the Push dialog.
+    expect(find.byType(IdeGitPushDialog), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(IdeGitPushDialog), findsNothing);
 
     await tester.tap(
       find.descendant(

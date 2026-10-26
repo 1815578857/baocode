@@ -1246,7 +1246,9 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
           child: IdeActionButton(
             icon: Codicons.repoPush,
             tooltip: pushLabel,
-            onPressed: () => unawaited(_run(git.push)),
+            onPressed: () => unawaited(
+              IdeGitBranchActions(context, git, _LogBranchHost(this)).push(),
+            ),
           ),
         ),
         IdeActionButton(
@@ -1270,8 +1272,14 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                 onSelected: () => unawaited(_run(git.pull)),
               ),
               IdeMenuAction(
-                pushLabel,
-                onSelected: () => unawaited(_run(git.push)),
+                '$pushLabel…',
+                onSelected: () => unawaited(
+                  IdeGitBranchActions(
+                    context,
+                    git,
+                    _LogBranchHost(this),
+                  ).push(),
+                ),
               ),
             ],
           [

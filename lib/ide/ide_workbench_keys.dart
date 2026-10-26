@@ -1280,6 +1280,15 @@ extension _ScmKeys on IdeWorkbenchState {
     );
   }
 
+  /// Push…: the Push dialog, for the window's repositories.
+  void _pushDialog() {
+    final git = widget.workspace.git;
+    if (git == null) return;
+    unawaited(
+      IdeGitBranchActions(context, git, _WorkbenchBranchHost(this)).push(),
+    );
+  }
+
   /// Update Project, on the window's repositories.
   void _updateProject() {
     final git = widget.workspace.git;

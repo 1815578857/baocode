@@ -3513,6 +3513,13 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         run: _showBranchPopup,
       ),
       IdeCommand(
+        id: 'baocode.git.pushDialog',
+        category: 'Git',
+        label: 'Push…',
+        enabled: widget.workspace.git?.state?.head.branch != null,
+        run: _pushDialog,
+      ),
+      IdeCommand(
         id: 'baocode.git.updateProject',
         category: 'Git',
         label: 'Update Project…',

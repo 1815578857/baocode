@@ -398,6 +398,30 @@ class IdeGitRepository extends ChangeNotifier {
         await service.pullInto(remote, name, rebase: rebase);
       });
 
+  /// The Push dialog's push: the current branch to [target] on [remote],
+  /// made its upstream where it has none; [force] with lease (the remote
+  /// branch only overwritten as last fetched); [tags], the annotated tags
+  /// of the commits pushed.
+  Future<void> pushTo(
+    String remote,
+    String target, {
+    bool force = false,
+    bool tags = false,
+  }) => _whileSyncing(() async {
+    final head = _state?.head;
+    final branch = head?.branch;
+    if (branch == null) {
+      throw const IdeGitException('HEAD is on no branch: nothing to push.');
+    }
+    await service.push(
+      remote,
+      '$branch:$target',
+      setUpstream: head?.upstream == null,
+      forceWithLease: force,
+      followTags: tags,
+    );
+  });
+
   /// Update Project: fetches from every remote, then brings the current
   /// branch up to its upstream, by rebase or by merge, local changes
   /// stashed meanwhile. Throws where the branch has no upstream.

@@ -8,6 +8,7 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
+import 'package:path/path.dart' as p;
 
 import '../../l10n/l10n.dart';
 import '../../theme/codicons.dart';
@@ -20,6 +21,7 @@ import 'git_checkout.dart' show ideSanitizeBranchName;
 import 'git_model.dart';
 import 'git_repository.dart';
 import 'ide_git_branch_popup.dart' show IdeGitBranchPopupAction;
+import 'ide_git_push_dialog.dart';
 import 'ide_scm_view.dart' show IdeScmSession;
 import 'ide_git_log_view.dart'
     show IdeGitDiffFile, ideGitRevisionsDiff, ideGitWorkingTreeDiff;
@@ -236,7 +238,7 @@ class IdeGitBranchActions {
         ),
       IdeGitBranchPopupAction(
         l10n.gitPushEllipsis,
-        () => unawaited(host.run(git.push)),
+        () => unawaited(push()),
         icon: Codicons.repoPush,
       ),
       IdeGitBranchPopupAction(
@@ -277,6 +279,18 @@ class IdeGitBranchActions {
       await host.run(() => repository.updateProject(rebase: rebase));
     }
   }
+
+  /// Push…: the Push dialog, for the window's repositories.
+  Future<void> push() => showIdeGitPushDialog(
+    context,
+    repositories: [
+      for (final repository
+          in host.repositories.isEmpty ? [git] : host.repositories)
+        (p.basename(repository.service.root), repository),
+    ],
+    current: git,
+    notifications: host.notifications,
+  );
 
   /// New Branch: asks for its name, then makes it at HEAD and checks it
   /// out.

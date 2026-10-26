@@ -526,10 +526,19 @@ class IdeGitService {
     String remote,
     String name, {
     bool setUpstream = false,
+    bool forceWithLease = false,
+    bool followTags = false,
   }) async {
     await _requireRoot();
     _check(
-      await _git(['push', if (setUpstream) '-u', remote, name]),
+      await _git([
+        'push',
+        if (setUpstream) '-u',
+        if (forceWithLease) '--force-with-lease',
+        if (followTags) '--follow-tags',
+        remote,
+        name,
+      ]),
       'Cannot push.',
     );
   }
