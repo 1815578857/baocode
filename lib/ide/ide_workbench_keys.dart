@@ -1478,8 +1478,8 @@ class _WorkbenchBranchHost implements IdeGitBranchHost {
   }
 
   @override
-  void showOnly(IdeGitRepository git, IdeGitRef ref) {
+  void showOnly(IdeGitRepository git, String graphBranch) {
     workbench._showView(IdeSideView.sourceControl);
-    git.graphBranch = ref.id;
+    git.graphBranch = graphBranch;
   }
 }

@@ -11505,6 +11505,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get gitBranchCompareFiles => 'Show Changed Files';
+
+  @override
+  String scmGraphRangeIn(String to, String from) {
+    return 'Commits in “$to” Not in “$from”';
+  }
+
+  @override
   String get gitBranchesRecent => 'Recent';
 
   @override

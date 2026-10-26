@@ -23,6 +23,21 @@ import 'git_service.dart';
 /// [IdeGitRepository.graphBranch] for the current branch and its upstream.
 const ideGraphCurrentBranch = 'HEAD';
 
+/// [IdeGitRepository.graphBranch] for the commits [to] has that [from] has
+/// not (`from..to`), as JetBrains IDEs' Compare with Current lists them.
+String ideGraphRange(String from, String to) => '$from..$to';
+
+/// The two ends of [graphBranch], where it is a range ([ideGraphRange]); a
+/// ref's name cannot have `..` in it.
+({String from, String to})? ideGraphRangeOf(String? graphBranch) {
+  final at = graphBranch?.indexOf('..') ?? -1;
+  if (at < 0) return null;
+  return (
+    from: graphBranch!.substring(0, at),
+    to: graphBranch.substring(at + 2),
+  );
+}
+
 class IdeGitRepository extends ChangeNotifier {
   IdeGitRepository(
     this.service, {
@@ -695,7 +710,8 @@ class IdeGitRepository extends ChangeNotifier {
 
   /// Whose commits the graph has: every branch's, local and remote (null);
   /// the current branch's and its upstream's ([ideGraphCurrentBranch]);
-  /// or one branch's, by its ref (`refs/heads/main`).
+  /// one branch's, by its ref (`refs/heads/main`); or those one has that
+  /// another has not ([ideGraphRange]).
   String? get graphBranch => _graphBranch;
   String? _graphBranch;
   set graphBranch(String? value) {

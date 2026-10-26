@@ -18783,6 +18783,18 @@ abstract class AppLocalizations {
   /// **'“{name}” has {ahead} commits “{current}” has not; “{current}” has {behind} it has not.'**
   String gitBranchCompared(String name, String current, int ahead, int behind);
 
+  /// No description provided for @gitBranchCompareFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Changed Files'**
+  String get gitBranchCompareFiles;
+
+  /// No description provided for @scmGraphRangeIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Commits in “{to}” Not in “{from}”'**
+  String scmGraphRangeIn(String to, String from);
+
   /// No description provided for @gitBranchesRecent.
   ///
   /// In en, this message translates to:

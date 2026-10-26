@@ -3121,6 +3121,8 @@
   "gitTagDeleted": "已删除标签“{name}”。",
   "gitBranchRestore": "恢复",
   "gitBranchCompared": "“{name}”有 {ahead} 个“{current}”没有的提交；“{current}”有 {behind} 个它没有的提交。",
+  "gitBranchCompareFiles": "查看改动的文件",
+  "scmGraphRangeIn": "“{to}”有而“{from}”没有的提交",
   "gitBranchesRecent": "最近",
   "gitBranchesSearch": "搜索分支和操作",
   "gitUpdateProject": "更新项目",

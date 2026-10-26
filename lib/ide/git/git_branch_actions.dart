@@ -49,8 +49,9 @@ abstract interface class IdeGitBranchHost {
   /// Shows a comparison's files, as the log shows a commit's.
   void showDiff(List<IdeGitDiffFile> files);
 
-  /// Shows the log of [ref] alone.
-  void showOnly(IdeGitRepository git, IdeGitRef ref);
+  /// Shows the log of [graphBranch] alone ([IdeGitRepository.graphBranch]):
+  /// a ref's, or a range's.
+  void showOnly(IdeGitRepository git, String graphBranch);
 }
 
 /// [git]'s branch actions, from [context] (its dialogs').
@@ -221,7 +222,7 @@ class IdeGitBranchActions {
         IdeMenuAction(
           l10n.gitBranchShowOnly,
           checked: showOnly,
-          onSelected: () => host.showOnly(git, ref),
+          onSelected: () => host.showOnly(git, ref.id),
         ),
       ],
       [
@@ -515,29 +516,42 @@ class IdeGitBranchActions {
     );
   }
 
-  /// Compare with Current: how many commits each has the other has not,
-  /// and the files they differ in, HEAD's side against [ref]'s.
+  /// Compare with Current: the log of the commits [ref] has that the
+  /// current branch has not (the other way round from the log's branch
+  /// menu); how many each has told, the files they differ in, HEAD's side
+  /// against [ref]'s, a click away.
   Future<void> _compareWithHead(IdeGitRef ref) async {
-    final here = git.state?.head.branch ?? 'HEAD';
+    final branch = git.state?.head.branch;
+    final here = branch ?? 'HEAD';
+    final l10n = context.l10n;
     try {
       final counts = await git.service.compareWithHead(ref.name);
       if (!context.mounted) return;
+      host.showOnly(
+        git,
+        ideGraphRange(branch == null ? 'HEAD' : 'refs/heads/$branch', ref.id),
+      );
       host.notifications.notify(
         IdeSeverity.info,
-        context.l10n.gitBranchCompared(
-          ref.name,
-          here,
-          counts.ahead,
-          counts.behind,
-        ),
+        l10n.gitBranchCompared(ref.name, here, counts.ahead, counts.behind),
+        primary: [
+          IdeNotificationAction(
+            l10n.gitBranchCompareFiles,
+            () => unawaited(
+              _showComparison(
+                () => ideGitRevisionsDiff(
+                  git,
+                  ('HEAD', here),
+                  (ref.name, ref.name),
+                ),
+              ),
+            ),
+          ),
+        ],
       );
     } catch (error) {
       host.notifications.notify(IdeSeverity.error, '$error');
-      return;
     }
-    await _showComparison(
-      () => ideGitRevisionsDiff(git, ('HEAD', here), (ref.name, ref.name)),
-    );
   }
 
   /// Show Diff with Working Tree: the files [ref] and the working tree

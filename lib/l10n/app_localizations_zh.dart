@@ -10899,6 +10899,14 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get gitBranchCompareFiles => '查看改动的文件';
+
+  @override
+  String scmGraphRangeIn(String to, String from) {
+    return '“$to”有而“$from”没有的提交';
+  }
+
+  @override
   String get gitBranchesRecent => '最近';
 
   @override

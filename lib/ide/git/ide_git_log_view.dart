@@ -1100,7 +1100,11 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
           label: switch (git.graphBranch) {
             null => l10n.scmGraphAllBranches,
             ideGraphCurrentBranch => l10n.scmGraphCurrentBranch,
-            final ref => _refLabel(ref),
+            final graph => switch (ideGraphRangeOf(graph)) {
+              (:final from, :final to) =>
+                '${_refLabel(from)}..${_refLabel(to)}',
+              null => _refLabel(graph),
+            },
           },
           tooltip: l10n.scmGraphBranches,
           active: git.graphBranch != null,
@@ -1382,11 +1386,24 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     final local = of(IdeGitRefKind.branch);
     final remote = of(IdeGitRefKind.remote);
     final tags = of(IdeGitRefKind.tag);
+    final range = ideGraphRangeOf(git.graphBranch);
     return ideMenuGroups([
       [
         pick(l10n.scmGraphAllBranches, null),
         pick(l10n.scmGraphCurrentBranch, ideGraphCurrentBranch),
       ],
+      // A comparison's two ways.
+      if (range case (:final from, :final to))
+        [
+          pick(
+            l10n.scmGraphRangeIn(_refLabel(to), _refLabel(from)),
+            ideGraphRange(from, to),
+          ),
+          pick(
+            l10n.scmGraphRangeIn(_refLabel(from), _refLabel(to)),
+            ideGraphRange(to, from),
+          ),
+        ],
       [
         if (local.isNotEmpty)
           IdeMenuAction(l10n.gitLogLocalBranches, submenu: local),
