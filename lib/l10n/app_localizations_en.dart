@@ -11934,4 +11934,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String gitRebaseAiFailed(String error) {
     return 'Could not clean up with AI: $error';
   }
+
+  @override
+  String gitTagPushTo(String remote) {
+    return 'Push Tag to $remote';
+  }
+
+  @override
+  String gitTagDeleteOn(String remote) {
+    return 'Delete Tag on $remote';
+  }
+
+  @override
+  String gitTagDeleteOnConfirm(String name, String remote) {
+    return 'Delete the tag $name on $remote?';
+  }
+
+  @override
+  String get gitRemotesManage => 'Manage Remotes…';
+
+  @override
+  String get gitRemotesTitle => 'Git Remotes';
+
+  @override
+  String get gitRemotesNone => 'No remotes';
+
+  @override
+  String get gitRemoteAdd => 'Add Remote';
+
+  @override
+  String get gitRemoteEdit => 'Edit Remote';
+
+  @override
+  String get gitRemoteRemove => 'Remove';
+
+  @override
+  String get gitRemoteName => 'Name';
+
+  @override
+  String get gitRemoteUrl => 'URL';
+
+  @override
+  String gitRemoteRemoveConfirm(String name) {
+    return 'Remove the remote $name?';
+  }
+
+  @override
+  String get gitRemoteRemoveDetail =>
+      'Its remote branches go with it; nothing on the server changes.';
 }

@@ -7927,5 +7927,22 @@
   "gitRebaseAiPlanning": "Planning… (click to stop)",
   "gitRebaseAiNoPlan": "The model's answer was not a rebase list of these commits.",
   "gitRebaseAiFailed": "Could not clean up with AI: {error}",
-  "@gitRebaseAiFailed": {"placeholders": {"error": {"type": "String"}}}
+  "@gitRebaseAiFailed": {"placeholders": {"error": {"type": "String"}}},
+  "gitTagPushTo": "Push Tag to {remote}",
+  "@gitTagPushTo": {"placeholders": {"remote": {"type": "String"}}},
+  "gitTagDeleteOn": "Delete Tag on {remote}",
+  "@gitTagDeleteOn": {"placeholders": {"remote": {"type": "String"}}},
+  "gitTagDeleteOnConfirm": "Delete the tag {name} on {remote}?",
+  "@gitTagDeleteOnConfirm": {"placeholders": {"name": {"type": "String"}, "remote": {"type": "String"}}},
+  "gitRemotesManage": "Manage Remotes…",
+  "gitRemotesTitle": "Git Remotes",
+  "gitRemotesNone": "No remotes",
+  "gitRemoteAdd": "Add Remote",
+  "gitRemoteEdit": "Edit Remote",
+  "gitRemoteRemove": "Remove",
+  "gitRemoteName": "Name",
+  "gitRemoteUrl": "URL",
+  "gitRemoteRemoveConfirm": "Remove the remote {name}?",
+  "@gitRemoteRemoveConfirm": {"placeholders": {"name": {"type": "String"}}},
+  "gitRemoteRemoveDetail": "Its remote branches go with it; nothing on the server changes."
 }

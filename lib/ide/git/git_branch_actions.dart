@@ -19,6 +19,7 @@ import '../ide_notifications.dart';
 import 'git_branch_tree.dart';
 import 'git_checkout.dart' show ideSanitizeBranchName;
 import 'git_model.dart';
+import 'ide_git_remotes_dialog.dart';
 import 'git_repository.dart';
 import 'ide_git_branch_popup.dart' show IdeGitBranchPopupAction;
 import 'ide_git_push_dialog.dart';
@@ -81,6 +82,29 @@ class IdeGitBranchActions {
         if (other.kind == IdeGitRefKind.remote && !other.name.endsWith('/HEAD'))
           other,
     ];
+    // The remotes a tag can go to, or be deleted on.
+    final remotes = {
+      for (final other in upstreams)
+        other.remote ?? other.name.split('/').first,
+    }.toList()..sort();
+    IdeMenuAction onRemotes(
+      String Function(String remote) label,
+      Future<void> Function(String remote) operation,
+    ) => remotes.length == 1
+        ? IdeMenuAction(
+            label(remotes.single),
+            onSelected: () => run(() => operation(remotes.single)),
+          )
+        : IdeMenuAction(
+            label('…'),
+            submenu: [
+              for (final remote in remotes)
+                IdeMenuAction(
+                  remote,
+                  onSelected: () => run(() => operation(remote)),
+                ),
+            ],
+          );
     return ideMenuGroups([
       [
         if (!isCurrent)
@@ -175,6 +199,16 @@ class IdeGitBranchActions {
             l10n.gitBranchRename,
             onSelected: () => unawaited(_renameBranch(ref)),
           ),
+        if (tag && remotes.isNotEmpty) ...[
+          onRemotes(
+            l10n.gitTagPushTo,
+            (remote) => git.pushTag(remote, ref.name),
+          ),
+          onRemotes(
+            l10n.gitTagDeleteOn,
+            (remote) => _deleteRemoteTag(remote, ref.name),
+          ),
+        ],
       ],
       [
         IdeMenuAction(
@@ -198,6 +232,18 @@ class IdeGitBranchActions {
           ),
       ],
     ]);
+  }
+
+  /// The tag [name] deleted on [remote], once confirmed: others may have
+  /// it.
+  Future<void> _deleteRemoteTag(String remote, String name) async {
+    final answer = await showIdeDialog(
+      context,
+      message: context.l10n.gitTagDeleteOnConfirm(name, remote),
+      buttons: [context.l10n.gitBranchDeleteButton],
+    );
+    if (answer != 0) return;
+    await git.deleteRemoteTag(remote, name);
   }
 
   /// Checkout: a branch; a remote one as the local branch of its name,
@@ -250,8 +296,19 @@ class IdeGitBranchActions {
         l10n.gitCheckoutRevision,
         () => unawaited(checkoutRevision()),
       ),
+      IdeGitBranchPopupAction(
+        l10n.gitRemotesManage,
+        () => unawaited(manageRemotes()),
+      ),
     ];
   }
+
+  /// Manage Remotes: the repository's remotes, to add, edit or remove.
+  Future<void> manageRemotes() => showIdeGitRemotesDialog(
+    context,
+    git: git,
+    notifications: host.notifications,
+  );
 
   /// Update Project: each repository's branch brought up to its upstream,
   /// by merge or by rebase, as asked (until told not to ask again).

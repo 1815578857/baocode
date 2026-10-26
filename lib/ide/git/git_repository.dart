@@ -488,6 +488,21 @@ class IdeGitRepository extends ChangeNotifier {
   Future<void> deleteTag(String name) =>
       _operate(() => service.deleteTag(name));
 
+  Future<void> pushTag(String remote, String name) =>
+      _operate(() => service.pushTag(remote, name));
+
+  Future<void> deleteRemoteTag(String remote, String name) =>
+      _operate(() => service.deleteRemoteTag(remote, name));
+
+  Future<void> addRemote(String name, String url) =>
+      _operate(() => service.addRemote(name, url));
+
+  Future<void> editRemote(String name, {String? to, String? url}) =>
+      _operate(() => service.editRemote(name, to: to, url: url));
+
+  Future<void> removeRemote(String name) =>
+      _operate(() => service.removeRemote(name));
+
   Future<void> createBranchAt(String name, String commit) =>
       _operate(() => service.createBranchAt(name, commit));
 

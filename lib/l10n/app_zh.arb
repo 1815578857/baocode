@@ -3241,5 +3241,18 @@
   "gitRebaseCleanUpWithAiDetail": "由模型建议哪些提交该修正、压缩、改信息；开始变基前你可以逐条检查",
   "gitRebaseAiPlanning": "整理中…（点击停止）",
   "gitRebaseAiNoPlan": "模型的回答不是这些提交的变基列表。",
-  "gitRebaseAiFailed": "AI 整理失败：{error}"
+  "gitRebaseAiFailed": "AI 整理失败：{error}",
+  "gitTagPushTo": "推送标签到 {remote}",
+  "gitTagDeleteOn": "删除 {remote} 上的标签",
+  "gitTagDeleteOnConfirm": "删除 {remote} 上的标签 {name}？",
+  "gitRemotesManage": "管理远程仓库…",
+  "gitRemotesTitle": "Git 远程仓库",
+  "gitRemotesNone": "没有远程仓库",
+  "gitRemoteAdd": "添加远程仓库",
+  "gitRemoteEdit": "编辑远程仓库",
+  "gitRemoteRemove": "移除",
+  "gitRemoteName": "名称",
+  "gitRemoteUrl": "URL",
+  "gitRemoteRemoveConfirm": "移除远程仓库 {name}？",
+  "gitRemoteRemoveDetail": "它的远程分支会一起移除；服务器上的内容不受影响。"
 }

@@ -3566,6 +3566,13 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         run: _updateProject,
       ),
       IdeCommand(
+        id: 'baocode.git.manageRemotes',
+        category: 'Git',
+        label: 'Manage Remotes…',
+        enabled: widget.workspace.git?.state != null,
+        run: _manageRemotes,
+      ),
+      IdeCommand(
         id: 'baocode.git.showFileHistory',
         category: 'Git',
         label: 'Show History',

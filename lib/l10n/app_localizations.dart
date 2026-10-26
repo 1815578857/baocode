@@ -19508,6 +19508,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not clean up with AI: {error}'**
   String gitRebaseAiFailed(String error);
+
+  /// No description provided for @gitTagPushTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Push Tag to {remote}'**
+  String gitTagPushTo(String remote);
+
+  /// No description provided for @gitTagDeleteOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Tag on {remote}'**
+  String gitTagDeleteOn(String remote);
+
+  /// No description provided for @gitTagDeleteOnConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the tag {name} on {remote}?'**
+  String gitTagDeleteOnConfirm(String name, String remote);
+
+  /// No description provided for @gitRemotesManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Remotes…'**
+  String get gitRemotesManage;
+
+  /// No description provided for @gitRemotesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Git Remotes'**
+  String get gitRemotesTitle;
+
+  /// No description provided for @gitRemotesNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No remotes'**
+  String get gitRemotesNone;
+
+  /// No description provided for @gitRemoteAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Remote'**
+  String get gitRemoteAdd;
+
+  /// No description provided for @gitRemoteEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Remote'**
+  String get gitRemoteEdit;
+
+  /// No description provided for @gitRemoteRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get gitRemoteRemove;
+
+  /// No description provided for @gitRemoteName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get gitRemoteName;
+
+  /// No description provided for @gitRemoteUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'URL'**
+  String get gitRemoteUrl;
+
+  /// No description provided for @gitRemoteRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the remote {name}?'**
+  String gitRemoteRemoveConfirm(String name);
+
+  /// No description provided for @gitRemoteRemoveDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Its remote branches go with it; nothing on the server changes.'**
+  String get gitRemoteRemoveDetail;
 }
 
 class _AppLocalizationsDelegate

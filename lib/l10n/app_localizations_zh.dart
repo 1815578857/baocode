@@ -11302,4 +11302,51 @@ class AppLocalizationsZh extends AppLocalizations {
   String gitRebaseAiFailed(String error) {
     return 'AI 整理失败：$error';
   }
+
+  @override
+  String gitTagPushTo(String remote) {
+    return '推送标签到 $remote';
+  }
+
+  @override
+  String gitTagDeleteOn(String remote) {
+    return '删除 $remote 上的标签';
+  }
+
+  @override
+  String gitTagDeleteOnConfirm(String name, String remote) {
+    return '删除 $remote 上的标签 $name？';
+  }
+
+  @override
+  String get gitRemotesManage => '管理远程仓库…';
+
+  @override
+  String get gitRemotesTitle => 'Git 远程仓库';
+
+  @override
+  String get gitRemotesNone => '没有远程仓库';
+
+  @override
+  String get gitRemoteAdd => '添加远程仓库';
+
+  @override
+  String get gitRemoteEdit => '编辑远程仓库';
+
+  @override
+  String get gitRemoteRemove => '移除';
+
+  @override
+  String get gitRemoteName => '名称';
+
+  @override
+  String get gitRemoteUrl => 'URL';
+
+  @override
+  String gitRemoteRemoveConfirm(String name) {
+    return '移除远程仓库 $name？';
+  }
+
+  @override
+  String get gitRemoteRemoveDetail => '它的远程分支会一起移除；服务器上的内容不受影响。';
 }
