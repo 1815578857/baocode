@@ -394,6 +394,9 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
         sashHover: colors.get('sash.hoverBorder'),
         sideBySide: _options.sideBySide,
         highlight: _options.highlight,
+        hideUnchanged: _options.collapseUnchanged,
+        unchangedLabel: context.l10n.diffUnchangedLines,
+        keepVisible: widget.line,
         overlay: editable || widget.checks != null ? _overlay : null,
         original: (context, side) {
           final controller = _diff.controller;
@@ -412,6 +415,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
             scrollPosition: side.scrollPosition,
             glyphMargin: side.sideBySide,
             folding: false,
+            hiddenLines: side.hiddenLines,
             showMinimap: false,
             style: style,
           );
@@ -429,6 +433,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
           viewZones: side.zones,
           scrollPosition: side.scrollPosition,
           folding: false,
+          hiddenLines: side.hiddenLines,
           showMinimap: false,
           onViewChanged: _viewChanged,
           style: style,

@@ -3031,6 +3031,8 @@
   "diffIgnoreWhitespace": "忽略行首尾空白",
   "diffWhitespaceNone": "不忽略空白",
   "diffIgnoreAllWhitespace": "忽略所有空白",
+  "diffCollapseUnchanged": "折叠未改动的部分",
+  "diffUnchangedLines": "{count} 行未改动",
   "diffHighlightCharacters": "按字符高亮",
   "diffHighlightWords": "按词高亮",
   "diffHighlightLines": "按行高亮",

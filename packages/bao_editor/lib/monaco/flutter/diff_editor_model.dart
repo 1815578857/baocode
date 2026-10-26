@@ -369,6 +369,8 @@ class DiffEditorColors {
     required this.signForeground,
     this.insertedTextBorder,
     this.removedTextBorder,
+    this.unchangedBackground,
+    this.unchangedForeground,
   });
 
   /// From a color registry lookup, with `style.css`' fallbacks.
@@ -399,6 +401,13 @@ class DiffEditorColors {
       signForeground: color('editor.foreground'),
       insertedTextBorder: color('diffEditor.insertedTextBorder'),
       removedTextBorder: color('diffEditor.removedTextBorder'),
+      unchangedBackground:
+          color('diffEditor.unchangedRegionBackground') ??
+          color('sideBar.background'),
+      unchangedForeground:
+          color('diffEditor.unchangedRegionForeground') ??
+          color('descriptionForeground') ??
+          color('editor.foreground'),
     );
   }
 
@@ -420,6 +429,11 @@ class DiffEditorColors {
   final Color? insertedTextBorder;
   final Color? removedTextBorder;
 
+  /// `diffEditor.unchangedRegionBackground` and `…Foreground`: the bar
+  /// standing for hidden unchanged lines.
+  final Color? unchangedBackground;
+  final Color? unchangedForeground;
+
   @override
   bool operator ==(Object other) =>
       other is DiffEditorColors &&
@@ -434,7 +448,9 @@ class DiffEditorColors {
       other.overviewRemoved == overviewRemoved &&
       other.signForeground == signForeground &&
       other.insertedTextBorder == insertedTextBorder &&
-      other.removedTextBorder == removedTextBorder;
+      other.removedTextBorder == removedTextBorder &&
+      other.unchangedBackground == unchangedBackground &&
+      other.unchangedForeground == unchangedForeground;
 
   @override
   int get hashCode => Object.hash(
@@ -450,6 +466,8 @@ class DiffEditorColors {
     signForeground,
     insertedTextBorder,
     removedTextBorder,
+    unchangedBackground,
+    unchangedForeground,
   );
 }
 

@@ -7676,6 +7676,15 @@
   "diffIgnoreWhitespace": "Ignore Whitespace at Line Ends",
   "diffWhitespaceNone": "Do Not Ignore Whitespace",
   "diffIgnoreAllWhitespace": "Ignore All Whitespace",
+  "diffCollapseUnchanged": "Collapse Unchanged Fragments",
+  "diffUnchangedLines": "{count, plural, =1{1 unchanged line} other{{count} unchanged lines}}",
+  "@diffUnchangedLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "diffHighlightCharacters": "Highlight Characters",
   "diffHighlightWords": "Highlight Words",
   "diffHighlightLines": "Highlight Lines",

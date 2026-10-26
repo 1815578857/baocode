@@ -25,6 +25,7 @@ class IdeDiffOptions extends ChangeNotifier {
   static const _whitespaceKey = 'diffEditor.ignoreTrimWhitespace';
   static const _allWhitespaceKey = 'baocode.diff.ignoreAllWhitespace';
   static const _highlightKey = 'diffEditor.highlight';
+  static const _collapseKey = 'diffEditor.hideUnchangedRegions.enabled';
 
   UserSettings? _settings;
 
@@ -85,6 +86,14 @@ class IdeDiffOptions extends ChangeNotifier {
     _write(_allWhitespaceKey, value == IdeDiffWhitespace.all);
     _set(_whitespaceKey, value != IdeDiffWhitespace.none);
   }
+
+  /// Unchanged lines hidden but for a few round the changes, as JetBrains
+  /// IDEs do by default.
+  bool get collapseUnchanged => switch (_value(_collapseKey)) {
+    final bool value => value,
+    _ => true,
+  };
+  set collapseUnchanged(bool value) => _set(_collapseKey, value);
 
   DiffHighlight get highlight => switch (_value(_highlightKey)) {
     final String name =>

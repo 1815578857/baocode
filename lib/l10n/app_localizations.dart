@@ -18243,6 +18243,18 @@ abstract class AppLocalizations {
   /// **'Ignore All Whitespace'**
   String get diffIgnoreAllWhitespace;
 
+  /// No description provided for @diffCollapseUnchanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse Unchanged Fragments'**
+  String get diffCollapseUnchanged;
+
+  /// No description provided for @diffUnchangedLines.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 unchanged line} other{{count} unchanged lines}}'**
+  String diffUnchangedLines(int count);
+
   /// No description provided for @diffHighlightCharacters.
   ///
   /// In en, this message translates to:

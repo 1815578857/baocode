@@ -7,6 +7,8 @@ import 'package:bao_editor/monaco/flutter/diff_editor.dart';
 import 'package:bao_editor/monaco/flutter/diff_editor_model.dart';
 import 'package:bao_editor/monaco/flutter/editor_document_model.dart';
 import 'package:bao_editor/monaco/flutter/editor_surface.dart';
+import 'package:bao_editor/monaco/flutter/viewport_layout.dart'
+    show HiddenLineRanges;
 import 'package:baocode/ide/ide_code_diff.dart';
 import 'package:baocode/ide/ide_diff_options.dart';
 import 'package:baocode/ide/ide_list.dart';
@@ -234,5 +236,44 @@ void main() {
     expect(doc.model.text, 'one\ntwo\nthree\nfour\nfive\nSIX\n');
     expect(doc.dirty, isTrue);
     expect(find.byTooltip('Revert'), findsOneWidget);
+  });
+
+  testWidgets('unchanged lines collapse behind a bar that shows them', (
+    tester,
+  ) async {
+    final lines = [for (var i = 1; i <= 30; i++) 'line $i'];
+    final changed = [...lines]..[14] = 'LINE 15';
+    final workspace = await pumpWorkbench(
+      tester,
+      {'lib/a.dart': '${changed.join('\n')}\n'},
+      git: git.repository(),
+      nativeEditor: true,
+    );
+    await tester.pumpAndSettle();
+    await workspace.openDiff(
+      inRoot('lib/a.dart'),
+      label: 'a.dart (HEAD)',
+      original: () async => '${lines.join('\n')}\n',
+    );
+    await tester.pumpAndSettle();
+    HiddenLineRanges? hidden() => tester
+        .widget<EditorSurface>(
+          find.byWidgetPredicate(
+            (widget) => widget is EditorSurface && !widget.readOnly,
+          ),
+        )
+        .hiddenLines;
+    // Line 1 and three lines round the change show; the trailing newline
+    // makes a last, empty line 31.
+    expect(hidden()?.ranges.toList(), [(2, 11), (19, 31)]);
+    expect(find.textContaining('10 unchanged lines'), findsWidgets);
+    await tester.tap(find.textContaining('10 unchanged lines').last);
+    await tester.pumpAndSettle();
+    expect(hidden()?.ranges.toList(), [(19, 31)]);
+
+    // Off in the viewer settings: all shows.
+    IdeDiffOptions.instance.collapseUnchanged = false;
+    await tester.pumpAndSettle();
+    expect(hidden(), isNull);
   });
 }

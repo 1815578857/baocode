@@ -11175,6 +11175,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get diffIgnoreAllWhitespace => 'Ignore All Whitespace';
 
   @override
+  String get diffCollapseUnchanged => 'Collapse Unchanged Fragments';
+
+  @override
+  String diffUnchangedLines(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count unchanged lines',
+      one: '1 unchanged line',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get diffHighlightCharacters => 'Highlight Characters';
 
   @override

@@ -121,6 +121,7 @@ class EditorSurface extends StatefulWidget {
     this.lineNumbers = true,
     this.glyphMargin = true,
     this.folding = true,
+    this.hiddenLines,
     this.foldingRules,
     this.brackets,
     this.matchBrackets = true,
@@ -210,6 +211,10 @@ class EditorSurface extends StatefulWidget {
 
   /// Indentation-based folding with chevrons in the gutter.
   final bool folding;
+
+  /// Lines hidden besides collapsed folds' (a diff's unchanged ones), with
+  /// no placeholder: the embedder shows what stands for them, in a zone.
+  final HiddenLineRanges? hiddenLines;
 
   /// Folding markers/off-side rule; defaults to the controller's
   /// `languageConfiguration.folding`.
@@ -2270,7 +2275,15 @@ class _EditorSurfaceState extends State<EditorSurface>
     TextScaler scaler,
   ) {
     final size = Size(geometry.contentWidth, geometry.size.height);
-    final hidden = _folding.hiddenLines;
+    final hidden = switch ((_folding.hiddenLines, widget.hiddenLines)) {
+      (final folds, null) => folds,
+      (final folds, final other?) when other.isEmpty => folds,
+      (final folds, final other?) when folds.isEmpty => other,
+      (final folds, final other?) => HiddenLineRanges([
+        ...folds.ranges,
+        ...other.ranges,
+      ]),
+    };
     final lineHeight = _glyphs!.lineHeight;
     final zones = [
       for (final zone in _zones)

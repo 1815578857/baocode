@@ -10575,6 +10575,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get diffIgnoreAllWhitespace => '忽略所有空白';
 
   @override
+  String get diffCollapseUnchanged => '折叠未改动的部分';
+
+  @override
+  String diffUnchangedLines(int count) {
+    return '$count 行未改动';
+  }
+
+  @override
   String get diffHighlightCharacters => '按字符高亮';
 
   @override

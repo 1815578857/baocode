@@ -3479,6 +3479,14 @@ class _DiffAreaState extends State<_DiffArea> {
         whitespace(l10n.diffIgnoreAllWhitespace, IdeDiffWhitespace.all),
       ],
       [
+        IdeMenuAction(
+          l10n.diffCollapseUnchanged,
+          checked: options.collapseUnchanged,
+          onSelected: () =>
+              options.collapseUnchanged = !options.collapseUnchanged,
+        ),
+      ],
+      [
         highlight(l10n.diffHighlightWords, DiffHighlight.words),
         highlight(l10n.diffHighlightCharacters, DiffHighlight.characters),
         highlight(l10n.diffHighlightLines, DiffHighlight.lines),
