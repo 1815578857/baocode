@@ -1239,7 +1239,7 @@ extension _PanelKeys on IdeWorkbenchState {
 
 extension _ScmKeys on IdeWorkbenchState {
   /// Runs [action] on the Source Control view, shown first if it is not.
-  void _onScmView(void Function(IdeScmViewState view) action) {
+  void _onScmView(void Function(IdeGitCommitPanelState view) action) {
     if (_scmKey.currentState case final view?) return action(view);
     _showView(IdeSideView.sourceControl);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1274,7 +1274,10 @@ extension _ScmKeys on IdeWorkbenchState {
   List<IdeCommand> _scmCommands() => [
     _catalogCommand(
       'git.commit',
-      () => _onScmView((view) => unawaited(view.commit())),
+      () => _onScmView((view) {
+        _gitLogKey.currentState?.showLocalChanges();
+        unawaited(view.commit());
+      }),
       enabled: widget.workspace.git?.state != null,
     ),
     _catalogCommand(
@@ -1304,7 +1307,10 @@ extension _ScmKeys on IdeWorkbenchState {
     ),
     _catalogCommand(
       'workbench.scm.focus',
-      () => _onScmView((view) => view.focus()),
+      () => _onScmView((view) {
+        _gitLogKey.currentState?.showLocalChanges();
+        view.focus();
+      }),
     ),
   ];
 

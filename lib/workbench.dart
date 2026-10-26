@@ -36,7 +36,9 @@ import 'customize/customization_store.dart';
 import 'customize/customizations.dart';
 import 'customize/customize_view.dart';
 import 'extensions/theme_extensions.dart';
+import 'ide/git/git_model.dart' show ideWorktreeOf;
 import 'ide/git/git_repository.dart';
+import 'ide/git/ide_git_log_view.dart' show IdeGitWorktreeChoice;
 import 'ide/git/repository_scan.dart';
 import 'ide/file_views.dart';
 import 'ide/file_service.dart'
@@ -121,6 +123,7 @@ import 'stash/stash_controller.dart';
 import 'stash/stash_thread_view.dart' show sidebarStashes;
 import 'stash/stash_view.dart';
 import 'stash/stash_welcome.dart' show showStashWelcome;
+import 'workspace/agent_work_path.dart';
 import 'workspace/chat_branch_bar.dart';
 import 'workspace/chat_drag.dart';
 import 'workspace/chat_grid_view.dart';
@@ -3476,7 +3479,12 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   /// what its pages' bar counts: the changes of its repositories, its
   /// background commands running. A section picked shows for [thread],
   /// focused first.
-  Widget _sidePanelRail(AgentThread thread) {
+  Widget _sidePanelRail(AgentThread thread) => ListenableBuilder(
+    listenable: _worktreeSignals(thread),
+    builder: (context, _) => _sidePanelRailOf(thread),
+  );
+
+  Widget _sidePanelRailOf(AgentThread thread) {
     final multi = _workspace.workspaceAt(thread.project.path);
     return SidePanelRail(
       onSelect: (section) {
@@ -3486,10 +3494,13 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         _showSidePanelSection(section);
       },
       session: thread.session,
-      gits: switch (multi == null
-          ? _sidePanelFolderRepositories(thread)
-          : _sidePanelRepositories(multi)) {
-        [] => [?_sidePanelGit(thread)],
+      gits: switch (_shownRepositories(
+        thread,
+        multi == null
+            ? _sidePanelFolderRepositories(thread)
+            : _sidePanelRepositories(multi),
+      )) {
+        [] => [?_shownGit(thread)],
         final repositories => [for (final (_, git) in repositories) git],
       },
     );
@@ -3522,6 +3533,19 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   }
 
   Widget _sidePanelView(
+    AgentThread thread, {
+    double titleBarInset = 0,
+    Widget? leading,
+  }) => ListenableBuilder(
+    listenable: _worktreeSignals(thread),
+    builder: (context, _) => _sidePanelViewOf(
+      thread,
+      titleBarInset: titleBarInset,
+      leading: leading,
+    ),
+  );
+
+  Widget _sidePanelViewOf(
     AgentThread thread, {
     double titleBarInset = 0,
     Widget? leading,
@@ -3558,7 +3582,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
                 tabSize: tabSize,
                 insertSpaces: insertSpaces,
               ),
-      git: _sidePanelGit(thread),
+      git: _shownGit(thread),
       terminals: _terminals?.sidePanelTerminals(thread.project.path),
       terminalSkipShell: chatTerminalSkipShell,
       onOpenTerminalLink: _openTerminalLink,
@@ -3568,9 +3592,21 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       notifications: _notifications,
       workspaceName: multi?.name,
       roots: multi?.folders ?? const [],
-      repositories: multi == null
-          ? _sidePanelFolderRepositories(thread)
-          : _sidePanelRepositories(multi),
+      repositories: _shownRepositories(
+        thread,
+        multi == null
+            ? _sidePanelFolderRepositories(thread)
+            : _sidePanelRepositories(multi),
+      ),
+      worktreesOf: (git) {
+        final folder = _shownFolders[git] ?? location;
+        return IdeGitWorktreeChoice(
+          agentPath: _agentWorkPathOf(thread).path,
+          following: _sidePanel.worktreeOf(thread.session, folder) == null,
+          onSelect: (path) =>
+              _sidePanel.chooseWorktree(thread.session, folder, path),
+        );
+      },
       onAddFolder: multi == null
           ? null
           : () => unawaited(_addWorkspaceFolder(location)),
@@ -3683,18 +3719,109 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   /// Under [thread]'s composer: the branch of its project, or its
   /// workspace's name and its folders' branches, with the side panel's
   /// repositories.
-  Widget _branchBar(AgentThread thread) {
-    final project = thread.project;
-    final multi = _workspace.workspaceOf(project);
-    final git = multi == null ? _sidePanelGit(thread) : null;
-    return ChatBranchBar(
-      session: thread.session,
-      name: multi?.name ?? project.name,
-      workspace: multi != null,
-      repositories: multi != null
-          ? _sidePanelRepositories(multi)
-          : [if (git != null) (project.path, git)],
+  Widget _branchBar(AgentThread thread) => ListenableBuilder(
+    listenable: _worktreeSignals(thread),
+    builder: (context, _) {
+      final project = thread.project;
+      final multi = _workspace.workspaceOf(project);
+      final git = multi == null ? _shownGit(thread) : null;
+      return ChatBranchBar(
+        session: thread.session,
+        name: multi?.name ?? project.name,
+        workspace: multi != null,
+        repositories: multi != null
+            ? _shownRepositories(thread, _sidePanelRepositories(multi))
+            : [if (git != null) (project.path, git)],
+        onSwitchWorktree: widget.gitFor == null
+            ? null
+            : (folder, path) =>
+                  _sidePanel.chooseWorktree(thread.session, folder, path),
+      );
+    },
+  );
+
+  // --- Where the agent works ---------------------------------------------------
+
+  /// Where each conversation's agent works, told as it moves.
+  final Map<ChatSession, AgentWorkPath> _agentWorkPaths = Map.identity();
+
+  AgentWorkPath _agentWorkPathOf(AgentThread thread) =>
+      _agentWorkPaths[thread.session] ??= AgentWorkPath(thread.session);
+
+  /// What changes which worktree [thread]'s repositories show: where its
+  /// agent works, the worktree picked, and the worktrees read.
+  Listenable _worktreeSignals(AgentThread thread) {
+    final multi = _workspace.workspaceAt(thread.project.path);
+    return Listenable.merge([
+      _agentWorkPathOf(thread),
+      _sidePanel,
+      ?_sidePanelGit(thread),
+      if (multi != null)
+        for (final (_, git) in _sidePanelRepositories(multi)) git,
+    ]);
+  }
+
+  /// The folder of each repository the side panel shows, by it: a
+  /// worktree's, the folder whose repository it is of.
+  final Map<IdeGitRepository, String> _shownFolders = Map.identity();
+
+  /// The worktrees read again for where the agent moved, by repository:
+  /// once for each place.
+  final Map<IdeGitRepository, String> _worktreesReadFor = Map.identity();
+
+  /// [thread]'s project's repository as its side panel and branch show it
+  /// (see [_worktreeGit]).
+  IdeGitRepository? _shownGit(AgentThread thread) {
+    final git = _sidePanelGit(thread);
+    return git == null ? null : _worktreeGit(thread, thread.project.path, git);
+  }
+
+  List<(String, IdeGitRepository)> _shownRepositories(
+    AgentThread thread,
+    List<(String, IdeGitRepository)> repositories,
+  ) => [
+    for (final (folder, git) in repositories)
+      (folder, _worktreeGit(thread, folder, git)),
+  ];
+
+  /// [git], [folder]'s repository, as [thread]'s conversation shows it: the
+  /// worktree picked on its changes page, else the one its agent works in
+  /// (the files it edits are there), else [git] itself.
+  IdeGitRepository _worktreeGit(
+    AgentThread thread,
+    String folder,
+    IdeGitRepository git,
+  ) {
+    _shownFolders[git] = folder;
+    final gitFor = widget.gitFor;
+    if (gitFor == null || !git.isRepository) return git;
+    final paths = git.service.pathContext;
+    final chosen = _sidePanel.worktreeOf(thread.session, folder);
+    final agent = _agentWorkPathOf(thread).path;
+    final worktrees = git.worktrees;
+    if (chosen == null &&
+        agent != null &&
+        ideWorktreeOf(agent, worktrees, paths) == null &&
+        _worktreesReadFor[git] != agent) {
+      // Perhaps one made since they were read.
+      _worktreesReadFor[git] = agent;
+      unawaited(git.reloadWorktrees());
+    }
+    final target = agentShownWorktree(
+      root: git.service.root,
+      worktrees: worktrees,
+      paths: paths,
+      chosen: chosen,
+      agentPath: agent,
     );
+    if (target == null) return git;
+    final location = RemoteLocation.of(
+      RemoteLocation.hostOf(thread.project.path),
+      target,
+    );
+    final worktree = _sidePanelGits[location] ??= gitFor(location);
+    _shownFolders[worktree] = folder;
+    return worktree;
   }
 
   final Map<String, Future<bool> Function(String)> _projectFileChecks = {};

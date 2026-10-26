@@ -20,6 +20,9 @@ import 'package:flutter/foundation.dart';
 import 'git_model.dart';
 import 'git_service.dart';
 
+/// [IdeGitRepository.graphBranch] for the current branch and its upstream.
+const ideGraphCurrentBranch = 'HEAD';
+
 class IdeGitRepository extends ChangeNotifier {
   IdeGitRepository(
     this.service, {
@@ -105,6 +108,7 @@ class IdeGitRepository extends ChangeNotifier {
       }
       _loaded = true;
       _graphStale = true;
+      _worktreesStale = true;
       _notify();
     });
     if (!force) _pendingRefresh = run;
@@ -230,6 +234,64 @@ class IdeGitRepository extends ChangeNotifier {
   }) => _operate(
     () => service.commit(message, all: all, amend: amend, empty: empty),
   );
+
+  /// Commits [resources] as they are in the working tree (the files
+  /// checked in the commit panel), untracked ones added first; [amend]
+  /// replaces the last commit. With none, only the message is amended.
+  Future<void> commitResources(
+    String message,
+    Iterable<IdeGitResource> resources, {
+    bool amend = false,
+  }) => _operate(() async {
+    final untracked = [
+      for (final resource in resources)
+        if (resource.status == IdeGitStatus.untracked) resource.path,
+    ];
+    if (untracked.isNotEmpty) await service.stage(untracked);
+    await service.commitPaths(message, {
+      for (final resource in resources) ...[
+        resource.path,
+        ?resource.originalPath,
+      ],
+    }, amend: amend);
+  });
+
+  /// Rolls [resources] back to the last commit (JetBrains' Rollback):
+  /// untracked files deleted, or moved to the Trash when [trash] does;
+  /// files added since left untracked; the others as they were committed.
+  Future<void> rollback(
+    Iterable<IdeGitResource> resources, {
+    Future<bool> Function(String path)? trash,
+  }) => _operate(() async {
+    final untracked = <IdeGitResource>[];
+    final added = <String>[];
+    final restored = <String>[];
+    final unborn = _state?.head.unborn ?? false;
+    for (final resource in resources) {
+      switch (resource.status) {
+        case IdeGitStatus.untracked:
+          if (trash == null || !await trash(resource.path)) {
+            untracked.add(resource);
+          }
+        case IdeGitStatus.indexAdded || IdeGitStatus.intentToAdd:
+          added.add(resource.path);
+        case IdeGitStatus.indexRenamed || IdeGitStatus.indexCopied:
+          added.add(resource.path);
+          if (resource.originalPath case final original?
+              when resource.status == IdeGitStatus.indexRenamed) {
+            restored.add(original);
+          }
+        case _ when unborn:
+          added.add(resource.path);
+        case _:
+          restored.add(resource.path);
+      }
+    }
+    if (added.isNotEmpty || restored.isNotEmpty) {
+      await service.rollback(restored, added: added);
+    }
+    if (untracked.isNotEmpty) await service.discard(untracked);
+  });
 
   /// The last commit, or null before the first.
   Future<IdeGitCommit?> headCommit() async {
@@ -381,14 +443,38 @@ class IdeGitRepository extends ChangeNotifier {
   /// Whether older commits can be loaded ([loadMoreGraph]).
   bool get graphHasMore => _graphHasMore;
 
-  /// Whether the graph has every branch's commits, local and remote, not
-  /// only the current branch's and its upstream's.
-  bool get graphAllBranches => _graphAllBranches;
-  bool _graphAllBranches = false;
-  set graphAllBranches(bool value) {
-    if (value == _graphAllBranches) return;
-    _graphAllBranches = value;
-    // After a load that started with the other refs, another.
+  /// Whose commits the graph has: every branch's, local and remote (null);
+  /// the current branch's and its upstream's ([ideGraphCurrentBranch]);
+  /// or one branch's, by its ref (`refs/heads/main`).
+  String? get graphBranch => _graphBranch;
+  String? _graphBranch;
+  set graphBranch(String? value) {
+    if (value == _graphBranch) return;
+    _graphBranch = value;
+    _reloadGraphFor();
+  }
+
+  /// Which of their commits it has.
+  IdeGitLogFilter get graphFilter => _graphFilter;
+  IdeGitLogFilter _graphFilter = const IdeGitLogFilter();
+  set graphFilter(IdeGitLogFilter value) {
+    if (value == _graphFilter) return;
+    _graphFilter = value;
+    _reloadGraphFor();
+  }
+
+  /// Newest first by date rather than in topological order.
+  bool get graphDateOrder => _graphDateOrder;
+  bool _graphDateOrder = false;
+  set graphDateOrder(bool value) {
+    if (value == _graphDateOrder) return;
+    _graphDateOrder = value;
+    _reloadGraphFor();
+  }
+
+  /// Loads the graph again for what it now has: after a load that started
+  /// with the others, another.
+  void _reloadGraphFor() {
     _graphStale = true;
     unawaited(_graphLoad ?? _reloadGraph());
     _notify();
@@ -428,10 +514,14 @@ class IdeGitRepository extends ChangeNotifier {
           ? await service.mergeBase(headRevision, remoteRevision)
           : null;
       final commits = await service.log(
-        refs: _graphAllBranches
-            ? const ['HEAD', '--branches', '--remotes']
-            : ['HEAD', ?remoteRef],
+        refs: switch (_graphBranch) {
+          null => const ['HEAD', '--branches', '--remotes'],
+          ideGraphCurrentBranch => ['HEAD', ?remoteRef],
+          final ref => [ref],
+        },
         limit: _graphLimit + 1,
+        filter: _graphFilter,
+        dateOrder: _graphDateOrder,
       );
       if (_disposed) return;
       _graphHasMore = commits.length > _graphLimit;
@@ -453,6 +543,57 @@ class IdeGitRepository extends ChangeNotifier {
     _notify();
   }
 
+  /// The repository's working trees, its own first; read as they are
+  /// asked for, again after each status read (one may have been added or
+  /// removed meanwhile). Empty until read, or where Git cannot tell.
+  List<IdeGitWorktree> get worktrees {
+    if (_worktreesStale && _worktreesLoad == null && isRepository) {
+      _worktreesStale = false;
+      _worktreesLoad = _loadWorktrees().whenComplete(
+        () => _worktreesLoad = null,
+      );
+    }
+    return _worktrees;
+  }
+
+  List<IdeGitWorktree> _worktrees = const [];
+  bool _worktreesStale = true;
+  Future<void>? _worktreesLoad;
+
+  Future<void> _loadWorktrees() async {
+    List<IdeGitWorktree> worktrees;
+    try {
+      worktrees = await service.worktrees();
+    } catch (_) {
+      worktrees = const [];
+    }
+    if (_disposed || listEquals(worktrees, _worktrees)) return;
+    _worktrees = worktrees;
+    _notify();
+  }
+
+  /// Adds a working tree at [path] ([IdeGitService.addWorktree]), and
+  /// reads the worktrees again.
+  Future<void> addWorktree(
+    String path, {
+    String? newBranch,
+    String? branch,
+  }) async {
+    await _operate(
+      () => service.addWorktree(path, newBranch: newBranch, branch: branch),
+    );
+    await reloadWorktrees();
+  }
+
+  /// Reads the worktrees again now (one was just made where the agent
+  /// works).
+  Future<void> reloadWorktrees() {
+    _worktreesStale = false;
+    return _worktreesLoad ??= _loadWorktrees().whenComplete(
+      () => _worktreesLoad = null,
+    );
+  }
+
   /// [path]'s commits, newest first (the timeline).
   Future<List<IdeGitCommit>> fileHistory(String path) async {
     if (!isRepository) return const [];
@@ -461,6 +602,21 @@ class IdeGitRepository extends ChangeNotifier {
 
   Future<List<IdeGitCommitChange>> commitChanges(String commit) =>
       service.commitChanges(commit);
+
+  /// The lines [commit] added and deleted in each of its files.
+  Future<Map<String, ({int? added, int? deleted})>> commitStats(
+    String commit,
+  ) => service.commitStats(commit);
+
+  /// The branches that have [commit].
+  Future<List<String>> branchesContaining(String commit) =>
+      service.branchesContaining(commit);
+
+  /// The user's email as Git commits with it (`user.email`), read once.
+  Future<String?> get userEmail => _userEmail ??= service
+      .config('user.email')
+      .catchError((Object _) => null);
+  Future<String?>? _userEmail;
 
   void _notify() {
     if (!_disposed) notifyListeners();

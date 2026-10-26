@@ -1598,12 +1598,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sidePanelChanges => '变更';
 
   @override
-  String get sidePanelNoChanges => '还没有变更';
-
-  @override
-  String get sidePanelNoChangesDetail => '项目 Git 工作区和暂存区的变更会显示在这里。';
-
-  @override
   String get sidePanelOpenFile => '在侧栏中打开';
 
   @override
@@ -1647,9 +1641,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sidePanelSelectFile => '选择一个文件以预览';
-
-  @override
-  String get sidePanelSelectChange => '选择一个变更的文件以查看差异';
 
   @override
   String get sidePanelSelectTerminal => '选择一个后台任务以查看输出';
@@ -10189,6 +10180,142 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get gitLogRepository => '仓库';
+
+  @override
+  String get gitLogSearch => '搜索提交信息，多个用 | 分隔';
+
+  @override
+  String get gitLogClearSearch => '清除搜索';
+
+  @override
+  String get gitLogUser => '用户';
+
+  @override
+  String get gitLogAllUsers => '所有用户';
+
+  @override
+  String get gitLogMe => '我';
+
+  @override
+  String get gitLogDate => '日期';
+
+  @override
+  String get gitLogAnyDate => '不限';
+
+  @override
+  String get gitLogLastDay => '最近 24 小时';
+
+  @override
+  String get gitLogLastWeek => '最近 7 天';
+
+  @override
+  String get gitLogLastMonth => '最近 30 天';
+
+  @override
+  String get gitLogLastYear => '最近一年';
+
+  @override
+  String get gitLogHighlight => '高亮提交';
+
+  @override
+  String get gitLogHighlightNone => '不高亮';
+
+  @override
+  String get gitLogHighlightMine => '我的提交';
+
+  @override
+  String get gitLogClearFilters => '清除筛选';
+
+  @override
+  String get gitLogCheckout => '签出到...';
+
+  @override
+  String get gitLogSortTopo => '按拓扑顺序';
+
+  @override
+  String get gitLogSortDate => '按日期顺序';
+
+  @override
+  String get gitLogLocalBranches => '本地分支';
+
+  @override
+  String get gitLogRemoteBranches => '远程分支';
+
+  @override
+  String get gitLogTags => '标签';
+
+  @override
+  String get gitLogBackToLog => '返回日志';
+
+  @override
+  String get gitLogNoCommits => '没有符合条件的提交。';
+
+  @override
+  String get gitLogLocalChanges => '本地更改';
+
+  @override
+  String gitLogLocalChangesCount(int count) {
+    return '本地更改（$count）';
+  }
+
+  @override
+  String get gitLogSelectCommit => '选择一个提交以查看详情。';
+
+  @override
+  String get gitLogAuthor => '作者';
+
+  @override
+  String get gitLogParents => '父提交：';
+
+  @override
+  String get gitLogShowBranches => '显示分支';
+
+  @override
+  String get gitLogHideBranches => '隐藏分支';
+
+  @override
+  String get gitLogShowSizes => '显示大小';
+
+  @override
+  String get gitLogHideSizes => '隐藏大小';
+
+  @override
+  String gitLogFileCount(int count) {
+    return '$count 个文件';
+  }
+
+  @override
+  String get gitLogInNoBranch => '没有分支包含此提交。';
+
+  @override
+  String get gitLogList => '列表';
+
+  @override
+  String get gitLogTree => '树形';
+
+  @override
+  String get gitLogFilterFiles => '筛选文件，支持 * 和 ? 通配符';
+
+  @override
+  String get gitLogCopyPath => '复制路径';
+
+  @override
+  String get gitLogCopyRelativePath => '复制相对路径';
+
+  @override
+  String get gitLogBinary => '二进制';
+
+  @override
+  String get gitLogPreviousFile => '上一个文件';
+
+  @override
+  String get gitLogNextFile => '下一个文件';
+
+  @override
+  String get gitLogOpenInEditor => '在编辑器中打开';
+
+  @override
   String get checkpointsTitle => '检查点';
 
   @override
@@ -10214,4 +10341,157 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get checkpointsClearDetail => '没有打开的对话里，智能体的改动将无法再撤销。项目里的文件本身不受影响。';
+
+  @override
+  String gitLogToday(String time) {
+    return '今天 $time';
+  }
+
+  @override
+  String gitLogYesterday(String time) {
+    return '昨天 $time';
+  }
+
+  @override
+  String get gitLogCheckoutRevision => '签出此修订';
+
+  @override
+  String get gitLogNewBranch => '新建分支…';
+
+  @override
+  String gitLogNewBranchAt(String commit) {
+    return '在 $commit 新建分支';
+  }
+
+  @override
+  String gitLogCheckoutBranch(String branch) {
+    return '签出“$branch”';
+  }
+
+  @override
+  String get gitLogCopyHash => '复制完整哈希';
+
+  @override
+  String get gitLogLoading => '正在读取历史…';
+
+  @override
+  String get gitLogWorktree => '工作树';
+
+  @override
+  String gitLogWorktreeOf(String path) {
+    return '工作树：$path';
+  }
+
+  @override
+  String get gitLogFollowAgent => '跟随 AI 所在位置';
+
+  @override
+  String get gitLogAgentHere => 'AI 正在这里工作';
+
+  @override
+  String gitLogWorktreeAt(String name, String path) {
+    return '已在工作树 $name 中签出\n$path';
+  }
+
+  @override
+  String get gitLogMainWorktree => '主工作树';
+
+  @override
+  String get gitLogWorktreeMissing => '已不存在';
+
+  @override
+  String branchBarWorktree(String name, String path) {
+    return '在工作树 $name 中\n$path';
+  }
+
+  @override
+  String get gitCommitChanges => '更改';
+
+  @override
+  String get gitCommitUnversioned => '未纳入版本控制的文件';
+
+  @override
+  String get gitCommitConflicts => '合并冲突';
+
+  @override
+  String get gitCommitAmend => '修改上一次提交';
+
+  @override
+  String get gitCommitMessage => '提交信息';
+
+  @override
+  String get gitCommitButton => '提交';
+
+  @override
+  String get gitCommitAndPush => '提交并推送';
+
+  @override
+  String get gitCommitRollback => '回滚…';
+
+  @override
+  String gitCommitRollbackConfirm(int count) {
+    return '回滚 $count 个文件的更改？';
+  }
+
+  @override
+  String get gitCommitRollbackDetail => '这些文件将恢复到上次提交时的样子；尚未提交过的新文件会被删除。';
+
+  @override
+  String get gitCommitRollbackButton => '回滚';
+
+  @override
+  String get gitCommitShowDiff => '显示差异';
+
+  @override
+  String get gitCommitJumpToSource => '跳转到源';
+
+  @override
+  String get gitCommitAddToVcs => '添加到 VCS';
+
+  @override
+  String get gitCommitMarkResolved => '标记为已解决';
+
+  @override
+  String get gitCommitExpandAll => '全部展开';
+
+  @override
+  String get gitCommitCollapseAll => '全部折叠';
+
+  @override
+  String get gitCommitGroupByDirectory => '按目录分组';
+
+  @override
+  String get gitCommitEmptyMessage => '请填写提交信息。';
+
+  @override
+  String get gitCommitNothingSelected => '请勾选要提交的文件。';
+
+  @override
+  String get gitCommitNoChanges => '没有本地更改';
+
+  @override
+  String gitCommitSelected(int checked, int total) {
+    return '已勾选 $checked/$total 个文件';
+  }
+
+  @override
+  String get gitLogUndoCommit => '撤销提交';
+
+  @override
+  String get branchBarNewWorktree => '新建工作树…';
+
+  @override
+  String branchBarNewWorktreeFrom(String branch, String folder) {
+    return '从“$branch”新建分支，放进“$folder”旁边的独立工作树：AI 在那里工作，你当前的签出不受影响';
+  }
+
+  @override
+  String branchBarInWorktree(String name) {
+    return '在工作树 $name';
+  }
+
+  @override
+  String branchBarWorkIn(String path, String branch) {
+    return '接下来请在 $path（分支 $branch）里工作：读写文件、运行命令都在这个目录进行。';
+  }
 }

@@ -41,9 +41,7 @@ typedef IdeGitWatcher = Stream<void> Function(String repositoryRoot);
 /// (an unexpected spelling).
 (int, int)? parseGitVersion(String output) {
   final match = RegExp(r'(\d+)\.(\d+)').firstMatch(output);
-  return match == null
-      ? null
-      : (int.parse(match[1]!), int.parse(match[2]!));
+  return match == null ? null : (int.parse(match[1]!), int.parse(match[2]!));
 }
 
 /// A file a commit changed.
@@ -348,21 +346,84 @@ class IdeGitService {
     );
   }
 
+  /// Commits [paths] as they are in the working tree, whatever is staged
+  /// (`git commit --only -- <paths>`, as JetBrains IDEs commit the files
+  /// checked); [amend] replaces the last commit, its message kept when
+  /// [message] is empty.
+  Future<void> commitPaths(
+    String message,
+    Iterable<String> paths, {
+    bool amend = false,
+  }) async {
+    final top = await _requireRoot();
+    final relative = _relative(top, paths);
+    _check(
+      await _git([
+        'commit',
+        '--quiet',
+        if (amend) '--amend',
+        if (message.isEmpty && amend) '--no-edit' else ...['-m', message],
+        if (relative.isNotEmpty) ...['--only', '--', ...relative],
+      ]),
+      'Cannot commit.',
+    );
+  }
+
+  /// Rolls [paths] back to HEAD, index and working tree both
+  /// (`git checkout HEAD -- <paths>`); [added] ones, not in HEAD, are left
+  /// untracked (`git rm --cached`).
+  Future<void> rollback(
+    Iterable<String> paths, {
+    Iterable<String> added = const [],
+  }) async {
+    final top = await _requireRoot();
+    if (added.isNotEmpty) {
+      _check(
+        await _git([
+          'rm',
+          '--cached',
+          '-q',
+          '-r',
+          '--',
+          ..._relative(top, added),
+        ]),
+        'Cannot roll back the changes.',
+      );
+    }
+    if (paths.isNotEmpty) {
+      _check(
+        await _git(['checkout', '-q', 'HEAD', '--', ..._relative(top, paths)]),
+        'Cannot roll back the changes.',
+      );
+    }
+  }
+
   /// What a commit would take, as a unified diff: the staged changes
   /// ([staged]), else the tracked ones, and each of [untracked] as a new
   /// file (`git diff --no-index`, which exits 1 when there is a
-  /// difference).
+  /// difference). With [paths], HEAD against the working tree for those
+  /// alone, staged or not (as a commit of them takes them).
   Future<String> diff({
     required bool staged,
     Iterable<String> untracked = const [],
+    Iterable<String>? paths,
   }) async {
     final top = await _requireRoot();
     const options = ['--no-color', '--no-ext-diff'];
+    final relative = paths == null ? null : _relative(top, paths);
     final out = StringBuffer(
-      _check(
-        await _git(['diff', ...options, '-M', if (staged) '--cached']),
-        'Cannot read the changes.',
-      ).stdout,
+      relative != null && relative.isEmpty
+          ? ''
+          : _check(
+              await _git([
+                'diff',
+                ...options,
+                '-M',
+                if (relative != null) 'HEAD' else if (staged) '--cached',
+                if (relative != null) ...['--', ...relative],
+              ]),
+              'Cannot read the changes.',
+            ).stdout,
     );
     for (final path in _relative(top, untracked)) {
       final added = await _git([
@@ -552,26 +613,117 @@ class IdeGitService {
     return output.exitCode == 0 ? output.stdout.trim() : null;
   }
 
-  /// `git log` of [refs] in topological order, newest first.
+  /// `git log` of [refs] in topological order (by date with [dateOrder]),
+  /// newest first; [filter]'s commits only.
   Future<List<IdeGitCommit>> log({
     List<String> refs = const ['HEAD'],
     int limit = 50,
+    IdeGitLogFilter filter = const IdeGitLogFilter(),
+    bool dateOrder = false,
   }) async {
     await _requireRoot();
     final output = _check(
       await _git([
         'log',
-        '--topo-order',
+        dateOrder ? '--date-order' : '--topo-order',
         '--decorate=full',
         '--format=$ideGitLogFormat',
         '-n',
         '$limit',
+        ...filter.arguments,
         ...refs,
         '--',
       ]),
       'Cannot read the Git history.',
     );
     return parseGitLog(output.stdout);
+  }
+
+  /// The repository's working trees, its own first (`git worktree list
+  /// --porcelain`).
+  Future<List<IdeGitWorktree>> worktrees() async {
+    await _requireRoot();
+    final output = _check(
+      await _git(['worktree', 'list', '--porcelain']),
+      'Cannot read the worktrees.',
+    );
+    return parseGitWorktrees(output.stdout, normalize: pathContext.normalize);
+  }
+
+  /// Adds a working tree at [path] (`git worktree add`): on a new branch
+  /// [newBranch] from HEAD, or on [branch], one not checked out elsewhere.
+  Future<void> addWorktree(
+    String path, {
+    String? newBranch,
+    String? branch,
+  }) async {
+    assert((newBranch == null) != (branch == null));
+    await _requireRoot();
+    _check(
+      await _git([
+        'worktree',
+        'add',
+        if (newBranch != null) ...['-b', newBranch],
+        '--',
+        path,
+        ?branch,
+      ]),
+      'Cannot add the worktree.',
+    );
+  }
+
+  /// The branches, local and remote, that have [commit]
+  /// (`git branch -a --contains`).
+  Future<List<String>> branchesContaining(String commit) async {
+    await _requireRoot();
+    final output = _check(
+      await _git(['branch', '-a', '--contains', commit, '--format=%(refname)']),
+      'Cannot read the branches.',
+    );
+    return [
+      for (final line in output.stdout.split('\n'))
+        if (line.trim() case final ref
+            when ref.isNotEmpty && ref != 'refs/remotes/origin/HEAD')
+          ref.startsWith('refs/heads/')
+              ? ref.substring('refs/heads/'.length)
+              : ref.startsWith('refs/remotes/')
+              ? ref.substring('refs/remotes/'.length)
+              : ref,
+    ];
+  }
+
+  /// The lines [commit] added and deleted in each file against its first
+  /// parent (`git show --numstat`), by absolute path; null counts for a
+  /// binary file.
+  Future<Map<String, ({int? added, int? deleted})>> commitStats(
+    String commit,
+  ) async {
+    final top = await _requireRoot();
+    final output = _check(
+      await _git([
+        'show',
+        '--format=',
+        '--numstat',
+        '-z',
+        '--first-parent',
+        '-m',
+        commit,
+      ]),
+      'Cannot read the commit.',
+    );
+    return parseGitNumstat(output.stdout, (relative) {
+      return pathContext.normalize(
+        pathContext.join(top, pathContext.joinAll(relative.split('/'))),
+      );
+    });
+  }
+
+  /// [key]'s value in Git's configuration (`git config --get`); null when
+  /// it has none.
+  Future<String?> config(String key) async {
+    final output = await _git(['config', '--get', key]);
+    final value = output.stdout.trim();
+    return output.exitCode == 0 && value.isNotEmpty ? value : null;
   }
 
   /// The commits that changed [path], following renames.

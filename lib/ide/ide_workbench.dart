@@ -64,6 +64,8 @@ import 'git/git_change_editor.dart';
 import 'git/git_checkout.dart';
 import 'git/git_model.dart';
 import 'git/git_repository.dart';
+import 'git/ide_git_commit_panel.dart';
+import 'git/ide_git_log_view.dart';
 import 'git/ide_scm_view.dart';
 import 'git/ide_timeline_view.dart';
 import 'ide_agent_edits.dart';
@@ -427,6 +429,10 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   ({IdeRows rows, double room})? _panelDragStart;
   IdeSideView _view = IdeSideView.explorer;
 
+  /// The workspace being taken up: its editor in front then is not one
+  /// opened, which would leave the Git log.
+  bool _attaching = false;
+
   /// The workspace's notifications (the debugger's go there too).
   IdeNotifications get _notifications => widget.workspace.notifications;
 
@@ -473,7 +479,8 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   /// only then are they shown in the file manager, opened in other apps,
   /// or moved to the trash.
   bool get _local => widget.workspace.files is! IdeHostFiles;
-  final _scmKey = GlobalKey<IdeScmViewState>();
+  final _scmKey = GlobalKey<IdeGitCommitPanelState>();
+  final _gitLogKey = GlobalKey<IdeGitLogViewState>();
   IdeGitRepository? _git;
 
   /// The Extensions view's language servers and search, made when it
@@ -1156,7 +1163,9 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     workspace.layout.addListener(_layoutChanged);
     _shownPanel = workspace.layout.panel;
     _activeKey = null;
+    _attaching = true;
     _workspaceChanged();
+    _attaching = false;
     _git = workspace.git?..addListener(_gitChanged);
     _gitChanged();
     // New terminals start in the project (a workspace's first folder);
@@ -1555,6 +1564,15 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     // maximizing, and has the side bar give way to it rather than it to
     // the side bar.
     _layout.showEditor();
+    // In the Git log's place, which has the editor's: the explorer's view
+    // back beside it.
+    if (_view == IdeSideView.sourceControl && !_attaching) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _view == IdeSideView.sourceControl) {
+          setState(() => _view = IdeSideView.explorer);
+        }
+      });
+    }
     if (!_closingEditors) _extensionPageShown = false;
     _recommendServers();
     _recentFiles.add(path);
@@ -1647,6 +1665,55 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// The explorer's view in place of the Git log, for the editor it hides
+  /// to show.
+  void _leaveGitLog() {
+    if (_view == IdeSideView.sourceControl) {
+      setState(() => _view = IdeSideView.explorer);
+    }
+  }
+
+  /// Shows [resource]'s change in the Git log's table's place, the other
+  /// changes a step away (a click); in the editor, the log left, where the
+  /// editor is asked for ([focusEditor]: Open Changes, Enter, a double
+  /// click) and for its original ([head], Open File (HEAD)).
+  Future<void> _openChangeInLog(
+    IdeGitResource resource, {
+    bool head = false,
+    bool focusEditor = false,
+  }) async {
+    final git = _git;
+    final state = git?.state;
+    if (head || focusEditor || git == null || state == null) {
+      _leaveGitLog();
+      return _openChange(resource, head: head, focusEditor: focusEditor);
+    }
+    final resources = [
+      for (final group in IdeGitGroup.values) ...state.group(group),
+    ];
+    final l10n = context.l10n;
+    final files = widget.workspace.files;
+    _scm.log.showDiff(
+      [
+        for (final change in resources)
+          ideLocalDiffFile(
+            git,
+            state,
+            change,
+            files.read,
+            l10n,
+            onOpenInEditor: () {
+              _leaveGitLog();
+              unawaited(_openChange(change, focusEditor: true));
+            },
+          ),
+        // The keys go on walking the changes.
+      ],
+      resources.indexOf(resource),
+      focus: false,
+    );
   }
 
   /// Opens [resource]'s change as the Git extension does (see
@@ -3601,10 +3668,11 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     );
   }
 
-  /// The side bar, its border on its right.
-  Widget _sidebarPart() => IdePart(
+  /// The side bar, its border on its right ([border]: not where it has
+  /// the editor's place).
+  Widget _sidebarPart({bool border = true}) => IdePart(
     color: themeColors['sideBar.background'],
-    border: Border(right: _sideBarBorder),
+    border: border ? Border(right: _sideBarBorder) : null,
     child: Focus(focusNode: _sidebarFocus, child: _sidePanel()),
   );
 
@@ -3620,26 +3688,46 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
           _open(path, range: range, select: true, focusEditor: focusEditor),
       onError: _report,
     ),
-    IdeSideView.sourceControl => IdeScmView(
-      key: _scmKey,
+    // The Git log, in the side bar's and the editor's place (see
+    // [_split]): the local changes' commit box and groups its first row's
+    // details, their changes in its table's place.
+    IdeSideView.sourceControl => IdeGitLogView(
+      key: _gitLogKey,
       host: widget.workspace,
       session: _scm,
-      sessionOf: (git) => identical(git, _git)
-          ? _scm
-          : _scmSessions.putIfAbsent(
-              git,
-              () => IdeScmSession(settings: widget.settings),
-            ),
       notifications: _notifications,
-      onOpen: (path, {focusEditor = false}) =>
-          _open(path, focusEditor: focusEditor),
-      onOpenChange: _openChange,
-      onRevealInExplorer: _revealInExplorer,
-      onOpenInTerminal: _terminals == null ? null : _openInTerminal,
-      onAddToChat: widget.onAddToChat,
-      trash: WindowControls.canMoveToTrash ? WindowControls.moveToTrash : null,
-      commitMessage: widget.commitMessage,
+      onOpen: (path) {
+        _leaveGitLog();
+        unawaited(_open(path, focusEditor: true));
+      },
       onCheckout: _gitCheckoutOf,
+      onAddToChat: widget.onAddToChat,
+      changes: IdeGitCommitPanel(
+        key: _scmKey,
+        host: widget.workspace,
+        session: _scm,
+        sessionOf: (git) => identical(git, _git)
+            ? _scm
+            : _scmSessions.putIfAbsent(
+                git,
+                () => IdeScmSession(settings: widget.settings),
+              ),
+        notifications: _notifications,
+        onOpen: (path, {focusEditor = false}) {
+          _leaveGitLog();
+          return _open(path, focusEditor: focusEditor);
+        },
+        onOpenChange: _openChangeInLog,
+        onRevealInExplorer: (path) {
+          _leaveGitLog();
+          _revealInExplorer(path);
+        },
+        onAddToChat: widget.onAddToChat,
+        trash: WindowControls.canMoveToTrash
+            ? WindowControls.moveToTrash
+            : null,
+        commitMessage: widget.commitMessage,
+      ),
     ),
     IdeSideView.debug => switch (_debug) {
       final debug? => DebugView(
@@ -4164,6 +4252,11 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     );
     final sidebarVisible = columns.sidebar > 0;
     final chatVisible = columns.chat > 0;
+    // Source Control, the Git log, has the side bar's and the editor's
+    // place, above the panel; the editor is kept, back as another view
+    // shows.
+    final gitLog =
+        !editorHidden && sidebarVisible && _view == IdeSideView.sourceControl;
     final sidebar = SizedBox(
       key: const ValueKey('ide-sidebar'),
       width: columns.sidebar,
@@ -4218,13 +4311,18 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                 key: const ValueKey('ide-activity-bar'),
                 child: _activityBar(sidebarShowing: sidebarVisible),
               ),
-              if (!editorHidden && sidebarVisible) sidebar,
+              if (!editorHidden && sidebarVisible && !gitLog) sidebar,
               Expanded(
                 key: const ValueKey('ide-editor-column'),
                 child: _editorColumn(
                   size.height,
                   commands,
-                  inPlace: !editorHidden
+                  inPlace: gitLog
+                      ? KeyedSubtree(
+                          key: _sidebarKey,
+                          child: _sidebarPart(border: false),
+                        )
+                      : !editorHidden
                       ? null
                       : sidebarVisible
                       ? Stack(
@@ -4248,7 +4346,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
             ],
           ),
         ),
-        if (!editorHidden)
+        if (!editorHidden && !gitLog)
           _sashAt(bar + columns.sidebar, size.width, sidebarSash),
         if (!editorHidden && (chatVisible || _chatSashDragging))
           _sashAt(size.width - columns.chat, size.width, chatSash)

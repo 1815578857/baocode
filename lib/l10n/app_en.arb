@@ -711,14 +711,6 @@
   "@sidePanelChanges": {
     "description": "The side panel's tab listing the files the agent changed."
   },
-  "sidePanelNoChanges": "No changes yet",
-  "@sidePanelNoChanges": {
-    "description": "The side panel's Changes tab while the agent changed nothing."
-  },
-  "sidePanelNoChangesDetail": "Changes in the project's Git working tree and index show here.",
-  "@sidePanelNoChangesDetail": {
-    "description": "Under sidePanelNoChanges."
-  },
   "sidePanelOpenFile": "Open in side panel",
   "@sidePanelOpenFile": {
     "description": "Hover of a file read in the conversation: a click opens it in the side panel."
@@ -778,10 +770,6 @@
   "sidePanelSelectFile": "Select a file to preview it",
   "@sidePanelSelectFile": {
     "description": "The side panel's files page with no file open."
-  },
-  "sidePanelSelectChange": "Select a changed file to see its changes",
-  "@sidePanelSelectChange": {
-    "description": "The side panel's changes page with no file's changes open."
   },
   "sidePanelSelectTerminal": "Select a background task to see its output",
   "@sidePanelSelectTerminal": {
@@ -7528,6 +7516,64 @@
       }
     }
   },
+  "gitLogRepository": "Repository",
+  "gitLogSearch": "Search messages; separate several with |",
+  "gitLogClearSearch": "Clear Search",
+  "gitLogUser": "User",
+  "gitLogAllUsers": "All Users",
+  "gitLogMe": "Me",
+  "gitLogDate": "Date",
+  "gitLogAnyDate": "Any Time",
+  "gitLogLastDay": "Last 24 Hours",
+  "gitLogLastWeek": "Last 7 Days",
+  "gitLogLastMonth": "Last 30 Days",
+  "gitLogLastYear": "Last Year",
+  "gitLogHighlight": "Highlight",
+  "gitLogHighlightNone": "Nothing",
+  "gitLogHighlightMine": "My Commits",
+  "gitLogClearFilters": "Clear Filters",
+  "gitLogCheckout": "Checkout to...",
+  "gitLogSortTopo": "Topological Order",
+  "gitLogSortDate": "Date Order",
+  "gitLogLocalBranches": "Local Branches",
+  "gitLogRemoteBranches": "Remote Branches",
+  "gitLogTags": "Tags",
+  "gitLogBackToLog": "Back to Log",
+  "gitLogNoCommits": "No commits match.",
+  "gitLogLocalChanges": "Local Changes",
+  "gitLogLocalChangesCount": "Local Changes ({count})",
+  "@gitLogLocalChangesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitLogSelectCommit": "Select a commit to see its details.",
+  "gitLogAuthor": "Author",
+  "gitLogParents": "Parent: ",
+  "gitLogShowBranches": "Show Branches",
+  "gitLogHideBranches": "Hide Branches",
+  "gitLogShowSizes": "Show Sizes",
+  "gitLogHideSizes": "Hide Sizes",
+  "gitLogFileCount": "{count, plural, =1{1 file} other{{count} files}}",
+  "@gitLogFileCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitLogInNoBranch": "No branch has this commit.",
+  "gitLogList": "List",
+  "gitLogTree": "Tree",
+  "gitLogFilterFiles": "Filter files (* and ? match any)",
+  "gitLogCopyPath": "Copy Path",
+  "gitLogCopyRelativePath": "Copy Relative Path",
+  "gitLogBinary": "binary",
+  "gitLogPreviousFile": "Previous File",
+  "gitLogNextFile": "Next File",
+  "gitLogOpenInEditor": "Open in Editor",
   "checkpointsTitle": "Checkpoints",
   "checkpointsDescription": "Snapshots of the projects agents work in, kept to undo their changes. A conversation's are tidied away 30 days after it last changed anything.",
   "checkpointsSize": "Using {size}",
@@ -7536,5 +7582,60 @@
   "checkpointsClear": "Clear",
   "checkpointsClearing": "Clearing…",
   "checkpointsClearConfirm": "Clear the checkpoints?",
-  "checkpointsClearDetail": "The changes agents made in conversations that are not open can no longer be undone. The files themselves stay as they are."
+  "checkpointsClearDetail": "The changes agents made in conversations that are not open can no longer be undone. The files themselves stay as they are.",
+  "gitLogToday": "Today {time}",
+  "@gitLogToday": {"placeholders": {"time": {"type": "String"}}},
+  "gitLogYesterday": "Yesterday {time}",
+  "@gitLogYesterday": {"placeholders": {"time": {"type": "String"}}},
+  "gitLogCheckoutRevision": "Checkout Revision",
+  "gitLogNewBranch": "New Branch…",
+  "gitLogNewBranchAt": "New branch at {commit}",
+  "@gitLogNewBranchAt": {"placeholders": {"commit": {"type": "String"}}},
+  "gitLogCheckoutBranch": "Checkout '{branch}'",
+  "@gitLogCheckoutBranch": {"placeholders": {"branch": {"type": "String"}}},
+  "gitLogCopyHash": "Copy the full hash",
+  "gitLogLoading": "Loading history…",
+  "gitLogWorktree": "Worktree",
+  "gitLogWorktreeOf": "Worktree: {path}",
+  "@gitLogWorktreeOf": {"placeholders": {"path": {"type": "String"}}},
+  "gitLogFollowAgent": "Follow the Agent",
+  "gitLogAgentHere": "The agent works here",
+  "gitLogWorktreeAt": "Checked out in worktree {name}\n{path}",
+  "@gitLogWorktreeAt": {"placeholders": {"name": {"type": "String"}, "path": {"type": "String"}}},
+  "gitLogMainWorktree": "main worktree",
+  "gitLogWorktreeMissing": "missing",
+  "branchBarWorktree": "In worktree {name}\n{path}",
+  "@branchBarWorktree": {"placeholders": {"name": {"type": "String"}, "path": {"type": "String"}}},
+  "gitCommitChanges": "Changes",
+  "gitCommitUnversioned": "Unversioned Files",
+  "gitCommitConflicts": "Merge Conflicts",
+  "gitCommitAmend": "Amend",
+  "gitCommitMessage": "Commit Message",
+  "gitCommitButton": "Commit",
+  "gitCommitAndPush": "Commit and Push",
+  "gitCommitRollback": "Rollback…",
+  "gitCommitRollbackConfirm": "Roll back the changes of {count, plural, =1{1 file} other{{count} files}}?",
+  "@gitCommitRollbackConfirm": {"placeholders": {"count": {"type": "int"}}},
+  "gitCommitRollbackDetail": "They go back to how they were last committed; files not committed yet are deleted.",
+  "gitCommitRollbackButton": "Rollback",
+  "gitCommitShowDiff": "Show Diff",
+  "gitCommitJumpToSource": "Jump to Source",
+  "gitCommitAddToVcs": "Add to VCS",
+  "gitCommitMarkResolved": "Mark Resolved",
+  "gitCommitExpandAll": "Expand All",
+  "gitCommitCollapseAll": "Collapse All",
+  "gitCommitGroupByDirectory": "Group by Directory",
+  "gitCommitEmptyMessage": "Enter a commit message.",
+  "gitCommitNothingSelected": "Check the files to commit.",
+  "gitCommitNoChanges": "No local changes",
+  "gitCommitSelected": "{checked} of {total} files checked",
+  "@gitCommitSelected": {"placeholders": {"checked": {"type": "int"}, "total": {"type": "int"}}},
+  "gitLogUndoCommit": "Undo Commit",
+  "branchBarNewWorktree": "New Worktree…",
+  "branchBarNewWorktreeFrom": "A new branch from “{branch}”, in a worktree of its own beside “{folder}”: the agent works there, your checkout stays as it is",
+  "@branchBarNewWorktreeFrom": {"placeholders": {"branch": {"type": "String"}, "folder": {"type": "String"}}},
+  "branchBarInWorktree": "In worktree {name}",
+  "@branchBarInWorktree": {"placeholders": {"name": {"type": "String"}}},
+  "branchBarWorkIn": "From now on, work in {path} (branch {branch}): read and edit the files and run the commands there.",
+  "@branchBarWorkIn": {"placeholders": {"path": {"type": "String"}, "branch": {"type": "String"}}}
 }

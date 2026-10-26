@@ -3020,18 +3020,6 @@ abstract class AppLocalizations {
   /// **'Changes'**
   String get sidePanelChanges;
 
-  /// The side panel's Changes tab while the agent changed nothing.
-  ///
-  /// In en, this message translates to:
-  /// **'No changes yet'**
-  String get sidePanelNoChanges;
-
-  /// Under sidePanelNoChanges.
-  ///
-  /// In en, this message translates to:
-  /// **'Changes in the project\'s Git working tree and index show here.'**
-  String get sidePanelNoChangesDetail;
-
   /// Hover of a file read in the conversation: a click opens it in the side panel.
   ///
   /// In en, this message translates to:
@@ -3121,12 +3109,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select a file to preview it'**
   String get sidePanelSelectFile;
-
-  /// The side panel's changes page with no file's changes open.
-  ///
-  /// In en, this message translates to:
-  /// **'Select a changed file to see its changes'**
-  String get sidePanelSelectChange;
 
   /// The side panel's terminal page with no command's output open.
   ///
@@ -17559,6 +17541,270 @@ abstract class AppLocalizations {
   /// **'Delete and close {count} issues…'**
   String stashDeleteAndCloseMany(int count);
 
+  /// No description provided for @gitLogRepository.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository'**
+  String get gitLogRepository;
+
+  /// No description provided for @gitLogSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search messages; separate several with |'**
+  String get gitLogSearch;
+
+  /// No description provided for @gitLogClearSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Search'**
+  String get gitLogClearSearch;
+
+  /// No description provided for @gitLogUser.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get gitLogUser;
+
+  /// No description provided for @gitLogAllUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'All Users'**
+  String get gitLogAllUsers;
+
+  /// No description provided for @gitLogMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Me'**
+  String get gitLogMe;
+
+  /// No description provided for @gitLogDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get gitLogDate;
+
+  /// No description provided for @gitLogAnyDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Any Time'**
+  String get gitLogAnyDate;
+
+  /// No description provided for @gitLogLastDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 24 Hours'**
+  String get gitLogLastDay;
+
+  /// No description provided for @gitLogLastWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 7 Days'**
+  String get gitLogLastWeek;
+
+  /// No description provided for @gitLogLastMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 30 Days'**
+  String get gitLogLastMonth;
+
+  /// No description provided for @gitLogLastYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Last Year'**
+  String get gitLogLastYear;
+
+  /// No description provided for @gitLogHighlight.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight'**
+  String get gitLogHighlight;
+
+  /// No description provided for @gitLogHighlightNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing'**
+  String get gitLogHighlightNone;
+
+  /// No description provided for @gitLogHighlightMine.
+  ///
+  /// In en, this message translates to:
+  /// **'My Commits'**
+  String get gitLogHighlightMine;
+
+  /// No description provided for @gitLogClearFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Filters'**
+  String get gitLogClearFilters;
+
+  /// No description provided for @gitLogCheckout.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout to...'**
+  String get gitLogCheckout;
+
+  /// No description provided for @gitLogSortTopo.
+  ///
+  /// In en, this message translates to:
+  /// **'Topological Order'**
+  String get gitLogSortTopo;
+
+  /// No description provided for @gitLogSortDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date Order'**
+  String get gitLogSortDate;
+
+  /// No description provided for @gitLogLocalBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'Local Branches'**
+  String get gitLogLocalBranches;
+
+  /// No description provided for @gitLogRemoteBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote Branches'**
+  String get gitLogRemoteBranches;
+
+  /// No description provided for @gitLogTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get gitLogTags;
+
+  /// No description provided for @gitLogBackToLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Log'**
+  String get gitLogBackToLog;
+
+  /// No description provided for @gitLogNoCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'No commits match.'**
+  String get gitLogNoCommits;
+
+  /// No description provided for @gitLogLocalChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Local Changes'**
+  String get gitLogLocalChanges;
+
+  /// No description provided for @gitLogLocalChangesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Local Changes ({count})'**
+  String gitLogLocalChangesCount(int count);
+
+  /// No description provided for @gitLogSelectCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a commit to see its details.'**
+  String get gitLogSelectCommit;
+
+  /// No description provided for @gitLogAuthor.
+  ///
+  /// In en, this message translates to:
+  /// **'Author'**
+  String get gitLogAuthor;
+
+  /// No description provided for @gitLogParents.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent: '**
+  String get gitLogParents;
+
+  /// No description provided for @gitLogShowBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Branches'**
+  String get gitLogShowBranches;
+
+  /// No description provided for @gitLogHideBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide Branches'**
+  String get gitLogHideBranches;
+
+  /// No description provided for @gitLogShowSizes.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Sizes'**
+  String get gitLogShowSizes;
+
+  /// No description provided for @gitLogHideSizes.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide Sizes'**
+  String get gitLogHideSizes;
+
+  /// No description provided for @gitLogFileCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 file} other{{count} files}}'**
+  String gitLogFileCount(int count);
+
+  /// No description provided for @gitLogInNoBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'No branch has this commit.'**
+  String get gitLogInNoBranch;
+
+  /// No description provided for @gitLogList.
+  ///
+  /// In en, this message translates to:
+  /// **'List'**
+  String get gitLogList;
+
+  /// No description provided for @gitLogTree.
+  ///
+  /// In en, this message translates to:
+  /// **'Tree'**
+  String get gitLogTree;
+
+  /// No description provided for @gitLogFilterFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter files (* and ? match any)'**
+  String get gitLogFilterFiles;
+
+  /// No description provided for @gitLogCopyPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Path'**
+  String get gitLogCopyPath;
+
+  /// No description provided for @gitLogCopyRelativePath.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Relative Path'**
+  String get gitLogCopyRelativePath;
+
+  /// No description provided for @gitLogBinary.
+  ///
+  /// In en, this message translates to:
+  /// **'binary'**
+  String get gitLogBinary;
+
+  /// No description provided for @gitLogPreviousFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous File'**
+  String get gitLogPreviousFile;
+
+  /// No description provided for @gitLogNextFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Next File'**
+  String get gitLogNextFile;
+
+  /// No description provided for @gitLogOpenInEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Editor'**
+  String get gitLogOpenInEditor;
+
   /// No description provided for @checkpointsTitle.
   ///
   /// In en, this message translates to:
@@ -17606,6 +17852,264 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The changes agents made in conversations that are not open can no longer be undone. The files themselves stay as they are.'**
   String get checkpointsClearDetail;
+
+  /// No description provided for @gitLogToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today {time}'**
+  String gitLogToday(String time);
+
+  /// No description provided for @gitLogYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday {time}'**
+  String gitLogYesterday(String time);
+
+  /// No description provided for @gitLogCheckoutRevision.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout Revision'**
+  String get gitLogCheckoutRevision;
+
+  /// No description provided for @gitLogNewBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'New Branch…'**
+  String get gitLogNewBranch;
+
+  /// No description provided for @gitLogNewBranchAt.
+  ///
+  /// In en, this message translates to:
+  /// **'New branch at {commit}'**
+  String gitLogNewBranchAt(String commit);
+
+  /// No description provided for @gitLogCheckoutBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout \'{branch}\''**
+  String gitLogCheckoutBranch(String branch);
+
+  /// No description provided for @gitLogCopyHash.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy the full hash'**
+  String get gitLogCopyHash;
+
+  /// No description provided for @gitLogLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading history…'**
+  String get gitLogLoading;
+
+  /// No description provided for @gitLogWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'Worktree'**
+  String get gitLogWorktree;
+
+  /// No description provided for @gitLogWorktreeOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Worktree: {path}'**
+  String gitLogWorktreeOf(String path);
+
+  /// No description provided for @gitLogFollowAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow the Agent'**
+  String get gitLogFollowAgent;
+
+  /// No description provided for @gitLogAgentHere.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent works here'**
+  String get gitLogAgentHere;
+
+  /// No description provided for @gitLogWorktreeAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked out in worktree {name}\n{path}'**
+  String gitLogWorktreeAt(String name, String path);
+
+  /// No description provided for @gitLogMainWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'main worktree'**
+  String get gitLogMainWorktree;
+
+  /// No description provided for @gitLogWorktreeMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'missing'**
+  String get gitLogWorktreeMissing;
+
+  /// No description provided for @branchBarWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'In worktree {name}\n{path}'**
+  String branchBarWorktree(String name, String path);
+
+  /// No description provided for @gitCommitChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes'**
+  String get gitCommitChanges;
+
+  /// No description provided for @gitCommitUnversioned.
+  ///
+  /// In en, this message translates to:
+  /// **'Unversioned Files'**
+  String get gitCommitUnversioned;
+
+  /// No description provided for @gitCommitConflicts.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge Conflicts'**
+  String get gitCommitConflicts;
+
+  /// No description provided for @gitCommitAmend.
+  ///
+  /// In en, this message translates to:
+  /// **'Amend'**
+  String get gitCommitAmend;
+
+  /// No description provided for @gitCommitMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit Message'**
+  String get gitCommitMessage;
+
+  /// No description provided for @gitCommitButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit'**
+  String get gitCommitButton;
+
+  /// No description provided for @gitCommitAndPush.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit and Push'**
+  String get gitCommitAndPush;
+
+  /// No description provided for @gitCommitRollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Rollback…'**
+  String get gitCommitRollback;
+
+  /// No description provided for @gitCommitRollbackConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Roll back the changes of {count, plural, =1{1 file} other{{count} files}}?'**
+  String gitCommitRollbackConfirm(int count);
+
+  /// No description provided for @gitCommitRollbackDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'They go back to how they were last committed; files not committed yet are deleted.'**
+  String get gitCommitRollbackDetail;
+
+  /// No description provided for @gitCommitRollbackButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Rollback'**
+  String get gitCommitRollbackButton;
+
+  /// No description provided for @gitCommitShowDiff.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Diff'**
+  String get gitCommitShowDiff;
+
+  /// No description provided for @gitCommitJumpToSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump to Source'**
+  String get gitCommitJumpToSource;
+
+  /// No description provided for @gitCommitAddToVcs.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to VCS'**
+  String get gitCommitAddToVcs;
+
+  /// No description provided for @gitCommitMarkResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark Resolved'**
+  String get gitCommitMarkResolved;
+
+  /// No description provided for @gitCommitExpandAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand All'**
+  String get gitCommitExpandAll;
+
+  /// No description provided for @gitCommitCollapseAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse All'**
+  String get gitCommitCollapseAll;
+
+  /// No description provided for @gitCommitGroupByDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Group by Directory'**
+  String get gitCommitGroupByDirectory;
+
+  /// No description provided for @gitCommitEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a commit message.'**
+  String get gitCommitEmptyMessage;
+
+  /// No description provided for @gitCommitNothingSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the files to commit.'**
+  String get gitCommitNothingSelected;
+
+  /// No description provided for @gitCommitNoChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'No local changes'**
+  String get gitCommitNoChanges;
+
+  /// No description provided for @gitCommitSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{checked} of {total} files checked'**
+  String gitCommitSelected(int checked, int total);
+
+  /// No description provided for @gitLogUndoCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo Commit'**
+  String get gitLogUndoCommit;
+
+  /// No description provided for @branchBarNewWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'New Worktree…'**
+  String get branchBarNewWorktree;
+
+  /// No description provided for @branchBarNewWorktreeFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'A new branch from “{branch}”, in a worktree of its own beside “{folder}”: the agent works there, your checkout stays as it is'**
+  String branchBarNewWorktreeFrom(String branch, String folder);
+
+  /// No description provided for @branchBarInWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'In worktree {name}'**
+  String branchBarInWorktree(String name);
+
+  /// No description provided for @branchBarWorkIn.
+  ///
+  /// In en, this message translates to:
+  /// **'From now on, work in {path} (branch {branch}): read and edit the files and run the commands there.'**
+  String branchBarWorkIn(String path, String branch);
 }
 
 class _AppLocalizationsDelegate

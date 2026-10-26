@@ -69,6 +69,7 @@ import 'git_graph_painter.dart';
 import 'git_model.dart';
 import 'git_repository.dart';
 import 'git_service.dart';
+import 'ide_git_log_view.dart';
 import 'scm_host.dart';
 import 'scm_tree.dart';
 
@@ -115,6 +116,19 @@ class IdeScmSession {
   /// The tree's collapsed folders (`group:folder:path`).
   final Set<String> collapsedFolders = {};
 
+  /// The commit panel's check marks by path, where they are not the
+  /// default (the tracked changes checked, the unversioned files not).
+  final Map<String, bool> included = {};
+
+  /// The commit panel's Amend.
+  bool amend = false;
+
+  /// The list's focused row, selection and anchor, kept while the view is
+  /// away (the Git log left for the editor) to be where they were.
+  String? listSelected;
+  final Set<String> listSelection = {};
+  String? listAnchor;
+
   /// `git.enableSmartCommit`: commit every change when none is staged.
   bool get enableSmartCommit => _choice('git.enableSmartCommit', false);
   set enableSmartCommit(bool value) => _choose('git.enableSmartCommit', value);
@@ -138,10 +152,14 @@ class IdeScmSession {
     expandedCommits,
   );
 
+  /// The Git log's (see ide_git_log_view.dart).
+  late final IdeGitLogController log = IdeGitLogController();
+
   void dispose() {
     generating?.complete();
     message.dispose();
     graph.dispose();
+    log.dispose();
   }
 }
 
@@ -333,6 +351,7 @@ class IdeScmView extends StatefulWidget {
     this.commitMessage,
     this.onCheckout,
     this.showTitle = true,
+    this.showGraph = true,
     this.background,
   });
 
@@ -343,6 +362,10 @@ class IdeScmView extends StatefulWidget {
   /// Whether the view's title shows over it: not where the page it is on
   /// is named already (the side panel's).
   final bool showTitle;
+
+  /// Whether the Graph pane shows under CHANGES: not where the Git log
+  /// shows the history (see ide_git_log_view.dart).
+  final bool showGraph;
 
   /// Behind it; the side bar's when null.
   final Color? background;
@@ -667,6 +690,9 @@ class IdeScmViewState extends State<IdeScmView>
     _message = _session.message.text;
     _session.message.addListener(_messageChanged);
     _listFocus.addListener(_rebuild);
+    _selected = _session.listSelected;
+    _selection.addAll(_session.listSelection);
+    _anchor = _session.listAnchor;
   }
 
   @override
@@ -690,6 +716,11 @@ class IdeScmViewState extends State<IdeScmView>
   @override
   void dispose() {
     _session.message.removeListener(_messageChanged);
+    _session
+      ..listSelected = _selected
+      ..listSelection.clear()
+      ..listSelection.addAll(_selection)
+      ..listAnchor = _anchor;
     _inputFocus.dispose();
     for (final focus in _inputFocuses.values) {
       focus.dispose();
@@ -803,42 +834,43 @@ class IdeScmViewState extends State<IdeScmView>
             ],
             body: _changesList(git, state),
           ),
-          IdePane(
-            id: 'graph',
-            title: l10n.scmGraph,
-            // Which repository's, with several.
-            description: _grouped ? p.basename(git.service.root) : null,
-            weight: 2,
-            actions: [
-              IdePaneAction(
-                icon: Codicons.target,
-                tooltip: l10n.scmGoToCurrent,
-                onPressed: () => _graph.goToCurrent(git),
-              ),
-              IdeMenuButton(
-                icon: Codicons.gitBranch,
-                tooltip: l10n.scmGraphBranches,
-                entries: () => [
-                  IdeMenuAction(
-                    l10n.scmGraphCurrentBranch,
-                    checked: !git.graphAllBranches,
-                    onSelected: () => git.graphAllBranches = false,
-                  ),
-                  IdeMenuAction(
-                    l10n.scmGraphAllBranches,
-                    checked: git.graphAllBranches,
-                    onSelected: () => git.graphAllBranches = true,
-                  ),
-                ],
-              ),
-              IdePaneAction(
-                icon: Codicons.refresh,
-                tooltip: l10n.commonRefresh,
-                onPressed: () => unawaited(git.refresh()),
-              ),
-            ],
-            body: _graphList(git),
-          ),
+          if (widget.showGraph)
+            IdePane(
+              id: 'graph',
+              title: l10n.scmGraph,
+              // Which repository's, with several.
+              description: _grouped ? p.basename(git.service.root) : null,
+              weight: 2,
+              actions: [
+                IdePaneAction(
+                  icon: Codicons.target,
+                  tooltip: l10n.scmGoToCurrent,
+                  onPressed: () => _graph.goToCurrent(git),
+                ),
+                IdeMenuButton(
+                  icon: Codicons.gitBranch,
+                  tooltip: l10n.scmGraphBranches,
+                  entries: () => [
+                    IdeMenuAction(
+                      l10n.scmGraphCurrentBranch,
+                      checked: git.graphBranch == ideGraphCurrentBranch,
+                      onSelected: () => git.graphBranch = ideGraphCurrentBranch,
+                    ),
+                    IdeMenuAction(
+                      l10n.scmGraphAllBranches,
+                      checked: git.graphBranch == null,
+                      onSelected: () => git.graphBranch = null,
+                    ),
+                  ],
+                ),
+                IdePaneAction(
+                  icon: Codicons.refresh,
+                  tooltip: l10n.commonRefresh,
+                  onPressed: () => unawaited(git.refresh()),
+                ),
+              ],
+              body: _graphList(git),
+            ),
         ],
       );
     }
@@ -3322,7 +3354,7 @@ class IdeGitGraph extends StatelessWidget {
     return [
       for (final (index, ref) in refs.indexed) ...[
         if (index > 0) const SizedBox(width: 4),
-        Flexible(child: _RefBadge(ref, color(ref))),
+        Flexible(child: IdeGitRefBadge(ref, color(ref))),
       ],
     ];
   }
@@ -3636,8 +3668,8 @@ class _SplitButtonState extends State<_SplitButton> {
 /// short of room); filled with the reference's color, else outlined in the
 /// description's, quiet on any row (a selected one's color is often the
 /// badges' default).
-class _RefBadge extends StatelessWidget {
-  const _RefBadge(this.ref, this.color);
+class IdeGitRefBadge extends StatelessWidget {
+  const IdeGitRefBadge(this.ref, this.color, {super.key});
 
   final IdeGitRef ref;
 
@@ -3776,7 +3808,7 @@ class IdeCommitHover extends StatelessWidget {
               runSpacing: 4,
               children: [
                 for (final ref in commit.references)
-                  _RefBadge(ref, referenceColors[ref.id]),
+                  IdeGitRefBadge(ref, referenceColors[ref.id]),
               ],
             ),
           ],

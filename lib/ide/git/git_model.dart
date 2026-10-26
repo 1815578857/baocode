@@ -833,6 +833,88 @@ List<IdeGitCommit> parseGitLog(String output) {
   return commits;
 }
 
+/// Which commits the log shows: [text] in their messages (terms split by
+/// `|`, any of them, case ignored), by [author], since [since].
+class IdeGitLogFilter {
+  const IdeGitLogFilter({this.text = '', this.author, this.since});
+
+  final String text;
+  final String? author;
+  final DateTime? since;
+
+  /// The message's terms.
+  List<String> get terms => [
+    for (final term in text.split('|'))
+      if (term.trim().isNotEmpty) term.trim(),
+  ];
+
+  /// Whether some commits are left out: the lanes then do not join up.
+  bool get narrowed => terms.isNotEmpty || author != null || since != null;
+
+  /// `git log`'s options for it.
+  List<String> get arguments {
+    if (!narrowed) return const [];
+    String two(int value) => value.toString().padLeft(2, '0');
+    return [
+      '-i',
+      '--fixed-strings',
+      for (final term in terms) '--grep=$term',
+      if (author case final author?) '--author=$author',
+      if (since case final since?)
+        '--since=${since.year}-${two(since.month)}-${two(since.day)} '
+            '${two(since.hour)}:${two(since.minute)}:${two(since.second)}',
+    ];
+  }
+
+  IdeGitLogFilter copyWith({
+    String? text,
+    String? Function()? author,
+    DateTime? Function()? since,
+  }) => IdeGitLogFilter(
+    text: text ?? this.text,
+    author: author == null ? this.author : author(),
+    since: since == null ? this.since : since(),
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is IdeGitLogFilter &&
+      other.text == text &&
+      other.author == author &&
+      other.since == since;
+
+  @override
+  int get hashCode => Object.hash(text, author, since);
+}
+
+/// Parses `git show --numstat -z`: each file's added and deleted lines, by
+/// its path (the new one of a rename) as [resolve] makes it of Git's; null
+/// counts for a binary file.
+Map<String, ({int? added, int? deleted})> parseGitNumstat(
+  String output,
+  String Function(String relative) resolve,
+) {
+  final stats = <String, ({int? added, int? deleted})>{};
+  final fields = output.split('\x00');
+  for (var i = 0; i < fields.length; i++) {
+    final field = fields[i].replaceFirst(RegExp(r'^\s+'), '');
+    final parts = field.split('\t');
+    if (parts.length < 3) continue;
+    final counts = (
+      added: int.tryParse(parts[0]),
+      deleted: int.tryParse(parts[1]),
+    );
+    if (parts[2].isNotEmpty) {
+      stats[resolve(parts[2])] = counts;
+    } else if (i + 2 < fields.length) {
+      // A rename or copy: its old path, then its new one.
+      stats[resolve(fields[i + 2])] = counts;
+      i += 2;
+    }
+  }
+  return stats;
+}
+
 /// `_resolveHistoryItemRefs`: HEAD's branch first, then the rest in
 /// VS Code's order (branches, remotes, tags).
 List<IdeGitRef> _parseRefs(String decorations) {
@@ -1276,4 +1358,123 @@ void _addIncomingOutgoing(
       );
     }
   }
+}
+
+/// One of a repository's working trees (`git worktree list`): where it is,
+/// the commit it is at, the branch checked out there (none when detached),
+/// and whether it is the repository's own, its first ([main]).
+class IdeGitWorktree {
+  const IdeGitWorktree({
+    required this.path,
+    this.head,
+    this.branch,
+    this.main = false,
+    this.bare = false,
+    this.locked = false,
+    this.prunable = false,
+  });
+
+  final String path;
+  final String? head;
+
+  /// The branch's short name (`feat/x`); null when detached.
+  final String? branch;
+  final bool main;
+  final bool bare;
+  final bool locked;
+
+  /// Gone from the disk: `git worktree prune` would forget it.
+  final bool prunable;
+
+  @override
+  bool operator ==(Object other) =>
+      other is IdeGitWorktree &&
+      other.path == path &&
+      other.head == head &&
+      other.branch == branch &&
+      other.main == main &&
+      other.bare == bare &&
+      other.locked == locked &&
+      other.prunable == prunable;
+
+  @override
+  int get hashCode =>
+      Object.hash(path, head, branch, main, bare, locked, prunable);
+
+  @override
+  String toString() => 'IdeGitWorktree($path, ${branch ?? head})';
+}
+
+/// `git worktree list --porcelain`: a record of `key value` lines each,
+/// a blank line between; the first the repository's own. [normalize]
+/// spells each path as the host does.
+List<IdeGitWorktree> parseGitWorktrees(
+  String output, {
+  String Function(String path)? normalize,
+}) {
+  final worktrees = <IdeGitWorktree>[];
+  for (final record in output.replaceAll('\r\n', '\n').split('\n\n')) {
+    String? path;
+    String? head;
+    String? branch;
+    var bare = false;
+    var locked = false;
+    var prunable = false;
+    for (final line in record.split('\n')) {
+      final space = line.indexOf(' ');
+      final key = space < 0 ? line : line.substring(0, space);
+      final value = space < 0 ? '' : line.substring(space + 1);
+      switch (key) {
+        case 'worktree':
+          path = value;
+        case 'HEAD':
+          head = value;
+        case 'branch':
+          branch = value.startsWith('refs/heads/')
+              ? value.substring('refs/heads/'.length)
+              : value;
+        case 'bare':
+          bare = true;
+        case 'locked':
+          locked = true;
+        case 'prunable':
+          prunable = true;
+      }
+    }
+    if (path == null || path.isEmpty) continue;
+    worktrees.add(
+      IdeGitWorktree(
+        path: normalize?.call(path) ?? path,
+        head: head,
+        branch: branch,
+        main: worktrees.isEmpty,
+        bare: bare,
+        locked: locked,
+        prunable: prunable,
+      ),
+    );
+  }
+  return worktrees;
+}
+
+/// The worktree of [worktrees] that has [path] (itself, or a file under
+/// it): the innermost, as one may be inside another's folder; null for
+/// none.
+IdeGitWorktree? ideWorktreeOf(
+  String path,
+  List<IdeGitWorktree> worktrees,
+  p.Context paths,
+) {
+  IdeGitWorktree? found;
+  for (final worktree in worktrees) {
+    if (worktree.bare) continue;
+    if (!paths.equals(worktree.path, path) &&
+        !paths.isWithin(worktree.path, path)) {
+      continue;
+    }
+    if (found == null || worktree.path.length > found.path.length) {
+      found = worktree;
+    }
+  }
+  return found;
 }

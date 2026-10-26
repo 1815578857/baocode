@@ -295,6 +295,27 @@ class AgentSidePanel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The worktree of [folder]'s repository picked for [conversation]'s
+  /// changes; null while they follow its agent.
+  String? worktreeOf(Object conversation, String folder) =>
+      _worktrees[conversation]?[p.normalize(folder)];
+
+  /// Shows [path]'s changes for [folder]'s repository in [conversation];
+  /// null to follow its agent again.
+  void chooseWorktree(Object conversation, String folder, String? path) {
+    final chosen = _worktrees.putIfAbsent(conversation, () => {});
+    final key = p.normalize(folder);
+    if (chosen[key] == path) return;
+    if (path == null) {
+      chosen.remove(key);
+    } else {
+      chosen[key] = path;
+    }
+    notifyListeners();
+  }
+
+  final Map<Object, Map<String, String>> _worktrees = Map.identity();
+
   /// Goes up each time it is asked for: shown, or a page or a tab opened in
   /// it. The window's sidebar gives way to it then where the two do not
   /// both fit, though it showed already (having given way to the sidebar).
@@ -525,6 +546,15 @@ class AgentSidePanel extends ChangeNotifier {
         ..section = SidePanelSection.files;
       _reveal(tab.path);
     }
+    notifyListeners();
+  }
+
+  /// The changes page's Git log for [conversation], its changes open kept
+  /// behind it.
+  void showLog(Object conversation) {
+    final tabs = tabsOf(conversation);
+    if (tabs.activeDiff == null) return;
+    tabs.activeDiff = null;
     notifyListeners();
   }
 

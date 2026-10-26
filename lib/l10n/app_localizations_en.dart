@@ -1637,13 +1637,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sidePanelChanges => 'Changes';
 
   @override
-  String get sidePanelNoChanges => 'No changes yet';
-
-  @override
-  String get sidePanelNoChangesDetail =>
-      'Changes in the project\'s Git working tree and index show here.';
-
-  @override
   String get sidePanelOpenFile => 'Open in side panel';
 
   @override
@@ -1688,10 +1681,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sidePanelSelectFile => 'Select a file to preview it';
-
-  @override
-  String get sidePanelSelectChange =>
-      'Select a changed file to see its changes';
 
   @override
   String get sidePanelSelectTerminal =>
@@ -10774,6 +10763,148 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get gitLogRepository => 'Repository';
+
+  @override
+  String get gitLogSearch => 'Search messages; separate several with |';
+
+  @override
+  String get gitLogClearSearch => 'Clear Search';
+
+  @override
+  String get gitLogUser => 'User';
+
+  @override
+  String get gitLogAllUsers => 'All Users';
+
+  @override
+  String get gitLogMe => 'Me';
+
+  @override
+  String get gitLogDate => 'Date';
+
+  @override
+  String get gitLogAnyDate => 'Any Time';
+
+  @override
+  String get gitLogLastDay => 'Last 24 Hours';
+
+  @override
+  String get gitLogLastWeek => 'Last 7 Days';
+
+  @override
+  String get gitLogLastMonth => 'Last 30 Days';
+
+  @override
+  String get gitLogLastYear => 'Last Year';
+
+  @override
+  String get gitLogHighlight => 'Highlight';
+
+  @override
+  String get gitLogHighlightNone => 'Nothing';
+
+  @override
+  String get gitLogHighlightMine => 'My Commits';
+
+  @override
+  String get gitLogClearFilters => 'Clear Filters';
+
+  @override
+  String get gitLogCheckout => 'Checkout to...';
+
+  @override
+  String get gitLogSortTopo => 'Topological Order';
+
+  @override
+  String get gitLogSortDate => 'Date Order';
+
+  @override
+  String get gitLogLocalBranches => 'Local Branches';
+
+  @override
+  String get gitLogRemoteBranches => 'Remote Branches';
+
+  @override
+  String get gitLogTags => 'Tags';
+
+  @override
+  String get gitLogBackToLog => 'Back to Log';
+
+  @override
+  String get gitLogNoCommits => 'No commits match.';
+
+  @override
+  String get gitLogLocalChanges => 'Local Changes';
+
+  @override
+  String gitLogLocalChangesCount(int count) {
+    return 'Local Changes ($count)';
+  }
+
+  @override
+  String get gitLogSelectCommit => 'Select a commit to see its details.';
+
+  @override
+  String get gitLogAuthor => 'Author';
+
+  @override
+  String get gitLogParents => 'Parent: ';
+
+  @override
+  String get gitLogShowBranches => 'Show Branches';
+
+  @override
+  String get gitLogHideBranches => 'Hide Branches';
+
+  @override
+  String get gitLogShowSizes => 'Show Sizes';
+
+  @override
+  String get gitLogHideSizes => 'Hide Sizes';
+
+  @override
+  String gitLogFileCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files',
+      one: '1 file',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get gitLogInNoBranch => 'No branch has this commit.';
+
+  @override
+  String get gitLogList => 'List';
+
+  @override
+  String get gitLogTree => 'Tree';
+
+  @override
+  String get gitLogFilterFiles => 'Filter files (* and ? match any)';
+
+  @override
+  String get gitLogCopyPath => 'Copy Path';
+
+  @override
+  String get gitLogCopyRelativePath => 'Copy Relative Path';
+
+  @override
+  String get gitLogBinary => 'binary';
+
+  @override
+  String get gitLogPreviousFile => 'Previous File';
+
+  @override
+  String get gitLogNextFile => 'Next File';
+
+  @override
+  String get gitLogOpenInEditor => 'Open in Editor';
+
+  @override
   String get checkpointsTitle => 'Checkpoints';
 
   @override
@@ -10800,4 +10931,164 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get checkpointsClearDetail =>
       'The changes agents made in conversations that are not open can no longer be undone. The files themselves stay as they are.';
+
+  @override
+  String gitLogToday(String time) {
+    return 'Today $time';
+  }
+
+  @override
+  String gitLogYesterday(String time) {
+    return 'Yesterday $time';
+  }
+
+  @override
+  String get gitLogCheckoutRevision => 'Checkout Revision';
+
+  @override
+  String get gitLogNewBranch => 'New Branch…';
+
+  @override
+  String gitLogNewBranchAt(String commit) {
+    return 'New branch at $commit';
+  }
+
+  @override
+  String gitLogCheckoutBranch(String branch) {
+    return 'Checkout \'$branch\'';
+  }
+
+  @override
+  String get gitLogCopyHash => 'Copy the full hash';
+
+  @override
+  String get gitLogLoading => 'Loading history…';
+
+  @override
+  String get gitLogWorktree => 'Worktree';
+
+  @override
+  String gitLogWorktreeOf(String path) {
+    return 'Worktree: $path';
+  }
+
+  @override
+  String get gitLogFollowAgent => 'Follow the Agent';
+
+  @override
+  String get gitLogAgentHere => 'The agent works here';
+
+  @override
+  String gitLogWorktreeAt(String name, String path) {
+    return 'Checked out in worktree $name\n$path';
+  }
+
+  @override
+  String get gitLogMainWorktree => 'main worktree';
+
+  @override
+  String get gitLogWorktreeMissing => 'missing';
+
+  @override
+  String branchBarWorktree(String name, String path) {
+    return 'In worktree $name\n$path';
+  }
+
+  @override
+  String get gitCommitChanges => 'Changes';
+
+  @override
+  String get gitCommitUnversioned => 'Unversioned Files';
+
+  @override
+  String get gitCommitConflicts => 'Merge Conflicts';
+
+  @override
+  String get gitCommitAmend => 'Amend';
+
+  @override
+  String get gitCommitMessage => 'Commit Message';
+
+  @override
+  String get gitCommitButton => 'Commit';
+
+  @override
+  String get gitCommitAndPush => 'Commit and Push';
+
+  @override
+  String get gitCommitRollback => 'Rollback…';
+
+  @override
+  String gitCommitRollbackConfirm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files',
+      one: '1 file',
+    );
+    return 'Roll back the changes of $_temp0?';
+  }
+
+  @override
+  String get gitCommitRollbackDetail =>
+      'They go back to how they were last committed; files not committed yet are deleted.';
+
+  @override
+  String get gitCommitRollbackButton => 'Rollback';
+
+  @override
+  String get gitCommitShowDiff => 'Show Diff';
+
+  @override
+  String get gitCommitJumpToSource => 'Jump to Source';
+
+  @override
+  String get gitCommitAddToVcs => 'Add to VCS';
+
+  @override
+  String get gitCommitMarkResolved => 'Mark Resolved';
+
+  @override
+  String get gitCommitExpandAll => 'Expand All';
+
+  @override
+  String get gitCommitCollapseAll => 'Collapse All';
+
+  @override
+  String get gitCommitGroupByDirectory => 'Group by Directory';
+
+  @override
+  String get gitCommitEmptyMessage => 'Enter a commit message.';
+
+  @override
+  String get gitCommitNothingSelected => 'Check the files to commit.';
+
+  @override
+  String get gitCommitNoChanges => 'No local changes';
+
+  @override
+  String gitCommitSelected(int checked, int total) {
+    return '$checked of $total files checked';
+  }
+
+  @override
+  String get gitLogUndoCommit => 'Undo Commit';
+
+  @override
+  String get branchBarNewWorktree => 'New Worktree…';
+
+  @override
+  String branchBarNewWorktreeFrom(String branch, String folder) {
+    return 'A new branch from “$branch”, in a worktree of its own beside “$folder”: the agent works there, your checkout stays as it is';
+  }
+
+  @override
+  String branchBarInWorktree(String name) {
+    return 'In worktree $name';
+  }
+
+  @override
+  String branchBarWorkIn(String path, String branch) {
+    return 'From now on, work in $path (branch $branch): read and edit the files and run the commands there.';
+  }
 }
