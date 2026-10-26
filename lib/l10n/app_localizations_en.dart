@@ -11711,4 +11711,74 @@ class AppLocalizationsEn extends AppLocalizations {
   String gitChangelistTurn(String request) {
     return 'AI: $request';
   }
+
+  @override
+  String get gitStashChangesTitle => 'Stash Changes';
+
+  @override
+  String gitStashFilesTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Stash $count Files',
+      one: 'Stash 1 File',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get gitStashButton => 'Stash';
+
+  @override
+  String get gitStashMessage => 'Message (optional)';
+
+  @override
+  String get gitStashUntracked => 'Include untracked files';
+
+  @override
+  String get gitStashBase => 'Base';
+
+  @override
+  String get gitStashApply => 'Apply';
+
+  @override
+  String get gitStashPop => 'Pop';
+
+  @override
+  String get gitStashAsBranch => 'Unstash as Branch…';
+
+  @override
+  String get gitStashCopyMessage => 'Copy Message';
+
+  @override
+  String get gitStashDrop => 'Drop…';
+
+  @override
+  String gitStashDropConfirm(String ref) {
+    return 'Drop $ref?';
+  }
+
+  @override
+  String get gitStashDropButton => 'Drop';
+
+  @override
+  String get gitStashClear => 'Clear Stashes…';
+
+  @override
+  String get gitStashClearConfirm => 'Drop every stash?';
+
+  @override
+  String get gitStashClearButton => 'Clear';
+
+  @override
+  String get gitStashNone => 'No stashes';
+
+  @override
+  String get gitStashTab => 'Stash';
+
+  @override
+  String get gitCommitTab => 'Commit';
+
+  @override
+  String get gitStashSelected => 'Stash Selected Files…';
 }

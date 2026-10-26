@@ -376,6 +376,32 @@ class IdeGitRepository extends ChangeNotifier {
       _operate(() => service.reset(commit, mode));
 
   /// New Tag at [commit].
+  Future<List<IdeGitStash>> stashes() => service.stashes();
+
+  Future<void> stash({
+    String message = '',
+    Iterable<String>? paths,
+    bool untracked = false,
+    bool keepIndex = false,
+  }) => _operate(
+    () => service.stash(
+      message: message,
+      paths: paths,
+      untracked: untracked,
+      keepIndex: keepIndex,
+    ),
+  );
+
+  Future<void> unstash(String ref, {bool pop = false, bool index = false}) =>
+      _operate(() => service.unstash(ref, pop: pop, index: index));
+
+  Future<void> dropStash(String ref) => _operate(() => service.dropStash(ref));
+
+  Future<void> clearStashes() => _operate(service.clearStashes);
+
+  Future<void> stashBranch(String name, String ref) =>
+      _operate(() => service.stashBranch(name, ref));
+
   Future<void> tag(String name, String commit, {String? message}) =>
       _operate(() => service.tag(name, commit, message: message));
 

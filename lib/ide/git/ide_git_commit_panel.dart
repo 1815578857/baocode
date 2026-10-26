@@ -38,7 +38,9 @@ import 'git_model.dart';
 import 'git_partial.dart';
 import 'git_repository.dart';
 import 'git_service.dart';
+import 'ide_git_log_view.dart' show IdeGitDiffFile;
 import 'ide_git_merge_dialog.dart';
+import 'ide_git_stash_view.dart';
 import 'ide_scm_view.dart' show IdeScmSession;
 import 'scm_host.dart';
 import 'scm_tree.dart';
@@ -60,6 +62,7 @@ class IdeGitCommitPanel extends StatefulWidget {
     this.onTreeViewChanged,
     this.hunks,
     this.changelists,
+    this.onShowDiff,
   });
 
   /// The IDE's workspace, or the chat window's side panel's project.
@@ -109,6 +112,10 @@ class IdeGitCommitPanel extends StatefulWidget {
 
   /// The changelists the changes are sorted into; one list when null.
   final IdeGitChangelists? changelists;
+
+  /// Shows files' changes in the log's place, from the one at the index:
+  /// the Stash tab's, offered with it.
+  final void Function(List<IdeGitDiffFile> files, int index)? onShowDiff;
 
   static const rowHeight = 22.0;
 
@@ -221,6 +228,10 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
 
   IdeScmSession get _session => widget.session;
   IdeGitRepository? get _git => widget.host.git;
+
+  /// The Stash tab shown, not the changes.
+  bool _stashTab = false;
+  final GlobalKey<IdeGitStashViewState> _stashKey = GlobalKey();
 
   IdeScmSession _sessionOf(IdeGitRepository git) =>
       identical(git, _git) ? _session : widget.sessionOf?.call(git) ?? _session;
@@ -935,10 +946,7 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
         );
         parts.write(
           await ideGitUnifiedDiff(
-            git.service.pathContext.relative(
-              file.path,
-              from: git.service.root,
-            ),
+            git.service.pathContext.relative(file.path, from: git.service.root),
             original,
             text,
           ),
@@ -1006,9 +1014,35 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
                     constraints.maxHeight - 170,
                   ),
                 );
+                if (_stashTab && widget.onShowDiff != null) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _tabs(context),
+                      _stashToolbar(context),
+                      Expanded(
+                        child: IdeGitStashView(
+                          key: _stashKey,
+                          repositories: [
+                            for (final git in _repositories)
+                              (
+                                git.service.pathContext.basename(
+                                  git.service.root,
+                                ),
+                                git,
+                              ),
+                          ],
+                          notifications: widget.notifications,
+                          onShowDiff: widget.onShowDiff!,
+                        ),
+                      ),
+                    ],
+                  );
+                }
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (widget.onShowDiff != null) _tabs(context),
                     _toolbar(context),
                     if (git.state?.operation case final operation?)
                       _operationBanner(git, operation),
@@ -1043,6 +1077,65 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
             ),
     );
   }
+
+  /// JetBrains' Commit and Stash tabs.
+  Widget _tabs(BuildContext context) {
+    final l10n = context.l10n;
+    Widget tab(String label, bool stash) => _PanelTab(
+      label: label,
+      selected: _stashTab == stash,
+      onTap: () => setState(() => _stashTab = stash),
+    );
+    return Container(
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: themeColors.get('panel.border') ?? Colors.transparent,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [tab(l10n.gitCommitTab, false), tab(l10n.gitStashTab, true)],
+      ),
+    );
+  }
+
+  /// Over the stashes: Refresh, Stash Changes, Clear.
+  Widget _stashToolbar(BuildContext context) {
+    final l10n = context.l10n;
+    final git = _git;
+    return SizedBox(
+      height: 30,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          children: [
+            IdeActionButton(
+              icon: Codicons.refresh,
+              tooltip: l10n.commonRefresh,
+              onPressed: () => unawaited(git?.refresh(force: true)),
+            ),
+            IdeActionButton(
+              icon: Codicons.gitStash,
+              tooltip: l10n.gitStashChangesTitle,
+              onPressed: git == null ? null : () => unawaited(_stash(git)),
+            ),
+            IdeActionButton(
+              icon: Codicons.clearAll,
+              tooltip: l10n.gitStashClear,
+              onPressed: () => unawaited(_stashKey.currentState?.clear()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// [git]'s changes stashed (only [paths]' where given).
+  Future<void> _stash(IdeGitRepository git, {Iterable<String>? paths}) =>
+      _run(() => ideGitStashChanges(context, git, paths: paths));
 
   /// The merge, rebase, cherry-pick or revert Git stopped in: what, how
   /// many conflicts are left, and Continue (once there are none), Skip
@@ -1185,6 +1278,13 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
                         await _rollback(git, files);
                       }
                     }()),
+            ),
+            IdeActionButton(
+              icon: Codicons.gitStash,
+              tooltip: l10n.gitStashChangesTitle,
+              onPressed: git == null || rows.isEmpty
+                  ? null
+                  : () => unawaited(_stash(git)),
             ),
             IdeActionButton(
               icon: Codicons.diff,
@@ -1640,6 +1740,16 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
               l10n.gitCommitRollback,
               onSelected: () => unawaited(_rollback(git, _checkable(row))),
             ),
+          if (_checkable(row).isNotEmpty && row is! _RepoRow)
+            IdeMenuAction(
+              l10n.gitStashSelected,
+              onSelected: () => unawaited(
+                _stash(
+                  git,
+                  paths: [for (final file in _checkable(row)) file.path],
+                ),
+              ),
+            ),
           if (untracked.isNotEmpty)
             IdeMenuAction(
               l10n.gitCommitAddToVcs,
@@ -1989,4 +2099,62 @@ class _DividerState extends State<_Divider> {
       ),
     ),
   );
+}
+
+/// A tab of the panel's: Commit, Stash.
+class _PanelTab extends StatefulWidget {
+  const _PanelTab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  State<_PanelTab> createState() => _PanelTabState();
+}
+
+class _PanelTabState extends State<_PanelTab> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = themeColors;
+    final selected = widget.selected;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                width: 2,
+                color: selected
+                    ? colors['panelTitle.activeBorder']
+                    : Colors.transparent,
+              ),
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            widget.label,
+            style: TextStyle(
+              fontSize: 12,
+              color: selected || _hover
+                  ? colors['panelTitle.activeForeground']
+                  : colors['panelTitle.inactiveForeground'],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

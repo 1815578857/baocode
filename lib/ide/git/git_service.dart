@@ -966,6 +966,93 @@ class IdeGitService {
     return _parseNameStatus(top, output.stdout);
   }
 
+  // --- Stashes ---------------------------------------------------------------
+
+  /// The stashes, the newest first.
+  Future<List<IdeGitStash>> stashes() async {
+    await _requireRoot();
+    final output = _check(
+      await _git(['stash', 'list', '--format=%gd%x00%H%x00%ct%x00%gs']),
+      'Cannot list the stashes.',
+    );
+    return parseGitStashes(output.stdout);
+  }
+
+  /// Stashes the local changes (only [paths]' where given) with [message];
+  /// [untracked] the untracked files too, [keepIndex] leaving what is
+  /// staged.
+  Future<void> stash({
+    String message = '',
+    Iterable<String>? paths,
+    bool untracked = false,
+    bool keepIndex = false,
+  }) async {
+    final top = await _requireRoot();
+    _check(
+      await _git([
+        'stash',
+        'push',
+        if (message.isNotEmpty) ...['-m', message],
+        if (untracked) '--include-untracked',
+        if (keepIndex) '--keep-index',
+        if (paths != null) ...['--', ..._relative(top, paths)],
+      ]),
+      'Cannot stash the changes.',
+    );
+  }
+
+  /// Applies [ref]'s changes ([pop]: and drops it once they apply);
+  /// [index]: what was staged staged again.
+  Future<void> unstash(
+    String ref, {
+    bool pop = false,
+    bool index = false,
+  }) async {
+    await _requireRoot();
+    _check(
+      await _git(['stash', pop ? 'pop' : 'apply', if (index) '--index', ref]),
+      'Cannot apply the stash.',
+    );
+  }
+
+  Future<void> dropStash(String ref) async {
+    await _requireRoot();
+    _check(await _git(['stash', 'drop', ref]), 'Cannot drop the stash.');
+  }
+
+  Future<void> clearStashes() async {
+    await _requireRoot();
+    _check(await _git(['stash', 'clear']), 'Cannot clear the stashes.');
+  }
+
+  /// A branch [name] made where [ref] was stashed, its changes on it, the
+  /// stash dropped (`git stash branch`).
+  Future<void> stashBranch(String name, String ref) async {
+    await _requireRoot();
+    _check(
+      await _git(['stash', 'branch', name, ref]),
+      'Cannot unstash to the branch $name.',
+    );
+  }
+
+  /// The files stashed in [stash] (its commit) that were untracked: its
+  /// third parent's.
+  Future<List<String>> stashedUntracked(String stash) async {
+    final top = await _requireRoot();
+    final output = await _git([
+      'ls-tree',
+      '-r',
+      '--name-only',
+      '-z',
+      '$stash^3',
+    ]);
+    if (output.exitCode != 0) return const [];
+    return [
+      for (final path in output.stdout.split('\x00'))
+        if (path.isNotEmpty) pathContext.join(top, path),
+    ];
+  }
+
   // --- Commit operations (JetBrains' Git log) --------------------------------
 
   /// Applies [commits] (oldest first) on HEAD: `git cherry-pick`.

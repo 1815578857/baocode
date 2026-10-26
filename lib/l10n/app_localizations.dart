@@ -19130,6 +19130,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'AI: {request}'**
   String gitChangelistTurn(String request);
+
+  /// No description provided for @gitStashChangesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stash Changes'**
+  String get gitStashChangesTitle;
+
+  /// No description provided for @gitStashFilesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Stash 1 File} other{Stash {count} Files}}'**
+  String gitStashFilesTitle(int count);
+
+  /// No description provided for @gitStashButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Stash'**
+  String get gitStashButton;
+
+  /// No description provided for @gitStashMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message (optional)'**
+  String get gitStashMessage;
+
+  /// No description provided for @gitStashUntracked.
+  ///
+  /// In en, this message translates to:
+  /// **'Include untracked files'**
+  String get gitStashUntracked;
+
+  /// No description provided for @gitStashBase.
+  ///
+  /// In en, this message translates to:
+  /// **'Base'**
+  String get gitStashBase;
+
+  /// No description provided for @gitStashApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get gitStashApply;
+
+  /// No description provided for @gitStashPop.
+  ///
+  /// In en, this message translates to:
+  /// **'Pop'**
+  String get gitStashPop;
+
+  /// No description provided for @gitStashAsBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Unstash as Branch…'**
+  String get gitStashAsBranch;
+
+  /// No description provided for @gitStashCopyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Message'**
+  String get gitStashCopyMessage;
+
+  /// No description provided for @gitStashDrop.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop…'**
+  String get gitStashDrop;
+
+  /// No description provided for @gitStashDropConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop {ref}?'**
+  String gitStashDropConfirm(String ref);
+
+  /// No description provided for @gitStashDropButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop'**
+  String get gitStashDropButton;
+
+  /// No description provided for @gitStashClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Stashes…'**
+  String get gitStashClear;
+
+  /// No description provided for @gitStashClearConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop every stash?'**
+  String get gitStashClearConfirm;
+
+  /// No description provided for @gitStashClearButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get gitStashClearButton;
+
+  /// No description provided for @gitStashNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No stashes'**
+  String get gitStashNone;
+
+  /// No description provided for @gitStashTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Stash'**
+  String get gitStashTab;
+
+  /// No description provided for @gitCommitTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit'**
+  String get gitCommitTab;
+
+  /// No description provided for @gitStashSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Stash Selected Files…'**
+  String get gitStashSelected;
 }
 
 class _AppLocalizationsDelegate

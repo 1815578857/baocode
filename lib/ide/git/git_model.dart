@@ -235,6 +235,53 @@ class IdeGitHead {
   final bool unborn;
 }
 
+/// A stash (`git stash list`): [ref] (`stash@{0}`), its commit [id], when
+/// it was made, the branch it was made on and what it says.
+class IdeGitStash {
+  const IdeGitStash({
+    required this.ref,
+    required this.id,
+    required this.date,
+    required this.message,
+    this.branch,
+  });
+
+  final String ref;
+  final String id;
+  final DateTime date;
+  final String message;
+  final String? branch;
+}
+
+/// `git stash list --format=%gd%x00%H%x00%ct%x00%gs` as stashes: what
+/// each says without Git's `WIP on <branch>:` or `On <branch>:`.
+List<IdeGitStash> parseGitStashes(String output) {
+  final subject = RegExp(r'^(?:WIP on|On) ([^:]+): (.*)$');
+  final stashes = <IdeGitStash>[];
+  for (final line in output.split('\n')) {
+    if (line.split('\x00') case [
+      final ref,
+      final id,
+      final time,
+      final summary,
+    ]) {
+      final match = subject.firstMatch(summary);
+      stashes.add(
+        IdeGitStash(
+          ref: ref,
+          id: id,
+          date: DateTime.fromMillisecondsSinceEpoch(
+            (int.tryParse(time) ?? 0) * 1000,
+          ),
+          message: match == null ? summary : match[2]!,
+          branch: match?[1],
+        ),
+      );
+    }
+  }
+  return stashes;
+}
+
 /// How Reset Current Branch to Here leaves the changes (`git reset`):
 /// staged, in the working tree, gone, or kept where the commits do not
 /// touch them.

@@ -11098,4 +11098,68 @@ class AppLocalizationsZh extends AppLocalizations {
   String gitChangelistTurn(String request) {
     return 'AI：$request';
   }
+
+  @override
+  String get gitStashChangesTitle => '暂存改动（Stash）';
+
+  @override
+  String gitStashFilesTitle(int count) {
+    return '暂存 $count 个文件（Stash）';
+  }
+
+  @override
+  String get gitStashButton => '暂存';
+
+  @override
+  String get gitStashMessage => '说明（可不填）';
+
+  @override
+  String get gitStashUntracked => '包含未跟踪的文件';
+
+  @override
+  String get gitStashBase => '基准';
+
+  @override
+  String get gitStashApply => '应用';
+
+  @override
+  String get gitStashPop => '应用并删除（Pop）';
+
+  @override
+  String get gitStashAsBranch => '取出为新分支…';
+
+  @override
+  String get gitStashCopyMessage => '复制说明';
+
+  @override
+  String get gitStashDrop => '删除…';
+
+  @override
+  String gitStashDropConfirm(String ref) {
+    return '删除 $ref？';
+  }
+
+  @override
+  String get gitStashDropButton => '删除';
+
+  @override
+  String get gitStashClear => '清空 Stash…';
+
+  @override
+  String get gitStashClearConfirm => '删除全部 Stash？';
+
+  @override
+  String get gitStashClearButton => '清空';
+
+  @override
+  String get gitStashNone => '没有 Stash';
+
+  @override
+  String get gitStashTab => 'Stash';
+
+  @override
+  String get gitCommitTab => '提交';
+
+  @override
+  String get gitStashSelected => '暂存选中的文件…';
 }

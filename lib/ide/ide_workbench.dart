@@ -3896,6 +3896,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         commitMessage: widget.commitMessage,
         hunks: _hunks,
         changelists: _changelists,
+        onShowDiff: (files, index) => _scm.log.showDiff(files, index),
       ),
     ),
     IdeSideView.debug => switch (_debug) {
