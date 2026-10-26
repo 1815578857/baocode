@@ -327,6 +327,7 @@ void main() {
           ),
         ]),
         Reply.text('ok'),
+        Reply.text(''),
         Reply.text('<summary>Summed.</summary>'),
       ]);
       await h.turn('write');
