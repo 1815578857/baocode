@@ -3283,6 +3283,8 @@
   "gitAskAiCommitPrompt": "解释提交 {id}（\u201c{subject}\u201d）：改了什么、为什么改，以及有没有看起来有风险的地方。可以用 `git show {id}` 查看。",
   "gitAskAiCommits": "问 AI 这 {count} 个提交",
   "gitAskAiCommitsPrompt": "解释提交 {ids}：它们合起来改了什么，以及有没有看起来有风险的地方。可以用 `git show` 查看。",
+  "gitAskAiHunk": "问 AI 这处改动",
+  "gitAskAiHunkPrompt": "关于 {path} 第 {line} 行的这处改动：解释它做了什么，有没有问题。\n\n```diff\n{change}\n```",
   "gitAskAiChanges": "问 AI 这些改动",
   "gitAskAiChangesPrompt": "审查我在 {paths} 中还没提交的改动（`git diff HEAD -- {paths}`）：说明它们做了什么，指出有问题的地方。",
   "gitAskAiConflicts": "让 AI 解决冲突",
@@ -3302,6 +3304,11 @@
   "compareFoldersPick": "“{original}”和“{modified}”不同的文件",
   "compareFoldersOnlyIn": "只在“{name}”里",
   "compareFoldersModified": "有改动",
+  "compareWithLocalHistory": "本地历史…",
+  "localHistoryShow": "查看本地历史",
+  "localHistoryNone": "“{name}”还没有本地历史：保存文件时才会记录。",
+  "localHistoryPick": "选择“{name}”的一个版本来比较",
+  "localHistoryLabel": "{name}（本地历史，{time}）",
   "explorerCompareSelected": "比较所选文件",
   "compareFilesLabel": "{original} \u2194 {modified}"
 }

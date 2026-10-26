@@ -12100,6 +12100,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get gitAskAiHunk => 'Ask AI About This Change';
+
+  @override
+  String gitAskAiHunkPrompt(String path, int line, String change) {
+    return 'About this change in $path at line $line: explain what it does and whether anything in it is wrong.\n\n```diff\n$change\n```';
+  }
+
+  @override
   String get gitAskAiChanges => 'Ask AI About These Changes';
 
   @override
@@ -12173,6 +12181,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get compareFoldersModified => 'Changed';
+
+  @override
+  String get compareWithLocalHistory => 'Local History…';
+
+  @override
+  String get localHistoryShow => 'Show Local History';
+
+  @override
+  String localHistoryNone(String name) {
+    return 'No local history of “$name” yet: it is kept as the file is saved.';
+  }
+
+  @override
+  String localHistoryPick(String name) {
+    return 'A version of “$name” to compare with';
+  }
+
+  @override
+  String localHistoryLabel(String name, String time) {
+    return '$name (Local History, $time)';
+  }
 
   @override
   String get explorerCompareSelected => 'Compare Selected';

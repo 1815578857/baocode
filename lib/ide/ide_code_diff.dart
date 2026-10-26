@@ -9,6 +9,9 @@ import 'package:bao_editor/monaco/flutter/editor_document_model.dart';
 import 'package:bao_editor/monaco/flutter/editor_surface.dart';
 import 'package:bao_editor/monaco/flutter/editor_surface_controller.dart';
 import 'package:bao_editor/monaco/flutter/language_configuration_assets.dart';
+import 'package:bao_editor/monaco/flutter/lines_diff.dart'
+    show isSmallLinesDiff;
+import 'package:bao_editor/monaco/vs/editor/common/diff/default_lines_diff_computer/default_lines_diff_computer.dart';
 import 'package:bao_editor/monaco/vs/editor/common/diff/range_mapping.dart';
 import 'package:bao_editor/textmate/textmate_syntax.dart';
 
@@ -28,6 +31,16 @@ import 'ide_workspace.dart' show IdeDiffOriginal;
 /// Where a diff opens: at its first change, or (stepped back into from the
 /// next file) at its last.
 enum IdeDiffStart { first, last }
+
+/// What an agent changed in a file and is not yet kept: the text before it
+/// ([base]) and what the turns that changed it were asked, the latest
+/// last. A diff's changes the agent's lines are in are marked with them.
+class IdeDiffAgentMarks {
+  const IdeDiffAgentMarks(this.base, this.turns);
+
+  final String base;
+  final List<String> turns;
+}
 
 /// The check boxes by a diff's changes (JetBrains' partial commit): whether
 /// each, by its key ([ideGitHunkKeys]), goes in the commit.
@@ -57,6 +70,8 @@ class IdeCodeDiff extends StatefulWidget {
     this.onEdit,
     this.position,
     this.checks,
+    this.agent,
+    this.onAsk,
   });
 
   final String path;
@@ -79,6 +94,13 @@ class IdeCodeDiff extends StatefulWidget {
   /// A check box by each change, where the changes can be left out of a
   /// commit; whitespace then counts, as it does for the commit.
   final IdeDiffChecks? checks;
+
+  /// The agent's change in the file, its parts in the diff marked.
+  final IdeDiffAgentMarks? agent;
+
+  /// Asks the AI about a change: its lines as a diff writes them (`-`
+  /// taken out, `+` put in), and where it starts in [modified].
+  final void Function(String change, int line)? onAsk;
 
   /// How long typing goes on before what is typed is written.
   static const writeDelay = Duration(milliseconds: 400);
@@ -120,6 +142,42 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
 
   /// The change the pointer is on: its lines' check boxes show.
   final ValueNotifier<int?> _hovered = ValueNotifier(null);
+
+  /// The lines of the modified text the agent changed, for the text they
+  /// were found in.
+  (DocumentSnapshot, String, List<LineRange>)? _agentLines;
+
+  /// The lines of [text] the agent changed since [IdeDiffAgentMarks.base];
+  /// none where the texts are too long to compare here.
+  List<LineRange> _agentLinesOf(DocumentSnapshot text, String base) {
+    if (_agentLines case (final known, final from, final lines)
+        when identical(known, text) && from == base) {
+      return lines;
+    }
+    List<String> lines(DocumentSnapshot text) => [
+      for (var i = 0; i < text.lineCount; i++)
+        text.text.substring(text.lineStarts[i], text.contentEnds[i]),
+    ];
+    final before = lines(DocumentSnapshot(base));
+    final after = lines(text);
+    final ranges = isSmallLinesDiff(before, after)
+        ? [
+            for (final change
+                in DefaultLinesDiffComputer()
+                    .computeDiff(
+                      before,
+                      after,
+                      const LinesDiffComputerOptions(
+                        maxComputationTimeMs: 1000,
+                      ),
+                    )
+                    .changes)
+              change.modified,
+          ]
+        : const <LineRange>[];
+    _agentLines = (text, base, ranges);
+    return ranges;
+  }
 
   Timer? _write;
   StreamSubscription<Object?>? _edits;
@@ -383,6 +441,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
     final style = AppFonts.codeStyle(13)
         .copyWith(color: colors['editor.foreground'], height: 1.45);
     final editable = widget.onEdit != null;
+    final overlay = editable || widget.checks != null || widget.onAsk != null;
     return CodeTextScale(
       child: DiffEditor(
         key: ObjectKey(_diff),
@@ -401,7 +460,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
         hideUnchanged: _options.collapseUnchanged,
         unchangedLabel: context.l10n.diffUnchangedLines,
         keepVisible: widget.line,
-        overlay: editable || widget.checks != null ? _overlay : null,
+        overlay: overlay ? _overlay : null,
         original: (context, side) {
           final controller = _diff.controller;
           if (controller == null) return const SizedBox.expand();
@@ -549,6 +608,48 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
                 ),
               );
             }
+            if (widget.agent case final agent?
+                when shows && agent.turns.isNotEmpty) {
+              final m = change.modified;
+              final mine = _agentLinesOf(snapshot, agent.base).any(
+                (lines) => m.isEmpty || lines.isEmpty
+                    ? lines.startLineNumber <= m.endLineNumberExclusive &&
+                          m.startLineNumber <= lines.endLineNumberExclusive
+                    : lines.startLineNumber < m.endLineNumberExclusive &&
+                          m.startLineNumber < lines.endLineNumberExclusive,
+              );
+              if (mine) {
+                children.add(
+                  Positioned(
+                    key: ObjectKey((change, 'agent')),
+                    right: DiffEditor.overviewWidth + 34,
+                    top: top + 1,
+                    height: view.lineHeight - 2,
+                    child: _AgentMark(turns: agent.turns),
+                  ),
+                );
+              }
+            }
+            if (widget.onAsk case final ask?
+                when shows && _hovered.value == index) {
+              children.add(
+                Positioned(
+                  key: ObjectKey((change, 'ask')),
+                  right: DiffEditor.overviewWidth + 10,
+                  top: top + (view.lineHeight - size) / 2,
+                  width: size + 2,
+                  height: size + 2,
+                  child: IdeActionButton(
+                    icon: Codicons.sparkle,
+                    tooltip: context.l10n.gitAskAiHunk,
+                    onPressed: () => ask(
+                      _changeText(original, snapshot, change),
+                      change.modified.startLineNumber,
+                    ),
+                  ),
+                ),
+              );
+            }
             if (keys == null) continue;
             final hunk = keys[index];
             final removed = [
@@ -620,7 +721,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
           return MouseRegion(
             opaque: false,
             hitTestBehavior: HitTestBehavior.translucent,
-            onHover: keys == null
+            onHover: keys == null && widget.onAsk == null
                 ? null
                 : (event) => _hovered.value = _changeAt(
                     view,
@@ -633,6 +734,32 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
           );
         },
       );
+
+  /// [change]'s lines, `-` those [original] had, `+` those [modified] has.
+  static String _changeText(
+    DocumentSnapshot original,
+    DocumentSnapshot modified,
+    LineRangeMapping change,
+  ) {
+    String line(DocumentSnapshot text, int number) => text.text.substring(
+      text.lineStarts[number - 1],
+      text.contentEnds[number - 1],
+    );
+    return [
+      for (
+        var n = change.original.startLineNumber;
+        n < change.original.endLineNumberExclusive;
+        n++
+      )
+        '-${line(original, n)}',
+      for (
+        var n = change.modified.startLineNumber;
+        n < change.modified.endLineNumberExclusive;
+        n++
+      )
+        '+${line(modified, n)}',
+    ].join('\n');
+  }
 
   /// The change at [y], from its top to the line after it.
   static int? _changeAt(
@@ -791,6 +918,45 @@ class _HunkCheck extends StatelessWidget {
                   : null,
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Over a change the agent made: the turn's request, the start of it
+/// (all the turns' in full, hovered).
+class _AgentMark extends StatelessWidget {
+  const _AgentMark({required this.turns});
+
+  final List<String> turns;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = themeColors;
+    final line = turns.last.trim().split('\n').first.trim();
+    final title = line.length > 32 ? '${line.substring(0, 32)}…' : line;
+    final foreground = colors['badge.foreground'];
+    return IdeHover(
+      message: [for (final turn in turns) turn.trim()].join('\n\n'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: colors['badge.background'],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Codicons.sparkle, size: 11, color: foreground),
+            const SizedBox(width: 4),
+            Text(
+              title.isEmpty ? 'AI' : 'AI · $title',
+              maxLines: 1,
+              style: TextStyle(fontSize: 11, height: 1, color: foreground),
+            ),
+          ],
         ),
       ),
     );
