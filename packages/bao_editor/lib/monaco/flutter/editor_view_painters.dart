@@ -28,6 +28,7 @@ class EditorViewGeometry {
     required this.minimapWidth,
     required this.verticalScrollbarWidth,
     required this.horizontalScrollbarHeight,
+    this.annotationsWidth = 0,
   });
 
   /// Computes the layout for [lineCount] lines. The minimap is dropped when
@@ -41,6 +42,7 @@ class EditorViewGeometry {
     required bool lineNumbers,
     required bool folding,
     required double minimapWidth,
+    double annotationsWidth = 0,
   }) {
     final glyphMarginWidth = glyphMargin ? lineHeight.roundToDouble() : 0.0;
     final digits = math.max('$lineCount'.length, lineNumbersMinChars);
@@ -53,6 +55,7 @@ class EditorViewGeometry {
         size.width -
         glyphMarginWidth -
         lineNumbersWidth -
+        annotationsWidth -
         decorationsWidth -
         scrollbar;
     final minimap = minimapWidth > 0 && remaining >= minimapWidth * 3
@@ -63,6 +66,7 @@ class EditorViewGeometry {
       glyphMarginWidth: glyphMarginWidth,
       lineNumbersWidth: lineNumbersWidth,
       decorationsWidth: decorationsWidth,
+      annotationsWidth: annotationsWidth,
       minimapWidth: minimap,
       verticalScrollbarWidth: scrollbar,
       horizontalScrollbarHeight: 12,
@@ -76,12 +80,16 @@ class EditorViewGeometry {
   final double glyphMarginWidth;
   final double lineNumbersWidth;
   final double decorationsWidth;
+
+  /// [EditorLineAnnotations]' column, right of the line numbers.
+  final double annotationsWidth;
   final double minimapWidth;
   final double verticalScrollbarWidth;
   final double horizontalScrollbarHeight;
 
   double get lineNumbersLeft => glyphMarginWidth;
-  double get decorationsLeft => lineNumbersLeft + lineNumbersWidth;
+  double get annotationsLeft => lineNumbersLeft + lineNumbersWidth;
+  double get decorationsLeft => annotationsLeft + annotationsWidth;
   double get contentLeft => decorationsLeft + decorationsWidth;
   double get verticalScrollbarLeft =>
       math.max(contentLeft, size.width - verticalScrollbarWidth);
@@ -122,6 +130,7 @@ class EditorViewGeometry {
       other.glyphMarginWidth == glyphMarginWidth &&
       other.lineNumbersWidth == lineNumbersWidth &&
       other.decorationsWidth == decorationsWidth &&
+      other.annotationsWidth == annotationsWidth &&
       other.minimapWidth == minimapWidth &&
       other.verticalScrollbarWidth == verticalScrollbarWidth &&
       other.horizontalScrollbarHeight == horizontalScrollbarHeight;
@@ -132,6 +141,7 @@ class EditorViewGeometry {
     glyphMarginWidth,
     lineNumbersWidth,
     decorationsWidth,
+    annotationsWidth,
     minimapWidth,
     verticalScrollbarWidth,
     horizontalScrollbarHeight,
@@ -1122,6 +1132,7 @@ class EditorGutterPainter extends CustomPainter {
     required this.showFoldingControls,
     required this.foldingEnabled,
     required this.decorations,
+    this.annotations,
   });
 
   final ViewportLayout layout;
@@ -1144,6 +1155,9 @@ class EditorGutterPainter extends CustomPainter {
   /// Their [EditorDecoration.marginColor]s and line decoration icons.
   final EditorDecorationSet decorations;
 
+  /// The column right of the line numbers, if any.
+  final EditorLineAnnotations? annotations;
+
   @override
   void paint(Canvas canvas, Size size) {
     final rect = geometry.gutterRect;
@@ -1155,6 +1169,7 @@ class EditorGutterPainter extends CustomPainter {
       Paint()..color = theme.gutterBackground ?? background,
     );
     _paintMarginDecorations(canvas, rect);
+    _paintAnnotations(canvas);
     final chevron = Paint()
       ..color = theme.foldingControlForeground
       ..style = PaintingStyle.stroke
@@ -1174,7 +1189,7 @@ class EditorGutterPainter extends CustomPainter {
           number,
           relativeCurrent
               ? geometry.lineNumbersLeft + '$number'.length * glyphs.digitWidth
-              : geometry.decorationsLeft,
+              : geometry.annotationsLeft,
           top + (lineHeight - glyphs.lineHeight) / 2,
           active: activeLines.contains(line),
         );
@@ -1283,6 +1298,55 @@ class EditorGutterPainter extends CustomPainter {
     }
   }
 
+  /// [annotations]' text by each line on screen, on its background, cut
+  /// at the column's end.
+  void _paintAnnotations(Canvas canvas) {
+    final annotations = this.annotations;
+    final width = geometry.annotationsWidth;
+    if (annotations == null || width <= 0) return;
+    final left = geometry.annotationsLeft;
+    final painters = <EditorLineAnnotation, TextPainter>{};
+    final paint = Paint();
+    canvas.save();
+    canvas.clipRect(Rect.fromLTWH(left, 0, width, geometry.size.height));
+    for (final line in layout.visibleLineNumbers) {
+      final annotation = annotations.of(line);
+      if (annotation == null) continue;
+      final top = layout.lineTop(line) - scrollTop;
+      final height = layout.lineRowsHeight(line);
+      if (annotation.background case final background?) {
+        canvas.drawRect(
+          Rect.fromLTWH(left, top, width, height),
+          paint..color = background,
+        );
+      }
+      final text = painters.putIfAbsent(
+        annotation,
+        () => TextPainter(
+          text: TextSpan(
+            text: annotation.text,
+            style: glyphs.style.copyWith(
+              fontSize: annotations.fontSize,
+              height: 1,
+              color: annotation.color ?? theme.lineNumberForeground,
+            ),
+          ),
+          maxLines: 1,
+          textScaler: glyphs.textScaler,
+          textDirection: TextDirection.ltr,
+        )..layout(),
+      );
+      text.paint(
+        canvas,
+        Offset(left + 6, top + (layout.lineHeight - text.height) / 2),
+      );
+    }
+    canvas.restore();
+    for (final text in painters.values) {
+      text.dispose();
+    }
+  }
+
   /// `.dirty-diff-glyph`: a 3px bar the line's height, or for lines
   /// deleted a 4px wedge on the line's edge.
   void _paintChangeBar(
@@ -1325,5 +1389,6 @@ class EditorGutterPainter extends CustomPainter {
       old.foldingVersion != foldingVersion ||
       old.showFoldingControls != showFoldingControls ||
       old.foldingEnabled != foldingEnabled ||
-      old.decorations != decorations;
+      old.decorations != decorations ||
+      old.annotations != annotations;
 }

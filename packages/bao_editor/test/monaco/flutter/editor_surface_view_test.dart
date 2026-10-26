@@ -37,6 +37,7 @@ Future<FocusNode> _mount(
   bool wrap = false,
   FoldingRules? foldingRules,
   void Function(int lineNumber, Offset globalPosition)? onChangeBarTap,
+  EditorLineAnnotations? lineAnnotations,
 }) async {
   final focus = FocusNode();
   addTearDown(focus.dispose);
@@ -53,6 +54,7 @@ Future<FocusNode> _mount(
             wrap: wrap,
             foldingRules: foldingRules,
             onChangeBarTap: onChangeBarTap,
+            lineAnnotations: lineAnnotations,
           ),
         ),
       ),
@@ -476,6 +478,71 @@ void main() {
       controller.value.selection,
       const TextSelection(baseOffset: 0, extentOffset: 4),
     );
+  });
+
+  testWidgets('annotations: a column right of the line numbers, its lines '
+      'pressed and hovered', (tester) async {
+    final controller = _controller('one\ntwo\nthree');
+    final pressed = <int>[];
+    final hovered = <int?>[];
+    const background = Color(0xff123456);
+    await _mount(
+      tester,
+      controller,
+      lineAnnotations: EditorLineAnnotations(
+        width: 80,
+        of: (line) => line == 3
+            ? null
+            : EditorLineAnnotation('Ada $line', background: background),
+        onTap: (line, _) => pressed.add(line),
+        onHover: (line, _) => hovered.add(line),
+      ),
+    );
+    final gutter = _gutter(tester);
+    final geometry = gutter.geometry;
+    final layout = gutter.layout;
+    expect(geometry.annotationsWidth, 80);
+    expect(
+      geometry.decorationsLeft,
+      geometry.lineNumbersLeft + geometry.lineNumbersWidth + 80,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is CustomPaint && widget.painter is EditorGutterPainter,
+      ),
+      paints
+        ..rect()
+        ..rect(
+          rect: Rect.fromLTWH(
+            geometry.annotationsLeft,
+            layout.lineTop(1),
+            80,
+            layout.lineHeight,
+          ),
+          color: background,
+        ),
+    );
+
+    Offset at(int line) =>
+        _origin(tester) +
+        Offset(
+          geometry.annotationsLeft + 20,
+          layout.lineTop(line) + layout.lineHeight / 2,
+        );
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: at(2));
+    await mouse.moveTo(at(2));
+    await tester.pump();
+    await mouse.moveTo(at(3));
+    await tester.pump();
+    expect(hovered, [2, null]);
+    await _click(tester, at(2), at: const Duration(seconds: 1));
+    // None there: the line selected.
+    await _click(tester, at(3), at: const Duration(seconds: 2));
+    expect(pressed, [2]);
+    expect(controller.value.selection.baseOffset, 8);
   });
 
   testWidgets('indent folding hides lines and unfolds for selections', (

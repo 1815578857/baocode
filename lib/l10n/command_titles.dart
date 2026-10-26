@@ -102,6 +102,8 @@ String localizedCommandLabel(AppLocalizations l10n, String id, String english) {
           ? l10n.cmdTurnOnFormatOnSave
           : l10n.cmdToggleFormatOnSave,
     'baocode.ide.retryLanguageServices' => l10n.cmdRetryLanguageServices,
+    'baocode.git.toggleAnnotations' =>
+      english.startsWith('Close') ? l10n.gitCloseAnnotations : l10n.gitAnnotate,
     'baocode.ide.backToChat' => l10n.cmdBackToChat,
     WindowCommandIds.newWindow => l10n.cmdNewWindow,
     WindowCommandIds.closeWindow => l10n.cmdCloseWindow,

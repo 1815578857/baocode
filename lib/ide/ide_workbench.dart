@@ -1671,6 +1671,12 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
 
   /// The explorer's view in place of the Git log, for the editor it hides
   /// to show.
+  /// [hash] selected in the Git log, shown in the editor's place.
+  void _showCommitInLog(String hash) {
+    _showView(IdeSideView.sourceControl);
+    _scm.log.reveal(hash);
+  }
+
   void _leaveGitLog() {
     if (_view == IdeSideView.sourceControl) {
       setState(() => _view = IdeSideView.explorer);
@@ -3441,6 +3447,15 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         enabled: _languages != null,
         run: () => setState(() => _formatOnSave = !_formatOnSave),
       ),
+      IdeCommand(
+        id: 'baocode.git.toggleAnnotations',
+        category: 'Git',
+        label: _editor?.annotated ?? false
+            ? 'Close Annotations'
+            : 'Annotate with Git Blame',
+        enabled: _editor?.canAnnotate ?? false,
+        run: () => _editor?.toggleAnnotations(),
+      ),
       _catalogCommand(
         'git.blame.toggleEditorDecoration',
         () => setState(() => _gitBlame = !_gitBlame),
@@ -4157,6 +4172,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                                 onShowReferences: _showReferences,
                                 onShowCommands: () => _showQuickInput('>'),
                                 gitBlame: _gitBlame,
+                                onShowCommit: _showCommitInLog,
                                 keyResolver: _resolveEditorKey,
                                 onPaste: _pasteInEditor,
                                 formatOnSave: _formatOnSave,

@@ -149,6 +149,28 @@ class IdeGitLogController extends ChangeNotifier {
   IdeGitLogDiff? _diff;
   IdeGitLogDiff? get diff => _diff;
 
+  /// The row [reveal] asked to be scrolled to, until the log takes it.
+  String? _reveal;
+
+  /// Selects [id]'s row and has the log scroll to it, where it is loaded
+  /// (a commit pressed in an editor's annotations).
+  void reveal(String id) {
+    _reveal = id;
+    _diff = null;
+    if (id == _selected) {
+      notifyListeners();
+    } else {
+      selected = id;
+    }
+  }
+
+  /// [reveal]'s row, once.
+  String? takeReveal() {
+    final id = _reveal;
+    _reveal = null;
+    return id;
+  }
+
   /// Shows [files]' [index]th in the table's place; with [focus], it takes
   /// the keyboard.
   void showDiff(List<IdeGitDiffFile> files, int index, {bool focus = true}) {
@@ -517,11 +539,18 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                 _log,
                 for (final (_, repo) in widget.host.repositories) repo,
               ]),
-              builder: (context, _) => git.state == null
-                  // Not a repository (yet): Source Control's welcome, but
-                  // for a change opened.
-                  ? _overlay() ?? widget.changes
-                  : _page(git, git.state!),
+              builder: (context, _) {
+                if (_log.takeReveal() case final id?) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) _select(id, reveal: true);
+                  });
+                }
+                return git.state == null
+                    // Not a repository (yet): Source Control's welcome, but
+                    // for a change opened.
+                    ? _overlay() ?? widget.changes
+                    : _page(git, git.state!);
+              },
             ),
     );
   }

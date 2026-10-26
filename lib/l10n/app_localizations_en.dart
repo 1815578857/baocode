@@ -11177,4 +11177,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cmdShowPreviousChange => 'Show Previous Change';
+
+  @override
+  String get gitAnnotate => 'Annotate with Git Blame';
+
+  @override
+  String get gitCloseAnnotations => 'Close Annotations';
 }

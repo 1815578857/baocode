@@ -304,6 +304,50 @@ class EditorChangeBar {
   int get hashCode => Object.hash(color, deleted, above);
 }
 
+/// A line's text in [EditorLineAnnotations]' column, in [color] on
+/// [background].
+@immutable
+class EditorLineAnnotation {
+  const EditorLineAnnotation(this.text, {this.color, this.background});
+
+  final String text;
+  final Color? color;
+  final Color? background;
+
+  @override
+  bool operator ==(Object other) =>
+      other is EditorLineAnnotation &&
+      other.text == text &&
+      other.color == color &&
+      other.background == background;
+
+  @override
+  int get hashCode => Object.hash(text, color, background);
+}
+
+/// A column [width] wide between the line numbers and the decorations, a
+/// short text by each line ([of], from 1; null for none): JetBrains'
+/// Annotate, who last changed each line and when. [onTap] hears a press on
+/// a line's (a pointer over them while there is one), [onHover] the
+/// pointer over one (null once off them). A new one is painted anew.
+class EditorLineAnnotations {
+  const EditorLineAnnotations({
+    required this.width,
+    required this.of,
+    this.fontSize,
+    this.onTap,
+    this.onHover,
+  });
+
+  final double width;
+  final EditorLineAnnotation? Function(int lineNumber) of;
+
+  /// The text's size; the line numbers' when null.
+  final double? fontSize;
+  final void Function(int lineNumber, Offset globalPosition)? onTap;
+  final void Function(int? lineNumber, Offset globalPosition)? onHover;
+}
+
 /// An icon in the glyph margin (a decoration type's `gutterIconPath` with
 /// `gutterIconSize`: `auto`, `contain`, `cover` or a percentage). The
 /// surface's `gutterIconBuilder` draws it.

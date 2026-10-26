@@ -41,6 +41,8 @@ export 'editor_decorations.dart'
         EditorGutterIcon,
         EditorInjectedText,
         EditorInjectedTextTarget,
+        EditorLineAnnotation,
+        EditorLineAnnotations,
         EditorUnderlineStyle;
 export 'editor_view_styles.dart';
 export 'editor_view_painters.dart' show EditorRenderWhitespace;
@@ -136,6 +138,7 @@ class EditorSurface extends StatefulWidget {
     this.onContextMenu,
     this.onViewChanged,
     this.onChangeBarTap,
+    this.lineAnnotations,
     this.contentCursor,
   });
 
@@ -261,6 +264,9 @@ class EditorSurface extends StatefulWidget {
   /// [globalPosition]: VS Code's dirty diff peek, JetBrains' change popup.
   /// The mark shows a pointer while there is one.
   final void Function(int lineNumber, Offset globalPosition)? onChangeBarTap;
+
+  /// A column of text by the line numbers, if any (JetBrains' Annotate).
+  final EditorLineAnnotations? lineAnnotations;
 
   /// Overrides the text cursor over the content (e.g. a pointer on a link).
   final MouseCursor? contentCursor;
@@ -435,8 +441,23 @@ class _EditorSurfaceState extends State<EditorSurface>
   _Part _hover = _Part.none;
 
   /// Whether the pointer is on a change mark [EditorSurface.onChangeBarTap]
-  /// takes presses on.
+  /// takes presses on, or an annotation pressed likewise.
   bool _hoverChangeBar = false;
+
+  /// The line whose annotation the pointer is on.
+  int? _hoverAnnotation;
+
+  /// Tells [EditorLineAnnotations.onHover] of the pointer coming onto
+  /// [line]'s annotation, or off them (null).
+  void _hoverAnnotationAt(int? line, Offset position) {
+    if (line == _hoverAnnotation) return;
+    _hoverAnnotation = line;
+    final box = context.findRenderObject();
+    final global = box is RenderBox && box.hasSize
+        ? box.localToGlobal(position)
+        : position;
+    widget.lineAnnotations?.onHover?.call(line, global);
+  }
 
   // Pointer interaction.
   _DragMode _dragMode = _DragMode.none;
@@ -1486,6 +1507,22 @@ class _EditorSurfaceState extends State<EditorSurface>
     onContextMenu(event.position);
   }
 
+  /// The line whose annotation is under [position], if any.
+  int? _annotationAt(Offset position) {
+    final annotations = widget.lineAnnotations;
+    final layout = _layout;
+    final geometry = _geometry;
+    if (annotations == null || layout == null || geometry == null) {
+      return null;
+    }
+    if (position.dx < geometry.annotationsLeft ||
+        position.dx >= geometry.decorationsLeft) {
+      return null;
+    }
+    final line = _lineAtY(layout, position.dy)!;
+    return annotations.of(line) == null ? null : line;
+  }
+
   /// The line whose change mark is under [position], if any.
   int? _changeBarAt(Offset position) {
     final layout = _layout;
@@ -1520,6 +1557,12 @@ class _EditorSurfaceState extends State<EditorSurface>
   ) {
     final position = event.localPosition;
     final line = _lineAtY(layout, position.dy)!;
+    if (widget.lineAnnotations?.onTap case final onTap?
+        when _annotationAt(position) != null) {
+      _dragPointer = null;
+      onTap(line, event.position);
+      return;
+    }
     if (widget.onChangeBarTap case final onTap?
         when _changeBarAt(position) != null) {
       _dragPointer = null;
@@ -1862,13 +1905,18 @@ class _EditorSurfaceState extends State<EditorSurface>
         part == _Part.gutter &&
         widget.onChangeBarTap != null &&
         _changeBarAt(position) != null;
+    final annotations = widget.lineAnnotations;
+    final annotation = part == _Part.gutter ? _annotationAt(position) : null;
+    _hoverAnnotationAt(annotation, position);
+    final pressable =
+        changeBar || (annotation != null && annotations?.onTap != null);
     if (part != _hover ||
         scrollbar != _hoveredScrollbar ||
-        changeBar != _hoverChangeBar) {
+        pressable != _hoverChangeBar) {
       setState(() {
         _hover = part;
         _hoveredScrollbar = scrollbar;
-        _hoverChangeBar = changeBar;
+        _hoverChangeBar = pressable;
       });
     }
   }
@@ -1881,6 +1929,7 @@ class _EditorSurfaceState extends State<EditorSurface>
 
   void _onExit(PointerExitEvent event) {
     _pointerInside = false;
+    _hoverAnnotationAt(null, event.localPosition);
     _hoverInjection(null);
     _reportTextHover(null);
     _scheduleScrollbarHide();
@@ -2364,6 +2413,7 @@ class _EditorSurfaceState extends State<EditorSurface>
           lineNumbers: lineNumbers != EditorLineNumbersStyle.off,
           folding: widget.folding,
           minimapWidth: widget.showMinimap ? widget.minimapWidth : 0,
+          annotationsWidth: widget.lineAnnotations?.width ?? 0,
         );
         _geometry = geometry;
         _zones = _computeZones(glyphs.lineHeight);
@@ -2505,6 +2555,7 @@ class _EditorSurfaceState extends State<EditorSurface>
                     showFoldingControls: _hover == _Part.gutter,
                     foldingEnabled: widget.folding,
                     decorations: _decorations,
+                    annotations: widget.lineAnnotations,
                   ),
                 ),
               ),

@@ -10579,4 +10579,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cmdShowPreviousChange => '显示上一处改动';
+
+  @override
+  String get gitAnnotate => '用 Git Blame 注释';
+
+  @override
+  String get gitCloseAnnotations => '关闭注释';
 }

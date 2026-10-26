@@ -7664,5 +7664,7 @@
   "cmdNextChange": "Go to Next Change",
   "cmdPreviousChange": "Go to Previous Change",
   "cmdShowNextChange": "Show Next Change",
-  "cmdShowPreviousChange": "Show Previous Change"
+  "cmdShowPreviousChange": "Show Previous Change",
+  "gitAnnotate": "Annotate with Git Blame",
+  "gitCloseAnnotations": "Close Annotations"
 }

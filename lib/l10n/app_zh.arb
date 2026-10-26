@@ -3033,5 +3033,7 @@
   "cmdNextChange": "转到下一处改动",
   "cmdPreviousChange": "转到上一处改动",
   "cmdShowNextChange": "显示下一处改动",
-  "cmdShowPreviousChange": "显示上一处改动"
+  "cmdShowPreviousChange": "显示上一处改动",
+  "gitAnnotate": "用 Git Blame 注释",
+  "gitCloseAnnotations": "关闭注释"
 }

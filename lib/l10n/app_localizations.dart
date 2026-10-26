@@ -18260,6 +18260,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show Previous Change'**
   String get cmdShowPreviousChange;
+
+  /// No description provided for @gitAnnotate.
+  ///
+  /// In en, this message translates to:
+  /// **'Annotate with Git Blame'**
+  String get gitAnnotate;
+
+  /// No description provided for @gitCloseAnnotations.
+  ///
+  /// In en, this message translates to:
+  /// **'Close Annotations'**
+  String get gitCloseAnnotations;
 }
 
 class _AppLocalizationsDelegate
