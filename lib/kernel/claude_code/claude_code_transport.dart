@@ -187,12 +187,14 @@ class ClaudeLaunch {
     'attribution': ?_attribution,
     'useAutoModeDuringPlan': ?autoModeDuringPlan,
     'alwaysThinkingEnabled': ?thinking,
-    if (models.isNotEmpty)
+    if (models.isNotEmpty) ...{
       'modelPicker': {
         'options': [
           for (final model in models) {'model': model},
         ],
       },
+      'availableModels': allowedModels,
+    },
     if (readable.isNotEmpty)
       'permissions': {
         'allow': [for (final folder in readable) readRule(folder)],
@@ -203,6 +205,28 @@ class ClaudeLaunch {
       if (directories.isNotEmpty) ...additionalDirectoriesEnvironment,
     },
   };
+
+  /// A provider's session: every model it may ask for, let through an
+  /// `availableModels` of the user's own settings, which Claude Code would
+  /// otherwise swap for one of Claude's, sent to the provider all the same
+  /// (#219). Those it is switched to, the one it starts on, those its
+  /// roles are (and their names: a subagent may ask for `haiku`). An
+  /// organization's policy is over these: its list stands.
+  List<String> get allowedModels => {
+    ...models,
+    ?model,
+    for (final name in const [
+      ClaudeModelVariables.model,
+      ClaudeModelVariables.opus,
+      ClaudeModelVariables.sonnet,
+      ClaudeModelVariables.haiku,
+      ClaudeModelVariables.subagent,
+    ])
+      if (env?[name] case final value? when value.isNotEmpty) value,
+    'opus',
+    'sonnet',
+    'haiku',
+  }.toList();
 
   /// The user's own setup set empty, in the shell's environment or their
   /// settings' `env`: `CLAUDE_CODE_EFFORT_LEVEL` would hold every request
