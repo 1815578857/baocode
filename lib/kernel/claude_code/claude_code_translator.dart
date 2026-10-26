@@ -1226,7 +1226,14 @@ class ClaudeTranslator {
       case 'Edit' || 'MultiEdit' || 'Write' || 'NotebookEdit'
           when outcome == _Outcome.done && !replaying:
         if (_editOf(tool) case final change?) {
-          emit(FileEdited(nextSeq(), change, turnId: turnId));
+          emit(
+            FileEdited(
+              nextSeq(),
+              change,
+              turnId: turnId,
+              original: _originalOf(tool),
+            ),
+          );
         }
       case 'Grep' || 'Glob' when outcome == _Outcome.done:
         final matches = _matches(tool.name, structured, text);
@@ -1339,6 +1346,26 @@ class ClaudeTranslator {
         }
     }
     return FileChange(path: path, added: added, removed: removed);
+  }
+
+  /// What a subagent's edit's file was before, as its input tells: an
+  /// Edit's or a MultiEdit's texts put back (not one that replaced every
+  /// match); a Write's is not known.
+  static FileOriginal? _originalOf(_Tool tool) {
+    final input = tool.input;
+    ({String before, String after})? edit(Object? raw) => switch (raw) {
+      {'old_string': final String before, 'new_string': final String after}
+          when raw['replace_all'] != true =>
+        (before: before, after: after),
+      _ => null,
+    };
+    final edits = switch (tool.name) {
+      'Edit' => [edit(input)],
+      'MultiEdit' => [for (final raw in _list(input['edits'])) edit(raw)],
+      _ => const <({String before, String after})?>[],
+    };
+    if (edits.isEmpty || edits.contains(null)) return null;
+    return OriginalByEdits(edits.nonNulls.toList());
   }
 
   /// An edit's result as a diff card and a pending change; false when it

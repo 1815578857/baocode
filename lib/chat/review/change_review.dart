@@ -76,7 +76,12 @@ class _Entry {
 class ChangeReview extends ChangeNotifier {
   /// Its files' paths spelled as [paths] has them: this machine's way
   /// when null.
-  ChangeReview(this._store, {p.Context? paths}) : _paths = paths ?? p.context;
+  ///
+  /// [realRoot] is [root] with its links resolved, where that is another
+  /// path: the agent may tell the project's files by it (Claude Code does:
+  /// macOS's `/tmp` is `/private/tmp`), and they are the project's.
+  ChangeReview(this._store, {p.Context? paths, this.realRoot})
+    : _paths = paths ?? p.context;
 
   /// The review of the project at [root], continuing what [session] left;
   /// null where there can be none (see [openReviewStore]).
@@ -86,8 +91,11 @@ class ChangeReview extends ChangeNotifier {
     // A remote project's paths are its host's (POSIX), whatever this
     // machine spells its own with.
     final paths = RemoteLocation.pathsOf(root);
-    if (session == null) return ChangeReview(store, paths: paths);
-    return resume(store, session, paths: paths);
+    final realRoot = await realRootOf(root);
+    if (session == null) {
+      return ChangeReview(store, paths: paths, realRoot: realRoot);
+    }
+    return resume(store, session, paths: paths, realRoot: realRoot);
   }
 
   /// The review over [store], with the changes [session] left pending.
@@ -95,14 +103,18 @@ class ChangeReview extends ChangeNotifier {
     ReviewStore store,
     String session, {
     p.Context? paths,
+    String? realRoot,
   }) async {
-    final review = ChangeReview(store, paths: paths);
+    final review = ChangeReview(store, paths: paths, realRoot: realRoot);
     await review._load(session);
     return review;
   }
 
   final ReviewStore _store;
   final p.Context _paths;
+
+  /// [root] with its links resolved, where that is another path.
+  final String? realRoot;
 
   /// How its files' paths are spelled.
   p.Context get paths => _paths;
@@ -282,13 +294,15 @@ class ChangeReview extends ChangeNotifier {
           _ => '100644',
         };
         return (true, await _store.store(utf8.encode(text), mode: mode));
-      case OriginalByPatch(:final diff):
+      case OriginalByPatch() || OriginalByEdits():
         final after = await _store.take(path);
         if (after == null || after.isLink) return (false, null);
-        final text = unpatch(
-          utf8.decode(await _store.read(after), allowMalformed: true),
-          diff,
-        );
+        final now = utf8.decode(await _store.read(after), allowMalformed: true);
+        final text = switch (original) {
+          OriginalByPatch(:final diff) => unpatch(now, diff),
+          OriginalByEdits() => original.undo(now),
+          OriginalText() => null,
+        };
         if (text == null) return (false, null);
         return (true, await _store.store(utf8.encode(text), mode: after.mode));
     }
@@ -703,9 +717,28 @@ class ChangeReview extends ChangeNotifier {
   /// Whether [key] is of a file outside the project.
   bool _outside(String key) => _paths.isAbsolute(key);
 
-  String _absolute(String path) => _paths.normalize(
-    _paths.isAbsolute(path) ? path : _paths.joinAll([root, ...path.split('/')]),
-  );
+  /// Whether [path] is in the project, spelled either way (see
+  /// [ChangeReview.new]'s realRoot).
+  bool holds(String path) {
+    final absolute = _absolute(path);
+    return _paths.equals(root, absolute) || _paths.isWithin(root, absolute);
+  }
+
+  String _absolute(String path) {
+    final absolute = _paths.normalize(
+      _paths.isAbsolute(path)
+          ? path
+          : _paths.joinAll([root, ...path.split('/')]),
+    );
+    final real = realRoot;
+    if (real == null ||
+        !(_paths.equals(real, absolute) || _paths.isWithin(real, absolute))) {
+      return absolute;
+    }
+    return _paths.normalize(
+      _paths.join(root, _paths.relative(absolute, from: real)),
+    );
+  }
 
   /// Drops what it kept between runs, once what is under way is done: the
   /// conversation is gone.
