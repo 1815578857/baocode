@@ -18110,6 +18110,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'From now on, work in {path} (branch {branch}): read and edit the files and run the commands there.'**
   String branchBarWorkIn(String path, String branch);
+
+  /// No description provided for @diffRevertChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Revert'**
+  String get diffRevertChange;
+
+  /// No description provided for @diffRemoveChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get diffRemoveChange;
+
+  /// No description provided for @diffPreviousDifference.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous Difference'**
+  String get diffPreviousDifference;
+
+  /// No description provided for @diffNextDifference.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Difference'**
+  String get diffNextDifference;
+
+  /// No description provided for @diffDifferenceOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} of {count}'**
+  String diffDifferenceOf(int current, int count);
+
+  /// No description provided for @diffDifferences.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No differences} =1{1 difference} other{{count} differences}}'**
+  String diffDifferences(int count);
+
+  /// No description provided for @diffSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewer Settings'**
+  String get diffSettings;
+
+  /// No description provided for @diffLayoutAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Side by Side When Wide Enough'**
+  String get diffLayoutAuto;
+
+  /// No description provided for @diffSideBySide.
+  ///
+  /// In en, this message translates to:
+  /// **'Side-by-Side Viewer'**
+  String get diffSideBySide;
+
+  /// No description provided for @diffUnified.
+  ///
+  /// In en, this message translates to:
+  /// **'Unified Viewer'**
+  String get diffUnified;
+
+  /// No description provided for @diffIgnoreWhitespace.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore Whitespace at Line Ends'**
+  String get diffIgnoreWhitespace;
+
+  /// No description provided for @diffHighlightCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight Characters'**
+  String get diffHighlightCharacters;
+
+  /// No description provided for @diffHighlightWords.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight Words'**
+  String get diffHighlightWords;
+
+  /// No description provided for @diffHighlightLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight Lines'**
+  String get diffHighlightLines;
+
+  /// No description provided for @diffHighlightNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Do Not Highlight'**
+  String get diffHighlightNone;
+
+  /// No description provided for @diffGoToFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Changed File'**
+  String get diffGoToFile;
 }
 
 class _AppLocalizationsDelegate

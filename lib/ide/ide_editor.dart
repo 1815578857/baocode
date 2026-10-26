@@ -44,6 +44,7 @@ import '../debug/service/debug_service.dart';
 import 'debug_editor_glue.dart';
 import 'git/git_blame.dart';
 import 'ide_agent_edits.dart';
+import 'ide_diff_options.dart';
 import 'ide_commands.dart';
 import 'ide_find_widget.dart';
 import 'ide_menu.dart';
@@ -282,6 +283,7 @@ class IdeEditorState extends State<IdeEditor> {
     _themes.addListener(_colorThemeChanged);
     EditorLanguageOverrides.instance.addListener(_languageModesChanged);
     widget.agentEdits?.addListener(_rebuildSoon);
+    IdeDiffOptions.instance.addListener(_rebuildSoon);
     if (widget.nativeEditorEnabled) _activateNativeController();
     _selectionChanged();
     _updateBlame(navigated: false);
@@ -1357,6 +1359,7 @@ class IdeEditorState extends State<IdeEditor> {
   void dispose() {
     widget.workspace.removeListener(_workspaceChanged);
     _themes.removeListener(_colorThemeChanged);
+    IdeDiffOptions.instance.removeListener(_rebuildSoon);
     EditorLanguageOverrides.instance.removeListener(_languageModesChanged);
     widget.agentEdits?.removeListener(_rebuildSoon);
     _debugListeners?.dispose();
@@ -2210,9 +2213,12 @@ class IdeEditorState extends State<IdeEditor> {
   Widget _diffEditor(WorkbenchColors colors, IdeOriginalDiff diff) {
     final theme = EditorViewTheme.fromColors(colors.get);
     final type = getThemeTypeSelector(_themes.colorTheme.type);
+    final options = IdeDiffOptions.instance;
     return DiffEditor(
       key: ObjectKey(diff),
       model: diff.model,
+      sideBySide: options.sideBySide,
+      highlight: options.highlight,
       style: _editorStyle(colors),
       theme: theme,
       colors: DiffEditorColors.from(colors.get),

@@ -10494,4 +10494,62 @@ class AppLocalizationsZh extends AppLocalizations {
   String branchBarWorkIn(String path, String branch) {
     return '接下来请在 $path（分支 $branch）里工作：读写文件、运行命令都在这个目录进行。';
   }
+
+  @override
+  String get diffRevertChange => '回滚';
+
+  @override
+  String get diffRemoveChange => '删除';
+
+  @override
+  String get diffPreviousDifference => '上一处差异';
+
+  @override
+  String get diffNextDifference => '下一处差异';
+
+  @override
+  String diffDifferenceOf(int current, int count) {
+    return '第 $current/$count 处';
+  }
+
+  @override
+  String diffDifferences(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 处差异',
+      zero: '没有差异',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get diffSettings => '查看设置';
+
+  @override
+  String get diffLayoutAuto => '够宽时并排';
+
+  @override
+  String get diffSideBySide => '并排查看';
+
+  @override
+  String get diffUnified => '单栏查看';
+
+  @override
+  String get diffIgnoreWhitespace => '忽略行首尾空白';
+
+  @override
+  String get diffHighlightCharacters => '按字符高亮';
+
+  @override
+  String get diffHighlightWords => '按词高亮';
+
+  @override
+  String get diffHighlightLines => '按行高亮';
+
+  @override
+  String get diffHighlightNone => '不高亮';
+
+  @override
+  String get diffGoToFile => '转到改动的文件';
 }

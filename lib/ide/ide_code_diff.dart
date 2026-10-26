@@ -4,25 +4,38 @@ import 'package:flutter/material.dart';
 
 import 'package:bao_editor/monaco/flutter/diff_editor.dart';
 import 'package:bao_editor/monaco/flutter/diff_editor_model.dart';
+import 'package:bao_editor/monaco/flutter/document_snapshot.dart';
 import 'package:bao_editor/monaco/flutter/editor_document_model.dart';
 import 'package:bao_editor/monaco/flutter/editor_surface.dart';
 import 'package:bao_editor/monaco/flutter/editor_surface_controller.dart';
 import 'package:bao_editor/monaco/flutter/language_configuration_assets.dart';
+import 'package:bao_editor/monaco/vs/editor/common/diff/range_mapping.dart';
 import 'package:bao_editor/textmate/textmate_syntax.dart';
 
+import '../l10n/l10n.dart';
 import '../theme/app_theme.dart';
 import '../theme/code_font.dart';
+import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' hide ColorScheme;
+import 'ide_agent_edits.dart' show agentHunkSpans;
 import 'ide_code_editor.dart' show IdeCodeHighlights;
+import 'ide_diff_options.dart';
+import 'ide_hover.dart';
 import 'ide_original_diff.dart';
 import 'ide_workspace.dart' show IdeDiffOriginal;
 
-/// A change, [original] against [modified], read only in the IDE's diff
-/// editor ([DiffEditor]), as a diff tab of the IDE shows one: side by side
-/// where it is wide enough, else the deleted code in the text; both
-/// highlighted as the language of [path]. Scrolled to [line] of [modified]
-/// (from 1) once compared, else to the first change. Copied, the modified's
-/// lines are told [onCopy] (from 1).
+/// Where a diff opens: at its first change, or (stepped back into from the
+/// next file) at its last.
+enum IdeDiffStart { first, last }
+
+/// A change, [original] against [modified], in the IDE's diff editor
+/// ([DiffEditor]), as JetBrains IDEs' diff viewer shows one: side by side
+/// or unified as [IdeDiffOptions] says, both highlighted as the language of
+/// [path], scrolled to [line] of [modified] (from 1) or to its first change
+/// ([start]: its last). With [onEdit], the modified side is the file's and
+/// can be edited, each change with a revert arrow beside it; what is
+/// typed and reverted goes to [onEdit]. Copied, the modified's lines are
+/// told [onCopy] (from 1).
 class IdeCodeDiff extends StatefulWidget {
   const IdeCodeDiff({
     super.key,
@@ -30,18 +43,32 @@ class IdeCodeDiff extends StatefulWidget {
     required this.original,
     required this.modified,
     this.line,
+    this.start = IdeDiffStart.first,
     this.highlights,
     this.onCopy,
+    this.onEdit,
+    this.position,
   });
 
   final String path;
   final String original;
   final String modified;
   final int? line;
+  final IdeDiffStart start;
 
   /// Whose TextMate worker highlights it; its own when null.
   final IdeCodeHighlights? highlights;
   final void Function(String text, int start, int end)? onCopy;
+
+  /// Writes the modified side once edited; read only when null.
+  final Future<void> Function(String text)? onEdit;
+
+  /// Told the change stepped to (-1 before any) and how many there are,
+  /// for a toolbar to show.
+  final ValueNotifier<({int current, int count})>? position;
+
+  /// How long typing goes on before what is typed is written.
+  static const writeDelay = Duration(milliseconds: 400);
 
   @override
   State<IdeCodeDiff> createState() => IdeCodeDiffState();
@@ -49,18 +76,37 @@ class IdeCodeDiff extends StatefulWidget {
 
 class IdeCodeDiffState extends State<IdeCodeDiff> {
   final WorkbenchThemeService _themes = WorkbenchThemeService.instance;
+  final IdeDiffOptions _options = IdeDiffOptions.instance;
   final GlobalKey _modifiedKey = GlobalKey();
   late EditorSurfaceController _modified;
   late IdeDiffOriginal _original;
   late IdeOriginalDiff _diff;
   TextMateDocument? _highlight;
   TextMateSyntax? _ownTextMate;
+  bool _ignoreTrimWhitespace = true;
 
   /// Bumped as the texts change: an older language pick is dropped.
   int _texts = 0;
 
   /// Scrolled to [IdeCodeDiff.line] or the first change, once compared.
   bool _revealed = false;
+
+  /// The change stepped to (F7), its index in the diff; -1 before any.
+  int _change = -1;
+
+  final ValueNotifier<({int current, int count})> _ownPosition = ValueNotifier((
+    current: -1,
+    count: 0,
+  ));
+
+  ValueNotifier<({int current, int count})> get _position =>
+      widget.position ?? _ownPosition;
+
+  /// Ticks as the modified editor scrolls: the revert arrows follow.
+  final ValueNotifier<int> _viewTick = ValueNotifier(0);
+
+  Timer? _write;
+  StreamSubscription<Object?>? _edits;
 
   TextMateSyntax get _textMate =>
       widget.highlights?.syntax ??
@@ -70,7 +116,9 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
   void initState() {
     super.initState();
     _themes.addListener(_changed);
-    _open();
+    _options.addListener(_optionsChanged);
+    _ignoreTrimWhitespace = _options.ignoreTrimWhitespace;
+    _open(widget.modified);
   }
 
   @override
@@ -79,8 +127,9 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
     if (oldWidget.original != widget.original ||
         oldWidget.modified != widget.modified ||
         oldWidget.path != widget.path) {
+      _flush();
       _close();
-      _open();
+      _open(widget.modified);
     } else if (oldWidget.line != widget.line) {
       _revealed = false;
       _reveal();
@@ -90,26 +139,48 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
   @override
   void dispose() {
     _texts++;
+    _flush();
     _themes.removeListener(_changed);
+    _options.removeListener(_optionsChanged);
     _close();
     _ownTextMate?.dispose();
+    _ownPosition.dispose();
+    _viewTick.dispose();
     super.dispose();
   }
 
-  void _open() {
+  void _open(String text) {
     final texts = ++_texts;
     _revealed = false;
-    _modified = EditorSurfaceController(
-      document: EditorDocumentModel(widget.modified),
-    )..onCopy = widget.onCopy;
+    _change = -1;
+    final document = EditorDocumentModel(text);
+    _modified = EditorSurfaceController(document: document)
+      ..onCopy = widget.onCopy;
     _original = IdeDiffOriginal(() async => widget.original)
       ..text.value = widget.original;
-    _diff = IdeOriginalDiff(_original, _modified.document, onChanged: _changed);
+    _diff = IdeOriginalDiff(
+      _original,
+      document,
+      onChanged: _changed,
+      ignoreTrimWhitespace: _ignoreTrimWhitespace,
+    );
     _diff.model.addListener(_compared);
+    // Small texts are compared at once, before there was a listener.
+    if (_diff.model.mappings != null) {
+      final diff = _diff;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && identical(diff, _diff)) _compared();
+      });
+    }
+    if (widget.onEdit != null) {
+      _edits = document.changes.listen((_) => _edited());
+    }
     unawaited(_pickLanguage(texts));
   }
 
   void _close() {
+    unawaited(_edits?.cancel());
+    _edits = null;
     _highlight?.removeListener(_changed);
     _highlight?.dispose();
     _highlight = null;
@@ -125,14 +196,93 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
     if (mounted) setState(() {});
   }
 
+  /// Whitespace ignored or not: compared again, the text as it is now.
+  void _optionsChanged() {
+    final ignore = _options.ignoreTrimWhitespace;
+    if (ignore != _ignoreTrimWhitespace) {
+      _ignoreTrimWhitespace = ignore;
+      final text = _modified.document.text;
+      _flush();
+      _close();
+      _open(text);
+    }
+    _changed();
+  }
+
   void _compared() {
+    final count = _diff.model.mappings?.length ?? 0;
+    if (_change >= count) _change = count - 1;
+    _position.value = (current: _change, count: count);
     _changed();
     _reveal();
   }
 
+  // --- Editing ---------------------------------------------------------------
+
+  void _edited() {
+    _write?.cancel();
+    _write = Timer(IdeCodeDiff.writeDelay, _flush);
+  }
+
+  /// Writes what is pending now.
+  void _flush() {
+    final pending = _write;
+    if (pending == null) return;
+    pending.cancel();
+    _write = null;
+    final onEdit = widget.onEdit;
+    if (onEdit == null) return;
+    unawaited(onEdit(_modified.document.text));
+  }
+
+  /// [change] taken out of the modified side: its lines as the original
+  /// has them (JetBrains' `>>`, or `×` for lines only added).
+  void revert(LineRangeMapping change) {
+    final original = _diff.model.originalSnapshot;
+    if (original == null || widget.onEdit == null) return;
+    final modified = _modified.document.snapshot;
+    final spans = agentHunkSpans(change, original, modified);
+    _modified.applyEdits([
+      EditorOffsetEdit(
+        spans.modifiedStart,
+        spans.modifiedEnd,
+        original.text.substring(spans.originalStart, spans.originalEnd),
+      ),
+    ]);
+    // Shown reverted at once, not after the edit's debounce.
+    _diff.model.refresh();
+    _edited();
+    _flush();
+  }
+
+  // --- Stepping --------------------------------------------------------------
+
+  /// Steps [delta] changes on (F7, Shift+F7), and shows that one; false
+  /// past the first or last, for the next file to be shown instead.
+  bool step(int delta) {
+    final mappings = _diff.model.mappings;
+    if (mappings == null || mappings.isEmpty) return false;
+    final next = _change < 0 && delta < 0
+        ? mappings.length - 1
+        : _change + delta;
+    if (next < 0 || next >= mappings.length) return false;
+    _showChange(next);
+    return true;
+  }
+
+  void _showChange(int index) {
+    final mappings = _diff.model.mappings;
+    if (mappings == null || index < 0 || index >= mappings.length) return;
+    _change = index;
+    _position.value = (current: index, count: mappings.length);
+    _revealLine(mappings[index].modified.startLineNumber);
+  }
+
+  // --- Language --------------------------------------------------------------
+
   Future<void> _pickLanguage(int texts) async {
     final path = widget.path;
-    final text = widget.modified;
+    final text = _modified.document.text;
     final end = text.indexOf('\n');
     final firstLine = (end < 0 ? text : text.substring(0, end)).replaceFirst(
       '﻿',
@@ -167,32 +317,42 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
     _ => null,
   };
 
-  /// The lines on screen go to the TextMate worker first.
+  /// The lines on screen go to the TextMate worker first; the arrows
+  /// follow the text.
   void _viewChanged() {
     if (!mounted) return;
     if (_view?.visibleLineRange case final range?) {
       _highlight?.setViewport(range.first, range.last);
     }
+    _viewTick.value++;
   }
 
-  /// A few lines over [IdeCodeDiff.line], else the first change, once the
-  /// texts are compared and laid out.
+  /// A few lines over [IdeCodeDiff.line], else the first change (or the
+  /// last, [IdeCodeDiff.start]), once the texts are compared and laid out.
   void _reveal() {
     final mappings = _diff.model.mappings;
     if (_revealed || mappings == null) return;
     _revealed = true;
-    final snapshot = _modified.document.snapshot;
-    final line =
-        widget.line ??
-        (mappings.isEmpty ? null : mappings.first.modified.startLineNumber);
-    if (line == null) return;
-    final at = (line - 1).clamp(0, snapshot.lineCount - 1);
+    if (widget.line case final line?) {
+      _revealLine(line);
+      return;
+    }
+    if (mappings.isEmpty) return;
+    _showChange(widget.start == IdeDiffStart.last ? mappings.length - 1 : 0);
+  }
+
+  void _revealLine(int line) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      final snapshot = _modified.document.snapshot;
+      final at = (line - 1).clamp(0, snapshot.lineCount - 1);
       final offset = snapshot.lineStarts[at];
       _view?.revealRange(offset, offset, center: true);
+      _viewTick.value++;
     });
   }
+
+  // --- Building --------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -201,6 +361,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
     final type = getThemeTypeSelector(_themes.colorTheme.type);
     final style = AppFonts.codeStyle(13)
         .copyWith(color: colors['editor.foreground'], height: 1.45);
+    final editable = widget.onEdit != null;
     return CodeTextScale(
       child: DiffEditor(
         key: ObjectKey(_diff),
@@ -214,6 +375,9 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
         originalStyledLines: _diff.textMate?.styledLines,
         border: colors.get('diffEditor.border'),
         sashHover: colors.get('sash.hoverBorder'),
+        sideBySide: _options.sideBySide,
+        highlight: _options.highlight,
+        overlay: editable ? _revertArrows : null,
         original: (context, side) {
           final controller = _diff.controller;
           if (controller == null) return const SizedBox.expand();
@@ -238,7 +402,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
         modified: (context, side) => EditorSurface(
           key: _modifiedKey,
           controller: _modified,
-          readOnly: true,
+          readOnly: !editable,
           backgroundColor: colors['editor.background'],
           selectionColor: colors['editor.selectionBackground'],
           caretColor: colors['editorCursor.foreground'],
@@ -251,6 +415,104 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
           showMinimap: false,
           onViewChanged: _viewChanged,
           style: style,
+        ),
+      ),
+    );
+  }
+
+  /// A revert arrow by each change, at its top: on the split side by side,
+  /// at the modified editor's left edge inline.
+  Widget _revertArrows(BuildContext context, DiffEditorLayout layout) =>
+      ListenableBuilder(
+        listenable: _viewTick,
+        builder: (context, _) {
+          final view = _view;
+          final area = view?.textArea;
+          final mappings = _diff.model.mappings;
+          if (view == null || area == null || mappings == null) {
+            return const SizedBox.shrink();
+          }
+          final snapshot = _modified.document.snapshot;
+          const size = 16.0;
+          final left = layout.sideBySide
+              ? layout.splitLeft - size / 2
+              : layout.modifiedLeft + 2;
+          return Stack(
+            children: [
+              for (final change in mappings)
+                if (_topOf(view, snapshot, change) case final top?
+                    when top >= area.top - 2 && top + size <= area.bottom)
+                  Positioned(
+                    key: ObjectKey(change),
+                    left: left,
+                    top: top + (view.lineHeight - size) / 2,
+                    width: size,
+                    height: size,
+                    child: _RevertArrow(
+                      added: change.original.isEmpty,
+                      onTap: () => revert(change),
+                    ),
+                  ),
+            ],
+          );
+        },
+      );
+
+  /// Where [change] starts in the modified editor: the bottom of the line
+  /// before it (the top of the deleted code over it, inline).
+  static double? _topOf(
+    EditorSurfaceView view,
+    DocumentSnapshot text,
+    LineRangeMapping change,
+  ) {
+    final start = change.modified.startLineNumber;
+    if (start <= 1) return view.caretRectAt(0)?.top;
+    final line = (start - 2).clamp(0, text.lineCount - 1);
+    return view.caretRectAt(text.lineStarts[line])?.bottom;
+  }
+}
+
+/// JetBrains' `>>` by a change (`×` for lines only added): reverts it.
+class _RevertArrow extends StatefulWidget {
+  const _RevertArrow({required this.added, required this.onTap});
+
+  final bool added;
+  final VoidCallback onTap;
+
+  @override
+  State<_RevertArrow> createState() => _RevertArrowState();
+}
+
+class _RevertArrowState extends State<_RevertArrow> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = themeColors;
+    final l10n = context.l10n;
+    return IdeHover(
+      message: widget.added ? l10n.diffRemoveChange : l10n.diffRevertChange,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: _hover
+                  ? colors['toolbar.hoverBackground']
+                  : colors['editor.background'],
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Icon(
+              widget.added ? Codicons.close : Codicons.arrowRight,
+              size: 13,
+              color: _hover
+                  ? colors['editor.foreground']
+                  : colors['editorLineNumber.foreground'],
+            ),
+          ),
         ),
       ),
     );

@@ -3008,5 +3008,21 @@
   "branchBarNewWorktree": "新建工作树…",
   "branchBarNewWorktreeFrom": "从“{branch}”新建分支，放进“{folder}”旁边的独立工作树：AI 在那里工作，你当前的签出不受影响",
   "branchBarInWorktree": "在工作树 {name}",
-  "branchBarWorkIn": "接下来请在 {path}（分支 {branch}）里工作：读写文件、运行命令都在这个目录进行。"
+  "branchBarWorkIn": "接下来请在 {path}（分支 {branch}）里工作：读写文件、运行命令都在这个目录进行。",
+  "diffRevertChange": "回滚",
+  "diffRemoveChange": "删除",
+  "diffPreviousDifference": "上一处差异",
+  "diffNextDifference": "下一处差异",
+  "diffDifferenceOf": "第 {current}/{count} 处",
+  "diffDifferences": "{count, plural, =0{没有差异} other{{count} 处差异}}",
+  "diffSettings": "查看设置",
+  "diffLayoutAuto": "够宽时并排",
+  "diffSideBySide": "并排查看",
+  "diffUnified": "单栏查看",
+  "diffIgnoreWhitespace": "忽略行首尾空白",
+  "diffHighlightCharacters": "按字符高亮",
+  "diffHighlightWords": "按词高亮",
+  "diffHighlightLines": "按行高亮",
+  "diffHighlightNone": "不高亮",
+  "diffGoToFile": "转到改动的文件"
 }
