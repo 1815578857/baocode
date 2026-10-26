@@ -2975,6 +2975,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
             roots: multi.folders,
             gitOf: (folder) => widget.gitFor?.call(folder),
             repositoryDetection: _repositoryDetection(host),
+            openWorktree: (path) =>
+                widget.gitFor?.call(RemoteLocation.of(host.name, path)),
             paths: host.name == null ? null : host.paths,
           )
         : IdeWorkspace(
@@ -2983,6 +2985,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
             languages: widget.languagesFor?.call(folder),
             git: widget.gitFor?.call(folder),
             repositoryDetection: _repositoryDetection(host),
+            openWorktree: (path) =>
+                widget.gitFor?.call(RemoteLocation.of(host.name, path)),
             paths: host.name == null ? null : host.paths,
           );
     // The parts as the last run left them, before anything shows them.

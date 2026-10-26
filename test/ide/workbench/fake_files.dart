@@ -189,6 +189,7 @@ Future<IdeWorkspace> pumpWorkbench(
   List<String>? roots,
   IdeGitRepository? Function(String root)? gitOf,
   IdeRepositoryDetection? repositoryDetection,
+  IdeGitRepository? Function(String path)? openWorktree,
   VoidCallback? onAddFolder,
   ValueChanged<String>? onRemoveFolder,
   Project? project,
@@ -210,6 +211,7 @@ Future<IdeWorkspace> pumpWorkbench(
     roots: [for (final root in roots ?? const <String>[]) inRoot(root)],
     gitOf: roots == null ? null : (root) => gitOf?.call(root),
     repositoryDetection: repositoryDetection,
+    openWorktree: openWorktree,
   );
   addTearDown(() {
     workspace.dispose();

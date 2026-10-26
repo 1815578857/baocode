@@ -18,6 +18,7 @@ import 'package:path/path.dart' as p;
 import 'package:bao_editor/monaco/flutter/diff_editor_model.dart'
     show DiffHighlight;
 
+import '../../base/give_way_row.dart';
 import '../../base/smooth_scroll.dart';
 import '../../chat/composer/composer_files.dart';
 import '../../l10n/l10n.dart';
@@ -49,6 +50,7 @@ import 'git_partial.dart';
 import 'git_repository.dart';
 import 'git_service.dart';
 import 'ide_git_rebase_dialog.dart';
+import 'ide_git_ref_labels.dart';
 import 'ide_scm_view.dart';
 import 'scm_host.dart';
 import 'scm_tree.dart';
@@ -850,14 +852,17 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                     _Sash(
                       vertical: false,
                       color: _border,
-                      onDrag: (delta) => _log.resizeBranchTree(tree + delta),
+                      size: tree,
+                      onResize: _log.resizeBranchTree,
                     ),
                   ],
                   Expanded(child: main),
                   _Sash(
                     vertical: false,
                     color: _border,
-                    onDrag: (delta) => _log.resizeDetails(width: width - delta),
+                    size: width,
+                    after: true,
+                    onResize: (width) => _log.resizeDetails(width: width),
                   ),
                   SizedBox(width: width, child: details),
                 ],
@@ -874,7 +879,9 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                 _Sash(
                   vertical: true,
                   color: _border,
-                  onDrag: (delta) => _log.resizeDetails(height: height - delta),
+                  size: height,
+                  after: true,
+                  onResize: (height) => _log.resizeDetails(height: height),
                 ),
                 SizedBox(height: height, child: details),
               ],
@@ -1202,7 +1209,8 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
       tooltip: l10n.gitLogWorktreeOf(shown?.path ?? git.service.root),
       active: shown != null && !shown.main,
       entries: () => ideMenuGroups([
-        if (select != null)
+        // Where there is no agent to follow (the IDE's), not offered.
+        if (select != null && (choice.agentPath != null || choice.following))
           [
             IdeMenuAction(
               l10n.gitLogFollowAgent,
@@ -2020,11 +2028,12 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
               ),
             ),
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) => Row(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GiveWayRow(
                   children: [
-                    Flexible(
-                      child: Text.rich(
+                    GiveWay.fill(
+                      Text.rich(
                         TextSpan(
                           children: _highlighted(
                             _subjectOf(commit),
@@ -2040,20 +2049,9 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                           fontStyle: synthetic ? FontStyle.italic : null,
                         ),
                       ),
+                      minWidth: 120,
                     ),
-                    if (commit.references.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: constraints.maxWidth * .5,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: _badges(row),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(width: 8),
+                    ..._labels(row, foreground),
                   ],
                 ),
               ),
@@ -2160,19 +2158,31 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     return _formatDate(date);
   }
 
-  /// The references' badges: the colored ones first.
-  List<Widget> _badges(IdeGraphRow row) {
-    String? color(IdeGitRef ref) => row.referenceColors[ref.id];
-    final refs = [
-      ...row.commit.references.where((ref) => color(ref) != null),
-      ...row.commit.references.where((ref) => color(ref) == null),
-    ];
+  /// The references' labels at the row's end, as JetBrains IDEs align
+  /// them: short of room the last give way first, to their icons alone,
+  /// then gone.
+  List<GiveWay> _labels(IdeGraphRow row, Color foreground) {
+    final labels = ideGitRefLabels(row.commit.references);
     return [
-      for (final (index, ref) in refs.indexed) ...[
-        if (index > 0) const SizedBox(width: 4),
-        Flexible(child: IdeGitRefBadge(ref, color(ref))),
-        ..._worktreeMarks(ref),
-      ],
+      for (final (index, label) in labels.indexed)
+        GiveWay(
+          Padding(
+            padding: EdgeInsets.only(left: index == 0 ? 12 : 10),
+            child: IdeGitRefLabelView(
+              label,
+              foreground: foreground,
+              trailing: [
+                for (final ref in [label.ref, ...label.remotes])
+                  ..._worktreeMarks(ref),
+              ],
+            ),
+          ),
+          compact: Padding(
+            padding: EdgeInsets.only(left: index == 0 ? 12 : 4),
+            child: IdeGitRefLabelView(label, compact: true),
+          ),
+          priority: labels.length - index,
+        ),
     ];
   }
 
@@ -2977,11 +2987,13 @@ class _CommitDetails extends StatelessWidget {
                     if (commit.references.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Wrap(
-                        spacing: 4,
+                        spacing: 12,
                         runSpacing: 4,
                         children: [
-                          for (final ref in commit.references)
-                            IdeGitRefBadge(ref, row.referenceColors[ref.id]),
+                          for (final label in ideGitRefLabels(
+                            commit.references,
+                          ))
+                            IdeGitRefLabelView(label),
                         ],
                       ),
                     ],
@@ -3103,11 +3115,11 @@ class _CommitDetails extends StatelessWidget {
         );
       }
       return Wrap(
-        spacing: 4,
+        spacing: 12,
         runSpacing: 4,
         children: [
-          for (final branch in data)
-            IdeGitRefBadge(
+          for (final label in ideGitRefLabels([
+            for (final branch in data)
               IdeGitRef(
                 branch,
                 branch,
@@ -3115,8 +3127,8 @@ class _CommitDetails extends StatelessWidget {
                     ? IdeGitRefKind.remote
                     : IdeGitRefKind.branch,
               ),
-              null,
-            ),
+          ]))
+            IdeGitRefLabelView(label),
         ],
       );
     },
@@ -4295,53 +4307,113 @@ class _LoadMoreState extends State<_LoadMore> {
 }
 
 /// The line between the table and the details, dragged to size them:
-/// across ([vertical]) where they are one under the other.
+/// across ([vertical]) where they are one under the other. What it sizes
+/// goes by how far the pointer is from where the drag began, so that the
+/// line stays under it, back from past where the size stops too; while
+/// dragged, the cursor is its own over the whole window (VS Code's drag
+/// shield).
 class _Sash extends StatefulWidget {
   const _Sash({
     required this.vertical,
     required this.color,
-    required this.onDrag,
+    required this.size,
+    required this.onResize,
+    this.after = false,
   });
 
   final bool vertical;
   final Color color;
 
-  /// How far it moved, to the right or down, since it was last told.
-  final ValueChanged<double> onDrag;
+  /// The size of what it sizes, now: the part before it, or ([after]) the
+  /// one after it.
+  final double size;
+  final bool after;
+
+  /// What it sizes, sized anew.
+  final ValueChanged<double> onResize;
 
   @override
   State<_Sash> createState() => _SashState();
 }
 
 class _SashState extends State<_Sash> {
-  bool _active = false;
+  bool _hover = false;
+  bool _dragging = false;
+
+  /// Where the drag began, and the size then.
+  double _start = 0;
+  double _startSize = 0;
+
+  OverlayEntry? _shield;
+
+  MouseCursor get _cursor => widget.vertical
+      ? SystemMouseCursors.resizeRow
+      : SystemMouseCursors.resizeColumn;
+
+  double _along(Offset position) => widget.vertical ? position.dy : position.dx;
+
+  void _begin(DragStartDetails details) {
+    _start = _along(details.globalPosition);
+    _startSize = widget.size;
+    setState(() => _dragging = true);
+    if (Overlay.maybeOf(context) case final overlay?) {
+      _shield = OverlayEntry(
+        builder: (context) => MouseRegion(cursor: _cursor, opaque: true),
+      );
+      overlay.insert(_shield!);
+    }
+  }
+
+  void _update(DragUpdateDetails details) {
+    final moved = _along(details.globalPosition) - _start;
+    widget.onResize(_startSize + (widget.after ? -moved : moved));
+  }
+
+  void _end() {
+    _removeShield();
+    if (mounted) setState(() => _dragging = false);
+  }
+
+  void _removeShield() {
+    _shield
+      ?..remove()
+      ..dispose();
+    _shield = null;
+  }
+
+  @override
+  void dispose() {
+    _removeShield();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final vertical = widget.vertical;
+    final active = _hover || _dragging;
     return MouseRegion(
-      cursor: vertical
-          ? SystemMouseCursors.resizeRow
-          : SystemMouseCursors.resizeColumn,
-      onEnter: (_) => setState(() => _active = true),
-      onExit: (_) => setState(() => _active = false),
+      cursor: _cursor,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         dragStartBehavior: DragStartBehavior.down,
-        onVerticalDragUpdate: vertical
-            ? (details) => widget.onDrag(details.delta.dy)
-            : null,
-        onHorizontalDragUpdate: vertical
-            ? null
-            : (details) => widget.onDrag(details.delta.dx),
+        onVerticalDragStart: vertical ? _begin : null,
+        onVerticalDragUpdate: vertical ? _update : null,
+        onVerticalDragEnd: vertical ? (_) => _end() : null,
+        onVerticalDragCancel: vertical ? _end : null,
+        onHorizontalDragStart: vertical ? null : _begin,
+        onHorizontalDragUpdate: vertical ? null : _update,
+        onHorizontalDragEnd: vertical ? null : (_) => _end(),
+        onHorizontalDragCancel: vertical ? null : _end,
         child: SizedBox(
           width: vertical ? null : 5,
           height: vertical ? 5 : null,
           child: Center(
             child: Container(
-              width: vertical ? null : (_active ? 3 : 1),
-              height: vertical ? (_active ? 3 : 1) : null,
-              color: _active ? IdeModernUI.sashHover : widget.color,
+              width: vertical ? null : (active ? 3 : 1),
+              height: vertical ? (active ? 3 : 1) : null,
+              color: active ? IdeModernUI.sashHover : widget.color,
             ),
           ),
         ),

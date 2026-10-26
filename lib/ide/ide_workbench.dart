@@ -4152,6 +4152,15 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         unawaited(_open(path, focusEditor: true));
       },
       onAddToChat: widget.onAddToChat,
+      // Another worktree's changes and branch in Source Control.
+      worktrees: IdeGitWorktreeChoice(
+        following: false,
+        onSelect: widget.workspace.openWorktree == null
+            ? null
+            : (path) {
+                if (path != null) widget.workspace.showWorktree(path);
+              },
+      ),
       changes: IdeGitCommitPanel(
         onAsk: widget.onAskInChat == null ? null : _askInChat,
         key: _scmKey,

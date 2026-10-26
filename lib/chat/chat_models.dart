@@ -699,8 +699,8 @@ class FileChange {
   final bool binary;
 
   /// Whether what it was before is known, to be undone; not when it is
-  /// in no snapshot (ignored, too large) and the agent did not tell, or it
-  /// is outside the project.
+  /// in no snapshot (ignored, too large, outside the project) and the
+  /// agent did not tell.
   final bool tracked;
 
   /// Another agent was at work in the project at the same time: some of
