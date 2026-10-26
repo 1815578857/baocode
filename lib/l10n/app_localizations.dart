@@ -2102,6 +2102,12 @@ abstract class AppLocalizations {
   /// **'Toggle Chat'**
   String get cmdToggleChat;
 
+  /// No description provided for @cmdToggleFullScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle Full Screen'**
+  String get cmdToggleFullScreen;
+
   /// No description provided for @cmdTogglePanel.
   ///
   /// In en, this message translates to:

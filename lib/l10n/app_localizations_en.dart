@@ -1064,6 +1064,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cmdToggleChat => 'Toggle Chat';
 
   @override
+  String get cmdToggleFullScreen => 'Toggle Full Screen';
+
+  @override
   String get cmdTogglePanel => 'Toggle Panel Visibility';
 
   @override
