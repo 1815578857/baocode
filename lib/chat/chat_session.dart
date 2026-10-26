@@ -848,6 +848,22 @@ class ChatSession extends ChangeNotifier implements ChatFeed {
     });
   }
 
+  /// The files changed and neither kept nor undone, each with the turn
+  /// that changed it (its id) and what that turn was asked, in the order
+  /// they were changed: what the IDE's changelists of turns are made of.
+  List<({String turn, String request, String path})> get turnEdits =>
+      _cached(#turnEdits, () {
+        return [
+          for (final (seq: _, :change, :turnId) in _pendingEdits)
+            if (turnId != null)
+              (
+                turn: turnId,
+                request: _transcript.turnMessage(turnId)?.text ?? '',
+                path: _absolute(change.path),
+              ),
+        ];
+      });
+
   /// The files the agent read or changed (or was given: a picture a tool
   /// returned, saved), absolute: what its text may link to outside the
   /// project, and where a file it names by a path gone wrong (relative to

@@ -11087,4 +11087,158 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitMergeDiscardButton => '放弃';
+
+  @override
+  String get gitDiffExcludeChange => '这处改动不提交';
+
+  @override
+  String get gitDiffIncludeChange => '提交这处改动';
+
+  @override
+  String get gitChangelistActive => '当前';
+
+  @override
+  String get gitChangelistMoveTo => '移到其他变更列表';
+
+  @override
+  String get gitChangelistNew => '新建变更列表…';
+
+  @override
+  String get gitChangelistCreate => '新建';
+
+  @override
+  String get gitChangelistName => '变更列表名称';
+
+  @override
+  String get gitChangelistCommitOnly => '只提交这个变更列表';
+
+  @override
+  String get gitChangelistSetActive => '设为当前变更列表';
+
+  @override
+  String get gitChangelistRename => '重命名变更列表…';
+
+  @override
+  String get gitChangelistRenameButton => '重命名';
+
+  @override
+  String get gitChangelistDelete => '删除变更列表';
+
+  @override
+  String gitChangelistTurn(String request) {
+    return 'AI：$request';
+  }
+
+  @override
+  String get gitStashChangesTitle => '暂存改动（Stash）';
+
+  @override
+  String gitStashFilesTitle(int count) {
+    return '暂存 $count 个文件（Stash）';
+  }
+
+  @override
+  String get gitStashButton => '暂存';
+
+  @override
+  String get gitStashMessage => '说明（可不填）';
+
+  @override
+  String get gitStashUntracked => '包含未跟踪的文件';
+
+  @override
+  String get gitStashBase => '基准';
+
+  @override
+  String get gitStashApply => '应用';
+
+  @override
+  String get gitStashPop => '应用并删除（Pop）';
+
+  @override
+  String get gitStashAsBranch => '取出为新分支…';
+
+  @override
+  String get gitStashCopyMessage => '复制说明';
+
+  @override
+  String get gitStashDrop => '删除…';
+
+  @override
+  String gitStashDropConfirm(String ref) {
+    return '删除 $ref？';
+  }
+
+  @override
+  String get gitStashDropButton => '删除';
+
+  @override
+  String get gitStashClear => '清空 Stash…';
+
+  @override
+  String get gitStashClearConfirm => '删除全部 Stash？';
+
+  @override
+  String get gitStashClearButton => '清空';
+
+  @override
+  String get gitStashNone => '没有 Stash';
+
+  @override
+  String get gitStashTab => 'Stash';
+
+  @override
+  String get gitCommitTab => '提交';
+
+  @override
+  String get gitStashSelected => '暂存选中的文件…';
+
+  @override
+  String get gitCommitIgnored => '已忽略的文件';
+
+  @override
+  String get gitCommitShowIgnored => '显示已忽略的文件';
+
+  @override
+  String gitCommitLongSubject(int limit) {
+    return '标题超过 $limit 个字符';
+  }
+
+  @override
+  String get gitCommitNoBlankLine => '标题和正文之间要空一行';
+
+  @override
+  String get gitCommitMessageHistory => '提交信息历史 (Ctrl+M)';
+
+  @override
+  String get gitCommitNoMessageHistory => '还没有提交信息';
+
+  @override
+  String get gitCommitOptions => '提交选项';
+
+  @override
+  String get gitCommitAuthor => '作者…';
+
+  @override
+  String gitCommitAuthorIs(String author) {
+    return '作者：$author';
+  }
+
+  @override
+  String get gitCommitAuthorReset => '使用配置的作者';
+
+  @override
+  String get gitCommitAuthorPlaceholder => '姓名 <邮箱>';
+
+  @override
+  String get gitCommitSignOff => '签名提交 (Sign-off)';
+
+  @override
+  String get gitCommitRunHooks => '运行 Git 钩子';
+
+  @override
+  String get gitCommitSignedOff => '已签名';
+
+  @override
+  String get gitCommitNoHooks => '跳过钩子';
 }

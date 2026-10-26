@@ -279,19 +279,49 @@ class IdeGitRepository extends ChangeNotifier {
     String message,
     Iterable<IdeGitResource> resources, {
     bool amend = false,
+    IdeGitCommitOptions options = const IdeGitCommitOptions(),
   }) => _operate(() async {
     final untracked = [
       for (final resource in resources)
         if (resource.status == IdeGitStatus.untracked) resource.path,
     ];
     if (untracked.isNotEmpty) await service.stage(untracked);
-    await service.commitPaths(message, {
-      for (final resource in resources) ...[
-        resource.path,
-        ?resource.originalPath,
-      ],
-    }, amend: amend);
+    await service.commitPaths(
+      message,
+      {
+        for (final resource in resources) ...[
+          resource.path,
+          ?resource.originalPath,
+        ],
+      },
+      amend: amend,
+      options: options,
+    );
   });
+
+  /// Commits [resources] as [commitResources] does, and each of [partial]'s
+  /// files with its text there: some of its changes, the others left in
+  /// the working tree.
+  Future<void> commitPartial(
+    String message,
+    Iterable<IdeGitResource> resources,
+    Map<String, String> partial, {
+    bool amend = false,
+    IdeGitCommitOptions options = const IdeGitCommitOptions(),
+  }) => _operate(
+    () => service.commitPartial(
+      message,
+      {
+        for (final resource in resources) ...[
+          resource.path,
+          ?resource.originalPath,
+        ],
+      },
+      partial,
+      amend: amend,
+      options: options,
+    ),
+  );
 
   /// Rolls [resources] back to the last commit (JetBrains' Rollback):
   /// untracked files deleted, or moved to the Trash when [trash] does;
@@ -354,6 +384,32 @@ class IdeGitRepository extends ChangeNotifier {
       _operate(() => service.reset(commit, mode));
 
   /// New Tag at [commit].
+  Future<List<IdeGitStash>> stashes() => service.stashes();
+
+  Future<void> stash({
+    String message = '',
+    Iterable<String>? paths,
+    bool untracked = false,
+    bool keepIndex = false,
+  }) => _operate(
+    () => service.stash(
+      message: message,
+      paths: paths,
+      untracked: untracked,
+      keepIndex: keepIndex,
+    ),
+  );
+
+  Future<void> unstash(String ref, {bool pop = false, bool index = false}) =>
+      _operate(() => service.unstash(ref, pop: pop, index: index));
+
+  Future<void> dropStash(String ref) => _operate(() => service.dropStash(ref));
+
+  Future<void> clearStashes() => _operate(service.clearStashes);
+
+  Future<void> stashBranch(String name, String ref) =>
+      _operate(() => service.stashBranch(name, ref));
+
   Future<void> tag(String name, String commit, {String? message}) =>
       _operate(() => service.tag(name, commit, message: message));
 

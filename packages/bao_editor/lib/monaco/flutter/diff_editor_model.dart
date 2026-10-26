@@ -74,6 +74,11 @@ class DiffEditorModel extends ChangeNotifier {
   List<DetailedLineRangeMapping>? get mappings => _mappings;
   List<DetailedLineRangeMapping>? _mappings;
 
+  /// The modified side's text [mappings] were computed for (it may have
+  /// been edited since); null until first computed.
+  DocumentSnapshot? get mappedSnapshot => _mappedSnapshot;
+  DocumentSnapshot? _mappedSnapshot;
+
   /// Whether the last computation ran out of time.
   bool get hitTimeout => _hitTimeout;
   bool _hitTimeout = false;
@@ -106,7 +111,8 @@ class DiffEditorModel extends ChangeNotifier {
     }
     final request = ++_request;
     final originalLines = _lines(originalSnapshot);
-    final modifiedLines = _lines(modified.snapshot);
+    final modifiedSnapshot = modified.snapshot;
+    final modifiedLines = _lines(modifiedSnapshot);
     final options = LinesDiffComputerOptions(
       ignoreTrimWhitespace: ignoreTrimWhitespace,
       maxComputationTimeMs: maxComputationTimeMs,
@@ -135,6 +141,7 @@ class DiffEditorModel extends ChangeNotifier {
     // theirs.
     if (request == _request) {
       _mappings = diff.changes;
+      _mappedSnapshot = modifiedSnapshot;
       _hitTimeout = diff.hitTimeout;
       notifyListeners();
     }

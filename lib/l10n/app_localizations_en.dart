@@ -11702,4 +11702,165 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitMergeDiscardButton => 'Discard';
+
+  @override
+  String get gitDiffExcludeChange => 'Leave This Change Out of the Commit';
+
+  @override
+  String get gitDiffIncludeChange => 'Include This Change in the Commit';
+
+  @override
+  String get gitChangelistActive => 'active';
+
+  @override
+  String get gitChangelistMoveTo => 'Move to Another Changelist';
+
+  @override
+  String get gitChangelistNew => 'New Changelist…';
+
+  @override
+  String get gitChangelistCreate => 'Create';
+
+  @override
+  String get gitChangelistName => 'Changelist name';
+
+  @override
+  String get gitChangelistCommitOnly => 'Commit Only This Changelist';
+
+  @override
+  String get gitChangelistSetActive => 'Set Active Changelist';
+
+  @override
+  String get gitChangelistRename => 'Rename Changelist…';
+
+  @override
+  String get gitChangelistRenameButton => 'Rename';
+
+  @override
+  String get gitChangelistDelete => 'Delete Changelist';
+
+  @override
+  String gitChangelistTurn(String request) {
+    return 'AI: $request';
+  }
+
+  @override
+  String get gitStashChangesTitle => 'Stash Changes';
+
+  @override
+  String gitStashFilesTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Stash $count Files',
+      one: 'Stash 1 File',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get gitStashButton => 'Stash';
+
+  @override
+  String get gitStashMessage => 'Message (optional)';
+
+  @override
+  String get gitStashUntracked => 'Include untracked files';
+
+  @override
+  String get gitStashBase => 'Base';
+
+  @override
+  String get gitStashApply => 'Apply';
+
+  @override
+  String get gitStashPop => 'Pop';
+
+  @override
+  String get gitStashAsBranch => 'Unstash as Branch…';
+
+  @override
+  String get gitStashCopyMessage => 'Copy Message';
+
+  @override
+  String get gitStashDrop => 'Drop…';
+
+  @override
+  String gitStashDropConfirm(String ref) {
+    return 'Drop $ref?';
+  }
+
+  @override
+  String get gitStashDropButton => 'Drop';
+
+  @override
+  String get gitStashClear => 'Clear Stashes…';
+
+  @override
+  String get gitStashClearConfirm => 'Drop every stash?';
+
+  @override
+  String get gitStashClearButton => 'Clear';
+
+  @override
+  String get gitStashNone => 'No stashes';
+
+  @override
+  String get gitStashTab => 'Stash';
+
+  @override
+  String get gitCommitTab => 'Commit';
+
+  @override
+  String get gitStashSelected => 'Stash Selected Files…';
+
+  @override
+  String get gitCommitIgnored => 'Ignored Files';
+
+  @override
+  String get gitCommitShowIgnored => 'Show Ignored Files';
+
+  @override
+  String gitCommitLongSubject(int limit) {
+    return 'The subject is longer than $limit characters';
+  }
+
+  @override
+  String get gitCommitNoBlankLine =>
+      'Separate the subject from the body with a blank line';
+
+  @override
+  String get gitCommitMessageHistory => 'Commit Message History (Ctrl+M)';
+
+  @override
+  String get gitCommitNoMessageHistory => 'No messages yet';
+
+  @override
+  String get gitCommitOptions => 'Commit Options';
+
+  @override
+  String get gitCommitAuthor => 'Author…';
+
+  @override
+  String gitCommitAuthorIs(String author) {
+    return 'Author: $author';
+  }
+
+  @override
+  String get gitCommitAuthorReset => 'Use the Configured Author';
+
+  @override
+  String get gitCommitAuthorPlaceholder => 'Name <email>';
+
+  @override
+  String get gitCommitSignOff => 'Sign-off Commit';
+
+  @override
+  String get gitCommitRunHooks => 'Run Git Hooks';
+
+  @override
+  String get gitCommitSignedOff => 'Signed off';
+
+  @override
+  String get gitCommitNoHooks => 'Hooks skipped';
 }

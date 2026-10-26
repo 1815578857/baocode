@@ -19106,6 +19106,294 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Discard'**
   String get gitMergeDiscardButton;
+
+  /// No description provided for @gitDiffExcludeChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave This Change Out of the Commit'**
+  String get gitDiffExcludeChange;
+
+  /// No description provided for @gitDiffIncludeChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Include This Change in the Commit'**
+  String get gitDiffIncludeChange;
+
+  /// No description provided for @gitChangelistActive.
+  ///
+  /// In en, this message translates to:
+  /// **'active'**
+  String get gitChangelistActive;
+
+  /// No description provided for @gitChangelistMoveTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to Another Changelist'**
+  String get gitChangelistMoveTo;
+
+  /// No description provided for @gitChangelistNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New Changelist…'**
+  String get gitChangelistNew;
+
+  /// No description provided for @gitChangelistCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get gitChangelistCreate;
+
+  /// No description provided for @gitChangelistName.
+  ///
+  /// In en, this message translates to:
+  /// **'Changelist name'**
+  String get gitChangelistName;
+
+  /// No description provided for @gitChangelistCommitOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit Only This Changelist'**
+  String get gitChangelistCommitOnly;
+
+  /// No description provided for @gitChangelistSetActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Active Changelist'**
+  String get gitChangelistSetActive;
+
+  /// No description provided for @gitChangelistRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename Changelist…'**
+  String get gitChangelistRename;
+
+  /// No description provided for @gitChangelistRenameButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get gitChangelistRenameButton;
+
+  /// No description provided for @gitChangelistDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Changelist'**
+  String get gitChangelistDelete;
+
+  /// No description provided for @gitChangelistTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'AI: {request}'**
+  String gitChangelistTurn(String request);
+
+  /// No description provided for @gitStashChangesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stash Changes'**
+  String get gitStashChangesTitle;
+
+  /// No description provided for @gitStashFilesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Stash 1 File} other{Stash {count} Files}}'**
+  String gitStashFilesTitle(int count);
+
+  /// No description provided for @gitStashButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Stash'**
+  String get gitStashButton;
+
+  /// No description provided for @gitStashMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message (optional)'**
+  String get gitStashMessage;
+
+  /// No description provided for @gitStashUntracked.
+  ///
+  /// In en, this message translates to:
+  /// **'Include untracked files'**
+  String get gitStashUntracked;
+
+  /// No description provided for @gitStashBase.
+  ///
+  /// In en, this message translates to:
+  /// **'Base'**
+  String get gitStashBase;
+
+  /// No description provided for @gitStashApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get gitStashApply;
+
+  /// No description provided for @gitStashPop.
+  ///
+  /// In en, this message translates to:
+  /// **'Pop'**
+  String get gitStashPop;
+
+  /// No description provided for @gitStashAsBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Unstash as Branch…'**
+  String get gitStashAsBranch;
+
+  /// No description provided for @gitStashCopyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Message'**
+  String get gitStashCopyMessage;
+
+  /// No description provided for @gitStashDrop.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop…'**
+  String get gitStashDrop;
+
+  /// No description provided for @gitStashDropConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop {ref}?'**
+  String gitStashDropConfirm(String ref);
+
+  /// No description provided for @gitStashDropButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop'**
+  String get gitStashDropButton;
+
+  /// No description provided for @gitStashClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Stashes…'**
+  String get gitStashClear;
+
+  /// No description provided for @gitStashClearConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop every stash?'**
+  String get gitStashClearConfirm;
+
+  /// No description provided for @gitStashClearButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get gitStashClearButton;
+
+  /// No description provided for @gitStashNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No stashes'**
+  String get gitStashNone;
+
+  /// No description provided for @gitStashTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Stash'**
+  String get gitStashTab;
+
+  /// No description provided for @gitCommitTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit'**
+  String get gitCommitTab;
+
+  /// No description provided for @gitStashSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Stash Selected Files…'**
+  String get gitStashSelected;
+
+  /// No description provided for @gitCommitIgnored.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignored Files'**
+  String get gitCommitIgnored;
+
+  /// No description provided for @gitCommitShowIgnored.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Ignored Files'**
+  String get gitCommitShowIgnored;
+
+  /// No description provided for @gitCommitLongSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'The subject is longer than {limit} characters'**
+  String gitCommitLongSubject(int limit);
+
+  /// No description provided for @gitCommitNoBlankLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Separate the subject from the body with a blank line'**
+  String get gitCommitNoBlankLine;
+
+  /// No description provided for @gitCommitMessageHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit Message History (Ctrl+M)'**
+  String get gitCommitMessageHistory;
+
+  /// No description provided for @gitCommitNoMessageHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet'**
+  String get gitCommitNoMessageHistory;
+
+  /// No description provided for @gitCommitOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit Options'**
+  String get gitCommitOptions;
+
+  /// No description provided for @gitCommitAuthor.
+  ///
+  /// In en, this message translates to:
+  /// **'Author…'**
+  String get gitCommitAuthor;
+
+  /// No description provided for @gitCommitAuthorIs.
+  ///
+  /// In en, this message translates to:
+  /// **'Author: {author}'**
+  String gitCommitAuthorIs(String author);
+
+  /// No description provided for @gitCommitAuthorReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the Configured Author'**
+  String get gitCommitAuthorReset;
+
+  /// No description provided for @gitCommitAuthorPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Name <email>'**
+  String get gitCommitAuthorPlaceholder;
+
+  /// No description provided for @gitCommitSignOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-off Commit'**
+  String get gitCommitSignOff;
+
+  /// No description provided for @gitCommitRunHooks.
+  ///
+  /// In en, this message translates to:
+  /// **'Run Git Hooks'**
+  String get gitCommitRunHooks;
+
+  /// No description provided for @gitCommitSignedOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed off'**
+  String get gitCommitSignedOff;
+
+  /// No description provided for @gitCommitNoHooks.
+  ///
+  /// In en, this message translates to:
+  /// **'Hooks skipped'**
+  String get gitCommitNoHooks;
 }
 
 class _AppLocalizationsDelegate
