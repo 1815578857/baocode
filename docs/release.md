@@ -108,6 +108,8 @@ git push origin v1.2.0                          # 从这里开始 CI 接手
 
 然后在 GitHub 的 Actions → Release 里看进度（如果给 `release` 环境设了审批人，要点一下 Approve）。macOS 公证要等几分钟，整个流程大约 20～30 分钟。
 
+macOS 最常见的失败是钉票据（`stapler staple`）：Apple 的 CloudKit 会连续几分钟断开连接（-1005，stapler 报 Error 68），公证本身是成功的。`build_macos.dart` 遇到这种情况会退避重试，总共约 12 分钟。还不行的话，`release-retry.yml` 会把失败的任务自动重跑一次（只在第一次失败、且失败任务里有 macOS 构建时）。换一台机器通常就能过。再失败就要手动 Re-run。
+
 完成后确认：
 
 - [ ] `curl -s https://dl.baocode.dev/releases/latest.json` 是新版本
