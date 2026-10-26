@@ -69,13 +69,22 @@ class ChangeReviews extends ChangeNotifier {
     }
   }
 
+  set working(bool working) {
+    for (final part in _parts) {
+      part.working = working;
+    }
+  }
+
   void abandon(String reason) {
     for (final part in _parts) {
       part.abandon(reason);
     }
   }
 
-  Future<void> refresh() => _all((part) => part.refresh());
+  Future<void> begin() => _all((part) => part.begin());
+
+  Future<void> observe({bool full = true}) =>
+      _all((part) => part.observe(full: full));
 
   /// A relative path is the agent's directory's, and so the first's.
   void report(FileChange change, {FileOriginal? original}) =>
