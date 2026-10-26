@@ -1,6 +1,7 @@
 // Under the chat input, the Git branch the agent works on: switched from
 // its menu, not while the agent works; a workspace's folders each with
-// theirs; only the name without a repository.
+// theirs; only the name without a repository. Worktrees made and switched
+// to from it.
 
 import 'package:baocode/chat/chat_session.dart';
 import 'package:baocode/ide/git/git_repository.dart';
@@ -9,6 +10,7 @@ import 'package:baocode/theme/app_theme.dart';
 import 'package:baocode/workspace/chat_branch_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 
 import '../ide/git/fake_git.dart';
 
@@ -35,6 +37,7 @@ Future<void> _pump(
   String name = 'monad',
   bool workspace = false,
   List<(String, IdeGitRepository)> repositories = const [],
+  void Function(String folder, String path)? onSwitchWorktree,
 }) async {
   session ??= ChatSession(historyCount: 0);
   addTearDown(session.dispose);
@@ -51,6 +54,7 @@ Future<void> _pump(
               name: name,
               workspace: workspace,
               repositories: repositories,
+              onSwitchWorktree: onSwitchWorktree,
             ),
           ),
         ),
@@ -104,6 +108,111 @@ void main() {
       ['checkout', '-q', 'feature'],
     ]);
     expect(find.text('feature'), findsOneWidget);
+  });
+
+  group('worktrees', () {
+    late FakeGit fake;
+    late IdeGitRepository git;
+    late List<(String, String)> switched;
+
+    setUp(() {
+      fake = _git('/work/monad')
+        ..worktrees =
+            'worktree /work/monad\nHEAD ${'a' * 40}\nbranch refs/heads/main\n\n'
+            'worktree /work/monad-feature\nHEAD ${'b' * 40}\n'
+            'branch refs/heads/feature\n';
+      switched = [];
+    });
+
+    /// The repository, made in the test's zone.
+    IdeGitRepository open() {
+      git = fake.repository();
+      addTearDown(git.dispose);
+      return git;
+    }
+
+    Future<ChatSession> pump(WidgetTester tester) async {
+      open();
+      final session = ChatSession(historyCount: 0);
+      await _pump(
+        tester,
+        session: session,
+        repositories: [('/work/monad', git)],
+        onSwitchWorktree: (folder, path) => switched.add((folder, path)),
+      );
+      // The worktrees, read once asked for.
+      git.worktrees;
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('main'));
+      await tester.pumpAndSettle();
+      return session;
+    }
+
+    testWidgets('a branch checked out in another worktree is worked on '
+        'there: the conversation on it, the agent told', (tester) async {
+      final session = await pump(tester);
+      expect(find.text('In worktree monad-feature'), findsOneWidget);
+      await tester.tap(find.text('feature'));
+      await tester.pumpAndSettle();
+      expect(fake.callsTo('checkout'), isEmpty);
+      expect(switched, [('/work/monad', '/work/monad-feature')]);
+      expect(
+        session.draft.pendingMessage?.text,
+        'From now on, work in /work/monad-feature (branch feature): read and '
+        'edit the files and run the commands there.',
+      );
+    });
+
+    testWidgets('New Worktree… makes a branch in a worktree beside the '
+        'folder, and works there', (tester) async {
+      final session = await pump(tester);
+      await tester.tap(find.text('New Worktree…'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('beside “monad”'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).last, 'fix/login');
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+      // Then read again.
+      final worktreeCalls = fake.callsTo('worktree');
+      expect(worktreeCalls.where((call) => call[1] == 'add').single, [
+        'worktree',
+        'add',
+        '-b',
+        'fix/login',
+        '--',
+        '/work/monad-fix-login',
+      ]);
+      expect(worktreeCalls.last, ['worktree', 'list', '--porcelain']);
+      expect(switched, [('/work/monad', '/work/monad-fix-login')]);
+      expect(
+        session.draft.pendingMessage?.text,
+        contains('/work/monad-fix-login (branch fix/login)'),
+      );
+    });
+
+    testWidgets('none offered without a way to switch', (tester) async {
+      await _pump(tester, repositories: [('/work/monad', open())]);
+      await tester.tap(find.text('main'));
+      await tester.pumpAndSettle();
+      expect(find.text('New Worktree…'), findsNothing);
+    });
+  });
+
+  test('a new worktree goes beside the folder, numbered past those taken', () {
+    final paths = p.posix;
+    expect(
+      ideNewWorktreePath('/w/app', 'fix/login', taken: const [], paths: paths),
+      '/w/app-fix-login',
+    );
+    expect(
+      ideNewWorktreePath(
+        '/w/app',
+        'x',
+        taken: const ['/w/app', '/w/app-x', '/w/app-x-2'],
+        paths: paths,
+      ),
+      '/w/app-x-3',
+    );
   });
 
   testWidgets('says why Git refused to switch', (tester) async {

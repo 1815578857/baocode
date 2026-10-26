@@ -3732,6 +3732,10 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         repositories: multi != null
             ? _shownRepositories(thread, _sidePanelRepositories(multi))
             : [if (git != null) (project.path, git)],
+        onSwitchWorktree: widget.gitFor == null
+            ? null
+            : (folder, path) =>
+                  _sidePanel.chooseWorktree(thread.session, folder, path),
       );
     },
   );

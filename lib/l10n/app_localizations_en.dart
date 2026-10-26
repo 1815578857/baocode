@@ -11073,4 +11073,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitLogUndoCommit => 'Undo Commit';
+
+  @override
+  String get branchBarNewWorktree => 'New Worktree…';
+
+  @override
+  String branchBarNewWorktreeFrom(String branch, String folder) {
+    return 'A new branch from “$branch”, in a worktree of its own beside “$folder”: the agent works there, your checkout stays as it is';
+  }
+
+  @override
+  String branchBarInWorktree(String name) {
+    return 'In worktree $name';
+  }
+
+  @override
+  String branchBarWorkIn(String path, String branch) {
+    return 'From now on, work in $path (branch $branch): read and edit the files and run the commands there.';
+  }
 }

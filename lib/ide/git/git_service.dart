@@ -650,6 +650,28 @@ class IdeGitService {
     return parseGitWorktrees(output.stdout, normalize: pathContext.normalize);
   }
 
+  /// Adds a working tree at [path] (`git worktree add`): on a new branch
+  /// [newBranch] from HEAD, or on [branch], one not checked out elsewhere.
+  Future<void> addWorktree(
+    String path, {
+    String? newBranch,
+    String? branch,
+  }) async {
+    assert((newBranch == null) != (branch == null));
+    await _requireRoot();
+    _check(
+      await _git([
+        'worktree',
+        'add',
+        if (newBranch != null) ...['-b', newBranch],
+        '--',
+        path,
+        ?branch,
+      ]),
+      'Cannot add the worktree.',
+    );
+  }
+
   /// The branches, local and remote, that have [commit]
   /// (`git branch -a --contains`).
   Future<List<String>> branchesContaining(String commit) async {

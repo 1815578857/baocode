@@ -572,6 +572,19 @@ class IdeGitRepository extends ChangeNotifier {
     _notify();
   }
 
+  /// Adds a working tree at [path] ([IdeGitService.addWorktree]), and
+  /// reads the worktrees again.
+  Future<void> addWorktree(
+    String path, {
+    String? newBranch,
+    String? branch,
+  }) async {
+    await _operate(
+      () => service.addWorktree(path, newBranch: newBranch, branch: branch),
+    );
+    await reloadWorktrees();
+  }
+
   /// Reads the worktrees again now (one was just made where the agent
   /// works).
   Future<void> reloadWorktrees() {

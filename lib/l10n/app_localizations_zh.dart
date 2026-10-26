@@ -10476,4 +10476,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitLogUndoCommit => '撤销提交';
+
+  @override
+  String get branchBarNewWorktree => '新建工作树…';
+
+  @override
+  String branchBarNewWorktreeFrom(String branch, String folder) {
+    return '从“$branch”新建分支，放进“$folder”旁边的独立工作树：AI 在那里工作，你当前的签出不受影响';
+  }
+
+  @override
+  String branchBarInWorktree(String name) {
+    return '在工作树 $name';
+  }
+
+  @override
+  String branchBarWorkIn(String path, String branch) {
+    return '接下来请在 $path（分支 $branch）里工作：读写文件、运行命令都在这个目录进行。';
+  }
 }

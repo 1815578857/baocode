@@ -7630,5 +7630,12 @@
   "gitCommitNoChanges": "No local changes",
   "gitCommitSelected": "{checked} of {total} files checked",
   "@gitCommitSelected": {"placeholders": {"checked": {"type": "int"}, "total": {"type": "int"}}},
-  "gitLogUndoCommit": "Undo Commit"
+  "gitLogUndoCommit": "Undo Commit",
+  "branchBarNewWorktree": "New Worktree…",
+  "branchBarNewWorktreeFrom": "A new branch from “{branch}”, in a worktree of its own beside “{folder}”: the agent works there, your checkout stays as it is",
+  "@branchBarNewWorktreeFrom": {"placeholders": {"branch": {"type": "String"}, "folder": {"type": "String"}}},
+  "branchBarInWorktree": "In worktree {name}",
+  "@branchBarInWorktree": {"placeholders": {"name": {"type": "String"}}},
+  "branchBarWorkIn": "From now on, work in {path} (branch {branch}): read and edit the files and run the commands there.",
+  "@branchBarWorkIn": {"placeholders": {"path": {"type": "String"}, "branch": {"type": "String"}}}
 }

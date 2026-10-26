@@ -18086,6 +18086,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Undo Commit'**
   String get gitLogUndoCommit;
+
+  /// No description provided for @branchBarNewWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'New Worktree…'**
+  String get branchBarNewWorktree;
+
+  /// No description provided for @branchBarNewWorktreeFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'A new branch from “{branch}”, in a worktree of its own beside “{folder}”: the agent works there, your checkout stays as it is'**
+  String branchBarNewWorktreeFrom(String branch, String folder);
+
+  /// No description provided for @branchBarInWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'In worktree {name}'**
+  String branchBarInWorktree(String name);
+
+  /// No description provided for @branchBarWorkIn.
+  ///
+  /// In en, this message translates to:
+  /// **'From now on, work in {path} (branch {branch}): read and edit the files and run the commands there.'**
+  String branchBarWorkIn(String path, String branch);
 }
 
 class _AppLocalizationsDelegate
