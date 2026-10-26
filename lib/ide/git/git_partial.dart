@@ -1,7 +1,7 @@
 // Part of a file's changes committed, as JetBrains IDEs' check box by each
-// change of a diff in the Commit tool window does it: the changes left
-// unchecked stay in the working tree, the file committed as HEAD has it
-// with the others in it.
+// change of a diff in the Commit tool window does it, or by each of its
+// lines: the changes (lines) left unchecked stay in the working tree, the
+// file committed as HEAD has it with the others in it.
 
 import 'package:flutter/foundation.dart';
 
@@ -57,8 +57,15 @@ List<String> ideGitHunkKeys(
   return keys;
 }
 
+/// The key of the [index]th line (from 0) of the change keyed [hunk]: of
+/// its lines taken out ([removed]), else of those put in.
+String ideGitLineKey(String hunk, int index, {required bool removed}) =>
+    '$hunk\u0001${removed ? '-' : '+'}$index';
+
 /// [modified]'s changes of [original] but those whose keys are [excluded]
-/// put in [original]: what a commit of the changes left checked takes.
+/// put in [original]: what a commit of the changes left checked takes. Of
+/// a change with lines excluded ([ideGitLineKey]), the lines taken out
+/// that are excluded stay, and those put in that are excluded do not come.
 Future<String> ideGitPartialText(
   String original,
   String modified,
@@ -85,24 +92,93 @@ Future<String> ideGitPartialText(
         );
   final changes = diff.changes;
   final keys = ideGitHunkKeys(before, after, changes);
+  // The changes with lines excluded.
+  final withLines = <String>{
+    for (final key in excluded)
+      if (key.indexOf('\u0001') case final at when at >= 0)
+        key.substring(0, at),
+  };
   final out = StringBuffer();
   var at = 0;
   for (var i = 0; i < changes.length; i++) {
-    final spans = agentHunkSpans(changes[i], before, after);
+    final change = changes[i];
+    final spans = agentHunkSpans(change, before, after);
     out.write(original.substring(at, spans.originalStart));
-    out.write(
-      excluded.contains(keys[i])
-          ? original.substring(spans.originalStart, spans.originalEnd)
-          : modified.substring(spans.modifiedStart, spans.modifiedEnd),
-    );
+    final key = keys[i];
+    if (excluded.contains(key)) {
+      out.write(original.substring(spans.originalStart, spans.originalEnd));
+    } else if (withLines.contains(key)) {
+      final removed = _lineParts(
+        before,
+        change.original,
+        spans.originalStart,
+        spans.originalEnd,
+      );
+      final added = _lineParts(
+        after,
+        change.modified,
+        spans.modifiedStart,
+        spans.modifiedEnd,
+      );
+      final parts = [
+        for (final (n, part) in removed.indexed)
+          if (excluded.contains(ideGitLineKey(key, n, removed: true))) part,
+        for (final (n, part) in added.indexed)
+          if (!excluded.contains(ideGitLineKey(key, n, removed: false))) part,
+      ];
+      final ends = spans.originalEnd < original.length || parts.isEmpty
+          ? null
+          : parts.last;
+      for (final part in parts) {
+        out.write(part);
+        // A line that ended the text, not last now: its line break.
+        if (!identical(part, ends) &&
+            !part.endsWith('\n') &&
+            !part.startsWith('\n') &&
+            !part.startsWith('\r\n')) {
+          out.write('\n');
+        }
+      }
+    } else {
+      out.write(modified.substring(spans.modifiedStart, spans.modifiedEnd));
+    }
     at = spans.originalEnd;
   }
   out.write(original.substring(at));
   return out.toString();
 }
 
-/// The changes left unchecked in each file (by path): those a commit
-/// leaves out.
+/// [range]'s lines of [text] as they are in its span [start]–[end] of a
+/// change ([agentHunkSpans]): each with the line break after it, or, at the
+/// end of the text, before it.
+List<String> _lineParts(
+  DocumentSnapshot text,
+  LineRange range,
+  int start,
+  int end,
+) {
+  if (range.isEmpty) return const [];
+  final lineStart = text.lineStarts[range.startLineNumber - 1];
+  // Whole lines from their starts, else from the breaks before them.
+  final bounds = [
+    for (
+      var line = range.startLineNumber;
+      line < range.endLineNumberExclusive;
+      line++
+    )
+      start == lineStart
+          ? text.lineStarts[line - 1]
+          : text.contentEnds[line - 2],
+    end,
+  ];
+  return [
+    for (var i = 0; i + 1 < bounds.length; i++)
+      text.text.substring(bounds[i], bounds[i + 1]),
+  ];
+}
+
+/// The changes (and lines of them, [ideGitLineKey]) left unchecked in each
+/// file (by path): those a commit leaves out.
 class IdeGitHunkSelection extends ChangeNotifier {
   final Map<String, Set<String>> _excluded = {};
 
@@ -116,9 +192,16 @@ class IdeGitHunkSelection extends ChangeNotifier {
   bool isIncluded(String path, String key) =>
       !(_excluded[path]?.contains(key) ?? false);
 
+  /// A change's own check box checked or not: its lines' along with it.
   void setIncluded(String path, String key, bool included) {
     final keys = _excluded.putIfAbsent(path, () => {});
-    final changed = included ? keys.remove(key) : keys.add(key);
+    var changed = false;
+    if (!key.contains('\u0001')) {
+      final before = keys.length;
+      keys.removeWhere((other) => other.startsWith('$key\u0001'));
+      changed = keys.length != before;
+    }
+    changed |= included ? keys.remove(key) : keys.add(key);
     if (keys.isEmpty) _excluded.remove(path);
     if (changed) notifyListeners();
   }

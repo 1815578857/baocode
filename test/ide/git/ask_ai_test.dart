@@ -65,7 +65,6 @@ void main() {
     await menu(tester, find.text('Second').first, 'Ask AI About This Commit');
     expect(asked.last, contains('git show c2'));
     expect(asked.last, contains('Second'));
-
   });
 
   testWidgets('Interactively Rebase from Here: the commits from it on', (
@@ -79,5 +78,24 @@ void main() {
     );
     expect(find.byType(IdeGitRebaseDialog), findsOneWidget);
     expect(find.text('Rebasing 2 Commits from c1'), findsOneWidget);
+  });
+
+  testWidgets('Fixup: the checked changes committed as a fixup! of the '
+      'commit, squashed into it', (tester) async {
+    await pump(tester);
+    await menu(tester, find.text('Second').first, 'Fixup with Checked Changes');
+    expect(git.callsTo('commit').single, [
+      'commit',
+      '--quiet',
+      '-m',
+      'fixup! c2',
+      '--only',
+      '--',
+      'lib/a.dart',
+    ]);
+    expect(
+      git.callsTo('-c').single,
+      containsAllInOrder(['rebase', '-i', '--autosquash', '--autostash']),
+    );
   });
 }

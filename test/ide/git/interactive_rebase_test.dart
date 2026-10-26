@@ -105,4 +105,14 @@ void main() {
     expect(result.exitCode, 0, reason: '${result.stderr}');
     expect(await subjects(), ['e', 'D', 'c', 'b', 'a']);
   });
+
+  test('Fixup: a fixup! commit squashed into its commit', () async {
+    if ((await Process.run('git', ['--version'])).exitCode != 0) return;
+    final by = await commits();
+    File(p.join(root, 'b.txt')).writeAsStringSync('b2\n');
+    await git(['commit', '-q', '-am', 'fixup! ${by['b']!.id}']);
+    await service.autosquash(by['b']!);
+    expect(await subjects(), ['e', 'd', 'c', 'b', 'a']);
+    expect(await git(['show', 'HEAD~3:b.txt']), 'b2\n');
+  });
 }

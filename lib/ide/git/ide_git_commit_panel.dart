@@ -1095,6 +1095,38 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
     }
   }
 
+  /// JetBrains' Fixup: [git]'s checked changes committed as a `fixup!` of
+  /// [commit], then squashed into it.
+  Future<void> fixupInto(IdeGitRepository git, IdeGitCommit commit) async {
+    if (_committing) return;
+    final l10n = context.l10n;
+    final files = _toCommit(git);
+    if (files.isEmpty) {
+      widget.notifications.notify(
+        IdeSeverity.info,
+        l10n.gitCommitNothingSelected,
+      );
+      return;
+    }
+    setState(() => _committing = true);
+    try {
+      await _commitIn(
+        git,
+        'fixup! ${commit.id}',
+        files,
+        amend: false,
+        options: IdeGitCommitOptions(runHooks: _session.runHooks),
+      );
+      _sessionOf(git).included.clear();
+      widget.hunks?.clear([for (final file in files) file.path]);
+      await git.autosquash(commit);
+    } catch (error) {
+      if (mounted) widget.notifications.notify(IdeSeverity.error, '$error');
+    } finally {
+      if (mounted) setState(() => _committing = false);
+    }
+  }
+
   /// Amend checked: the last commit's message in the input, where none is
   /// written yet.
   Future<void> _setAmend(bool value) async {

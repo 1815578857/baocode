@@ -11169,6 +11169,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get diffIgnoreWhitespace => 'Ignore Whitespace at Line Ends';
 
   @override
+  String get diffWhitespaceNone => 'Do Not Ignore Whitespace';
+
+  @override
+  String get diffIgnoreAllWhitespace => 'Ignore All Whitespace';
+
+  @override
+  String get diffCollapseUnchanged => 'Collapse Unchanged Fragments';
+
+  @override
+  String diffUnchangedLines(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count unchanged lines',
+      one: '1 unchanged line',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get diffHighlightCharacters => 'Highlight Characters';
 
   @override
@@ -11485,6 +11505,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get gitBranchCompareFiles => 'Show Changed Files';
+
+  @override
+  String scmGraphRangeIn(String to, String from) {
+    return 'Commits in “$to” Not in “$from”';
+  }
+
+  @override
   String get gitBranchesRecent => 'Recent';
 
   @override
@@ -11708,6 +11736,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitDiffIncludeChange => 'Include This Change in the Commit';
+
+  @override
+  String get gitDiffExcludeLine => 'Leave This Line Out of the Commit';
+
+  @override
+  String get gitDiffIncludeLine => 'Include This Line in the Commit';
 
   @override
   String get gitChangelistActive => 'active';
@@ -12079,5 +12113,72 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String gitAskAiConflictsPrompt(String paths) {
     return 'Resolve the merge conflicts in $paths: keep what both sides meant, then tell me what you chose. Don\'t stage or commit.';
+  }
+
+  @override
+  String get gitLogFixup => 'Fixup with Checked Changes';
+
+  @override
+  String get compareWith => 'Compare With';
+
+  @override
+  String get compareWithClipboard => 'Clipboard';
+
+  @override
+  String compareWithClipboardLabel(String name) {
+    return '$name (Clipboard ↔ File)';
+  }
+
+  @override
+  String get gitCompareWithBranch => 'Branch or Tag…';
+
+  @override
+  String get gitCompareWithRevision => 'Revision…';
+
+  @override
+  String get gitCompareWithBranchPlaceholder =>
+      'Select a branch or tag to compare the file with';
+
+  @override
+  String get gitCompareWithRevisionPlaceholder =>
+      'Select a revision of the file to compare it with';
+
+  @override
+  String gitCompareLabel(String name, String other) {
+    return '$name ($other ↔ Working Tree)';
+  }
+
+  @override
+  String get explorerSelectForCompare => 'Select for Compare';
+
+  @override
+  String explorerCompareWithSelected(String name) {
+    return 'Compare with \'$name\'';
+  }
+
+  @override
+  String compareFoldersSame(String original, String modified) {
+    return '“$original” and “$modified” have the same files.';
+  }
+
+  @override
+  String compareFoldersPick(String original, String modified) {
+    return 'Files “$original” and “$modified” differ in';
+  }
+
+  @override
+  String compareFoldersOnlyIn(String name) {
+    return 'Only in “$name”';
+  }
+
+  @override
+  String get compareFoldersModified => 'Changed';
+
+  @override
+  String get explorerCompareSelected => 'Compare Selected';
+
+  @override
+  String compareFilesLabel(String original, String modified) {
+    return '$original ↔ $modified';
   }
 }

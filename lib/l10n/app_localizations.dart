@@ -18231,6 +18231,30 @@ abstract class AppLocalizations {
   /// **'Ignore Whitespace at Line Ends'**
   String get diffIgnoreWhitespace;
 
+  /// No description provided for @diffWhitespaceNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Do Not Ignore Whitespace'**
+  String get diffWhitespaceNone;
+
+  /// No description provided for @diffIgnoreAllWhitespace.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore All Whitespace'**
+  String get diffIgnoreAllWhitespace;
+
+  /// No description provided for @diffCollapseUnchanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse Unchanged Fragments'**
+  String get diffCollapseUnchanged;
+
+  /// No description provided for @diffUnchangedLines.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 unchanged line} other{{count} unchanged lines}}'**
+  String diffUnchangedLines(int count);
+
   /// No description provided for @diffHighlightCharacters.
   ///
   /// In en, this message translates to:
@@ -18759,6 +18783,18 @@ abstract class AppLocalizations {
   /// **'“{name}” has {ahead} commits “{current}” has not; “{current}” has {behind} it has not.'**
   String gitBranchCompared(String name, String current, int ahead, int behind);
 
+  /// No description provided for @gitBranchCompareFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Changed Files'**
+  String get gitBranchCompareFiles;
+
+  /// No description provided for @scmGraphRangeIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Commits in “{to}” Not in “{from}”'**
+  String scmGraphRangeIn(String to, String from);
+
   /// No description provided for @gitBranchesRecent.
   ///
   /// In en, this message translates to:
@@ -19118,6 +19154,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Include This Change in the Commit'**
   String get gitDiffIncludeChange;
+
+  /// No description provided for @gitDiffExcludeLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave This Line Out of the Commit'**
+  String get gitDiffExcludeLine;
+
+  /// No description provided for @gitDiffIncludeLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Include This Line in the Commit'**
+  String get gitDiffIncludeLine;
 
   /// No description provided for @gitChangelistActive.
   ///
@@ -19730,6 +19778,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resolve the merge conflicts in {paths}: keep what both sides meant, then tell me what you chose. Don\'t stage or commit.'**
   String gitAskAiConflictsPrompt(String paths);
+
+  /// No description provided for @gitLogFixup.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixup with Checked Changes'**
+  String get gitLogFixup;
+
+  /// No description provided for @compareWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare With'**
+  String get compareWith;
+
+  /// No description provided for @compareWithClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Clipboard'**
+  String get compareWithClipboard;
+
+  /// No description provided for @compareWithClipboardLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (Clipboard ↔ File)'**
+  String compareWithClipboardLabel(String name);
+
+  /// No description provided for @gitCompareWithBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch or Tag…'**
+  String get gitCompareWithBranch;
+
+  /// No description provided for @gitCompareWithRevision.
+  ///
+  /// In en, this message translates to:
+  /// **'Revision…'**
+  String get gitCompareWithRevision;
+
+  /// No description provided for @gitCompareWithBranchPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a branch or tag to compare the file with'**
+  String get gitCompareWithBranchPlaceholder;
+
+  /// No description provided for @gitCompareWithRevisionPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a revision of the file to compare it with'**
+  String get gitCompareWithRevisionPlaceholder;
+
+  /// No description provided for @gitCompareLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} ({other} ↔ Working Tree)'**
+  String gitCompareLabel(String name, String other);
+
+  /// No description provided for @explorerSelectForCompare.
+  ///
+  /// In en, this message translates to:
+  /// **'Select for Compare'**
+  String get explorerSelectForCompare;
+
+  /// No description provided for @explorerCompareWithSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare with \'{name}\''**
+  String explorerCompareWithSelected(String name);
+
+  /// No description provided for @compareFoldersSame.
+  ///
+  /// In en, this message translates to:
+  /// **'“{original}” and “{modified}” have the same files.'**
+  String compareFoldersSame(String original, String modified);
+
+  /// No description provided for @compareFoldersPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Files “{original}” and “{modified}” differ in'**
+  String compareFoldersPick(String original, String modified);
+
+  /// No description provided for @compareFoldersOnlyIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Only in “{name}”'**
+  String compareFoldersOnlyIn(String name);
+
+  /// No description provided for @compareFoldersModified.
+  ///
+  /// In en, this message translates to:
+  /// **'Changed'**
+  String get compareFoldersModified;
+
+  /// No description provided for @explorerCompareSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare Selected'**
+  String get explorerCompareSelected;
+
+  /// No description provided for @compareFilesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{original} ↔ {modified}'**
+  String compareFilesLabel(String original, String modified);
 }
 
 class _AppLocalizationsDelegate

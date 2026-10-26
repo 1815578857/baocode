@@ -595,7 +595,13 @@ class IdeGitLogView extends StatefulWidget {
     this.border,
     this.ai,
     this.onAsk,
+    this.onFixup,
   });
+
+  /// Commits the local changes checked into a commit (Fixup); not offered
+  /// when null.
+  final Future<void> Function(IdeGitRepository git, IdeGitCommit commit)?
+  onFixup;
 
   /// The model that cleans up a branch in an interactive rebase; not
   /// offered when null.
@@ -1094,7 +1100,11 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
           label: switch (git.graphBranch) {
             null => l10n.scmGraphAllBranches,
             ideGraphCurrentBranch => l10n.scmGraphCurrentBranch,
-            final ref => _refLabel(ref),
+            final graph => switch (ideGraphRangeOf(graph)) {
+              (:final from, :final to) =>
+                '${_refLabel(from)}..${_refLabel(to)}',
+              null => _refLabel(graph),
+            },
           },
           tooltip: l10n.scmGraphBranches,
           active: git.graphBranch != null,
@@ -1376,11 +1386,24 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     final local = of(IdeGitRefKind.branch);
     final remote = of(IdeGitRefKind.remote);
     final tags = of(IdeGitRefKind.tag);
+    final range = ideGraphRangeOf(git.graphBranch);
     return ideMenuGroups([
       [
         pick(l10n.scmGraphAllBranches, null),
         pick(l10n.scmGraphCurrentBranch, ideGraphCurrentBranch),
       ],
+      // A comparison's two ways.
+      if (range case (:final from, :final to))
+        [
+          pick(
+            l10n.scmGraphRangeIn(_refLabel(to), _refLabel(from)),
+            ideGraphRange(from, to),
+          ),
+          pick(
+            l10n.scmGraphRangeIn(_refLabel(from), _refLabel(to)),
+            ideGraphRange(to, from),
+          ),
+        ],
       [
         if (local.isNotEmpty)
           IdeMenuAction(l10n.gitLogLocalBranches, submenu: local),
@@ -2294,6 +2317,13 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
             IdeMenuAction(
               l10n.gitLogEditMessage,
               onSelected: () => _log.editingMessage = commit.id,
+            ),
+          if ((isHead || inBranch) &&
+              commit.parentIds.length == 1 &&
+              widget.onFixup != null)
+            IdeMenuAction(
+              l10n.gitLogFixup,
+              onSelected: () => unawaited(widget.onFixup!(git, commit)),
             ),
           if (inBranch && commit.parentIds.length == 1)
             IdeMenuAction(
@@ -3443,6 +3473,12 @@ class _DiffAreaState extends State<_DiffArea> {
       checked: options.layout == value,
       onSelected: () => options.layout = value,
     );
+    IdeMenuAction whitespace(String label, IdeDiffWhitespace value) =>
+        IdeMenuAction(
+          label,
+          checked: options.whitespace == value,
+          onSelected: () => options.whitespace = value,
+        );
     IdeMenuAction highlight(String label, DiffHighlight value) => IdeMenuAction(
       label,
       checked: options.highlight == value,
@@ -3455,11 +3491,16 @@ class _DiffAreaState extends State<_DiffArea> {
         layout(l10n.diffUnified, IdeDiffLayout.unified),
       ],
       [
+        whitespace(l10n.diffWhitespaceNone, IdeDiffWhitespace.none),
+        whitespace(l10n.diffIgnoreWhitespace, IdeDiffWhitespace.trim),
+        whitespace(l10n.diffIgnoreAllWhitespace, IdeDiffWhitespace.all),
+      ],
+      [
         IdeMenuAction(
-          l10n.diffIgnoreWhitespace,
-          checked: options.ignoreTrimWhitespace,
+          l10n.diffCollapseUnchanged,
+          checked: options.collapseUnchanged,
           onSelected: () =>
-              options.ignoreTrimWhitespace = !options.ignoreTrimWhitespace,
+              options.collapseUnchanged = !options.collapseUnchanged,
         ),
       ],
       [

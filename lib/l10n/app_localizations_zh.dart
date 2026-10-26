@@ -10569,6 +10569,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get diffIgnoreWhitespace => '忽略行首尾空白';
 
   @override
+  String get diffWhitespaceNone => '不忽略空白';
+
+  @override
+  String get diffIgnoreAllWhitespace => '忽略所有空白';
+
+  @override
+  String get diffCollapseUnchanged => '折叠未改动的部分';
+
+  @override
+  String diffUnchangedLines(int count) {
+    return '$count 行未改动';
+  }
+
+  @override
   String get diffHighlightCharacters => '按字符高亮';
 
   @override
@@ -10885,6 +10899,14 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get gitBranchCompareFiles => '查看改动的文件';
+
+  @override
+  String scmGraphRangeIn(String to, String from) {
+    return '“$to”有而“$from”没有的提交';
+  }
+
+  @override
   String get gitBranchesRecent => '最近';
 
   @override
@@ -11093,6 +11115,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitDiffIncludeChange => '提交这处改动';
+
+  @override
+  String get gitDiffExcludeLine => '这一行不提交';
+
+  @override
+  String get gitDiffIncludeLine => '提交这一行';
 
   @override
   String get gitChangelistActive => '当前';
@@ -11434,5 +11462,70 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String gitAskAiConflictsPrompt(String paths) {
     return '解决 $paths 中的合并冲突：保留双方各自的意图，然后告诉我你是怎么取舍的。不要暂存或提交。';
+  }
+
+  @override
+  String get gitLogFixup => '用勾选的改动修正 (Fixup)';
+
+  @override
+  String get compareWith => '比较';
+
+  @override
+  String get compareWithClipboard => '剪贴板';
+
+  @override
+  String compareWithClipboardLabel(String name) {
+    return '$name（剪贴板 ↔ 文件）';
+  }
+
+  @override
+  String get gitCompareWithBranch => '分支或标签…';
+
+  @override
+  String get gitCompareWithRevision => '某个版本…';
+
+  @override
+  String get gitCompareWithBranchPlaceholder => '选择要与文件比较的分支或标签';
+
+  @override
+  String get gitCompareWithRevisionPlaceholder => '选择要比较的文件版本';
+
+  @override
+  String gitCompareLabel(String name, String other) {
+    return '$name（$other ↔ 工作区）';
+  }
+
+  @override
+  String get explorerSelectForCompare => '选择以进行比较';
+
+  @override
+  String explorerCompareWithSelected(String name) {
+    return '与“$name”比较';
+  }
+
+  @override
+  String compareFoldersSame(String original, String modified) {
+    return '“$original”和“$modified”的文件完全相同。';
+  }
+
+  @override
+  String compareFoldersPick(String original, String modified) {
+    return '“$original”和“$modified”不同的文件';
+  }
+
+  @override
+  String compareFoldersOnlyIn(String name) {
+    return '只在“$name”里';
+  }
+
+  @override
+  String get compareFoldersModified => '有改动';
+
+  @override
+  String get explorerCompareSelected => '比较所选文件';
+
+  @override
+  String compareFilesLabel(String original, String modified) {
+    return '$original ↔ $modified';
   }
 }

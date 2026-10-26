@@ -17,7 +17,7 @@ import '../theme/app_theme.dart';
 import '../theme/code_font.dart';
 import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' hide ColorScheme;
-import 'git/git_partial.dart' show ideGitHunkKeys;
+import 'git/git_partial.dart' show ideGitHunkKeys, ideGitLineKey;
 import 'ide_agent_edits.dart' show agentHunkSpans;
 import 'ide_code_editor.dart' show IdeCodeHighlights;
 import 'ide_diff_options.dart';
@@ -96,7 +96,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
   late IdeOriginalDiff _diff;
   TextMateDocument? _highlight;
   TextMateSyntax? _ownTextMate;
-  bool _ignoreTrimWhitespace = true;
+  IdeDiffWhitespace _whitespace = IdeDiffWhitespace.trim;
 
   /// Bumped as the texts change: an older language pick is dropped.
   int _texts = 0;
@@ -118,6 +118,9 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
   /// Ticks as the modified editor scrolls: the revert arrows follow.
   final ValueNotifier<int> _viewTick = ValueNotifier(0);
 
+  /// The change the pointer is on: its lines' check boxes show.
+  final ValueNotifier<int?> _hovered = ValueNotifier(null);
+
   Timer? _write;
   StreamSubscription<Object?>? _edits;
 
@@ -131,12 +134,12 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
     _themes.addListener(_changed);
     _options.addListener(_optionsChanged);
     widget.checks?.addListener(_changed);
-    _ignoreTrimWhitespace = _ignoresWhitespace;
+    _whitespace = _ignoredWhitespace;
     _open(widget.modified);
   }
 
-  bool get _ignoresWhitespace =>
-      widget.checks == null && _options.ignoreTrimWhitespace;
+  IdeDiffWhitespace get _ignoredWhitespace =>
+      widget.checks == null ? _options.whitespace : IdeDiffWhitespace.none;
 
   @override
   void didUpdateWidget(IdeCodeDiff oldWidget) {
@@ -168,6 +171,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
     _ownTextMate?.dispose();
     _ownPosition.dispose();
     _viewTick.dispose();
+    _hovered.dispose();
     super.dispose();
   }
 
@@ -184,7 +188,8 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
       _original,
       document,
       onChanged: _changed,
-      ignoreTrimWhitespace: _ignoreTrimWhitespace,
+      ignoreTrimWhitespace: _whitespace != IdeDiffWhitespace.none,
+      ignoreAllWhitespace: _whitespace == IdeDiffWhitespace.all,
     );
     _diff.model.addListener(_compared);
     // Small texts are compared at once, before there was a listener.
@@ -220,9 +225,9 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
 
   /// Whitespace ignored or not: compared again, the text as it is now.
   void _optionsChanged() {
-    final ignore = _ignoresWhitespace;
-    if (ignore != _ignoreTrimWhitespace) {
-      _ignoreTrimWhitespace = ignore;
+    final ignore = _ignoredWhitespace;
+    if (ignore != _whitespace) {
+      _whitespace = ignore;
       final text = _modified.document.text;
       _flush();
       _close();
@@ -262,14 +267,8 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
   void revert(LineRangeMapping change) {
     final original = _diff.model.originalSnapshot;
     if (original == null || widget.onEdit == null) return;
-    final modified = _modified.document.snapshot;
-    final spans = agentHunkSpans(change, original, modified);
     _modified.applyEdits([
-      EditorOffsetEdit(
-        spans.modifiedStart,
-        spans.modifiedEnd,
-        original.text.substring(spans.originalStart, spans.originalEnd),
-      ),
+      ideDiffRevertEdit(change, original, _modified.document.snapshot),
     ]);
     // Shown reverted at once, not after the edit's debounce.
     _diff.model.refresh();
@@ -399,12 +398,16 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
         sashHover: colors.get('sash.hoverBorder'),
         sideBySide: _options.sideBySide,
         highlight: _options.highlight,
+        hideUnchanged: _options.collapseUnchanged,
+        unchangedLabel: context.l10n.diffUnchangedLines,
+        keepVisible: widget.line,
         overlay: editable || widget.checks != null ? _overlay : null,
         original: (context, side) {
           final controller = _diff.controller;
           if (controller == null) return const SizedBox.expand();
           return EditorSurface(
-            key: ObjectKey(controller),
+            // Found by it for its lines' check boxes.
+            key: GlobalObjectKey(controller),
             controller: controller,
             readOnly: true,
             backgroundColor: colors['editor.background'],
@@ -417,6 +420,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
             scrollPosition: side.scrollPosition,
             glyphMargin: side.sideBySide,
             folding: false,
+            hiddenLines: side.hiddenLines,
             showMinimap: false,
             style: style,
           );
@@ -434,6 +438,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
           viewZones: side.zones,
           scrollPosition: side.scrollPosition,
           folding: false,
+          hiddenLines: side.hiddenLines,
           showMinimap: false,
           onViewChanged: _viewChanged,
           style: style,
@@ -448,7 +453,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
   /// modified editor's left edge, the arrow then after it inline).
   Widget _overlay(BuildContext context, DiffEditorLayout layout) =>
       ListenableBuilder(
-        listenable: _viewTick,
+        listenable: Listenable.merge([_viewTick, _hovered]),
         builder: (context, _) {
           final view = _view;
           final area = view?.textArea;
@@ -462,6 +467,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
           }
           final snapshot = _modified.document.snapshot;
           const size = 16.0;
+          const lineSize = 14.0;
           final checks = widget.checks;
           final mapped = _diff.model.mappedSnapshot;
           // Keyed by the text they were found in; none while it was edited
@@ -472,70 +478,227 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
           final arrowLeft = layout.sideBySide
               ? layout.splitLeft - size / 2
               : layout.modifiedLeft + (checks == null ? 2 : 22);
-          return Stack(
-            children: [
-              for (final (index, change) in mappings.indexed)
-                if (_topOf(view, snapshot, change) case final top?
-                    when top >= area.top - 2 && top + size <= area.bottom) ...[
-                  if (widget.onEdit != null)
-                    Positioned(
-                      key: ObjectKey(change),
-                      left: arrowLeft,
-                      top: top + (view.lineHeight - size) / 2,
-                      width: size,
-                      height: size,
-                      child: _RevertArrow(
-                        added: change.original.isEmpty,
-                        onTap: () => revert(change),
-                      ),
-                    ),
-                  if (keys != null)
-                    Positioned(
-                      key: ObjectKey((change, 'check')),
-                      left: layout.modifiedLeft + 2,
-                      top: top + (view.lineHeight - size) / 2,
-                      width: size,
-                      height: size,
-                      child: _HunkCheck(
-                        checked: checks!.isIncluded(keys[index]),
-                        onTap: () => checks.setIncluded(
-                          keys[index],
-                          !checks.isIncluded(keys[index]),
-                        ),
-                      ),
-                    ),
-                ],
-            ],
+          final originalView = switch (_diff.controller) {
+            final controller? when layout.sideBySide => switch (GlobalObjectKey(
+              controller,
+            ).currentState) {
+              final EditorSurfaceView view => view,
+              _ => null,
+            },
+            _ => null,
+          };
+          // A line's check box, at the right of its editor's gutter.
+          Widget? lineCheck(
+            EditorSurfaceView view,
+            DocumentSnapshot text,
+            double left,
+            int line,
+            String hunk,
+            String key,
+            List<String> lines,
+          ) {
+            final area = view.textArea;
+            final rect = view.caretRectAt(text.lineStarts[line - 1]);
+            if (area == null || rect == null) return null;
+            if (rect.top < area.top - 2 || rect.bottom > area.bottom + 2) {
+              return null;
+            }
+            final excluded = checks!.isIncluded(hunk) == false;
+            final included = !excluded && checks.isIncluded(key);
+            return Positioned(
+              key: ValueKey(('line', key)),
+              left: left + area.left - lineSize - 2,
+              top: (rect.top + rect.bottom - lineSize) / 2,
+              width: lineSize,
+              height: lineSize,
+              child: _HunkCheck(
+                checked: included,
+                line: true,
+                onTap: () {
+                  if (excluded) {
+                    // Of a change left out, this line alone in.
+                    checks.setIncluded(hunk, true);
+                    for (final other in lines) {
+                      if (other != key) checks.setIncluded(other, false);
+                    }
+                  } else {
+                    checks.setIncluded(key, !included);
+                  }
+                },
+              ),
+            );
+          }
+
+          final children = <Widget>[];
+          for (final (index, change) in mappings.indexed) {
+            final top = ideDiffChangeTop(view, snapshot, change);
+            if (top == null) continue;
+            final shows = top >= area.top - 2 && top + size <= area.bottom;
+            if (shows && widget.onEdit != null) {
+              children.add(
+                Positioned(
+                  key: ObjectKey(change),
+                  left: arrowLeft,
+                  top: top + (view.lineHeight - size) / 2,
+                  width: size,
+                  height: size,
+                  child: IdeDiffRevertArrow(
+                    added: change.original.isEmpty,
+                    onTap: () => revert(change),
+                  ),
+                ),
+              );
+            }
+            if (keys == null) continue;
+            final hunk = keys[index];
+            final removed = [
+              for (var n = 0; n < change.original.length; n++)
+                ideGitLineKey(hunk, n, removed: true),
+            ];
+            final added = [
+              for (var n = 0; n < change.modified.length; n++)
+                ideGitLineKey(hunk, n, removed: false),
+            ];
+            final lines = [...removed, ...added];
+            final out = lines.where((key) => !checks!.isIncluded(key)).length;
+            final bool? state = !checks!.isIncluded(hunk) || out == lines.length
+                ? false
+                : out == 0
+                ? true
+                : null;
+            if (shows) {
+              children.add(
+                Positioned(
+                  key: ObjectKey((change, 'check')),
+                  left: layout.modifiedLeft + 2,
+                  top: top + (view.lineHeight - size) / 2,
+                  width: size,
+                  height: size,
+                  child: _HunkCheck(
+                    checked: state,
+                    onTap: () => checks.setIncluded(hunk, state != true),
+                  ),
+                ),
+              );
+            }
+            // Its lines' check boxes, while the pointer is on it or some of
+            // them are left out; those of the lines taken out where the
+            // original shows beside.
+            if (_hovered.value != index && state != null) continue;
+            if (lines.length < 2) continue;
+            for (final (n, key) in added.indexed) {
+              children.add(
+                lineCheck(
+                      view,
+                      snapshot,
+                      layout.modifiedLeft,
+                      change.modified.startLineNumber + n,
+                      hunk,
+                      key,
+                      lines,
+                    ) ??
+                    const SizedBox.shrink(),
+              );
+            }
+            if (originalView != null) {
+              for (final (n, key) in removed.indexed) {
+                children.add(
+                  lineCheck(
+                        originalView,
+                        original,
+                        0,
+                        change.original.startLineNumber + n,
+                        hunk,
+                        key,
+                        lines,
+                      ) ??
+                      const SizedBox.shrink(),
+                );
+              }
+            }
+          }
+          return MouseRegion(
+            opaque: false,
+            hitTestBehavior: HitTestBehavior.translucent,
+            onHover: keys == null
+                ? null
+                : (event) => _hovered.value = _changeAt(
+                    view,
+                    snapshot,
+                    mappings,
+                    event.localPosition.dy,
+                  ),
+            onExit: (_) => _hovered.value = null,
+            child: Stack(children: children),
           );
         },
       );
 
-  /// Where [change] starts in the modified editor: the bottom of the line
-  /// before it (the top of the deleted code over it, inline).
-  static double? _topOf(
+  /// The change at [y], from its top to the line after it.
+  static int? _changeAt(
     EditorSurfaceView view,
     DocumentSnapshot text,
-    LineRangeMapping change,
+    List<LineRangeMapping> mappings,
+    double y,
   ) {
-    final start = change.modified.startLineNumber;
-    if (start <= 1) return view.caretRectAt(0)?.top;
-    final line = (start - 2).clamp(0, text.lineCount - 1);
-    return view.caretRectAt(text.lineStarts[line])?.bottom;
+    for (final (index, change) in mappings.indexed) {
+      final top = ideDiffChangeTop(view, text, change);
+      if (top == null || y < top - 2) continue;
+      final end = change.modified.endLineNumberExclusive;
+      final bottom = end > text.lineCount
+          ? view.caretRectAt(text.text.length)?.bottom
+          : view.caretRectAt(text.lineStarts[end - 1])?.top;
+      if (bottom != null && y <= bottom + 2) return index;
+    }
+    return null;
   }
 }
 
+/// The edit taking [change] out of [modified]: its lines as [original] has
+/// them.
+EditorOffsetEdit ideDiffRevertEdit(
+  LineRangeMapping change,
+  DocumentSnapshot original,
+  DocumentSnapshot modified,
+) {
+  final spans = agentHunkSpans(change, original, modified);
+  return EditorOffsetEdit(
+    spans.modifiedStart,
+    spans.modifiedEnd,
+    original.text.substring(spans.originalStart, spans.originalEnd),
+  );
+}
+
+/// Where [change] starts in the modified editor [view] of [text]: the
+/// bottom of the line before it (the top of the deleted code over it,
+/// inline).
+double? ideDiffChangeTop(
+  EditorSurfaceView view,
+  DocumentSnapshot text,
+  LineRangeMapping change,
+) {
+  final start = change.modified.startLineNumber;
+  if (start <= 1) return view.caretRectAt(0)?.top;
+  final line = (start - 2).clamp(0, text.lineCount - 1);
+  return view.caretRectAt(text.lineStarts[line])?.bottom;
+}
+
 /// JetBrains' `>>` by a change (`×` for lines only added): reverts it.
-class _RevertArrow extends StatefulWidget {
-  const _RevertArrow({required this.added, required this.onTap});
+class IdeDiffRevertArrow extends StatefulWidget {
+  const IdeDiffRevertArrow({
+    super.key,
+    required this.added,
+    required this.onTap,
+  });
 
   final bool added;
   final VoidCallback onTap;
 
   @override
-  State<_RevertArrow> createState() => _RevertArrowState();
+  State<IdeDiffRevertArrow> createState() => _IdeDiffRevertArrowState();
 }
 
-class _RevertArrowState extends State<_RevertArrow> {
+class _IdeDiffRevertArrowState extends State<IdeDiffRevertArrow> {
   bool _hover = false;
 
   @override
@@ -573,10 +736,18 @@ class _RevertArrowState extends State<_RevertArrow> {
 
 /// JetBrains' check box by a change: whether it goes in the commit.
 class _HunkCheck extends StatelessWidget {
-  const _HunkCheck({required this.checked, required this.onTap});
+  const _HunkCheck({
+    required this.checked,
+    required this.onTap,
+    this.line = false,
+  });
 
-  final bool checked;
+  /// Null for a change some of whose lines are left out.
+  final bool? checked;
   final VoidCallback onTap;
+
+  /// A line's, smaller.
+  final bool line;
 
   @override
   Widget build(BuildContext context) {
@@ -584,30 +755,37 @@ class _HunkCheck extends StatelessWidget {
     final l10n = context.l10n;
     final accent =
         colors.get('checkbox.selectBackground') ?? colors['button.background'];
+    final on = checked != false;
+    final box = line ? 11.0 : 13.0;
     return IdeHover(
-      message: checked ? l10n.gitDiffExcludeChange : l10n.gitDiffIncludeChange,
+      message: switch ((checked, line)) {
+        (true, true) => l10n.gitDiffExcludeLine,
+        (_, true) => l10n.gitDiffIncludeLine,
+        (true, _) => l10n.gitDiffExcludeChange,
+        _ => l10n.gitDiffIncludeChange,
+      },
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           onTap: onTap,
           child: Center(
             child: Container(
-              width: 13,
-              height: 13,
+              width: box,
+              height: box,
               decoration: BoxDecoration(
-                color: checked ? accent : colors.get('checkbox.background'),
+                color: on ? accent : colors.get('checkbox.background'),
                 border: Border.all(
-                  color: checked
+                  color: on
                       ? accent
                       : colors.get('checkbox.border') ??
                             colors['editorLineNumber.foreground'],
                 ),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(line ? 2 : 3),
               ),
-              child: checked
+              child: on
                   ? Icon(
-                      Codicons.check,
-                      size: 11,
+                      checked == null ? Codicons.dash : Codicons.check,
+                      size: box - 2,
                       color: colors['button.foreground'],
                     )
                   : null,

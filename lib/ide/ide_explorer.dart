@@ -523,6 +523,7 @@ class IdeExplorer extends StatefulWidget {
     this.onOpenInDefaultApp,
     this.onFindInFolder,
     this.onShowHistory,
+    this.onCompareFiles,
     this.onOpenInTerminal,
     this.isBound,
     this.local = true,
@@ -579,6 +580,11 @@ class IdeExplorer extends StatefulWidget {
 
   /// Shows the Git log of a file or folder: Show History.
   final ValueChanged<String>? onShowHistory;
+
+  /// Compares two files, the first's text against the second's (JetBrains'
+  /// Compare Files, VS Code's Compare with Selected), or two folders.
+  final void Function(String original, String modified, {bool folders})?
+  onCompareFiles;
 
   /// Open in Terminal: opens a terminal in the folder, or in the one
   /// holding the file; null where there are no terminals.
@@ -655,6 +661,10 @@ class IdeExplorerState extends State<IdeExplorer>
       }
     }
   }
+
+  /// The file or folder Select for Compare chose, to compare another of
+  /// its kind with.
+  ({String path, bool folder})? _selectedForCompare;
 
   @override
   void dispose() {
@@ -1880,6 +1890,34 @@ class IdeExplorerState extends State<IdeExplorer>
                   (widget.git != null || widget.repositories.isNotEmpty))
             IdeMenuAction(l10n.gitShowHistory, onSelected: () => show(path)),
         ],
+        if (widget.onCompareFiles case final compare?)
+          [
+            if (targets.length == 2 &&
+                targets.first.isDirectory == targets.last.isDirectory)
+              IdeMenuAction(
+                l10n.explorerCompareSelected,
+                onSelected: () => compare(
+                  targets.first.path,
+                  targets.last.path,
+                  folders: targets.first.isDirectory,
+                ),
+              )
+            else if (!multiple) ...[
+              if (_selectedForCompare case (path: final selected, :final folder)
+                  when selected != path && folder == isFolder)
+                IdeMenuAction(
+                  l10n.explorerCompareWithSelected(
+                    _controller.paths.basename(selected),
+                  ),
+                  onSelected: () => compare(selected, path, folders: folder),
+                ),
+              IdeMenuAction(
+                l10n.explorerSelectForCompare,
+                onSelected: () =>
+                    _selectedForCompare = (path: path, folder: isFolder),
+              ),
+            ],
+          ],
         [
           if (!isRoot) ...[
             IdeMenuAction(

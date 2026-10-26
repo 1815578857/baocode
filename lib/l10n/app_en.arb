@@ -7674,6 +7674,17 @@
   "diffSideBySide": "Side-by-Side Viewer",
   "diffUnified": "Unified Viewer",
   "diffIgnoreWhitespace": "Ignore Whitespace at Line Ends",
+  "diffWhitespaceNone": "Do Not Ignore Whitespace",
+  "diffIgnoreAllWhitespace": "Ignore All Whitespace",
+  "diffCollapseUnchanged": "Collapse Unchanged Fragments",
+  "diffUnchangedLines": "{count, plural, =1{1 unchanged line} other{{count} unchanged lines}}",
+  "@diffUnchangedLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "diffHighlightCharacters": "Highlight Characters",
   "diffHighlightWords": "Highlight Words",
   "diffHighlightLines": "Highlight Lines",
@@ -7788,6 +7799,9 @@
   "gitBranchRestore": "Restore",
   "gitBranchCompared": "“{name}” has {ahead} commits “{current}” has not; “{current}” has {behind} it has not.",
   "@gitBranchCompared": {"placeholders": {"name": {"type": "String"}, "current": {"type": "String"}, "ahead": {"type": "int"}, "behind": {"type": "int"}}},
+  "gitBranchCompareFiles": "Show Changed Files",
+  "scmGraphRangeIn": "Commits in “{to}” Not in “{from}”",
+  "@scmGraphRangeIn": {"placeholders": {"to": {"type": "String"}, "from": {"type": "String"}}},
   "gitBranchesRecent": "Recent",
   "gitBranchesSearch": "Search for branches and actions",
   "gitUpdateProject": "Update Project",
@@ -7856,6 +7870,8 @@
   "gitMergeDiscardButton": "Discard",
   "gitDiffExcludeChange": "Leave This Change Out of the Commit",
   "gitDiffIncludeChange": "Include This Change in the Commit",
+  "gitDiffExcludeLine": "Leave This Line Out of the Commit",
+  "gitDiffIncludeLine": "Include This Line in the Commit",
   "gitChangelistActive": "active",
   "gitChangelistMoveTo": "Move to Another Changelist",
   "gitChangelistNew": "New Changelist…",
@@ -7975,5 +7991,29 @@
   "@gitAskAiChangesPrompt": {"placeholders": {"paths": {"type": "String"}}},
   "gitAskAiConflicts": "Ask AI to Resolve the Conflicts",
   "gitAskAiConflictsPrompt": "Resolve the merge conflicts in {paths}: keep what both sides meant, then tell me what you chose. Don't stage or commit.",
-  "@gitAskAiConflictsPrompt": {"placeholders": {"paths": {"type": "String"}}}
+  "@gitAskAiConflictsPrompt": {"placeholders": {"paths": {"type": "String"}}},
+  "gitLogFixup": "Fixup with Checked Changes",
+  "compareWith": "Compare With",
+  "compareWithClipboard": "Clipboard",
+  "compareWithClipboardLabel": "{name} (Clipboard \u2194 File)",
+  "@compareWithClipboardLabel": {"placeholders": {"name": {"type": "String"}}},
+  "gitCompareWithBranch": "Branch or Tag…",
+  "gitCompareWithRevision": "Revision…",
+  "gitCompareWithBranchPlaceholder": "Select a branch or tag to compare the file with",
+  "gitCompareWithRevisionPlaceholder": "Select a revision of the file to compare it with",
+  "gitCompareLabel": "{name} ({other} \u2194 Working Tree)",
+  "@gitCompareLabel": {"placeholders": {"name": {"type": "String"}, "other": {"type": "String"}}},
+  "explorerSelectForCompare": "Select for Compare",
+  "explorerCompareWithSelected": "Compare with '{name}'",
+  "@explorerCompareWithSelected": {"placeholders": {"name": {"type": "String"}}},
+  "compareFoldersSame": "“{original}” and “{modified}” have the same files.",
+  "@compareFoldersSame": {"placeholders": {"original": {"type": "String"}, "modified": {"type": "String"}}},
+  "compareFoldersPick": "Files “{original}” and “{modified}” differ in",
+  "@compareFoldersPick": {"placeholders": {"original": {"type": "String"}, "modified": {"type": "String"}}},
+  "compareFoldersOnlyIn": "Only in “{name}”",
+  "@compareFoldersOnlyIn": {"placeholders": {"name": {"type": "String"}}},
+  "compareFoldersModified": "Changed",
+  "explorerCompareSelected": "Compare Selected",
+  "compareFilesLabel": "{original} \u2194 {modified}",
+  "@compareFilesLabel": {"placeholders": {"original": {"type": "String"}, "modified": {"type": "String"}}}
 }
