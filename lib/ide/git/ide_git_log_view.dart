@@ -1755,6 +1755,7 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
         border: _border,
         onStep: _log.stepDiff,
         onShow: _log.showDiffAt,
+        onAsk: widget.onAsk,
         onClose: () {
           final focused = diff.focus;
           _log.closeDiff();
@@ -3382,11 +3383,16 @@ class _DiffArea extends StatefulWidget {
     required this.onStep,
     required this.onShow,
     required this.onClose,
+    this.onAsk,
   });
 
   final IdeGitLogDiff diff;
   final String root;
   final p.Context paths;
+
+  /// Asks the AI in the chat, a change of the file shown (see
+  /// [IdeGitLogView.onAsk]).
+  final ValueChanged<String>? onAsk;
   final Color border;
   final void Function(int delta, {IdeDiffStart start}) onStep;
   final ValueChanged<int> onShow;
@@ -3717,6 +3723,16 @@ class _DiffAreaState extends State<_DiffArea> {
               start: diff.start,
               code: _code,
               position: _position,
+              onAsk: switch (widget.onAsk) {
+                final ask? => (change, line) => ask(
+                  context.l10n.gitAskAiHunkPrompt(
+                    widget.paths.relative(file.path, from: widget.root),
+                    line,
+                    change,
+                  ),
+                ),
+                null => null,
+              },
             ),
           ),
         ],
@@ -3733,9 +3749,11 @@ class _DiffBody extends StatefulWidget {
     required this.start,
     required this.code,
     required this.position,
+    this.onAsk,
   });
 
   final IdeGitDiffFile file;
+  final void Function(String change, int line)? onAsk;
   final IdeDiffStart start;
   final GlobalKey<IdeCodeDiffState> code;
   final ValueNotifier<({int current, int count})> position;
@@ -3772,6 +3790,7 @@ class _DiffBodyState extends State<_DiffBody> {
         position: widget.position,
         checks: widget.file.checks,
         agent: widget.file.agent,
+        onAsk: widget.onAsk,
       );
     },
   );

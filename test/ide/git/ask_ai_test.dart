@@ -7,6 +7,7 @@ import 'package:baocode/ide/git/ide_git_commit_panel.dart';
 import 'package:baocode/ide/git/ide_git_rebase_dialog.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart' show Offset, Size;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../workbench/fake_files.dart';
@@ -97,5 +98,41 @@ void main() {
       git.callsTo('-c').single,
       containsAllInOrder(['rebase', '-i', '--autosquash', '--autostash']),
     );
+  });
+
+  testWidgets("a change in a file's diff, from the button by it", (
+    tester,
+  ) async {
+    git.show['HEAD:lib/a.dart'] = 'a\nb\nc\nd\n';
+    await pumpWorkbench(
+      tester,
+      const {'lib/a.dart': 'a\nb\nc\nD\n'},
+      git: git.repository(),
+      onAskInChat: asked.add,
+      size: const Size(1800, 900),
+    );
+    await tester.pumpAndSettle();
+    await chord(tester, LogicalKeyboardKey.keyG, control: true, shift: true);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find
+          .descendant(
+            of: find.byType(IdeGitCommitPanel),
+            matching: find.textContaining('a.dart', findRichText: true),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await gesture.moveTo(
+      tester.getCenter(find.byTooltip('Leave This Change Out of the Commit')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Ask AI About This Change'));
+    await tester.pumpAndSettle();
+    expect(asked.single, contains('lib/a.dart at line 4'));
+    expect(asked.single, contains('```diff\n-d\n+D\n```'));
   });
 }

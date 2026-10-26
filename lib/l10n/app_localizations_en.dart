@@ -12100,6 +12100,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get gitAskAiHunk => 'Ask AI About This Change';
+
+  @override
+  String gitAskAiHunkPrompt(String path, int line, String change) {
+    return 'About this change in $path at line $line: explain what it does and whether anything in it is wrong.\n\n```diff\n$change\n```';
+  }
+
+  @override
   String get gitAskAiChanges => 'Ask AI About These Changes';
 
   @override

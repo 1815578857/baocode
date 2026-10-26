@@ -71,6 +71,7 @@ class IdeCodeDiff extends StatefulWidget {
     this.position,
     this.checks,
     this.agent,
+    this.onAsk,
   });
 
   final String path;
@@ -96,6 +97,10 @@ class IdeCodeDiff extends StatefulWidget {
 
   /// The agent's change in the file, its parts in the diff marked.
   final IdeDiffAgentMarks? agent;
+
+  /// Asks the AI about a change: its lines as a diff writes them (`-`
+  /// taken out, `+` put in), and where it starts in [modified].
+  final void Function(String change, int line)? onAsk;
 
   /// How long typing goes on before what is typed is written.
   static const writeDelay = Duration(milliseconds: 400);
@@ -436,6 +441,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
     final style = AppFonts.codeStyle(13)
         .copyWith(color: colors['editor.foreground'], height: 1.45);
     final editable = widget.onEdit != null;
+    final overlay = editable || widget.checks != null || widget.onAsk != null;
     return CodeTextScale(
       child: DiffEditor(
         key: ObjectKey(_diff),
@@ -454,7 +460,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
         hideUnchanged: _options.collapseUnchanged,
         unchangedLabel: context.l10n.diffUnchangedLines,
         keepVisible: widget.line,
-        overlay: editable || widget.checks != null ? _overlay : null,
+        overlay: overlay ? _overlay : null,
         original: (context, side) {
           final controller = _diff.controller;
           if (controller == null) return const SizedBox.expand();
@@ -616,13 +622,33 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
                 children.add(
                   Positioned(
                     key: ObjectKey((change, 'agent')),
-                    right: DiffEditor.overviewWidth + 14,
+                    right: DiffEditor.overviewWidth + 34,
                     top: top + 1,
                     height: view.lineHeight - 2,
                     child: _AgentMark(turns: agent.turns),
                   ),
                 );
               }
+            }
+            if (widget.onAsk case final ask?
+                when shows && _hovered.value == index) {
+              children.add(
+                Positioned(
+                  key: ObjectKey((change, 'ask')),
+                  right: DiffEditor.overviewWidth + 10,
+                  top: top + (view.lineHeight - size) / 2,
+                  width: size + 2,
+                  height: size + 2,
+                  child: IdeActionButton(
+                    icon: Codicons.sparkle,
+                    tooltip: context.l10n.gitAskAiHunk,
+                    onPressed: () => ask(
+                      _changeText(original, snapshot, change),
+                      change.modified.startLineNumber,
+                    ),
+                  ),
+                ),
+              );
             }
             if (keys == null) continue;
             final hunk = keys[index];
@@ -695,7 +721,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
           return MouseRegion(
             opaque: false,
             hitTestBehavior: HitTestBehavior.translucent,
-            onHover: keys == null
+            onHover: keys == null && widget.onAsk == null
                 ? null
                 : (event) => _hovered.value = _changeAt(
                     view,
@@ -708,6 +734,32 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
           );
         },
       );
+
+  /// [change]'s lines, `-` those [original] had, `+` those [modified] has.
+  static String _changeText(
+    DocumentSnapshot original,
+    DocumentSnapshot modified,
+    LineRangeMapping change,
+  ) {
+    String line(DocumentSnapshot text, int number) => text.text.substring(
+      text.lineStarts[number - 1],
+      text.contentEnds[number - 1],
+    );
+    return [
+      for (
+        var n = change.original.startLineNumber;
+        n < change.original.endLineNumberExclusive;
+        n++
+      )
+        '-${line(original, n)}',
+      for (
+        var n = change.modified.startLineNumber;
+        n < change.modified.endLineNumberExclusive;
+        n++
+      )
+        '+${line(modified, n)}',
+    ].join('\n');
+  }
 
   /// The change at [y], from its top to the line after it.
   static int? _changeAt(

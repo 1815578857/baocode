@@ -19755,6 +19755,18 @@ abstract class AppLocalizations {
   /// **'Explain commits {ids}: what they change together, and anything in them that looks risky. Read them with `git show`.'**
   String gitAskAiCommitsPrompt(String ids);
 
+  /// No description provided for @gitAskAiHunk.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask AI About This Change'**
+  String get gitAskAiHunk;
+
+  /// No description provided for @gitAskAiHunkPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'About this change in {path} at line {line}: explain what it does and whether anything in it is wrong.\n\n```diff\n{change}\n```'**
+  String gitAskAiHunkPrompt(String path, int line, String change);
+
   /// No description provided for @gitAskAiChanges.
   ///
   /// In en, this message translates to:

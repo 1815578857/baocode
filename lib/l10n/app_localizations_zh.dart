@@ -11449,6 +11449,14 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get gitAskAiHunk => '问 AI 这处改动';
+
+  @override
+  String gitAskAiHunkPrompt(String path, int line, String change) {
+    return '关于 $path 第 $line 行的这处改动：解释它做了什么，有没有问题。\n\n```diff\n$change\n```';
+  }
+
+  @override
   String get gitAskAiChanges => '问 AI 这些改动';
 
   @override
