@@ -10694,4 +10694,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String gitLogCommitsSelected(int count) {
     return '已选 $count 个提交';
   }
+
+  @override
+  String get gitLogPaths => '路径';
+
+  @override
+  String get gitLogAllPaths => '所有路径';
+
+  @override
+  String gitLogCurrentFile(String path) {
+    return '当前文件：$path';
+  }
+
+  @override
+  String gitLogCurrentFolder(String path) {
+    return '所在文件夹：$path';
+  }
+
+  @override
+  String gitLogPathCount(int count) {
+    return '$count 个路径';
+  }
+
+  @override
+  String gitLogLinesOf(String file, int start, int end) {
+    return '$file：第 $start–$end 行';
+  }
+
+  @override
+  String get gitShowHistory => '显示历史';
+
+  @override
+  String get gitShowHistoryForSelection => '显示所选内容的历史';
 }

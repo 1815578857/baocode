@@ -503,6 +503,12 @@ class IdeWorkspace extends ChangeNotifier
   IdeDocument? get active =>
       _documents.where((d) => d.key == _activeKey).firstOrNull;
 
+  @override
+  String? get activePath => switch (active) {
+    final document? when document.isFile => document.path,
+    _ => null,
+  };
+
   /// The open model of [path]'s file, which its tabs share.
   EditorDocumentModel? _fileModel(String path) =>
       _documents.where((d) => d.path == path && d.isFile).firstOrNull?.model;

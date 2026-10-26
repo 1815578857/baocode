@@ -2827,7 +2827,7 @@
   "aboutOpen": "打开",
   "stashSettingsIssueSync": "Issue 同步为 Stash",
   "stashSettingsIssueSyncDescription": "项目是 GitHub / GitLab 上的 Git 仓库（并已在「账号」中登录）时，它的未关闭 issue 会成为 Stash，一个 issue 只对应一条，双向保持一致。删除或取消关联的不会再被拉回来。",
-    "stashIssueSyncMine": "只同步指派给我或我创建的",
+  "stashIssueSyncMine": "只同步指派给我或我创建的",
   "stashIssueSyncOff": "关闭：只保留手动导入或发布的",
   "stashIssueLocal": "仅本地",
   "stashIssueAllow": "允许发布为 issue",
@@ -3066,5 +3066,13 @@
   "gitLogCompareCommits": "比较这两个提交",
   "gitLogRevertCommits": "还原这 {count} 个提交",
   "gitLogSquashCommits": "把这 {count} 个提交合成一个（Squash）",
-  "gitLogCommitsSelected": "已选 {count} 个提交"
+  "gitLogCommitsSelected": "已选 {count} 个提交",
+  "gitLogPaths": "路径",
+  "gitLogAllPaths": "所有路径",
+  "gitLogCurrentFile": "当前文件：{path}",
+  "gitLogCurrentFolder": "所在文件夹：{path}",
+  "gitLogPathCount": "{count} 个路径",
+  "gitLogLinesOf": "{file}：第 {start}–{end} 行",
+  "gitShowHistory": "显示历史",
+  "gitShowHistoryForSelection": "显示所选内容的历史"
 }

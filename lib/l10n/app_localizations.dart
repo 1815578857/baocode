@@ -18458,6 +18458,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} commits selected'**
   String gitLogCommitsSelected(int count);
+
+  /// No description provided for @gitLogPaths.
+  ///
+  /// In en, this message translates to:
+  /// **'Paths'**
+  String get gitLogPaths;
+
+  /// No description provided for @gitLogAllPaths.
+  ///
+  /// In en, this message translates to:
+  /// **'All Paths'**
+  String get gitLogAllPaths;
+
+  /// No description provided for @gitLogCurrentFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Current File: {path}'**
+  String gitLogCurrentFile(String path);
+
+  /// No description provided for @gitLogCurrentFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Its Folder: {path}'**
+  String gitLogCurrentFolder(String path);
+
+  /// No description provided for @gitLogPathCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} paths'**
+  String gitLogPathCount(int count);
+
+  /// No description provided for @gitLogLinesOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{file}: lines {start}–{end}'**
+  String gitLogLinesOf(String file, int start, int end);
+
+  /// No description provided for @gitShowHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Show History'**
+  String get gitShowHistory;
+
+  /// No description provided for @gitShowHistoryForSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Show History for Selection'**
+  String get gitShowHistoryForSelection;
 }
 
 class _AppLocalizationsDelegate

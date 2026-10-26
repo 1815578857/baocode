@@ -522,6 +522,7 @@ class IdeExplorer extends StatefulWidget {
     this.onError,
     this.onOpenInDefaultApp,
     this.onFindInFolder,
+    this.onShowHistory,
     this.onOpenInTerminal,
     this.isBound,
     this.local = true,
@@ -575,6 +576,9 @@ class IdeExplorer extends StatefulWidget {
 
   /// Find in Folder...: searches in a folder.
   final ValueChanged<String>? onFindInFolder;
+
+  /// Shows the Git log of a file or folder: Show History.
+  final ValueChanged<String>? onShowHistory;
 
   /// Open in Terminal: opens a terminal in the folder, or in the one
   /// holding the file; null where there are no terminals.
@@ -1869,6 +1873,12 @@ class IdeExplorerState extends State<IdeExplorer>
               ]),
               onSelected: () => widget.onFindInFolder!(path),
             ),
+        ],
+        [
+          if (widget.onShowHistory case final show?
+              when !multiple &&
+                  (widget.git != null || widget.repositories.isNotEmpty))
+            IdeMenuAction(l10n.gitShowHistory, onSelected: () => show(path)),
         ],
         [
           if (!isRoot) ...[

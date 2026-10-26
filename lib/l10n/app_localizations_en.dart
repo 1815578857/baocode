@@ -11292,4 +11292,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String gitLogCommitsSelected(int count) {
     return '$count commits selected';
   }
+
+  @override
+  String get gitLogPaths => 'Paths';
+
+  @override
+  String get gitLogAllPaths => 'All Paths';
+
+  @override
+  String gitLogCurrentFile(String path) {
+    return 'Current File: $path';
+  }
+
+  @override
+  String gitLogCurrentFolder(String path) {
+    return 'Its Folder: $path';
+  }
+
+  @override
+  String gitLogPathCount(int count) {
+    return '$count paths';
+  }
+
+  @override
+  String gitLogLinesOf(String file, int start, int end) {
+    return '$file: lines $start–$end';
+  }
+
+  @override
+  String get gitShowHistory => 'Show History';
+
+  @override
+  String get gitShowHistoryForSelection => 'Show History for Selection';
 }

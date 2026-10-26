@@ -7705,5 +7705,17 @@
   "gitLogSquashCommits": "Squash {count} Commits into One",
   "@gitLogSquashCommits": {"placeholders": {"count": {"type": "int"}}},
   "gitLogCommitsSelected": "{count} commits selected",
-  "@gitLogCommitsSelected": {"placeholders": {"count": {"type": "int"}}}
+  "@gitLogCommitsSelected": {"placeholders": {"count": {"type": "int"}}},
+  "gitLogPaths": "Paths",
+  "gitLogAllPaths": "All Paths",
+  "gitLogCurrentFile": "Current File: {path}",
+  "@gitLogCurrentFile": {"placeholders": {"path": {"type": "String"}}},
+  "gitLogCurrentFolder": "Its Folder: {path}",
+  "@gitLogCurrentFolder": {"placeholders": {"path": {"type": "String"}}},
+  "gitLogPathCount": "{count} paths",
+  "@gitLogPathCount": {"placeholders": {"count": {"type": "int"}}},
+  "gitLogLinesOf": "{file}: lines {start}–{end}",
+  "@gitLogLinesOf": {"placeholders": {"file": {"type": "String"}, "start": {"type": "int"}, "end": {"type": "int"}}},
+  "gitShowHistory": "Show History",
+  "gitShowHistoryForSelection": "Show History for Selection"
 }

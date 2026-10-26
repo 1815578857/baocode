@@ -1677,6 +1677,23 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     _scm.log.reveal(hash);
   }
 
+  /// Show History: the Git log of [path], a file or folder, or of [lines]
+  /// of a file; the other filters go, as from a fresh log.
+  void _showHistory(String path, [IdeGitLogLines? lines]) {
+    final git = widget.workspace.gitAt(path);
+    if (git == null) return;
+    widget.workspace.selectRepository(git);
+    final log = _scm.log;
+    if (lines == null) log.rememberPath(path);
+    log
+      ..search.clear()
+      ..selected = null;
+    git.graphFilter = lines == null
+        ? IdeGitLogFilter(paths: [path])
+        : IdeGitLogFilter(lines: lines);
+    _showView(IdeSideView.sourceControl);
+  }
+
   void _leaveGitLog() {
     if (_view == IdeSideView.sourceControl) {
       setState(() => _view = IdeSideView.explorer);
@@ -3456,6 +3473,20 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         enabled: _editor?.canAnnotate ?? false,
         run: () => _editor?.toggleAnnotations(),
       ),
+      IdeCommand(
+        id: 'baocode.git.showFileHistory',
+        category: 'Git',
+        label: 'Show History',
+        enabled: _editor?.canShowHistory ?? false,
+        run: () => _editor?.showHistory(),
+      ),
+      IdeCommand(
+        id: 'baocode.git.showSelectionHistory',
+        category: 'Git',
+        label: 'Show History for Selection',
+        enabled: _editor?.selectionHistoryLines != null,
+        run: () => _editor?.showHistory(selection: true),
+      ),
       _catalogCommand(
         'git.blame.toggleEditorDecoration',
         () => setState(() => _gitBlame = !_gitBlame),
@@ -3948,6 +3979,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                             onOpenInTerminal: _terminals == null
                                 ? null
                                 : _openInTerminal,
+                            onShowHistory: _showHistory,
                           ),
                   ),
                 IdePane(
@@ -4173,6 +4205,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                                 onShowCommands: () => _showQuickInput('>'),
                                 gitBlame: _gitBlame,
                                 onShowCommit: _showCommitInLog,
+                                onShowHistory: _showHistory,
                                 keyResolver: _resolveEditorKey,
                                 onPaste: _pasteInEditor,
                                 formatOnSave: _formatOnSave,

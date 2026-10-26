@@ -285,6 +285,16 @@ class IdeGitLogController extends ChangeNotifier {
   /// The files' filter changed: the files shown are others.
   void fileFilterChanged() => notifyListeners();
 
+  /// The paths the log was last filtered by, the latest first.
+  final List<String> recentPaths = [];
+
+  void rememberPath(String path) {
+    recentPaths
+      ..remove(path)
+      ..insert(0, path);
+    if (recentPaths.length > 6) recentPaths.removeLast();
+  }
+
   /// The tree's folders closed, by path.
   final Set<String> collapsedFolders = {};
 
@@ -893,6 +903,13 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
         ),
       ),
       _DropButton(
+        icon: Codicons.file,
+        label: _pathsLabel(git),
+        tooltip: l10n.gitLogPaths,
+        active: filter.paths.isNotEmpty || filter.lines != null,
+        entries: () => _pathEntries(git),
+      ),
+      _DropButton(
         icon: Codicons.person,
         label: switch (filter.author) {
           null => l10n.gitLogUser,
@@ -999,7 +1016,7 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
 
   /// Whether the log shows fewer commits than it could.
   static bool _filtered(IdeGitRepository git) =>
-      git.graphFilter.narrowed || git.graphBranch != null;
+      git.graphFilter.filtered || git.graphBranch != null;
 
   void _clearFilters(IdeGitRepository git) {
     _searchDebounce?.cancel();
@@ -1162,6 +1179,78 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
         if (remote.isNotEmpty)
           IdeMenuAction(l10n.gitLogRemoteBranches, submenu: remote),
         if (tags.isNotEmpty) IdeMenuAction(l10n.gitLogTags, submenu: tags),
+      ],
+    ]);
+  }
+
+  /// [path] as the Paths filter names it: from the repository's folder.
+  String _pathName(IdeGitRepository git, String path) {
+    final paths = git.service.pathContext;
+    final root = git.service.root;
+    if (paths.equals(path, root)) return p.basename(path);
+    return paths.isWithin(root, path)
+        ? paths.relative(path, from: root).replaceAll(r'\', '/')
+        : path;
+  }
+
+  String _linesLabel(IdeGitLogLines lines) => context.l10n.gitLogLinesOf(
+    p.basename(lines.path),
+    lines.start,
+    lines.end,
+  );
+
+  String _pathsLabel(IdeGitRepository git) {
+    final filter = git.graphFilter;
+    if (filter.lines case final lines?) return _linesLabel(lines);
+    return switch (filter.paths) {
+      [] => context.l10n.gitLogPaths,
+      [final path] => p.basename(path),
+      final paths => context.l10n.gitLogPathCount(paths.length),
+    };
+  }
+
+  /// All, the file in the editor or its folder, and those filtered by of
+  /// late (the explorer's Show History too).
+  List<IdeMenuEntry> _pathEntries(IdeGitRepository git) {
+    final l10n = context.l10n;
+    final filter = git.graphFilter;
+    final paths = git.service.pathContext;
+    final root = git.service.root;
+    void pick(String? path) {
+      if (path != null) _log.rememberPath(path);
+      git.graphFilter = filter.copyWith(paths: [?path], lines: () => null);
+    }
+
+    bool only(String path) =>
+        filter.lines == null &&
+        filter.paths.length == 1 &&
+        paths.equals(filter.paths.single, path);
+    IdeMenuAction choice(String label, String path) =>
+        IdeMenuAction(label, checked: only(path), onSelected: () => pick(path));
+    final active = widget.host.activePath;
+    final file = active != null && paths.isWithin(root, active) ? active : null;
+    final folder = file == null ? null : paths.dirname(file);
+    final offered = [?file, ?folder];
+    return ideMenuGroups([
+      [
+        IdeMenuAction(
+          l10n.gitLogAllPaths,
+          checked: filter.paths.isEmpty && filter.lines == null,
+          onSelected: () => pick(null),
+        ),
+        if (filter.lines case final lines?)
+          IdeMenuAction(_linesLabel(lines), checked: true, onSelected: () {}),
+      ],
+      [
+        if (file != null)
+          choice(l10n.gitLogCurrentFile(_pathName(git, file)), file),
+        if (folder != null)
+          choice(l10n.gitLogCurrentFolder(_pathName(git, folder)), folder),
+      ],
+      [
+        for (final path in _log.recentPaths)
+          if (!offered.any((offer) => paths.equals(offer, path)))
+            choice(_pathName(git, path), path),
       ],
     ]);
   }
@@ -1461,7 +1550,10 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
             return ListView.builder(
               controller: _log.scroll,
               itemExtent: IdeGitLogView.rowHeight,
-              itemCount: rows == null || (rows.isEmpty && narrowed) ? 2 : count,
+              itemCount:
+                  rows == null || (rows.isEmpty && git.graphFilter.filtered)
+                  ? 2
+                  : count,
               itemBuilder: (context, index) {
                 if (index == 0) {
                   return _workingTreeRow(

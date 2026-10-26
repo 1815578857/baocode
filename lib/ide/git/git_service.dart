@@ -621,22 +621,39 @@ class IdeGitService {
     IdeGitLogFilter filter = const IdeGitLogFilter(),
     bool dateOrder = false,
   }) async {
-    await _requireRoot();
+    final top = await _requireRoot();
+    final lines = filter.lines;
     final output = _check(
       await _git([
         'log',
         dateOrder ? '--date-order' : '--topo-order',
         '--decorate=full',
-        '--format=$ideGitLogFormat',
+        // Each record marked: an older Git prints -L's patches all the same.
+        '--format=${lines == null ? '' : '%x1d'}$ideGitLogFormat',
         '-n',
         '$limit',
         ...filter.arguments,
-        ...refs,
+        if (lines != null) ...[
+          '--no-patch',
+          '-L${lines.start},${lines.end}:${_relative(top, [lines.path]).single}',
+        ],
+        // -L digs from one commit only: the first ref's (HEAD's).
+        if (lines == null) ...refs else refs.first,
         '--',
+        if (lines == null) ..._relative(top, filter.paths),
       ]),
       'Cannot read the Git history.',
     );
-    return parseGitLog(output.stdout);
+    if (lines == null) return parseGitLog(output.stdout);
+    return parseGitLog(
+      output.stdout
+          .split('\x1e')
+          .map((record) {
+            final start = record.indexOf('\x1d');
+            return start < 0 ? '' : record.substring(start + 1);
+          })
+          .join('\x1e'),
+    );
   }
 
   /// The repository's working trees, its own first (`git worktree list
