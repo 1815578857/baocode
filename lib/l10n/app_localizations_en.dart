@@ -2842,8 +2842,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Changed again since the agent left it, so Undo could not take the agent\'s change out. Undo it by hand, then keep it.';
 
   @override
+  String get stripChangeShared =>
+      'Another agent was working in this project at the same time: some of this change may be its.';
+
+  @override
   String get stripChangeUntracked =>
-      'What it was before is not known (the agent did not tell, it is too large, or outside the project): it can be kept, not undone.';
+      'What it was before is not known (it is ignored or too large and the agent did not tell, or it is outside the project): it can be kept, not undone.';
 
   @override
   String get stripChangesDiff => 'Agent Changes';
@@ -10899,4 +10903,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitLogOpenInEditor => 'Open in Editor';
+
+  @override
+  String get checkpointsTitle => 'Checkpoints';
+
+  @override
+  String get checkpointsDescription =>
+      'Snapshots of the projects agents work in, kept to undo their changes. A conversation\'s are tidied away 30 days after it last changed anything.';
+
+  @override
+  String checkpointsSize(String size) {
+    return 'Using $size';
+  }
+
+  @override
+  String get checkpointsMeasuring => 'Measuring…';
+
+  @override
+  String get checkpointsClear => 'Clear';
+
+  @override
+  String get checkpointsClearing => 'Clearing…';
+
+  @override
+  String get checkpointsClearConfirm => 'Clear the checkpoints?';
+
+  @override
+  String get checkpointsClearDetail =>
+      'The changes agents made in conversations that are not open can no longer be undone. The files themselves stay as they are.';
 }

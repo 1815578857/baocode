@@ -1761,7 +1761,11 @@
   "stripChangeModified": "Modified",
   "stripChangeDeleted": "Deleted",
   "stripChangeConflict": "Changed again since the agent left it, so Undo could not take the agent's change out. Undo it by hand, then keep it.",
-  "stripChangeUntracked": "What it was before is not known (the agent did not tell, it is too large, or outside the project): it can be kept, not undone.",
+  "stripChangeShared": "Another agent was working in this project at the same time: some of this change may be its.",
+  "@stripChangeShared": {
+    "description": "Tooltip of a changed file seen while another agent worked in the same project."
+  },
+  "stripChangeUntracked": "What it was before is not known (it is ignored or too large and the agent did not tell, or it is outside the project): it can be kept, not undone.",
   "stripChangesDiff": "Agent Changes",
   "@stripChangesDiff": {
     "description": "Label of the diff editor comparing a file before the agent changed it with the file now."
@@ -7569,5 +7573,14 @@
   "gitLogBinary": "binary",
   "gitLogPreviousFile": "Previous File",
   "gitLogNextFile": "Next File",
-  "gitLogOpenInEditor": "Open in Editor"
+  "gitLogOpenInEditor": "Open in Editor",
+  "checkpointsTitle": "Checkpoints",
+  "checkpointsDescription": "Snapshots of the projects agents work in, kept to undo their changes. A conversation's are tidied away 30 days after it last changed anything.",
+  "checkpointsSize": "Using {size}",
+  "@checkpointsSize": {"placeholders": {"size": {"type": "String"}}},
+  "checkpointsMeasuring": "Measuring…",
+  "checkpointsClear": "Clear",
+  "checkpointsClearing": "Clearing…",
+  "checkpointsClearConfirm": "Clear the checkpoints?",
+  "checkpointsClearDetail": "The changes agents made in conversations that are not open can no longer be undone. The files themselves stay as they are."
 }

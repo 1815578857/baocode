@@ -4910,10 +4910,16 @@ abstract class AppLocalizations {
   /// **'Changed again since the agent left it, so Undo could not take the agent\'s change out. Undo it by hand, then keep it.'**
   String get stripChangeConflict;
 
+  /// Tooltip of a changed file seen while another agent worked in the same project.
+  ///
+  /// In en, this message translates to:
+  /// **'Another agent was working in this project at the same time: some of this change may be its.'**
+  String get stripChangeShared;
+
   /// No description provided for @stripChangeUntracked.
   ///
   /// In en, this message translates to:
-  /// **'What it was before is not known (the agent did not tell, it is too large, or outside the project): it can be kept, not undone.'**
+  /// **'What it was before is not known (it is ignored or too large and the agent did not tell, or it is outside the project): it can be kept, not undone.'**
   String get stripChangeUntracked;
 
   /// Label of the diff editor comparing a file before the agent changed it with the file now.
@@ -17798,6 +17804,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open in Editor'**
   String get gitLogOpenInEditor;
+
+  /// No description provided for @checkpointsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkpoints'**
+  String get checkpointsTitle;
+
+  /// No description provided for @checkpointsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Snapshots of the projects agents work in, kept to undo their changes. A conversation\'s are tidied away 30 days after it last changed anything.'**
+  String get checkpointsDescription;
+
+  /// No description provided for @checkpointsSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Using {size}'**
+  String checkpointsSize(String size);
+
+  /// No description provided for @checkpointsMeasuring.
+  ///
+  /// In en, this message translates to:
+  /// **'Measuring…'**
+  String get checkpointsMeasuring;
+
+  /// No description provided for @checkpointsClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get checkpointsClear;
+
+  /// No description provided for @checkpointsClearing.
+  ///
+  /// In en, this message translates to:
+  /// **'Clearing…'**
+  String get checkpointsClearing;
+
+  /// No description provided for @checkpointsClearConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the checkpoints?'**
+  String get checkpointsClearConfirm;
+
+  /// No description provided for @checkpointsClearDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'The changes agents made in conversations that are not open can no longer be undone. The files themselves stay as they are.'**
+  String get checkpointsClearDetail;
 }
 
 class _AppLocalizationsDelegate
