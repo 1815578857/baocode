@@ -7970,6 +7970,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sidebarDeleteWorkspace => 'Delete Workspace';
 
   @override
+  String get sidebarEditProject => 'Edit Project…';
+
+  @override
+  String get projectEditTitle => 'Edit Project';
+
+  @override
+  String get projectLocation => 'Location';
+
+  @override
+  String get projectLocationDescription =>
+      'Moved or renamed the folder? Point the project at it here, and its conversations move along. The folder itself is not moved.';
+
+  @override
+  String projectChooseFolder(String app) {
+    return 'Choose in $app…';
+  }
+
+  @override
+  String get projectFolderNotFound => 'There is no folder at this path.';
+
+  @override
+  String get projectRelocateBusy =>
+      'An agent of this project is still working, or open in a window of its own. Change its location once it is done.';
+
+  @override
+  String get projectRelocateFailed =>
+      'Couldn\'t move this project\'s conversations.';
+
+  @override
+  String get projectRelocating => 'Moving Conversations…';
+
+  @override
   String ideWorkspaceTitle(String name) {
     return '$name (Workspace)';
   }

@@ -12873,6 +12873,60 @@ abstract class AppLocalizations {
   /// **'Delete Workspace'**
   String get sidebarDeleteWorkspace;
 
+  /// A project's menu item: its name and folder, in a dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Project…'**
+  String get sidebarEditProject;
+
+  /// No description provided for @projectEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Project'**
+  String get projectEditTitle;
+
+  /// The label of a project's folder in its dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get projectLocation;
+
+  /// No description provided for @projectLocationDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved or renamed the folder? Point the project at it here, and its conversations move along. The folder itself is not moved.'**
+  String get projectLocationDescription;
+
+  /// No description provided for @projectChooseFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose in {app}…'**
+  String projectChooseFolder(String app);
+
+  /// No description provided for @projectFolderNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no folder at this path.'**
+  String get projectFolderNotFound;
+
+  /// No description provided for @projectRelocateBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'An agent of this project is still working, or open in a window of its own. Change its location once it is done.'**
+  String get projectRelocateBusy;
+
+  /// No description provided for @projectRelocateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t move this project\'s conversations.'**
+  String get projectRelocateFailed;
+
+  /// No description provided for @projectRelocating.
+  ///
+  /// In en, this message translates to:
+  /// **'Moving Conversations…'**
+  String get projectRelocating;
+
   /// The title of the explorer's folders when the IDE shows a workspace, as VS Code's.
   ///
   /// In en, this message translates to:

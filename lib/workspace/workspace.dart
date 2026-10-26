@@ -65,6 +65,18 @@ class Project {
   int get hashCode => path.hashCode;
 }
 
+/// How [Workspace.relocateProject] went.
+enum ProjectRelocation {
+  moved,
+
+  /// One of its agents works, or shows in a window of its own.
+  busy,
+
+  /// Its sessions could not be moved, or it cannot be (a remote project's,
+  /// a workspace).
+  failed,
+}
+
 /// What an agent needs from the user, most urgent first.
 enum ThreadStatus {
   /// Stopped on a question only the user can answer.
@@ -483,11 +495,25 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
     return project;
   }
 
-  /// [path]'s project: its folder's, or a workspace's of that name.
+  /// [path]'s project: a workspace's of that name, or its folder's, named
+  /// as the user named it, else after the folder.
   Project _projectNamed(String path) => switch (_workspaces[path]) {
     final workspace? => Project(workspace.name, path),
-    null => Project.at(path),
+    null => switch (_projectNames[path]) {
+      final name? => Project(name, path),
+      null => Project.at(path),
+    },
   };
+
+  /// Has the project at [path], listed and its agents', be [project] (the
+  /// same path, another name).
+  void _replaceProject(String path, Project project) {
+    final index = _projects.indexWhere((p) => p.path == path);
+    if (index >= 0) _projects[index] = project;
+    for (final thread in _threads) {
+      if (thread.project.path == path) thread.project = project;
+    }
+  }
 
   void _addKept(
     KernelDescriptor kernel,
@@ -1624,12 +1650,7 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
     workspaceDirectories.write(updated);
     _workspaces[updated.path] = updated;
     if (updated.name != current.name) {
-      final renamed = Project(updated.name, updated.path);
-      final index = _projects.indexWhere((p) => p.path == updated.path);
-      if (index >= 0) _projects[index] = renamed;
-      for (final thread in _threads) {
-        if (thread.project.path == updated.path) thread.project = renamed;
-      }
+      _replaceProject(updated.path, Project(updated.name, updated.path));
     }
     _save();
     notifyListeners();
@@ -1662,6 +1683,236 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
     _hiddenProjects[workspace.path] = DateTime.now();
     _save();
     notifyListeners();
+  }
+
+  // --- A project's name and folder -------------------------------------------
+
+  /// The names the user gave projects, by path: the app calls them so,
+  /// their folders as they are.
+  final Map<String, String> _projectNames = {};
+
+  /// Calls [project] [name]; after its folder again when null, empty or
+  /// that. A workspace is renamed with [updateWorkspace].
+  void renameProject(Project project, String? name) {
+    final path = project.path;
+    if (_workspaces.containsKey(path)) return;
+    name = name?.trim();
+    final before = _projectNames[path];
+    if (name == null || name.isEmpty || name == Project.at(path).name) {
+      _projectNames.remove(path);
+    } else {
+      _projectNames[path] = name;
+    }
+    if (_projectNames[path] == before) return;
+    _replaceProject(path, _projectNamed(path));
+    _save();
+    notifyListeners();
+  }
+
+  /// Whether [project] can be had in another folder ([relocateProject]):
+  /// a folder of this machine, not a workspace.
+  bool canRelocate(Project project) =>
+      project.host == null && !_workspaces.containsKey(project.path);
+
+  /// Has [project] be the folder [path] instead (its folder moved, say):
+  /// the sessions its kernels keep for it move there (see [MovesSessions]),
+  /// its agents listed there from then on, and what is kept of it (its
+  /// name, icon, pin, order, drafts) goes along. Into a project listed
+  /// already, the two are one. Not while one of its agents works, or shows
+  /// in a window of its own.
+  Future<ProjectRelocation> relocateProject(
+    Project project,
+    String path,
+  ) async {
+    final from = project.path;
+    if (path == from) return ProjectRelocation.moved;
+    if (!canRelocate(project) ||
+        RemoteLocation.isRemote(path) ||
+        _workspaces.containsKey(path)) {
+      return ProjectRelocation.failed;
+    }
+    bool busy() => _threads.any(
+      (thread) =>
+          thread.project.path == from &&
+          (_windowAgents.contains(thread) ||
+              (thread.isOpen &&
+                  (thread.status == ThreadStatus.running ||
+                      thread.status == ThreadStatus.needsInput ||
+                      thread.runsInBackground))),
+    );
+    if (busy()) return ProjectRelocation.busy;
+    final kept = <(KernelDescriptor, SessionRecord)>[];
+    try {
+      for (final kernel in kernels) {
+        if (kernel.catalog case final MovesSessions catalog) {
+          await catalog.moveSessions(from, path);
+        }
+      }
+      for (final kernel in kernels) {
+        for (final session
+            in await kernel.catalog?.sessionsIn(path) ?? const []) {
+          kept.add((kernel, session));
+        }
+      }
+    } on Object {
+      return ProjectRelocation.failed;
+    }
+    if (_disposed) return ProjectRelocation.failed;
+    _relocate(from, path, kept);
+    return ProjectRelocation.moved;
+  }
+
+  /// The project at [from] at [to] instead, its agents those [kept] there
+  /// now (see [relocateProject]).
+  void _relocate(
+    String from,
+    String to,
+    List<(KernelDescriptor, SessionRecord)> kept,
+  ) {
+    _rekey(from, to);
+    final listed = _projects.where((p) => p.path == to).firstOrNull;
+    final project = listed ?? _projectNamed(to);
+    final at = _projects.indexWhere((p) => p.path == from);
+    if (listed != null) {
+      if (at >= 0) _projects.removeAt(at);
+    } else if (at >= 0) {
+      _projects[at] = project;
+    } else {
+      _projects.insert(0, project);
+    }
+    // Its agents listed again, as kept there now: opened from there.
+    final gone = [
+      for (final thread in _threads)
+        if (thread.project.path == from) thread,
+    ];
+    final ids = {for (final thread in gone) thread: thread.id};
+    gone.forEach(_drop);
+    for (final (kernel, session) in kept) {
+      _addKept(kernel, project, session);
+    }
+    final heirs = <AgentThread, AgentThread>{};
+    AgentThread heirOf(AgentThread thread) => heirs[thread] ??=
+        switch (ids[thread]) {
+          final id? => _threadWithId(id),
+          null => null,
+        } ??
+        _threads
+            .where(
+              (t) =>
+                  t.project == project &&
+                  _isUntouched(t) &&
+                  !_grid.contains(t) &&
+                  !heirs.containsValue(t),
+            )
+            .firstOrNull ??
+        _newThread(project);
+    for (final thread in gone) {
+      if (!_grid.contains(thread)) continue;
+      final heir = heirOf(thread);
+      if (_grid.contains(heir)) {
+        _grid.remove(thread);
+      } else {
+        _grid.replace(thread, heir);
+      }
+    }
+    if (_selected case final selected? when gone.contains(selected)) {
+      _focus(heirOf(selected));
+    }
+    // The IDE's tabs: by their sessions' ids, the agents listed again
+    // taking them once asked for (see [ideChats]).
+    final tabs = _ideChats.remove(from);
+    final shown = _ideChatShown.remove(from);
+    for (final list in _ideChats.values) {
+      list.removeWhere((tab) => gone.contains(tab) && ids[tab] == null);
+      for (final (i, tab) in list.indexed) {
+        if (ids[tab] case final id?) list[i] = id;
+      }
+    }
+    for (final MapEntry(key: folder, value: tab) in [
+      ..._ideChatShown.entries,
+    ]) {
+      if (gone.contains(tab)) {
+        if (ids[tab] case final id?) {
+          _ideChatShown[folder] = id;
+        } else {
+          _ideChatShown.remove(folder);
+        }
+      }
+    }
+    if (tabs != null) {
+      final there = _ideChats.putIfAbsent(to, () => []);
+      for (final tab in tabs) {
+        final kept = gone.contains(tab) ? ids[tab] : tab;
+        if (kept != null && !there.contains(kept)) there.add(kept);
+      }
+      final shownThere = gone.contains(shown) ? ids[shown] : shown;
+      if (shownThere != null) _ideChatShown.putIfAbsent(to, () => shownThere);
+    }
+    if (to == _ideFolder || _windowFolders.contains(to)) _ensureIdeChat(to);
+    _save();
+    notifyListeners();
+  }
+
+  /// What is kept of the project at [from], kept of [to]'s instead; what
+  /// [to] has of its own stays.
+  void _rekey(String from, String to) {
+    void move<V>(Map<String, V> map) {
+      if (!map.containsKey(from)) return;
+      final value = map.remove(from) as V;
+      map.putIfAbsent(to, () => value);
+    }
+
+    void replace(List<String> list) {
+      final at = list.indexOf(from);
+      if (at < 0) return;
+      if (list.contains(to)) {
+        list.removeAt(at);
+      } else {
+        list[at] = to;
+      }
+    }
+
+    move(_projectNames);
+    move(_projectIcons);
+    move(_order);
+    move(_ideViews);
+    _hiddenProjects
+      ..remove(from)
+      ..remove(to);
+    replace(_projectOrder);
+    replace(_pinnedProjects);
+    replace(_recentFolders);
+    _folders.remove(from);
+    // Listed next run though no session is kept there (see [_forgetGone]).
+    if (!_folders.contains(to)) _folders.add(to);
+    for (final groups in [_collapsedGroups, _expandedGroups]) {
+      if (groups.remove(projectGroup(from))) groups.add(projectGroup(to));
+    }
+    if (_ideFolder == from) _ideFolder = to;
+    // A new agent's there takes it.
+    _newDrafts.remove(from);
+    if (_drafts.remove('$_newDraft$from') case final draft?) {
+      _drafts.putIfAbsent('$_newDraft$to', () => draft);
+      _newDrafts.add(to);
+      _saveDrafts();
+    }
+  }
+
+  /// Takes [thread] off the list, to be listed again from where its
+  /// session is kept now: nothing of it forgotten, its session closed.
+  void _drop(AgentThread thread) {
+    final listener = _listeners.remove(thread);
+    if (listener != null) thread.session.removeListener(listener);
+    _snapshots.remove(thread);
+    _turnsRun.remove(thread);
+    _draftKeys.remove(thread);
+    _ideChatsUnkept.remove(thread);
+    _threads.remove(thread);
+    if (thread.isOpen) {
+      thread.session
+        ..stop()
+        ..dispose();
+    }
   }
 
   // --- Project icons --------------------------------------------------------
@@ -1767,6 +2018,7 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
       _hiddenProjects.length,
       _order.length,
       _projectIcons.length,
+      _projectNames.length,
       for (final order in _order.values) order.length,
     ]);
     final before = size();
@@ -1779,6 +2031,7 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
     _projectIcons.removeWhere(
       (path, _) => !paths.contains(path) && !path.startsWith(_hostIcon),
     );
+    _projectNames.removeWhere((path, _) => !paths.contains(path));
     for (final order in _order.values) {
       order.retainWhere(titles.containsKey);
     }
@@ -2015,6 +2268,7 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
       _pinnedProjects.addAll(list('pinnedProjects'));
       _sshHosts.addAll(list('sshHosts'));
       _hostNames.addAll(strings(sidebar['hostNames']));
+      _projectNames.addAll(strings(sidebar['projectNames']));
       if (sidebar['sshServers'] case final Map<Object?, Object?> servers) {
         for (final MapEntry(:key, :value) in servers.entries) {
           final server = SshServer.fromJson(value);
@@ -2125,6 +2379,7 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
         'pinnedProjects': [..._pinnedProjects],
         'sshHosts': [..._sshHosts],
         'hostNames': {..._hostNames},
+        'projectNames': {..._projectNames},
         'sshServers': {
           for (final MapEntry(:key, :value) in _sshServers.entries)
             key: value.toJson(),

@@ -5787,6 +5787,29 @@
   "@sidebarDeleteWorkspace": {
     "description": "Forgets a workspace; its folders and sessions are kept."
   },
+  "sidebarEditProject": "Edit Project…",
+  "@sidebarEditProject": {
+    "description": "A project's menu item: its name and folder, in a dialog."
+  },
+  "projectEditTitle": "Edit Project",
+  "projectLocation": "Location",
+  "@projectLocation": {
+    "description": "The label of a project's folder in its dialog."
+  },
+  "projectLocationDescription": "Moved or renamed the folder? Point the project at it here, and its conversations move along. The folder itself is not moved.",
+  "projectChooseFolder": "Choose in {app}…",
+  "@projectChooseFolder": {
+    "placeholders": {
+      "app": {
+        "type": "String",
+        "example": "Finder"
+      }
+    }
+  },
+  "projectFolderNotFound": "There is no folder at this path.",
+  "projectRelocateBusy": "An agent of this project is still working, or open in a window of its own. Change its location once it is done.",
+  "projectRelocateFailed": "Couldn't move this project's conversations.",
+  "projectRelocating": "Moving Conversations…",
   "ideWorkspaceTitle": "{name} (Workspace)",
   "@ideWorkspaceTitle": {
     "description": "The title of the explorer's folders when the IDE shows a workspace, as VS Code's.",
