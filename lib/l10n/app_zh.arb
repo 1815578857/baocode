@@ -544,6 +544,8 @@
   "sidebarArchived": "已归档",
   "sidebarOpenFolder": "打开文件夹…",
   "sidebarAgents": "智能体",
+  "sidebarCollapseAll": "全部折叠",
+  "sidebarExpandAll": "全部展开",
   "sidebarNoMatchingAgents": "没有匹配的智能体",
   "sidebarNoAgentsYet": "还没有智能体",
   "sidebarHideArchived": "隐藏已归档",

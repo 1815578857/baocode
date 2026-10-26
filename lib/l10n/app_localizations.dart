@@ -3362,6 +3362,18 @@ abstract class AppLocalizations {
   /// **'Agents'**
   String get sidebarAgents;
 
+  /// No description provided for @sidebarCollapseAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse All'**
+  String get sidebarCollapseAll;
+
+  /// No description provided for @sidebarExpandAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand All'**
+  String get sidebarExpandAll;
+
   /// No description provided for @sidebarNoMatchingAgents.
   ///
   /// In en, this message translates to:

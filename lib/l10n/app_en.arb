@@ -907,6 +907,8 @@
   "sidebarArchived": "Archived",
   "sidebarOpenFolder": "Open folder…",
   "sidebarAgents": "Agents",
+  "sidebarCollapseAll": "Collapse All",
+  "sidebarExpandAll": "Expand All",
   "sidebarNoMatchingAgents": "No matching agents",
   "sidebarNoAgentsYet": "No agents yet",
   "sidebarHideArchived": "Hide archived",
