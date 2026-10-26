@@ -11169,6 +11169,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get diffIgnoreWhitespace => 'Ignore Whitespace at Line Ends';
 
   @override
+  String get diffWhitespaceNone => 'Do Not Ignore Whitespace';
+
+  @override
+  String get diffIgnoreAllWhitespace => 'Ignore All Whitespace';
+
+  @override
   String get diffHighlightCharacters => 'Highlight Characters';
 
   @override

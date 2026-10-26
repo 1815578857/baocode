@@ -3456,6 +3456,12 @@ class _DiffAreaState extends State<_DiffArea> {
       checked: options.layout == value,
       onSelected: () => options.layout = value,
     );
+    IdeMenuAction whitespace(String label, IdeDiffWhitespace value) =>
+        IdeMenuAction(
+          label,
+          checked: options.whitespace == value,
+          onSelected: () => options.whitespace = value,
+        );
     IdeMenuAction highlight(String label, DiffHighlight value) => IdeMenuAction(
       label,
       checked: options.highlight == value,
@@ -3468,12 +3474,9 @@ class _DiffAreaState extends State<_DiffArea> {
         layout(l10n.diffUnified, IdeDiffLayout.unified),
       ],
       [
-        IdeMenuAction(
-          l10n.diffIgnoreWhitespace,
-          checked: options.ignoreTrimWhitespace,
-          onSelected: () =>
-              options.ignoreTrimWhitespace = !options.ignoreTrimWhitespace,
-        ),
+        whitespace(l10n.diffWhitespaceNone, IdeDiffWhitespace.none),
+        whitespace(l10n.diffIgnoreWhitespace, IdeDiffWhitespace.trim),
+        whitespace(l10n.diffIgnoreAllWhitespace, IdeDiffWhitespace.all),
       ],
       [
         highlight(l10n.diffHighlightWords, DiffHighlight.words),

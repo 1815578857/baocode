@@ -1,6 +1,6 @@
 // How diffs show, as JetBrains IDEs' diff viewer offers it from its
-// toolbar: side by side, unified or by the width; whitespace at the ends of
-// lines ignored or not; the changes highlighted by character, word, line or
+// toolbar: side by side, unified or by the width; whitespace not ignored,
+// at the ends of lines or anywhere; the changes highlighted by character, word, line or
 // not at all. One choice for every diff (the Git log's, the side panel's,
 // the editor's diff tabs), kept in settings.json.
 
@@ -13,6 +13,9 @@ import '../settings/user_settings.dart';
 /// `diffEditor.layout`: how the two sides show.
 enum IdeDiffLayout { auto, sideBySide, unified }
 
+/// What whitespace a diff ignores: none, at the ends of lines, any.
+enum IdeDiffWhitespace { none, trim, all }
+
 class IdeDiffOptions extends ChangeNotifier {
   IdeDiffOptions._();
 
@@ -20,6 +23,7 @@ class IdeDiffOptions extends ChangeNotifier {
 
   static const _layoutKey = 'diffEditor.layout';
   static const _whitespaceKey = 'diffEditor.ignoreTrimWhitespace';
+  static const _allWhitespaceKey = 'baocode.diff.ignoreAllWhitespace';
   static const _highlightKey = 'diffEditor.highlight';
 
   UserSettings? _settings;
@@ -37,6 +41,11 @@ class IdeDiffOptions extends ChangeNotifier {
   Object? _value(String key) => _settings?[key] ?? _chosen[key];
 
   void _set(String key, Object value) {
+    _write(key, value);
+    notifyListeners();
+  }
+
+  void _write(String key, Object value) {
     _chosen[key] = value;
     final settings = _settings;
     if (settings != null) {
@@ -44,7 +53,6 @@ class IdeDiffOptions extends ChangeNotifier {
         // A settings file that does not parse keeps the choice for the run.
       });
     }
-    notifyListeners();
   }
 
   IdeDiffLayout get layout => switch (_value(_layoutKey)) {
@@ -67,6 +75,16 @@ class IdeDiffOptions extends ChangeNotifier {
     _ => true,
   };
   set ignoreTrimWhitespace(bool value) => _set(_whitespaceKey, value);
+
+  IdeDiffWhitespace get whitespace => _value(_allWhitespaceKey) == true
+      ? IdeDiffWhitespace.all
+      : ignoreTrimWhitespace
+      ? IdeDiffWhitespace.trim
+      : IdeDiffWhitespace.none;
+  set whitespace(IdeDiffWhitespace value) {
+    _write(_allWhitespaceKey, value == IdeDiffWhitespace.all);
+    _set(_whitespaceKey, value != IdeDiffWhitespace.none);
+  }
 
   DiffHighlight get highlight => switch (_value(_highlightKey)) {
     final String name =>

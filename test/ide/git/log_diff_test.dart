@@ -136,8 +136,8 @@ void main() {
     expect(aDart(), 'changed elsewhere\n');
   });
 
-  testWidgets('the gear menu: unified, and how changes are highlighted, '
-      'kept', (tester) async {
+  testWidgets('the gear menu: unified, how changes are highlighted and '
+      'what whitespace is ignored, kept', (tester) async {
     await showDiff(tester);
     DiffEditor editor() => tester.widget<DiffEditor>(find.byType(DiffEditor));
     expect(editor().sideBySide, isNull);
@@ -155,6 +155,49 @@ void main() {
     await tester.tap(find.text('Highlight Words'));
     await tester.pumpAndSettle();
     expect(editor().highlight, DiffHighlight.words);
+
+    // Whitespace: at the line ends by default, anywhere, or none (counted
+    // here all the same, where changes are checked for the commit).
+    expect(IdeDiffOptions.instance.whitespace, IdeDiffWhitespace.trim);
+    await tester.tap(find.byTooltip('Viewer Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ignore All Whitespace'));
+    await tester.pumpAndSettle();
+    expect(IdeDiffOptions.instance.whitespace, IdeDiffWhitespace.all);
+    await tester.tap(find.byTooltip('Viewer Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Do Not Ignore Whitespace'));
+    await tester.pumpAndSettle();
+    expect(IdeDiffOptions.instance.whitespace, IdeDiffWhitespace.none);
+  });
+
+  testWidgets('a diff tab ignores whitespace anywhere once asked', (
+    tester,
+  ) async {
+    final workspace = await pumpWorkbench(
+      tester,
+      const {'lib/a.dart': 'f(a, b);\nreal();\n'},
+      git: git.repository(),
+      nativeEditor: true,
+    );
+    await tester.pumpAndSettle();
+    await workspace.openDiff(
+      inRoot('lib/a.dart'),
+      label: 'a.dart (HEAD)',
+      original: () async => 'f(a,b);\nreal();\n',
+    );
+    await tester.pumpAndSettle();
+    DiffEditorModel model() =>
+        tester.widget<DiffEditor>(find.byType(DiffEditor)).model;
+    expect(model().mappings, hasLength(1));
+    IdeDiffOptions.instance.whitespace = IdeDiffWhitespace.all;
+    await tester.pumpAndSettle();
+    expect(model().ignoreAllWhitespace, isTrue);
+    expect(model().mappings, isEmpty);
+    IdeDiffOptions.instance.whitespace = IdeDiffWhitespace.none;
+    await tester.pumpAndSettle();
+    expect(model().ignoreTrimWhitespace, isFalse);
+    expect(model().mappings, hasLength(1));
   });
 
   testWidgets("the title's menu goes to another changed file", (tester) async {

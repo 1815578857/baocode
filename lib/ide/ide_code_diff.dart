@@ -96,7 +96,7 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
   late IdeOriginalDiff _diff;
   TextMateDocument? _highlight;
   TextMateSyntax? _ownTextMate;
-  bool _ignoreTrimWhitespace = true;
+  IdeDiffWhitespace _whitespace = IdeDiffWhitespace.trim;
 
   /// Bumped as the texts change: an older language pick is dropped.
   int _texts = 0;
@@ -131,12 +131,12 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
     _themes.addListener(_changed);
     _options.addListener(_optionsChanged);
     widget.checks?.addListener(_changed);
-    _ignoreTrimWhitespace = _ignoresWhitespace;
+    _whitespace = _ignoredWhitespace;
     _open(widget.modified);
   }
 
-  bool get _ignoresWhitespace =>
-      widget.checks == null && _options.ignoreTrimWhitespace;
+  IdeDiffWhitespace get _ignoredWhitespace =>
+      widget.checks == null ? _options.whitespace : IdeDiffWhitespace.none;
 
   @override
   void didUpdateWidget(IdeCodeDiff oldWidget) {
@@ -184,7 +184,8 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
       _original,
       document,
       onChanged: _changed,
-      ignoreTrimWhitespace: _ignoreTrimWhitespace,
+      ignoreTrimWhitespace: _whitespace != IdeDiffWhitespace.none,
+      ignoreAllWhitespace: _whitespace == IdeDiffWhitespace.all,
     );
     _diff.model.addListener(_compared);
     // Small texts are compared at once, before there was a listener.
@@ -220,9 +221,9 @@ class IdeCodeDiffState extends State<IdeCodeDiff> {
 
   /// Whitespace ignored or not: compared again, the text as it is now.
   void _optionsChanged() {
-    final ignore = _ignoresWhitespace;
-    if (ignore != _ignoreTrimWhitespace) {
-      _ignoreTrimWhitespace = ignore;
+    final ignore = _ignoredWhitespace;
+    if (ignore != _whitespace) {
+      _whitespace = ignore;
       final text = _modified.document.text;
       _flush();
       _close();

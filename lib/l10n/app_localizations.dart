@@ -18231,6 +18231,18 @@ abstract class AppLocalizations {
   /// **'Ignore Whitespace at Line Ends'**
   String get diffIgnoreWhitespace;
 
+  /// No description provided for @diffWhitespaceNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Do Not Ignore Whitespace'**
+  String get diffWhitespaceNone;
+
+  /// No description provided for @diffIgnoreAllWhitespace.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore All Whitespace'**
+  String get diffIgnoreAllWhitespace;
+
   /// No description provided for @diffHighlightCharacters.
   ///
   /// In en, this message translates to:

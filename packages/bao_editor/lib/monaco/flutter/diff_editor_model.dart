@@ -38,6 +38,7 @@ class DiffEditorModel extends ChangeNotifier {
     required this.original,
     required this.modified,
     this.ignoreTrimWhitespace = true,
+    this.ignoreAllWhitespace = false,
     this.maxComputationTimeMs = 5000,
   }) {
     original.addListener(_originalChanged);
@@ -51,6 +52,9 @@ class DiffEditorModel extends ChangeNotifier {
   /// `diffEditor.ignoreTrimWhitespace` and `diffEditor.maxComputationTime`.
   final bool ignoreTrimWhitespace;
   final int maxComputationTimeMs;
+
+  /// Whitespace anywhere ignored ([LinesDiffComputerOptions.ignoreAllWhitespace]).
+  final bool ignoreAllWhitespace;
 
   /// How long after an edit the diff is computed again.
   static const debounce = Duration(milliseconds: 200);
@@ -115,6 +119,7 @@ class DiffEditorModel extends ChangeNotifier {
     final modifiedLines = _lines(modifiedSnapshot);
     final options = LinesDiffComputerOptions(
       ignoreTrimWhitespace: ignoreTrimWhitespace,
+      ignoreAllWhitespace: ignoreAllWhitespace,
       maxComputationTimeMs: maxComputationTimeMs,
     );
     LinesDiff diff;

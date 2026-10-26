@@ -10569,6 +10569,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get diffIgnoreWhitespace => '忽略行首尾空白';
 
   @override
+  String get diffWhitespaceNone => '不忽略空白';
+
+  @override
+  String get diffIgnoreAllWhitespace => '忽略所有空白';
+
+  @override
   String get diffHighlightCharacters => '按字符高亮';
 
   @override

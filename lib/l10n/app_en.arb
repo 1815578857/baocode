@@ -7674,6 +7674,8 @@
   "diffSideBySide": "Side-by-Side Viewer",
   "diffUnified": "Unified Viewer",
   "diffIgnoreWhitespace": "Ignore Whitespace at Line Ends",
+  "diffWhitespaceNone": "Do Not Ignore Whitespace",
+  "diffIgnoreAllWhitespace": "Ignore All Whitespace",
   "diffHighlightCharacters": "Highlight Characters",
   "diffHighlightWords": "Highlight Words",
   "diffHighlightLines": "Highlight Lines",

@@ -323,7 +323,7 @@ class IdeEditorState extends State<IdeEditor> {
     _themes.addListener(_colorThemeChanged);
     EditorLanguageOverrides.instance.addListener(_languageModesChanged);
     widget.agentEdits?.addListener(_rebuildSoon);
-    IdeDiffOptions.instance.addListener(_rebuildSoon);
+    IdeDiffOptions.instance.addListener(_diffOptionsChanged);
     if (widget.nativeEditorEnabled) _activateNativeController();
     _selectionChanged();
     _updateBlame(navigated: false);
@@ -1611,15 +1611,44 @@ class IdeEditorState extends State<IdeEditor> {
     );
   }
 
+  /// The diff tabs shown as now chosen: compared again where they ignore
+  /// other whitespace.
+  void _diffOptionsChanged() {
+    final whitespace = IdeDiffOptions.instance.whitespace;
+    final stale = <IdeOriginalDiff>[];
+    _diffs.removeWhere((_, diff) {
+      final model = diff.model;
+      final ignored = model.ignoreAllWhitespace
+          ? IdeDiffWhitespace.all
+          : model.ignoreTrimWhitespace
+          ? IdeDiffWhitespace.trim
+          : IdeDiffWhitespace.none;
+      if (ignored == whitespace) return false;
+      stale.add(diff);
+      return true;
+    });
+    _rebuildSoon();
+    if (stale.isEmpty) return;
+    // Once the editors showing them are gone.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final diff in stale) {
+        diff.dispose();
+      }
+    });
+  }
+
   /// [doc]'s diff and original side, where it is a diff tab.
   IdeOriginalDiff? _diffOf(IdeDocument doc) {
     final original = doc.diff;
     if (original == null) return null;
     return _diffs.putIfAbsent(doc, () {
+      final whitespace = IdeDiffOptions.instance.whitespace;
       final diff = IdeOriginalDiff(
         original,
         doc.model,
         onChanged: _rebuildSoon,
+        ignoreTrimWhitespace: whitespace != IdeDiffWhitespace.none,
+        ignoreAllWhitespace: whitespace == IdeDiffWhitespace.all,
       );
       if (_textMateDocuments[doc]?.$2.languageId case final language?) {
         diff.highlight(_textMate, language);
@@ -1786,7 +1815,7 @@ class IdeEditorState extends State<IdeEditor> {
   void dispose() {
     widget.workspace.removeListener(_workspaceChanged);
     _themes.removeListener(_colorThemeChanged);
-    IdeDiffOptions.instance.removeListener(_rebuildSoon);
+    IdeDiffOptions.instance.removeListener(_diffOptionsChanged);
     EditorLanguageOverrides.instance.removeListener(_languageModesChanged);
     widget.agentEdits?.removeListener(_rebuildSoon);
     _debugListeners?.dispose();

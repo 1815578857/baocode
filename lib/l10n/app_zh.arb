@@ -3029,6 +3029,8 @@
   "diffSideBySide": "并排查看",
   "diffUnified": "单栏查看",
   "diffIgnoreWhitespace": "忽略行首尾空白",
+  "diffWhitespaceNone": "不忽略空白",
+  "diffIgnoreAllWhitespace": "忽略所有空白",
   "diffHighlightCharacters": "按字符高亮",
   "diffHighlightWords": "按词高亮",
   "diffHighlightLines": "按行高亮",
