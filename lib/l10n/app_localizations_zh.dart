@@ -11349,4 +11349,25 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitRemoteRemoveDetail => '它的远程分支会一起移除；服务器上的内容不受影响。';
+
+  @override
+  String get gitCloneTitle => '从版本控制获取';
+
+  @override
+  String get gitCloneUrl => 'URL';
+
+  @override
+  String get gitCloneDirectory => '目录';
+
+  @override
+  String get gitCloneBrowse => '浏览…';
+
+  @override
+  String get gitCloneButton => '克隆';
+
+  @override
+  String get gitCloning => '正在克隆…';
+
+  @override
+  String get gitCloneCommand => '克隆仓库…';
 }

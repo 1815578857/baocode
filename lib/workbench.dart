@@ -3,7 +3,8 @@ import 'dart:math' as math;
 
 import 'package:bao_editor/textmate/textmate_syntax.dart';
 import 'package:bao_remote/client.dart' show SshPrompt;
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, listEquals;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, listEquals;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -38,6 +39,7 @@ import 'customize/customize_view.dart';
 import 'extensions/theme_extensions.dart';
 import 'ide/git/git_model.dart' show ideWorktreeOf;
 import 'ide/git/git_repository.dart';
+import 'ide/git/ide_git_clone_dialog.dart';
 import 'ide/git/ide_git_log_view.dart' show IdeGitWorktreeChoice;
 import 'ide/git/repository_scan.dart';
 import 'ide/file_views.dart';
@@ -1884,6 +1886,13 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
             enabled: WindowControls.canPickDirectory,
           ),
           IdeCommand(
+            id: 'git.clone',
+            category: 'Git',
+            label: 'Clone',
+            enabled: !kIsWeb,
+            run: () => unawaited(_cloneRepository()),
+          ),
+          IdeCommand(
             id: openRemoteFolderCommandId,
             category: 'Remote-SSH',
             label: 'Open Remote Project...',
@@ -1970,6 +1979,25 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     final path = await WindowControls.pickDirectory();
     if (path == null || !mounted) return;
     _openIdeFolder(path, held: held);
+  }
+
+  /// Where the last clone went: the next one's folder at first.
+  String? _cloneParent;
+
+  /// Git: Clone (JetBrains' Get from Version Control): a repository
+  /// cloned, then opened as a folder is.
+  Future<void> _cloneRepository() async {
+    final held = _newWindowHeld;
+    final folder = await showIdeGitCloneDialog(
+      context,
+      parent: _cloneParent ?? homeDirectory ?? p.current,
+      pickDirectory: WindowControls.canPickDirectory
+          ? WindowControls.pickDirectory
+          : null,
+    );
+    if (folder == null || !mounted) return;
+    _cloneParent = p.dirname(folder);
+    _openIdeFolder(folder, held: held);
   }
 
   /// Opens [paths] in editors of the IDE's folder (or its empty window).

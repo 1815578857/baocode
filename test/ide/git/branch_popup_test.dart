@@ -74,6 +74,7 @@ void main() {
       'Push…',
       'New Branch…',
       'Checkout Tag or Revision…',
+      'Manage Remotes…',
       'Recent',
       'feature',
       'Local Branches',

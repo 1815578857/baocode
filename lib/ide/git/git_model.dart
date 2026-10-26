@@ -257,6 +257,14 @@ class IdeGitCommitOptions {
   ];
 }
 
+/// The folder a clone of [url] goes in, as Git names it: the URL's last
+/// part, without `.git`.
+String ideGitCloneFolder(String url) {
+  final trimmed = url.trim().replaceAll(RegExp(r'[/\\]+$'), '');
+  final last = trimmed.split(RegExp(r'[/\\:]')).last;
+  return last.endsWith('.git') ? last.substring(0, last.length - 4) : last;
+}
+
 /// What an interactive rebase does with a commit.
 enum IdeGitRebaseAction {
   pick,

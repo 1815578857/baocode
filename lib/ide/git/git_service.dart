@@ -97,6 +97,26 @@ class IdeGitService {
     environment: environment,
   );
 
+  /// JetBrains' Get from Version Control: [url] cloned into [directory],
+  /// which Git makes; on this machine, or through [runner]. No prompt for
+  /// a password waits on a terminal there is none of.
+  static Future<void> clone(
+    String url,
+    String directory, {
+    IdeGitRunner? runner,
+    p.Context? pathContext,
+  }) async {
+    final paths = pathContext ?? p.context;
+    _check(
+      await (runner ?? platform.runGit)(
+        ['clone', '--', url, directory],
+        workingDirectory: paths.dirname(directory),
+        environment: const {'GIT_TERMINAL_PROMPT': '0'},
+      ),
+      'Cannot clone $url.',
+    );
+  }
+
   static IdeGitOutput _check(IdeGitOutput output, String what) {
     if (output.exitCode == 0) return output;
     final error = output.stderr.trim();

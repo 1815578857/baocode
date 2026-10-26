@@ -4212,6 +4212,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                             actions: [
                               for (final id in const [
                                 'workbench.action.files.openFolder',
+                                'git.clone',
                                 'baocode.remote.openFolder',
                                 IdeWorkbench.createWorkspaceCommandId,
                                 'workbench.action.files.openFile',

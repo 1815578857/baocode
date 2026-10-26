@@ -19586,6 +19586,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Its remote branches go with it; nothing on the server changes.'**
   String get gitRemoteRemoveDetail;
+
+  /// No description provided for @gitCloneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Get from Version Control'**
+  String get gitCloneTitle;
+
+  /// No description provided for @gitCloneUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'URL'**
+  String get gitCloneUrl;
+
+  /// No description provided for @gitCloneDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Directory'**
+  String get gitCloneDirectory;
+
+  /// No description provided for @gitCloneBrowse.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse…'**
+  String get gitCloneBrowse;
+
+  /// No description provided for @gitCloneButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone'**
+  String get gitCloneButton;
+
+  /// No description provided for @gitCloning.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloning…'**
+  String get gitCloning;
+
+  /// No description provided for @gitCloneCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone Repository…'**
+  String get gitCloneCommand;
 }
 
 class _AppLocalizationsDelegate

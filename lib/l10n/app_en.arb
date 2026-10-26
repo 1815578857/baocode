@@ -7944,5 +7944,12 @@
   "gitRemoteUrl": "URL",
   "gitRemoteRemoveConfirm": "Remove the remote {name}?",
   "@gitRemoteRemoveConfirm": {"placeholders": {"name": {"type": "String"}}},
-  "gitRemoteRemoveDetail": "Its remote branches go with it; nothing on the server changes."
+  "gitRemoteRemoveDetail": "Its remote branches go with it; nothing on the server changes.",
+  "gitCloneTitle": "Get from Version Control",
+  "gitCloneUrl": "URL",
+  "gitCloneDirectory": "Directory",
+  "gitCloneBrowse": "Browse…",
+  "gitCloneButton": "Clone",
+  "gitCloning": "Cloning…",
+  "gitCloneCommand": "Clone Repository…"
 }

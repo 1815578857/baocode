@@ -3254,5 +3254,12 @@
   "gitRemoteName": "名称",
   "gitRemoteUrl": "URL",
   "gitRemoteRemoveConfirm": "移除远程仓库 {name}？",
-  "gitRemoteRemoveDetail": "它的远程分支会一起移除；服务器上的内容不受影响。"
+  "gitRemoteRemoveDetail": "它的远程分支会一起移除；服务器上的内容不受影响。",
+  "gitCloneTitle": "从版本控制获取",
+  "gitCloneUrl": "URL",
+  "gitCloneDirectory": "目录",
+  "gitCloneBrowse": "浏览…",
+  "gitCloneButton": "克隆",
+  "gitCloning": "正在克隆…",
+  "gitCloneCommand": "克隆仓库…"
 }

@@ -11982,4 +11982,25 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get gitRemoteRemoveDetail =>
       'Its remote branches go with it; nothing on the server changes.';
+
+  @override
+  String get gitCloneTitle => 'Get from Version Control';
+
+  @override
+  String get gitCloneUrl => 'URL';
+
+  @override
+  String get gitCloneDirectory => 'Directory';
+
+  @override
+  String get gitCloneBrowse => 'Browse…';
+
+  @override
+  String get gitCloneButton => 'Clone';
+
+  @override
+  String get gitCloning => 'Cloning…';
+
+  @override
+  String get gitCloneCommand => 'Clone Repository…';
 }
