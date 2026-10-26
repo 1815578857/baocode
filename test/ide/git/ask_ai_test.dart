@@ -1,0 +1,83 @@
+// Ask AI from Git: a commit (or several) from the log's menu, changes or
+// conflicts from the Commit panel's, each a request put in the chat's
+// composer to be looked over and sent; and the log's Interactively Rebase
+// from Here, its list of commits.
+
+import 'package:baocode/ide/git/ide_git_commit_panel.dart';
+import 'package:baocode/ide/git/ide_git_rebase_dialog.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import '../workbench/fake_files.dart';
+import 'fake_git.dart';
+
+void main() {
+  late FakeGit git;
+  late List<String> asked;
+
+  setUp(() {
+    git = FakeGit(testRoot)
+      ..status = '## main\x00 M lib/a.dart\x00'
+      ..log =
+          '${gitLogRecord('c2', ['c1'], 'Second', refs: 'HEAD -> refs/heads/main')}\n'
+          '${gitLogRecord('c1', [], 'First', time: 1767225000)}';
+    git.refs['HEAD'] = 'c2';
+    asked = [];
+  });
+
+  Future<void> pump(WidgetTester tester) async {
+    await pumpWorkbench(
+      tester,
+      const {'lib/a.dart': 'a'},
+      git: git.repository(),
+      onAskInChat: asked.add,
+    );
+    await tester.pumpAndSettle();
+    await chord(tester, LogicalKeyboardKey.keyG, control: true, shift: true);
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> menu(WidgetTester tester, Finder row, String item) async {
+    await tester.tapAt(
+      tester.getCenter(row),
+      buttons: kSecondaryMouseButton,
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(item));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('a commit, and changes, asked about in the chat', (tester) async {
+    await pump(tester);
+    await menu(
+      tester,
+      find
+          .descendant(
+            of: find.byType(IdeGitCommitPanel),
+            matching: find.textContaining('a.dart', findRichText: true),
+          )
+          .first,
+      'Ask AI About These Changes',
+    );
+    expect(asked.single, contains('git diff HEAD -- lib/a.dart'));
+    await menu(tester, find.text('Second').first, 'Ask AI About This Commit');
+    expect(asked.last, contains('git show c2'));
+    expect(asked.last, contains('Second'));
+
+  });
+
+  testWidgets('Interactively Rebase from Here: the commits from it on', (
+    tester,
+  ) async {
+    await pump(tester);
+    await menu(
+      tester,
+      find.text('First').first,
+      'Interactively Rebase from Here…',
+    );
+    expect(find.byType(IdeGitRebaseDialog), findsOneWidget);
+    expect(find.text('Rebasing 2 Commits from c1'), findsOneWidget);
+  });
+}

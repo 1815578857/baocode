@@ -195,6 +195,7 @@ Future<IdeWorkspace> pumpWorkbench(
   IdeExtensions? extensions,
   DebugService? debugService,
   TerminalTasks? terminalTasks,
+  ValueChanged<String>? onAskInChat,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -226,6 +227,7 @@ Future<IdeWorkspace> pumpWorkbench(
         project: project ?? Project.at(testRoot),
         onAddFolder: onAddFolder,
         onRemoveFolder: onRemoveFolder,
+        onAskInChat: onAskInChat,
         visible: true,
         chat: chat,
         onBack: onBack ?? () {},

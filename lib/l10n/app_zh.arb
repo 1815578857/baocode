@@ -3270,5 +3270,13 @@
   "gitReviewFound": "发现 {count} 个问题",
   "gitReviewCommitAnyway": "仍然提交",
   "gitReviewCommitAndPushAnyway": "仍然提交并推送",
-  "gitReviewFailed": "审查失败：{error}"
+  "gitReviewFailed": "审查失败：{error}",
+  "gitAskAiCommit": "问 AI 这个提交",
+  "gitAskAiCommitPrompt": "解释提交 {id}（\u201c{subject}\u201d）：改了什么、为什么改，以及有没有看起来有风险的地方。可以用 `git show {id}` 查看。",
+  "gitAskAiCommits": "问 AI 这 {count} 个提交",
+  "gitAskAiCommitsPrompt": "解释提交 {ids}：它们合起来改了什么，以及有没有看起来有风险的地方。可以用 `git show` 查看。",
+  "gitAskAiChanges": "问 AI 这些改动",
+  "gitAskAiChangesPrompt": "审查我在 {paths} 中还没提交的改动（`git diff HEAD -- {paths}`）：说明它们做了什么，指出有问题的地方。",
+  "gitAskAiConflicts": "让 AI 解决冲突",
+  "gitAskAiConflictsPrompt": "解决 {paths} 中的合并冲突：保留双方各自的意图，然后告诉我你是怎么取舍的。不要暂存或提交。"
 }

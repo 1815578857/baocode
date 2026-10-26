@@ -594,11 +594,16 @@ class IdeGitLogView extends StatefulWidget {
     this.background,
     this.border,
     this.ai,
+    this.onAsk,
   });
 
   /// The model that cleans up a branch in an interactive rebase; not
   /// offered when null.
   final IdeCommitMessageModel? ai;
+
+  /// Puts a request about commits in the chat's composer (Ask AI); not
+  /// offered when null.
+  final ValueChanged<String>? onAsk;
 
   /// The IDE's workspace, or the chat window's side panel's project.
   final IdeScmHost host;
@@ -2232,6 +2237,15 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
           ),
         ],
         [
+          if (widget.onAsk case final ask?)
+            IdeMenuAction(
+              l10n.gitAskAiCommit,
+              onSelected: () => ask(
+                l10n.gitAskAiCommitPrompt(commit.shortId, commit.subject),
+              ),
+            ),
+        ],
+        [
           if (!isHead && !inBranch)
             IdeMenuAction(
               l10n.gitLogCherryPick,
@@ -2360,6 +2374,15 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
               ),
             ),
           ),
+          if (widget.onAsk case final ask?)
+            IdeMenuAction(
+              l10n.gitAskAiCommits(commits.length),
+              onSelected: () => ask(
+                l10n.gitAskAiCommitsPrompt(
+                  oldestFirst.map((c) => c.shortId).join(', '),
+                ),
+              ),
+            ),
         ],
         [
           if (elsewhere == commits.length)

@@ -19682,6 +19682,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not review the changes: {error}'**
   String gitReviewFailed(String error);
+
+  /// No description provided for @gitAskAiCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask AI About This Commit'**
+  String get gitAskAiCommit;
+
+  /// No description provided for @gitAskAiCommitPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Explain commit {id} (“{subject}”): what it changes and why, and anything in it that looks risky. Read it with `git show {id}`.'**
+  String gitAskAiCommitPrompt(String id, String subject);
+
+  /// No description provided for @gitAskAiCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Ask AI About This Commit} other{Ask AI About These {count} Commits}}'**
+  String gitAskAiCommits(int count);
+
+  /// No description provided for @gitAskAiCommitsPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Explain commits {ids}: what they change together, and anything in them that looks risky. Read them with `git show`.'**
+  String gitAskAiCommitsPrompt(String ids);
+
+  /// No description provided for @gitAskAiChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask AI About These Changes'**
+  String get gitAskAiChanges;
+
+  /// No description provided for @gitAskAiChangesPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Review my uncommitted changes in {paths} (`git diff HEAD -- {paths}`): explain what they do and point out anything wrong.'**
+  String gitAskAiChangesPrompt(String paths);
+
+  /// No description provided for @gitAskAiConflicts.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask AI to Resolve the Conflicts'**
+  String get gitAskAiConflicts;
+
+  /// No description provided for @gitAskAiConflictsPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolve the merge conflicts in {paths}: keep what both sides meant, then tell me what you chose. Don\'t stage or commit.'**
+  String gitAskAiConflictsPrompt(String paths);
 }
 
 class _AppLocalizationsDelegate

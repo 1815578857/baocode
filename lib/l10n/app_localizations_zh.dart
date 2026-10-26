@@ -11401,4 +11401,38 @@ class AppLocalizationsZh extends AppLocalizations {
   String gitReviewFailed(String error) {
     return '审查失败：$error';
   }
+
+  @override
+  String get gitAskAiCommit => '问 AI 这个提交';
+
+  @override
+  String gitAskAiCommitPrompt(String id, String subject) {
+    return '解释提交 $id（“$subject”）：改了什么、为什么改，以及有没有看起来有风险的地方。可以用 `git show $id` 查看。';
+  }
+
+  @override
+  String gitAskAiCommits(int count) {
+    return '问 AI 这 $count 个提交';
+  }
+
+  @override
+  String gitAskAiCommitsPrompt(String ids) {
+    return '解释提交 $ids：它们合起来改了什么，以及有没有看起来有风险的地方。可以用 `git show` 查看。';
+  }
+
+  @override
+  String get gitAskAiChanges => '问 AI 这些改动';
+
+  @override
+  String gitAskAiChangesPrompt(String paths) {
+    return '审查我在 $paths 中还没提交的改动（`git diff HEAD -- $paths`）：说明它们做了什么，指出有问题的地方。';
+  }
+
+  @override
+  String get gitAskAiConflicts => '让 AI 解决冲突';
+
+  @override
+  String gitAskAiConflictsPrompt(String paths) {
+    return '解决 $paths 中的合并冲突：保留双方各自的意图，然后告诉我你是怎么取舍的。不要暂存或提交。';
+  }
 }

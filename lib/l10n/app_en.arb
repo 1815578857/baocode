@@ -7962,5 +7962,18 @@
   "gitReviewCommitAnyway": "Commit Anyway",
   "gitReviewCommitAndPushAnyway": "Commit and Push Anyway",
   "gitReviewFailed": "Could not review the changes: {error}",
-  "@gitReviewFailed": {"placeholders": {"error": {"type": "String"}}}
+  "@gitReviewFailed": {"placeholders": {"error": {"type": "String"}}},
+  "gitAskAiCommit": "Ask AI About This Commit",
+  "gitAskAiCommitPrompt": "Explain commit {id} (\u201c{subject}\u201d): what it changes and why, and anything in it that looks risky. Read it with `git show {id}`.",
+  "@gitAskAiCommitPrompt": {"placeholders": {"id": {"type": "String"}, "subject": {"type": "String"}}},
+  "gitAskAiCommits": "{count, plural, =1{Ask AI About This Commit} other{Ask AI About These {count} Commits}}",
+  "@gitAskAiCommits": {"placeholders": {"count": {"type": "int"}}},
+  "gitAskAiCommitsPrompt": "Explain commits {ids}: what they change together, and anything in them that looks risky. Read them with `git show`.",
+  "@gitAskAiCommitsPrompt": {"placeholders": {"ids": {"type": "String"}}},
+  "gitAskAiChanges": "Ask AI About These Changes",
+  "gitAskAiChangesPrompt": "Review my uncommitted changes in {paths} (`git diff HEAD -- {paths}`): explain what they do and point out anything wrong.",
+  "@gitAskAiChangesPrompt": {"placeholders": {"paths": {"type": "String"}}},
+  "gitAskAiConflicts": "Ask AI to Resolve the Conflicts",
+  "gitAskAiConflictsPrompt": "Resolve the merge conflicts in {paths}: keep what both sides meant, then tell me what you chose. Don't stage or commit.",
+  "@gitAskAiConflictsPrompt": {"placeholders": {"paths": {"type": "String"}}}
 }

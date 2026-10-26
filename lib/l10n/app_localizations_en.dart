@@ -12040,4 +12040,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String gitReviewFailed(String error) {
     return 'Could not review the changes: $error';
   }
+
+  @override
+  String get gitAskAiCommit => 'Ask AI About This Commit';
+
+  @override
+  String gitAskAiCommitPrompt(String id, String subject) {
+    return 'Explain commit $id (“$subject”): what it changes and why, and anything in it that looks risky. Read it with `git show $id`.';
+  }
+
+  @override
+  String gitAskAiCommits(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ask AI About These $count Commits',
+      one: 'Ask AI About This Commit',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String gitAskAiCommitsPrompt(String ids) {
+    return 'Explain commits $ids: what they change together, and anything in them that looks risky. Read them with `git show`.';
+  }
+
+  @override
+  String get gitAskAiChanges => 'Ask AI About These Changes';
+
+  @override
+  String gitAskAiChangesPrompt(String paths) {
+    return 'Review my uncommitted changes in $paths (`git diff HEAD -- $paths`): explain what they do and point out anything wrong.';
+  }
+
+  @override
+  String get gitAskAiConflicts => 'Ask AI to Resolve the Conflicts';
+
+  @override
+  String gitAskAiConflictsPrompt(String paths) {
+    return 'Resolve the merge conflicts in $paths: keep what both sides meant, then tell me what you chose. Don\'t stage or commit.';
+  }
 }

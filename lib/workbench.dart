@@ -2707,6 +2707,13 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
                       ?.session
                       .draft
                       .insertFiles(files),
+            onAskInChat: _workspace.ideChat(path) == null
+                ? null
+                : (text) => _workspace
+                      .ideChat(path)
+                      ?.session
+                      .draft
+                      .restore(text, const []),
           ),
         ),
       ),

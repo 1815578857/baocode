@@ -66,7 +66,12 @@ class IdeGitCommitPanel extends StatefulWidget {
     this.changelists,
     this.onShowDiff,
     this.onOpenAt,
+    this.onAsk,
   });
+
+  /// Puts a request about changes in the chat's composer (Ask AI); not
+  /// offered when null.
+  final ValueChanged<String>? onAsk;
 
   /// Opens a file in the editor at a line (a review's problem); [onOpen]
   /// at its top when null.
@@ -2210,6 +2215,29 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
         ],
         _changelistMenu(row),
         [
+          if (widget.onAsk case final ask? when files.isNotEmpty) ...[
+            if (conflicts.isNotEmpty)
+              IdeMenuAction(
+                l10n.gitAskAiConflicts,
+                onSelected: () => ask(
+                  l10n.gitAskAiConflictsPrompt(_relativeList(git, conflicts)),
+                ),
+              ),
+            if (files.length > conflicts.length)
+              IdeMenuAction(
+                l10n.gitAskAiChanges,
+                onSelected: () => ask(
+                  l10n.gitAskAiChangesPrompt(
+                    _relativeList(git, [
+                      for (final file in files)
+                        if (file.group != IdeGitGroup.merge) file,
+                    ]),
+                  ),
+                ),
+              ),
+          ],
+        ],
+        [
           if (_checkable(row).isNotEmpty)
             IdeMenuAction(
               l10n.gitCommitRollback,
@@ -2310,6 +2338,20 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
         ],
       ]),
     );
+  }
+
+  /// [files]' paths from [git]'s top, as Git writes them, one after
+  /// another.
+  static String _relativeList(
+    IdeGitRepository git,
+    List<IdeGitResource> files,
+  ) {
+    final paths = git.service.pathContext;
+    final listed = [
+      for (final file in files.take(20))
+        paths.relative(file.path, from: git.service.root).replaceAll(r'\', '/'),
+    ];
+    return [...listed, if (files.length > listed.length) '…'].join(' ');
   }
 
   /// The commit message's lines that fit in [height].
