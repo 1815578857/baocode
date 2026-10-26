@@ -2756,7 +2756,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get stripChangeConflict => '智能体改完后这个文件又被改过，无法自动撤销智能体的改动。请手动处理后再保留。';
 
   @override
-  String get stripChangeUntracked => '不知道改动前的内容（智能体没有提供、文件过大或在项目之外）：只能保留，无法撤销。';
+  String get stripChangeShared => '同一时间还有别的智能体在这个项目里工作，这处改动可能有一部分是它的。';
+
+  @override
+  String get stripChangeUntracked =>
+      '不知道改动前的内容（文件被忽略或过大、不在项目快照中，智能体也没有提供；或在项目之外）：只能保留，无法撤销。';
 
   @override
   String get stripChangesDiff => '智能体改动';
@@ -10183,4 +10187,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String stashDeleteAndCloseMany(int count) {
     return '删除并关闭 $count 个 issue…';
   }
+
+  @override
+  String get checkpointsTitle => '检查点';
+
+  @override
+  String get checkpointsDescription =>
+      '智能体工作的项目快照，用来撤销它们的改动。对话 30 天没有新改动后会自动清理。';
+
+  @override
+  String checkpointsSize(String size) {
+    return '已占用 $size';
+  }
+
+  @override
+  String get checkpointsMeasuring => '正在计算…';
+
+  @override
+  String get checkpointsClear => '清理';
+
+  @override
+  String get checkpointsClearing => '正在清理…';
+
+  @override
+  String get checkpointsClearConfirm => '清理检查点？';
+
+  @override
+  String get checkpointsClearDetail => '没有打开的对话里，智能体的改动将无法再撤销。项目里的文件本身不受影响。';
 }
