@@ -1359,3 +1359,122 @@ void _addIncomingOutgoing(
     }
   }
 }
+
+/// One of a repository's working trees (`git worktree list`): where it is,
+/// the commit it is at, the branch checked out there (none when detached),
+/// and whether it is the repository's own, its first ([main]).
+class IdeGitWorktree {
+  const IdeGitWorktree({
+    required this.path,
+    this.head,
+    this.branch,
+    this.main = false,
+    this.bare = false,
+    this.locked = false,
+    this.prunable = false,
+  });
+
+  final String path;
+  final String? head;
+
+  /// The branch's short name (`feat/x`); null when detached.
+  final String? branch;
+  final bool main;
+  final bool bare;
+  final bool locked;
+
+  /// Gone from the disk: `git worktree prune` would forget it.
+  final bool prunable;
+
+  @override
+  bool operator ==(Object other) =>
+      other is IdeGitWorktree &&
+      other.path == path &&
+      other.head == head &&
+      other.branch == branch &&
+      other.main == main &&
+      other.bare == bare &&
+      other.locked == locked &&
+      other.prunable == prunable;
+
+  @override
+  int get hashCode =>
+      Object.hash(path, head, branch, main, bare, locked, prunable);
+
+  @override
+  String toString() => 'IdeGitWorktree($path, ${branch ?? head})';
+}
+
+/// `git worktree list --porcelain`: a record of `key value` lines each,
+/// a blank line between; the first the repository's own. [normalize]
+/// spells each path as the host does.
+List<IdeGitWorktree> parseGitWorktrees(
+  String output, {
+  String Function(String path)? normalize,
+}) {
+  final worktrees = <IdeGitWorktree>[];
+  for (final record in output.replaceAll('\r\n', '\n').split('\n\n')) {
+    String? path;
+    String? head;
+    String? branch;
+    var bare = false;
+    var locked = false;
+    var prunable = false;
+    for (final line in record.split('\n')) {
+      final space = line.indexOf(' ');
+      final key = space < 0 ? line : line.substring(0, space);
+      final value = space < 0 ? '' : line.substring(space + 1);
+      switch (key) {
+        case 'worktree':
+          path = value;
+        case 'HEAD':
+          head = value;
+        case 'branch':
+          branch = value.startsWith('refs/heads/')
+              ? value.substring('refs/heads/'.length)
+              : value;
+        case 'bare':
+          bare = true;
+        case 'locked':
+          locked = true;
+        case 'prunable':
+          prunable = true;
+      }
+    }
+    if (path == null || path.isEmpty) continue;
+    worktrees.add(
+      IdeGitWorktree(
+        path: normalize?.call(path) ?? path,
+        head: head,
+        branch: branch,
+        main: worktrees.isEmpty,
+        bare: bare,
+        locked: locked,
+        prunable: prunable,
+      ),
+    );
+  }
+  return worktrees;
+}
+
+/// The worktree of [worktrees] that has [path] (itself, or a file under
+/// it): the innermost, as one may be inside another's folder; null for
+/// none.
+IdeGitWorktree? ideWorktreeOf(
+  String path,
+  List<IdeGitWorktree> worktrees,
+  p.Context paths,
+) {
+  IdeGitWorktree? found;
+  for (final worktree in worktrees) {
+    if (worktree.bare) continue;
+    if (!paths.equals(worktree.path, path) &&
+        !paths.isWithin(worktree.path, path)) {
+      continue;
+    }
+    if (found == null || worktree.path.length > found.path.length) {
+      found = worktree;
+    }
+  }
+  return found;
+}

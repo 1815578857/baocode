@@ -17852,6 +17852,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The changes agents made in conversations that are not open can no longer be undone. The files themselves stay as they are.'**
   String get checkpointsClearDetail;
+
+  /// No description provided for @gitLogToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today {time}'**
+  String gitLogToday(String time);
+
+  /// No description provided for @gitLogYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday {time}'**
+  String gitLogYesterday(String time);
+
+  /// No description provided for @gitLogCheckoutRevision.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout Revision'**
+  String get gitLogCheckoutRevision;
+
+  /// No description provided for @gitLogNewBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'New Branch…'**
+  String get gitLogNewBranch;
+
+  /// No description provided for @gitLogNewBranchAt.
+  ///
+  /// In en, this message translates to:
+  /// **'New branch at {commit}'**
+  String gitLogNewBranchAt(String commit);
+
+  /// No description provided for @gitLogCheckoutBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout \'{branch}\''**
+  String gitLogCheckoutBranch(String branch);
+
+  /// No description provided for @gitLogCopyHash.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy the full hash'**
+  String get gitLogCopyHash;
+
+  /// No description provided for @gitLogLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading history…'**
+  String get gitLogLoading;
+
+  /// No description provided for @gitLogWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'Worktree'**
+  String get gitLogWorktree;
+
+  /// No description provided for @gitLogWorktreeOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Worktree: {path}'**
+  String gitLogWorktreeOf(String path);
+
+  /// No description provided for @gitLogFollowAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow the Agent'**
+  String get gitLogFollowAgent;
+
+  /// No description provided for @gitLogAgentHere.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent works here'**
+  String get gitLogAgentHere;
+
+  /// No description provided for @gitLogWorktreeAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked out in worktree {name}\n{path}'**
+  String gitLogWorktreeAt(String name, String path);
+
+  /// No description provided for @gitLogMainWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'main worktree'**
+  String get gitLogMainWorktree;
+
+  /// No description provided for @gitLogWorktreeMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'missing'**
+  String get gitLogWorktreeMissing;
+
+  /// No description provided for @branchBarWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'In worktree {name}\n{path}'**
+  String branchBarWorktree(String name, String path);
 }
 
 class _AppLocalizationsDelegate

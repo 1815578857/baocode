@@ -50,6 +50,9 @@ class FakeGit {
   /// branch.
   final Map<String, String> upstreams = {};
 
+  /// `git worktree list --porcelain` output.
+  String worktrees = '';
+
   /// Every command run, without `git`.
   final List<List<String>> calls = [];
 
@@ -116,6 +119,8 @@ class FakeGit {
         return IdeGitOutput(0, show[commit] ?? '');
       case ['remote']:
         return IdeGitOutput(0, remotes);
+      case ['worktree', 'list', '--porcelain']:
+        return IdeGitOutput(0, worktrees);
       case [..., 'blame', '--root', '--incremental', '--', final path]:
         final output = blame[path];
         if (output == null) {

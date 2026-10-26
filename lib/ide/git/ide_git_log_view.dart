@@ -10,6 +10,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,6 +25,7 @@ import '../../theme/material_file_icons.dart';
 import '../../theme/workbench_theme.dart';
 import '../ide_button.dart';
 import '../ide_code_diff.dart';
+import '../ide_dialog.dart';
 import '../ide_hover.dart';
 import '../ide_input.dart';
 import '../ide_list.dart';
@@ -32,6 +34,7 @@ import '../ide_modern_ui.dart';
 import '../ide_notifications.dart';
 import '../ide_spinning.dart';
 import 'git_change_editor.dart';
+import 'git_checkout.dart' show ideSanitizeBranchName;
 import 'git_graph_painter.dart';
 import 'git_model.dart';
 import 'git_repository.dart';
@@ -57,6 +60,7 @@ class IdeGitDiffFile {
     this.status,
     this.originalLabel = '',
     this.modifiedLabel = '',
+    this.commitId,
     this.onOpenInEditor,
   });
 
@@ -67,18 +71,40 @@ class IdeGitDiffFile {
   final String originalLabel;
   final String modifiedLabel;
 
+  /// The commit whose file it is; null for a local change.
+  final String? commitId;
+
   /// Opens it in the editor, where it can be edited; not offered when null.
   final VoidCallback? onOpenInEditor;
 }
 
-/// The files a diff steps through, [index] the one shown.
+/// The files a diff steps through, [index] the one shown; [focus]: it
+/// takes the keyboard (not from a list the keys still walk).
 class IdeGitLogDiff {
-  IdeGitLogDiff(this.files, this.index);
+  IdeGitLogDiff(this.files, this.index, {this.focus = true});
 
   final List<IdeGitDiffFile> files;
   final int index;
+  final bool focus;
 
   IdeGitDiffFile get file => files[index];
+}
+
+/// Which of the repository's worktrees the log shows, and where the agent
+/// works ([agentPath], a file or folder in one of them): the side panel's
+/// changes follow the agent ([following]) until another is picked
+/// ([onSelect] with its path; null to follow it again). Without
+/// [onSelect], the worktrees are only listed (the IDE shows its folder's).
+class IdeGitWorktreeChoice {
+  const IdeGitWorktreeChoice({
+    this.agentPath,
+    this.following = true,
+    this.onSelect,
+  });
+
+  final String? agentPath;
+  final bool following;
+  final ValueChanged<String?>? onSelect;
 }
 
 /// What the log keeps while another view shows: the row selected, the
@@ -86,6 +112,7 @@ class IdeGitLogDiff {
 /// line counts and branches once read.
 class IdeGitLogController extends ChangeNotifier {
   final FocusNode focusNode = FocusNode(debugLabel: 'git log');
+  final FocusNode searchFocus = FocusNode(debugLabel: 'git log search');
   final ScrollController scroll = SmoothScrollController();
   final TextEditingController search = TextEditingController();
   final TextEditingController fileFilter = TextEditingController();
@@ -99,16 +126,23 @@ class IdeGitLogController extends ChangeNotifier {
     if (id == _selected) return;
     _selected = id;
     _branchesShown = false;
+    // Another row's details: the changes of the one before go.
+    _diff = null;
     notifyListeners();
   }
 
   IdeGitLogDiff? _diff;
   IdeGitLogDiff? get diff => _diff;
 
-  /// Shows [files]' [index]th in the table's place.
-  void showDiff(List<IdeGitDiffFile> files, int index) {
+  /// Shows [files]' [index]th in the table's place; with [focus], it takes
+  /// the keyboard.
+  void showDiff(List<IdeGitDiffFile> files, int index, {bool focus = true}) {
     if (files.isEmpty) return;
-    _diff = IdeGitLogDiff(files, index.clamp(0, files.length - 1));
+    _diff = IdeGitLogDiff(
+      files,
+      index.clamp(0, files.length - 1),
+      focus: focus,
+    );
     notifyListeners();
   }
 
@@ -118,7 +152,7 @@ class IdeGitLogController extends ChangeNotifier {
     if (diff == null) return;
     final index = diff.index + delta;
     if (index < 0 || index >= diff.files.length) return;
-    _diff = IdeGitLogDiff(diff.files, index);
+    _diff = IdeGitLogDiff(diff.files, index, focus: diff.focus);
     notifyListeners();
   }
 
@@ -200,9 +234,9 @@ class IdeGitLogController extends ChangeNotifier {
   Future<Map<String, ({int? added, int? deleted})>> statsOf(
     IdeGitRepository git,
     String id,
-  ) => _stats[id] ??= git.commitStats(id).catchError(
-    (Object _) => const <String, ({int? added, int? deleted})>{},
-  );
+  ) => _stats[id] ??= git
+      .commitStats(id)
+      .catchError((Object _) => const <String, ({int? added, int? deleted})>{});
 
   /// The branches that have [id], read once.
   Future<List<String>> branchesOf(IdeGitRepository git, String id) =>
@@ -214,6 +248,7 @@ class IdeGitLogController extends ChangeNotifier {
   @override
   void dispose() {
     focusNode.dispose();
+    searchFocus.dispose();
     scroll.dispose();
     search.dispose();
     fileFilter.dispose();
@@ -248,11 +283,11 @@ IdeGitDiffFile ideCommitDiffFile(
     original: () => parent == null || change.status == 'A'
         ? Future.value('')
         : show(parent, change.originalPath ?? change.path),
-    modified: () => change.status == 'D'
-        ? Future.value('')
-        : show(commit.id, change.path),
+    modified: () =>
+        change.status == 'D' ? Future.value('') : show(commit.id, change.path),
     originalLabel: parent == null ? '' : _short(parent),
     modifiedLabel: commit.shortId,
+    commitId: commit.id,
   );
 }
 
@@ -274,8 +309,9 @@ IdeGitDiffFile ideLocalDiffFile(
   );
   Future<String> Function() side(IdeGitSide? side) => switch (side) {
     null => () => Future.value(''),
-    IdeGitSide(isFile: true, :final path) =>
-      () => read(path).catchError((Object _) => ''),
+    IdeGitSide(isFile: true, :final path) => () => read(
+      path,
+    ).catchError((Object _) => ''),
     IdeGitSide(:final ref, :final path) =>
       () => git.service.show(ref!, path).catchError((Object _) => ''),
   };
@@ -312,6 +348,7 @@ class IdeGitLogView extends StatefulWidget {
     this.onCloseOverlay,
     this.onCheckout,
     this.onAddToChat,
+    this.worktrees = const IdeGitWorktreeChoice(),
     this.background,
     this.border,
   });
@@ -348,6 +385,9 @@ class IdeGitLogView extends StatefulWidget {
   /// Puts files in the chat's composer; not offered when null.
   final ValueChanged<List<ComposerFile>>? onAddToChat;
 
+  /// The worktree shown, and the agent's.
+  final IdeGitWorktreeChoice worktrees;
+
   /// Behind it, and the lines between its parts; the editor's and the
   /// panel's when null.
   final Color? background;
@@ -366,7 +406,8 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
   IdeGitLogController get _log => widget.session.log;
   IdeGitRepository? get _git => widget.host.git;
 
-  Color get _background => widget.background ?? themeColors['editor.background'];
+  Color get _background =>
+      widget.background ?? themeColors['editor.background'];
   Color get _border =>
       widget.border ?? themeColors.get('panel.border') ?? AppColors.partBorder;
 
@@ -467,7 +508,44 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     );
   }
 
-  Widget _page(IdeGitRepository git, IdeGitState state) => Column(
+  /// HEAD's commit when the page was last built: when it moves (a commit,
+  /// a checkout, a pull), the branches that have a commit change.
+  String? _headSeen;
+
+  Widget _page(IdeGitRepository git, IdeGitState state) {
+    String? head;
+    for (final row in git.graph ?? const <IdeGraphRow>[]) {
+      if (row.kind == IdeGraphRowKind.head) head = row.commit.id;
+    }
+    if (head != _headSeen) {
+      _headSeen = head;
+      _log.forgetBranches();
+    }
+    final worktrees = [
+      for (final worktree in git.worktrees)
+        if (!worktree.bare) worktree,
+    ];
+    final paths = git.service.pathContext;
+    _worktrees = worktrees;
+    _shownWorktree = ideWorktreeOf(git.service.root, worktrees, paths);
+    _agentWorktree = switch (widget.worktrees.agentPath) {
+      final path? => ideWorktreeOf(path, worktrees, paths),
+      null => null,
+    };
+    return _layout(git, state);
+  }
+
+  /// The repository's worktrees (bare ones aside), the one shown and the
+  /// agent's, as of the last build.
+  List<IdeGitWorktree> _worktrees = const [];
+  IdeGitWorktree? _shownWorktree;
+  IdeGitWorktree? _agentWorktree;
+
+  /// A worktree's name: its folder's.
+  String _worktreeName(IdeGitRepository git, IdeGitWorktree worktree) =>
+      git.service.pathContext.basename(worktree.path);
+
+  Widget _layout(IdeGitRepository git, IdeGitState state) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       _toolbar(git, state),
@@ -529,208 +607,407 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
 
   // --- Toolbar -------------------------------------------------------------
 
-  Widget _toolbar(IdeGitRepository git, IdeGitState state) {
-    final l10n = context.l10n;
-    final filter = git.graphFilter;
-    final repositories = widget.host.repositories;
-    final branch = state.head.branch;
-    return SizedBox(
-      height: 36,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    if (repositories.length > 1) ...[
-                      _DropButton(
-                        icon: Codicons.repo,
-                        label: p.basename(git.service.root),
-                        tooltip: l10n.gitLogRepository,
-                        entries: () => [
-                          for (final (_, repo) in repositories)
-                            IdeMenuAction(
-                              switch (repo.state?.count) {
-                                final count? when count > 0 =>
-                                  '${p.basename(repo.service.root)}  ($count)',
-                                _ => p.basename(repo.service.root),
-                              },
-                              checked: identical(repo, git),
-                              onSelected: () =>
-                                  widget.host.selectRepository(repo),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(width: 6),
-                    ],
-                    _DropButton(
-                      icon: Codicons.gitBranch,
-                      label: switch (git.graphBranch) {
-                        null => l10n.scmGraphAllBranches,
-                        ideGraphCurrentBranch => l10n.scmGraphCurrentBranch,
-                        final ref => _refLabel(ref),
-                      },
-                      tooltip: l10n.scmGraphBranches,
-                      active: git.graphBranch != null,
-                      entries: () => _branchEntries(git),
-                    ),
-                    const SizedBox(width: 6),
-                    SizedBox(
-                      width: 220,
-                      child: IdeInputBox(
-                        controller: _log.search,
-                        placeholder: l10n.gitLogSearch,
-                        onChanged: (text) {
-                          _searchDebounce?.cancel();
-                          _searchDebounce = Timer(
-                            const Duration(milliseconds: 300),
-                            () => git.graphFilter = git.graphFilter.copyWith(
-                              text: text,
-                            ),
-                          );
-                        },
-                        onSubmitted: (text) {
-                          _searchDebounce?.cancel();
-                          git.graphFilter = git.graphFilter.copyWith(
-                            text: text,
-                          );
-                        },
-                        toggles: [
-                          if (_log.search.text.isNotEmpty)
-                            IdeActionButton(
-                              icon: Codicons.close,
-                              tooltip: l10n.gitLogClearSearch,
-                              size: 18,
-                              iconSize: 14,
-                              onPressed: () {
-                                _log.search.clear();
-                                git.graphFilter = git.graphFilter.copyWith(
-                                  text: '',
-                                );
-                              },
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    _DropButton(
-                      label: switch (filter.author) {
-                        null => l10n.gitLogUser,
-                        final author when author == _userEmail => l10n.gitLogMe,
-                        final author => author,
-                      },
-                      tooltip: l10n.gitLogUser,
-                      active: filter.author != null,
-                      entries: () => _userEntries(git),
-                    ),
-                    _DropButton(
-                      label: switch (_sinceDays(filter.since)) {
-                        null => l10n.gitLogDate,
-                        final days => _sinceLabel(days),
-                      },
-                      tooltip: l10n.gitLogDate,
-                      active: filter.since != null,
-                      entries: () => _dateEntries(git),
-                    ),
-                    _DropButton(
-                      label: l10n.gitLogHighlight,
-                      tooltip: l10n.gitLogHighlight,
-                      active: _log.highlight != IdeGitLogHighlight.none,
-                      entries: () => [
-                        IdeMenuAction(
-                          l10n.gitLogHighlightNone,
-                          checked: _log.highlight == IdeGitLogHighlight.none,
-                          onSelected: () =>
-                              _log.highlight = IdeGitLogHighlight.none,
-                        ),
-                        IdeMenuAction(
-                          l10n.gitLogHighlightMine,
-                          enabled: _userEmail != null,
-                          checked: _log.highlight == IdeGitLogHighlight.mine,
-                          onSelected: () =>
-                              _log.highlight = IdeGitLogHighlight.mine,
-                        ),
+  Widget _toolbar(IdeGitRepository git, IdeGitState state) => LayoutBuilder(
+    builder: (context, constraints) {
+      final compact = constraints.maxWidth < _compactToolbar;
+      final filters = _filters(git);
+      if (!compact) {
+        return SizedBox(
+          height: 36,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        ...filters.take(2),
+                        SizedBox(width: 240, child: _search(git)),
+                        const SizedBox(width: 6),
+                        ...filters.skip(2),
                       ],
                     ),
-                    if (filter.narrowed || git.graphBranch != null)
-                      IdeActionButton(
-                        icon: Codicons.clearAll,
-                        tooltip: l10n.gitLogClearFilters,
-                        onPressed: () {
-                          _log.search.clear();
-                          git
-                            ..graphFilter = const IdeGitLogFilter()
-                            ..graphBranch = null;
-                        },
-                      ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (!state.head.unborn)
-              _DropButton(
-                icon: Codicons.gitBranch,
-                label: branch ?? _detachedLabel(git),
-                tooltip: l10n.gitLogCheckout,
-                onPressed: widget.onCheckout == null
-                    ? null
-                    : () => widget.onCheckout!(git),
-              ),
-            IdeActionButton(
-              icon: Codicons.repoFetch,
-              tooltip: l10n.scmFetch,
-              onPressed: () => unawaited(_run(git.fetch)),
-            ),
-            IdeActionButton(
-              icon: Codicons.repoPull,
-              tooltip: state.head.behind > 0
-                  ? '${l10n.scmPull} (${state.head.behind})'
-                  : l10n.scmPull,
-              onPressed: () => unawaited(_run(git.pull)),
-            ),
-            IdeActionButton(
-              icon: Codicons.repoPush,
-              tooltip: state.head.ahead > 0
-                  ? '${l10n.scmPush} (${state.head.ahead})'
-                  : l10n.scmPush,
-              onPressed: () => unawaited(_run(git.push)),
-            ),
-            IdeActionButton(
-              icon: git.graphDateOrder
-                  ? Codicons.calendar
-                  : Codicons.listOrdered,
-              tooltip: git.graphDateOrder
-                  ? l10n.gitLogSortDate
-                  : l10n.gitLogSortTopo,
-              onPressed: () => git.graphDateOrder = !git.graphDateOrder,
-            ),
-            IdeMenuButton(
-              icon: Codicons.ellipsis,
-              tooltip: l10n.commonMoreActions,
-              entries: () => [
-                IdeMenuAction(
-                  l10n.scmGoToCurrent,
-                  onSelected: () => _goToCurrent(git),
-                ),
-                IdeMenuAction(
-                  l10n.commonRefresh,
-                  onSelected: () => unawaited(_run(git.refresh)),
-                ),
-                const IdeMenuSeparator(),
-                IdeMenuAction(
-                  l10n.scmFetchFromAllRemotes,
-                  onSelected: () => unawaited(_run(() => git.fetch())),
-                ),
+                _clearButton(git),
+                const SizedBox(width: 8),
+                ..._actions(git, state, compact: false),
               ],
+            ),
+          ),
+        );
+      }
+      // Narrow (the side panel): the search and the actions, then the
+      // filters under them.
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: 34,
+              child: Row(
+                children: [
+                  Expanded(child: _search(git)),
+                  const SizedBox(width: 4),
+                  ..._actions(git, state, compact: true),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 28,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(children: filters),
+                    ),
+                  ),
+                  _clearButton(git),
+                ],
+              ),
             ),
           ],
         ),
-      ),
+      );
+    },
+  );
+
+  /// Below this width, the toolbar takes two rows and the repository's
+  /// actions go in its menu.
+  static const _compactToolbar = 860.0;
+
+  /// The message's search: typed, it filters the log a moment later;
+  /// Escape clears it, Down goes to the table.
+  Widget _search(IdeGitRepository git) {
+    final l10n = context.l10n;
+    void apply(String text) {
+      _searchDebounce?.cancel();
+      git.graphFilter = git.graphFilter.copyWith(text: text);
+    }
+
+    return IdeInputBox(
+      controller: _log.search,
+      focusNode: _log.searchFocus,
+      placeholder: l10n.gitLogSearch,
+      onChanged: (text) {
+        _searchDebounce?.cancel();
+        _searchDebounce = Timer(
+          const Duration(milliseconds: 300),
+          () => apply(text),
+        );
+        // The clear button comes and goes.
+        setState(() {});
+      },
+      onSubmitted: apply,
+      shortcuts: {
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (_log.search.text.isEmpty) {
+            _log.focusNode.requestFocus();
+          } else {
+            _log.search.clear();
+            apply('');
+          }
+        },
+        const SingleActivator(LogicalKeyboardKey.arrowDown): () {
+          apply(_log.search.text);
+          _log.focusNode.requestFocus();
+        },
+      },
+      toggles: [
+        if (_log.search.text.isNotEmpty)
+          IdeActionButton(
+            icon: Codicons.close,
+            tooltip: l10n.gitLogClearSearch,
+            size: 18,
+            iconSize: 14,
+            onPressed: () {
+              _log.search.clear();
+              apply('');
+            },
+          ),
+      ],
     );
+  }
+
+  /// The repository (where there are several) and branches first, then
+  /// the user, the date, what stands out, and Clear Filters.
+  List<Widget> _filters(IdeGitRepository git) {
+    final l10n = context.l10n;
+    final filter = git.graphFilter;
+    final repositories = widget.host.repositories;
+    return [
+      if (repositories.length > 1)
+        Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: _DropButton(
+            icon: Codicons.repo,
+            // The folder's name, though a worktree of its shows.
+            label: p.basename(
+              repositories
+                      .where((repository) => identical(repository.$2, git))
+                      .firstOrNull
+                      ?.$1 ??
+                  git.service.root,
+            ),
+            tooltip: l10n.gitLogRepository,
+            entries: () => [
+              for (final (folder, repo) in repositories)
+                IdeMenuAction(
+                  switch (repo.state?.count) {
+                    final count? when count > 0 =>
+                      '${p.basename(folder)}  ($count)',
+                    _ => p.basename(folder),
+                  },
+                  checked: identical(repo, git),
+                  onSelected: () => widget.host.selectRepository(repo),
+                ),
+            ],
+          ),
+        )
+      else
+        const SizedBox.shrink(),
+      if (_worktrees.length > 1)
+        Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: _worktreeButton(git),
+        ),
+      Padding(
+        padding: const EdgeInsets.only(right: 6),
+        child: _DropButton(
+          icon: Codicons.gitBranch,
+          label: switch (git.graphBranch) {
+            null => l10n.scmGraphAllBranches,
+            ideGraphCurrentBranch => l10n.scmGraphCurrentBranch,
+            final ref => _refLabel(ref),
+          },
+          tooltip: l10n.scmGraphBranches,
+          active: git.graphBranch != null,
+          entries: () => _branchEntries(git),
+        ),
+      ),
+      _DropButton(
+        icon: Codicons.person,
+        label: switch (filter.author) {
+          null => l10n.gitLogUser,
+          final author when author == _userEmail => l10n.gitLogMe,
+          final author => author,
+        },
+        tooltip: l10n.gitLogUser,
+        active: filter.author != null,
+        entries: () => _userEntries(git),
+      ),
+      _DropButton(
+        icon: Codicons.calendar,
+        label: switch (_sinceDays(filter.since)) {
+          null => l10n.gitLogDate,
+          final days => _sinceLabel(days),
+        },
+        tooltip: l10n.gitLogDate,
+        active: filter.since != null,
+        entries: () => _dateEntries(git),
+      ),
+      _DropButton(
+        icon: Codicons.eye,
+        label: _log.highlight == IdeGitLogHighlight.mine
+            ? l10n.gitLogHighlightMine
+            : l10n.gitLogHighlight,
+        tooltip: l10n.gitLogHighlight,
+        active: _log.highlight != IdeGitLogHighlight.none,
+        entries: () => [
+          IdeMenuAction(
+            l10n.gitLogHighlightNone,
+            checked: _log.highlight == IdeGitLogHighlight.none,
+            onSelected: () => _log.highlight = IdeGitLogHighlight.none,
+          ),
+          IdeMenuAction(
+            l10n.gitLogHighlightMine,
+            enabled: _userEmail != null,
+            checked: _log.highlight == IdeGitLogHighlight.mine,
+            onSelected: () => _log.highlight = IdeGitLogHighlight.mine,
+          ),
+        ],
+      ),
+    ];
+  }
+
+  /// Clear Filters, kept in sight beside the filters (not scrolled away
+  /// with them); none while nothing is filtered.
+  Widget _clearButton(IdeGitRepository git) => _filtered(git)
+      ? IdeActionButton(
+          icon: Codicons.clearAll,
+          tooltip: context.l10n.gitLogClearFilters,
+          onPressed: () => _clearFilters(git),
+        )
+      : const SizedBox.shrink();
+
+  /// The worktree shown, ✦ where the agent works; its menu lists them all,
+  /// each with its branch, to show another's changes.
+  Widget _worktreeButton(IdeGitRepository git) {
+    final l10n = context.l10n;
+    final choice = widget.worktrees;
+    final shown = _shownWorktree;
+    final agent = _agentWorktree;
+    final select = choice.onSelect;
+    final paths = git.service.pathContext;
+    bool isShown(IdeGitWorktree worktree) =>
+        shown != null && paths.equals(worktree.path, shown.path);
+    String branchOf(IdeGitWorktree worktree) =>
+        worktree.branch ?? _short(worktree.head ?? '');
+    return _DropButton(
+      icon: Codicons.worktree,
+      label: shown == null ? l10n.gitLogWorktree : _worktreeName(git, shown),
+      trailing: agent != null && shown != null && agent.path == shown.path
+          ? Codicons.sparkle
+          : null,
+      tooltip: l10n.gitLogWorktreeOf(shown?.path ?? git.service.root),
+      active: shown != null && !shown.main,
+      entries: () => ideMenuGroups([
+        if (select != null)
+          [
+            IdeMenuAction(
+              l10n.gitLogFollowAgent,
+              checked: choice.following,
+              enabled: choice.agentPath != null,
+              onSelected: () => select(null),
+            ),
+          ],
+        [
+          for (final worktree in _worktrees)
+            IdeMenuAction(
+              [
+                _worktreeName(git, worktree),
+                if (worktree.main) '(${l10n.gitLogMainWorktree})',
+                if (worktree.prunable) '(${l10n.gitLogWorktreeMissing})',
+                if (agent?.path == worktree.path) '✦ AI',
+              ].join('  '),
+              keybinding: branchOf(worktree),
+              checked: isShown(worktree),
+              enabled: select != null && !worktree.prunable,
+              onSelected: () => select?.call(worktree.path),
+            ),
+        ],
+      ]),
+    );
+  }
+
+  /// Whether the log shows fewer commits than it could.
+  static bool _filtered(IdeGitRepository git) =>
+      git.graphFilter.narrowed || git.graphBranch != null;
+
+  void _clearFilters(IdeGitRepository git) {
+    _searchDebounce?.cancel();
+    _log.search.clear();
+    git
+      ..graphFilter = const IdeGitLogFilter()
+      ..graphBranch = null;
+  }
+
+  /// The current branch (Checkout to…), and the repository's actions: on
+  /// the toolbar, or ([compact]) in its menu.
+  List<Widget> _actions(
+    IdeGitRepository git,
+    IdeGitState state, {
+    required bool compact,
+  }) {
+    final l10n = context.l10n;
+    final head = state.head;
+    final pullLabel = head.behind > 0
+        ? '${l10n.scmPull} (${head.behind})'
+        : l10n.scmPull;
+    final pushLabel = head.ahead > 0
+        ? '${l10n.scmPush} (${head.ahead})'
+        : l10n.scmPush;
+    final sortLabel = git.graphDateOrder
+        ? l10n.gitLogSortDate
+        : l10n.gitLogSortTopo;
+    void toggleSort() => git.graphDateOrder = !git.graphDateOrder;
+    return [
+      if (!head.unborn)
+        _DropButton(
+          icon: Codicons.gitBranch,
+          label: head.branch ?? _detachedLabel(git),
+          tooltip: l10n.gitLogCheckout,
+          maxWidth: compact ? 110 : 180,
+          onPressed: widget.onCheckout == null
+              ? null
+              : () => widget.onCheckout!(git),
+        ),
+      if (!compact) ...[
+        IdeActionButton(
+          icon: Codicons.repoFetch,
+          tooltip: l10n.scmFetch,
+          onPressed: () => unawaited(_run(git.fetch)),
+        ),
+        _Badged(
+          count: head.behind,
+          child: IdeActionButton(
+            icon: Codicons.repoPull,
+            tooltip: pullLabel,
+            onPressed: () => unawaited(_run(git.pull)),
+          ),
+        ),
+        _Badged(
+          count: head.ahead,
+          child: IdeActionButton(
+            icon: Codicons.repoPush,
+            tooltip: pushLabel,
+            onPressed: () => unawaited(_run(git.push)),
+          ),
+        ),
+        IdeActionButton(
+          icon: git.graphDateOrder ? Codicons.calendar : Codicons.listOrdered,
+          tooltip: sortLabel,
+          onPressed: toggleSort,
+        ),
+      ],
+      IdeMenuButton(
+        icon: Codicons.ellipsis,
+        tooltip: l10n.commonMoreActions,
+        entries: () => ideMenuGroups([
+          if (compact)
+            [
+              IdeMenuAction(
+                l10n.scmFetch,
+                onSelected: () => unawaited(_run(git.fetch)),
+              ),
+              IdeMenuAction(
+                pullLabel,
+                onSelected: () => unawaited(_run(git.pull)),
+              ),
+              IdeMenuAction(
+                pushLabel,
+                onSelected: () => unawaited(_run(git.push)),
+              ),
+            ],
+          [
+            IdeMenuAction(
+              l10n.scmGoToCurrent,
+              onSelected: () => _goToCurrent(git),
+            ),
+            IdeMenuAction(
+              l10n.commonRefresh,
+              onSelected: () => unawaited(_run(git.refresh)),
+            ),
+            if (compact)
+              IdeMenuAction(
+                l10n.gitLogSortDate,
+                checked: git.graphDateOrder,
+                onSelected: toggleSort,
+              ),
+          ],
+          [
+            IdeMenuAction(
+              l10n.scmFetchFromAllRemotes,
+              onSelected: () => unawaited(_run(() => git.fetch())),
+            ),
+          ],
+        ]),
+      ),
+    ];
   }
 
   /// Where HEAD is when it is on no branch: its commit.
@@ -917,7 +1194,23 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
       _log.scroll,
       rowHeight: IdeGitLogView.rowHeight,
     );
-    final int? to = switch (event.logicalKey) {
+    final key = event.logicalKey;
+    final hardware = HardwareKeyboard.instance;
+    if (key == LogicalKeyboardKey.keyF &&
+        (hardware.isMetaPressed || hardware.isControlPressed)) {
+      _log.searchFocus.requestFocus();
+      _log.search.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _log.search.text.length,
+      );
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter) {
+      if (event is KeyDownEvent) unawaited(_openFirstFile(git, ids[at]));
+      return KeyEventResult.handled;
+    }
+    final int? to = switch (key) {
       LogicalKeyboardKey.arrowDown => at + 1,
       LogicalKeyboardKey.arrowUp => at - 1,
       LogicalKeyboardKey.pageDown => at + page,
@@ -931,18 +1224,55 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     return KeyEventResult.handled;
   }
 
+  /// Enter on a commit: its first file's changes.
+  Future<void> _openFirstFile(IdeGitRepository git, String id) async {
+    if (id == ideGitWorkingTreeId) return;
+    IdeGitCommit? commit;
+    for (final row in git.graph ?? const <IdeGraphRow>[]) {
+      if (row.commit.id == id) commit = row.commit;
+    }
+    if (commit == null ||
+        id == ideIncomingChangesId ||
+        id == ideOutgoingChangesId) {
+      return;
+    }
+    final List<IdeGitCommitChange> changes;
+    try {
+      changes = await _log.changesOf(git, id);
+    } catch (error) {
+      return _report(error);
+    }
+    if (!mounted || changes.isEmpty || _log.selected != id) return;
+    final files = [
+      for (final change in changes) ideCommitDiffFile(git, commit, change),
+    ];
+    if (widget.onOpenDiff case final open?) {
+      open(files.first);
+    } else {
+      _log.showDiff(files, 0);
+    }
+  }
+
   Widget _main(IdeGitRepository git, IdeGitState state) {
     final l10n = context.l10n;
     if (_overlay() case final overlay?) return overlay;
     if (_log.diff case final diff?) {
       return _DiffArea(
-        key: ValueKey(diff),
+        key: ObjectKey(diff.files),
         diff: diff,
         root: state.root,
         paths: git.service.pathContext,
         border: _border,
         onStep: _log.stepDiff,
-        onClose: _log.closeDiff,
+        onClose: () {
+          final focused = diff.focus;
+          _log.closeDiff();
+          // Back to the table, where the keys were.
+          if (!focused) return;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _log.focusNode.requestFocus();
+          });
+        },
       );
     }
     final rows = git.graph;
@@ -954,9 +1284,7 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
             rows.map(ideGraphWidth).reduce(math.max),
             ideGraphLaneWidth * 12,
           );
-    final headRow = rows?.indexWhere(
-      (row) => row.kind == IdeGraphRowKind.head,
-    );
+    final headRow = rows?.indexWhere((row) => row.kind == IdeGraphRowKind.head);
     final count = 1 + (rows?.length ?? 0) + (git.graphHasMore ? 1 : 0);
     return Focus(
       focusNode: _log.focusNode,
@@ -969,9 +1297,7 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
             return ListView.builder(
               controller: _log.scroll,
               itemExtent: IdeGitLogView.rowHeight,
-              itemCount: rows != null && rows.isEmpty && narrowed
-                  ? 2
-                  : count,
+              itemCount: rows == null || (rows.isEmpty && narrowed) ? 2 : count,
               itemBuilder: (context, index) {
                 if (index == 0) {
                   return _workingTreeRow(
@@ -985,16 +1311,14 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                     columns: columns,
                   );
                 }
-                if (rows == null) return const SizedBox.shrink();
+                if (rows == null) {
+                  return _Message(spinning: true, text: l10n.gitLogLoading);
+                }
                 if (rows.isEmpty) {
-                  return Center(
-                    child: Text(
-                      l10n.gitLogNoCommits,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: IdeListColors.description,
-                      ),
-                    ),
+                  return _Message(
+                    text: l10n.gitLogNoCommits,
+                    action: _filtered(git) ? l10n.gitLogClearFilters : null,
+                    onAction: () => _clearFilters(git),
                   );
                 }
                 if (index > rows.length) {
@@ -1059,20 +1383,54 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
               color: colors[IdeGraphColors.ref],
             ),
           ),
+          // Which worktree's they are, where there are several; ✦ where
+          // the agent works.
           Expanded(
-            child: Text(
-              count > 0
-                  ? l10n.gitLogLocalChangesCount(count)
-                  : l10n.gitLogLocalChanges,
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: count > 0
+                        ? l10n.gitLogLocalChangesCount(count)
+                        : l10n.gitLogLocalChanges,
+                    style: TextStyle(
+                      fontStyle: FontStyle.italic,
+                      color: count > 0
+                          ? IdeListColors.foreground
+                          : IdeListColors.description,
+                    ),
+                  ),
+                  if (_shownWorktree case final worktree?
+                      when _worktrees.length > 1 && _git != null) ...[
+                    const TextSpan(text: '   '),
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: Icon(
+                        Codicons.worktree,
+                        size: 13,
+                        color: IdeListColors.description,
+                      ),
+                    ),
+                    TextSpan(
+                      text:
+                          ' ${[_worktreeName(_git!, worktree), ?worktree.branch].join(' · ')}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: IdeListColors.description,
+                      ),
+                    ),
+                  ],
+                  if (_agentWorktree != null &&
+                      _agentWorktree?.path == _shownWorktree?.path)
+                    const WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: _AgentMark(),
+                    ),
+                ],
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13,
-                fontStyle: FontStyle.italic,
-                color: count > 0
-                    ? IdeListColors.foreground
-                    : IdeListColors.description,
-              ),
+              style: const TextStyle(fontSize: 13),
             ),
           ),
           if (columns.date) const SizedBox(width: _Columns.dateWidth),
@@ -1142,9 +1500,7 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                 width: graphWidth,
                 height: IdeGitLogView.rowHeight,
                 child: narrowed
-                    ? CustomPaint(
-                        painter: _DotPainter(colors[row.circleColor]),
-                      )
+                    ? CustomPaint(painter: _DotPainter(colors[row.circleColor]))
                     : OverflowBox(
                         alignment: Alignment.centerLeft,
                         maxWidth: double.infinity,
@@ -1168,8 +1524,13 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                 builder: (context, constraints) => Row(
                   children: [
                     Flexible(
-                      child: Text(
-                        _subjectOf(commit),
+                      child: Text.rich(
+                        TextSpan(
+                          children: _highlighted(
+                            _subjectOf(commit),
+                            synthetic ? const [] : git.graphFilter.terms,
+                          ),
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -1203,7 +1564,7 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                 child: synthetic
                     ? null
                     : Text(
-                        _formatDate(commit.date),
+                        _tableDate(commit.date),
                         maxLines: 1,
                         overflow: TextOverflow.clip,
                         style: TextStyle(fontSize: 12, color: foreground),
@@ -1254,6 +1615,51 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     );
   }
 
+  /// [text] with [terms] (the search's) standing out, as a list's
+  /// matches do.
+  static List<TextSpan> _highlighted(String text, List<String> terms) {
+    final words = [
+      for (final term in terms)
+        if (term.trim().isNotEmpty) RegExp.escape(term.trim()),
+    ];
+    if (words.isEmpty) return [TextSpan(text: text)];
+    final match = RegExp(words.join('|'), caseSensitive: false);
+    final spans = <TextSpan>[];
+    var at = 0;
+    for (final found in match.allMatches(text)) {
+      if (found.start == found.end) continue;
+      if (found.start > at) {
+        spans.add(TextSpan(text: text.substring(at, found.start)));
+      }
+      spans.add(
+        TextSpan(
+          text: found.group(0),
+          style: TextStyle(
+            color: IdeListColors.highlight,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+      at = found.end;
+    }
+    if (at < text.length) spans.add(TextSpan(text: text.substring(at)));
+    return spans;
+  }
+
+  /// A date as the table shows it: today's and yesterday's by name.
+  String _tableDate(DateTime date) {
+    final l10n = context.l10n;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(date.year, date.month, date.day);
+    final time = _formatDate(date).substring(11);
+    if (day == today) return l10n.gitLogToday(time);
+    if (day == today.subtract(const Duration(days: 1))) {
+      return l10n.gitLogYesterday(time);
+    }
+    return _formatDate(date);
+  }
+
   /// The references' badges: the colored ones first.
   List<Widget> _badges(IdeGraphRow row) {
     String? color(IdeGitRef ref) => row.referenceColors[ref.id];
@@ -1265,7 +1671,42 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
       for (final (index, ref) in refs.indexed) ...[
         if (index > 0) const SizedBox(width: 4),
         Flexible(child: IdeGitRefBadge(ref, color(ref))),
+        ..._worktreeMarks(ref),
       ],
+    ];
+  }
+
+  /// After a branch checked out in a worktree: the worktree's mark (but
+  /// for the one shown), and ✦ where the agent works.
+  List<Widget> _worktreeMarks(IdeGitRef ref) {
+    if (ref.kind != IdeGitRefKind.branch || _worktrees.length < 2) {
+      return const [];
+    }
+    final worktree = _worktrees
+        .where((worktree) => worktree.branch == ref.name)
+        .firstOrNull;
+    if (worktree == null) return const [];
+    final l10n = context.l10n;
+    final git = _git;
+    final shown = _shownWorktree?.path == worktree.path;
+    final agent = _agentWorktree?.path == worktree.path;
+    return [
+      if (!shown && git != null)
+        IdeHover(
+          message: l10n.gitLogWorktreeAt(
+            _worktreeName(git, worktree),
+            worktree.path,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 2),
+            child: Icon(
+              Codicons.worktree,
+              size: 13,
+              color: IdeListColors.description,
+            ),
+          ),
+        ),
+      if (agent) const _AgentMark(),
     ];
   }
 
@@ -1283,22 +1724,66 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     Offset position,
     IdeGitRepository git,
     IdeGitCommit commit,
-  ) => showIdeMenu(
-    context,
-    position: position,
-    entries: [
-      IdeMenuAction(
-        context.l10n.scmCopyCommitHash,
-        onSelected: () =>
-            unawaited(Clipboard.setData(ClipboardData(text: commit.id))),
-      ),
-      IdeMenuAction(
-        context.l10n.scmCopyCommitMessage,
-        onSelected: () =>
-            unawaited(Clipboard.setData(ClipboardData(text: commit.message))),
-      ),
-    ],
-  );
+  ) {
+    final l10n = context.l10n;
+    final head = git.state?.head;
+    final branches = [
+      for (final ref in commit.references)
+        if (ref.kind == IdeGitRefKind.branch && ref.name != head?.branch)
+          ref.name,
+    ];
+    return showIdeMenu(
+      context,
+      position: position,
+      entries: ideMenuGroups([
+        [
+          IdeMenuAction(
+            l10n.scmCopyCommitHash,
+            onSelected: () =>
+                unawaited(Clipboard.setData(ClipboardData(text: commit.id))),
+          ),
+          IdeMenuAction(
+            l10n.scmCopyCommitMessage,
+            onSelected: () => unawaited(
+              Clipboard.setData(ClipboardData(text: commit.message)),
+            ),
+          ),
+        ],
+        [
+          for (final branch in branches)
+            IdeMenuAction(
+              l10n.gitLogCheckoutBranch(branch),
+              onSelected: () => unawaited(_run(() => git.checkout(branch))),
+            ),
+          IdeMenuAction(
+            l10n.gitLogCheckoutRevision,
+            onSelected: () =>
+                unawaited(_run(() => git.checkout(commit.id, detached: true))),
+          ),
+          IdeMenuAction(
+            l10n.gitLogNewBranch,
+            onSelected: () => unawaited(_newBranch(git, commit)),
+          ),
+        ],
+      ]),
+    );
+  }
+
+  /// Asks for a name, then makes a branch at [commit] and checks it out.
+  Future<void> _newBranch(IdeGitRepository git, IdeGitCommit commit) async {
+    final l10n = context.l10n;
+    final result = await showIdeInputDialog(
+      context,
+      message: l10n.gitLogNewBranchAt(commit.shortId),
+      buttons: [l10n.branchBarCreateButton],
+      inputs: [IdeDialogInput(placeholder: l10n.gitBranchName)],
+      type: IdeDialogType.question,
+    );
+    if (result == null || result.button != 0) return;
+    final name = ideSanitizeBranchName(result.values.first);
+    if (name.isEmpty) return;
+    await _run(() => git.branch(name, ref: commit.id));
+  }
 
   // --- Details -------------------------------------------------------------
 
@@ -1319,11 +1804,7 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
       children: [
         // Kept while a commit shows: the commands of Source Control (Git:
         // Commit, Focus on Source Control) act on it.
-        Visibility(
-          visible: local,
-          maintainState: true,
-          child: widget.changes,
-        ),
+        Visibility(visible: local, maintainState: true, child: widget.changes),
         if (!local)
           switch (row) {
             final row?
@@ -1372,11 +1853,8 @@ class _Columns {
     required this.hash,
   });
 
-  factory _Columns.of(double width) => _Columns(
-    date: width >= 380,
-    author: width >= 500,
-    hash: width >= 580,
-  );
+  factory _Columns.of(double width) =>
+      _Columns(date: width >= 380, author: width >= 500, hash: width >= 580);
 
   static const dateWidth = 128.0;
   static const authorWidth = 130.0;
@@ -1441,12 +1919,23 @@ class _CommitDetails extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Center(
-                      child: Text(
-                        'commit: ${commit.shortId}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: foreground,
+                      child: IdeHover(
+                        message: '${l10n.gitLogCopyHash}\n${commit.id}',
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () => unawaited(
+                              Clipboard.setData(ClipboardData(text: commit.id)),
+                            ),
+                            child: Text(
+                              'commit: ${commit.shortId}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: foreground,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -1760,9 +2249,9 @@ class _CommitDetails extends StatelessWidget {
     final paths = git.service.pathContext;
     final RegExp match;
     if (pattern.contains('*') || pattern.contains('?')) {
-      final source = RegExp.escape(
-        pattern,
-      ).replaceAll(r'\*', '.*').replaceAll(r'\?', '.');
+      final source = RegExp.escape(pattern)
+          .replaceAll(r'\*', '.*')
+          .replaceAll(r'\?', '.');
       match = RegExp(source, caseSensitive: false);
     } else {
       match = RegExp(RegExp.escape(pattern), caseSensitive: false);
@@ -1847,9 +2336,11 @@ class _CommitDetails extends StatelessWidget {
     void open() => onOpenDiff([
       for (final file in files) ideCommitDiffFile(git, commit, file),
     ], files.indexOf(file));
+    final shown = log.diff?.file;
     return IdeListRow(
       height: 24,
       tooltip: '$relative • ${status.localizedLabel(context.l10n)}',
+      selected: shown?.commitId == commit.id && shown?.path == file.path,
       onTap: open,
       onContextMenu: (position) => unawaited(
         showIdeMenu(
@@ -1963,8 +2454,9 @@ class _Counts extends StatelessWidget {
 }
 
 /// A file's changes in the table's place: its path, the sides compared,
-/// the previous and next files, and the diff.
-class _DiffArea extends StatelessWidget {
+/// the previous and next files, and the diff. It takes the keyboard when it
+/// opens: Escape closes it, Alt+Up and Alt+Down (Shift+F7 and F7) step.
+class _DiffArea extends StatefulWidget {
   const _DiffArea({
     super.key,
     required this.diff,
@@ -1983,16 +2475,66 @@ class _DiffArea extends StatelessWidget {
   final VoidCallback onClose;
 
   @override
+  State<_DiffArea> createState() => _DiffAreaState();
+}
+
+/// The Option key's sign on a Mac, Alt elsewhere.
+String get _alt => defaultTargetPlatform == TargetPlatform.macOS ? '⌥' : 'Alt+';
+
+class _DiffAreaState extends State<_DiffArea> {
+  final FocusNode _focus = FocusNode(debugLabel: 'git log diff');
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.diff.focus) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final key = event.logicalKey;
+    final hardware = HardwareKeyboard.instance;
+    if (key == LogicalKeyboardKey.escape && event is KeyDownEvent) {
+      widget.onClose();
+      return KeyEventResult.handled;
+    }
+    final int? step = switch (key) {
+      LogicalKeyboardKey.arrowUp when hardware.isAltPressed => -1,
+      LogicalKeyboardKey.arrowDown when hardware.isAltPressed => 1,
+      LogicalKeyboardKey.f7 => hardware.isShiftPressed ? -1 : 1,
+      _ => null,
+    };
+    if (step == null) return KeyEventResult.ignored;
+    widget.onStep(step);
+    return KeyEventResult.handled;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final diff = widget.diff;
+    final paths = widget.paths;
+    final border = widget.border;
+    final onStep = widget.onStep;
+    final onClose = widget.onClose;
     final file = diff.file;
-    final relative = paths.relative(file.path, from: root);
+    final relative = paths.relative(file.path, from: widget.root);
     final directory = paths.dirname(relative);
     final description = IdeListColors.description;
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.escape): onClose,
-      },
+    return Focus(
+      focusNode: _focus,
+      onKeyEvent: _onKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -2058,25 +2600,27 @@ class _DiffArea extends StatelessWidget {
                   ),
                 IdeActionButton(
                   icon: Codicons.arrowUp,
-                  tooltip: l10n.gitLogPreviousFile,
+                  tooltip: '${l10n.gitLogPreviousFile} ($_alt↑)',
                   onPressed: diff.index > 0 ? () => onStep(-1) : null,
                 ),
                 IdeActionButton(
                   icon: Codicons.arrowDown,
-                  tooltip: l10n.gitLogNextFile,
+                  tooltip: '${l10n.gitLogNextFile} ($_alt↓)',
                   onPressed: diff.index < diff.files.length - 1
                       ? () => onStep(1)
                       : null,
                 ),
                 IdeActionButton(
                   icon: Codicons.close,
-                  tooltip: l10n.gitLogBackToLog,
+                  tooltip: '${l10n.gitLogBackToLog} (Esc)',
                   onPressed: onClose,
                 ),
               ],
             ),
           ),
-          Expanded(child: _DiffBody(key: ValueKey(file), file: file)),
+          Expanded(
+            child: _DiffBody(key: ValueKey(file), file: file),
+          ),
         ],
       ),
     );
@@ -2161,6 +2705,8 @@ class _DropButton extends StatefulWidget {
     this.entries,
     this.onPressed,
     this.active = false,
+    this.maxWidth = 180,
+    this.trailing,
   });
 
   final String label;
@@ -2169,6 +2715,10 @@ class _DropButton extends StatefulWidget {
   final FutureOr<List<IdeMenuEntry>> Function()? entries;
   final VoidCallback? onPressed;
   final bool active;
+  final double maxWidth;
+
+  /// After the label: ✦ where the agent works.
+  final IconData? trailing;
 
   @override
   State<_DropButton> createState() => _DropButtonState();
@@ -2228,7 +2778,7 @@ class _DropButtonState extends State<_DropButton> {
                   const SizedBox(width: 4),
                 ],
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 180),
+                  constraints: BoxConstraints(maxWidth: widget.maxWidth),
                   child: Text(
                     widget.label,
                     maxLines: 1,
@@ -2236,6 +2786,14 @@ class _DropButtonState extends State<_DropButton> {
                     style: TextStyle(fontSize: 12, color: foreground),
                   ),
                 ),
+                if (widget.trailing != null) ...[
+                  const SizedBox(width: 3),
+                  Icon(
+                    Codicons.sparkle,
+                    size: 12,
+                    color: colors['textLink.foreground'],
+                  ),
+                ],
                 if (widget.entries != null) ...[
                   const SizedBox(width: 2),
                   Icon(Codicons.chevronDown, size: 14, color: foreground),
@@ -2247,6 +2805,121 @@ class _DropButtonState extends State<_DropButton> {
       ),
     );
   }
+}
+
+/// [child] with [count] in a small badge at its corner, when there is one
+/// (the commits to pull or to push).
+class _Badged extends StatelessWidget {
+  const _Badged({required this.count, required this.child});
+
+  final int count;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (count <= 0) return child;
+    final colors = themeColors;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        Positioned(
+          right: -2,
+          top: -1,
+          child: IgnorePointer(
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 13),
+              height: 13,
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: colors['activityBarBadge.background'],
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Text(
+                count > 99 ? '99+' : '$count',
+                style: TextStyle(
+                  fontSize: 9,
+                  height: 1,
+                  fontWeight: FontWeight.w600,
+                  color: colors['activityBarBadge.foreground'],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A row of the table that is not a commit: what is being read, or that
+/// nothing matches, with a way out ([action]).
+class _Message extends StatelessWidget {
+  const _Message({
+    required this.text,
+    this.spinning = false,
+    this.action,
+    this.onAction,
+  });
+
+  final String text;
+  final bool spinning;
+  final String? action;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final description = IdeListColors.description;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (spinning) ...[const _Spinner(size: 14), const SizedBox(width: 6)],
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 12, color: description),
+          ),
+        ),
+        if (action case final action?) ...[
+          const SizedBox(width: 8),
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: onAction,
+              child: Text(
+                action,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: themeColors['textLink.foreground'],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// ✦: the agent works here.
+class _AgentMark extends StatelessWidget {
+  const _AgentMark();
+
+  @override
+  Widget build(BuildContext context) => IdeHover(
+    message: context.l10n.gitLogAgentHere,
+    child: Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Icon(
+        Codicons.sparkle,
+        size: 13,
+        color: themeColors['textLink.foreground'],
+      ),
+    ),
+  );
 }
 
 /// One of the files' List and Tree.
@@ -2424,8 +3097,7 @@ class _LoadMoreState extends State<_LoadMore> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      const Center(child: _Spinner(size: 14));
+  Widget build(BuildContext context) => const Center(child: _Spinner(size: 14));
 }
 
 /// The line between the table and the details, dragged to size them:

@@ -143,11 +143,37 @@ class _ChatBranchBarState extends State<ChatBranchBar> {
     }
   }
 
-  /// [git]'s branch, as the pill reads it.
-  String _branchLabel(IdeGitState state) {
-    final branch = state.head.branch ?? context.l10n.branchBarDetached;
-    return state.resources.isEmpty ? branch : '$branch*';
+  /// [git]'s branch, as the pill reads it: in a worktree of its
+  /// repository's other than its own, that worktree's name after it.
+  String _branchLabel(IdeGitRepository git, IdeGitState state) {
+    var branch = state.head.branch ?? context.l10n.branchBarDetached;
+    if (state.resources.isNotEmpty) branch = '$branch*';
+    return switch (_worktreeOf(git)) {
+      final worktree? =>
+        '$branch · ${git.service.pathContext.basename(worktree.path)}',
+      null => branch,
+    };
   }
+
+  /// The worktree [git] is, when it is not its repository's own (the agent
+  /// works there); null otherwise.
+  IdeGitWorktree? _worktreeOf(IdeGitRepository git) {
+    final worktree = ideWorktreeOf(
+      git.service.root,
+      git.worktrees,
+      git.service.pathContext,
+    );
+    return worktree == null || worktree.main ? null : worktree;
+  }
+
+  /// Which worktree [git] is, where it is not its repository's own.
+  String? _worktreeTooltip(IdeGitRepository git) => switch (_worktreeOf(git)) {
+    final worktree? => context.l10n.branchBarWorktree(
+      git.service.pathContext.basename(worktree.path),
+      worktree.path,
+    ),
+    null => null,
+  };
 
   /// [git]'s branches, the one it is on among them.
   List<String> _branchesOf(IdeGitRepository git) {
@@ -239,9 +265,12 @@ class _ChatBranchBarState extends State<ChatBranchBar> {
     }
     if (running) {
       return _Label(
-        icon: Codicons.gitBranch,
-        label: _branchLabel(state),
-        tooltip: l10n.branchBarRunning,
+        icon: _worktreeOf(git) == null ? Codicons.gitBranch : Codicons.worktree,
+        label: _branchLabel(git, state),
+        tooltip: [
+          l10n.branchBarRunning,
+          ?_worktreeTooltip(git),
+        ].join('\n\n'),
       );
     }
     final current = state.head.branch;
@@ -249,10 +278,15 @@ class _ChatBranchBarState extends State<ChatBranchBar> {
         KernelOption(branch, branch, Codicons.gitBranch, '');
     return ComposerPicker(
       options: [for (final branch in _branchesOf(git)) option(branch)],
-      selected: current == null
-          ? KernelOption('', l10n.branchBarDetached, Codicons.gitBranch, '')
-          : option(current),
-      label: _branchLabel(state),
+      // In another worktree, its mark.
+      selected: KernelOption(
+        current ?? '',
+        current ?? l10n.branchBarDetached,
+        _worktreeOf(git) == null ? Codicons.gitBranch : Codicons.worktree,
+        '',
+      ),
+      label: _branchLabel(git, state),
+      tooltip: _worktreeTooltip(git),
       describes: false,
       title: l10n.branchBarSwitch,
       searchPlaceholder: l10n.branchBarSearch,
@@ -285,7 +319,7 @@ class _ChatBranchBarState extends State<ChatBranchBar> {
             nameOf(folder),
             Codicons.folder,
             switch (git.state) {
-              final state? => _branchLabel(state),
+              final state? => _branchLabel(git, state),
               null => l10n.branchBarNotRepository,
             },
           ),

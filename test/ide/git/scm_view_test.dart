@@ -394,10 +394,10 @@ void main() {
     expect(workspace.active, isNull);
     // A step to the next change, and back to the log.
     expect(find.text('2 / 3'), findsOneWidget);
-    await tester.tap(find.byTooltip('Next File'));
+    await tester.tap(find.byTooltip(RegExp('^Next File')));
     await tester.pumpAndSettle();
     expect(find.text('3 / 3'), findsOneWidget);
-    await tester.tap(find.byTooltip('Back to Log'));
+    await tester.tap(find.byTooltip(RegExp('^Back to Log')));
     await tester.pumpAndSettle();
     expect(find.byType(IdeCodeDiff), findsNothing);
     expect(find.text('Local Changes (3)'), findsOneWidget);

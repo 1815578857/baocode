@@ -2965,5 +2965,21 @@
   "checkpointsClear": "清理",
   "checkpointsClearing": "正在清理…",
   "checkpointsClearConfirm": "清理检查点？",
-  "checkpointsClearDetail": "没有打开的对话里，智能体的改动将无法再撤销。项目里的文件本身不受影响。"
+  "checkpointsClearDetail": "没有打开的对话里，智能体的改动将无法再撤销。项目里的文件本身不受影响。",
+  "gitLogToday": "今天 {time}",
+  "gitLogYesterday": "昨天 {time}",
+  "gitLogCheckoutRevision": "签出此修订",
+  "gitLogNewBranch": "新建分支…",
+  "gitLogNewBranchAt": "在 {commit} 新建分支",
+  "gitLogCheckoutBranch": "签出“{branch}”",
+  "gitLogCopyHash": "复制完整哈希",
+  "gitLogLoading": "正在读取历史…",
+  "gitLogWorktree": "工作树",
+  "gitLogWorktreeOf": "工作树：{path}",
+  "gitLogFollowAgent": "跟随 AI 所在位置",
+  "gitLogAgentHere": "AI 正在这里工作",
+  "gitLogWorktreeAt": "已在工作树 {name} 中签出\n{path}",
+  "gitLogMainWorktree": "主工作树",
+  "gitLogWorktreeMissing": "已不存在",
+  "branchBarWorktree": "在工作树 {name} 中\n{path}"
 }

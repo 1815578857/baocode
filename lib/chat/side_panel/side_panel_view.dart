@@ -12,7 +12,8 @@ import '../../ide/file_service.dart';
 import '../../ide/git/git_model.dart';
 import '../../ide/git/commit_message.dart';
 import '../../ide/git/git_repository.dart';
-import '../../ide/git/ide_git_log_view.dart' show IdeGitLogView;
+import '../../ide/git/ide_git_log_view.dart'
+    show IdeGitLogView, IdeGitWorktreeChoice;
 import '../../ide/git/ide_scm_view.dart' show IdeScmView;
 import '../../ide/git/scm_host.dart';
 import '../../ide/ide_button.dart';
@@ -399,6 +400,7 @@ class AgentSidePanelView extends StatelessWidget {
     this.workspaceName,
     this.roots = const [],
     this.repositories = const [],
+    this.worktreesOf,
     this.onAddFolder,
     this.onRemoveFolder,
     this.titleBarInset = 0,
@@ -429,6 +431,10 @@ class AgentSidePanelView extends StatelessWidget {
   /// Control lists them): the changes page lists them to pick from, [git]
   /// then ignored.
   final List<(String root, IdeGitRepository git)> repositories;
+
+  /// For the repository shown: where the agent works, and how to show
+  /// another of its worktrees' changes (see [IdeGitWorktreeChoice]).
+  final IdeGitWorktreeChoice Function(IdeGitRepository git)? worktreesOf;
 
   /// Add Folder to Workspace..., and Remove Folder from Workspace, as the
   /// IDE's explorer has them.
@@ -718,6 +724,7 @@ class AgentSidePanelView extends StatelessWidget {
         overlayTabs: _fileTabs(context, tabs, tabs.diffs, active),
         onCloseOverlay: () => panel.showLog(session),
         onAddToChat: session.draft.insertFiles,
+        worktrees: worktreesOf?.call(git) ?? const IdeGitWorktreeChoice(),
         changes: IdeScmView(
           key: ValueKey(('scm', session.root)),
           host: host,

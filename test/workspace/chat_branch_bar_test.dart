@@ -61,6 +61,23 @@ Future<void> _pump(
 }
 
 void main() {
+  testWidgets("in another worktree: the branch, then the worktree's name, "
+      'its path on hover', (tester) async {
+    final fake = _git('/work/monad-wt', branch: 'feature')
+      ..worktrees =
+          'worktree /work/monad\nHEAD ${'a' * 40}\nbranch refs/heads/main\n\n'
+          'worktree /work/monad-wt\nHEAD ${'b' * 40}\n'
+          'branch refs/heads/feature\n';
+    final git = fake.repository();
+    addTearDown(git.dispose);
+    await _pump(tester, repositories: [('/work/monad', git)]);
+    expect(find.text('feature · monad-wt'), findsOneWidget);
+    expect(
+      find.byTooltip('In worktree monad-wt\n/work/monad-wt'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('shows the branch, and switches to one from its menu', (
     tester,
   ) async {

@@ -10931,4 +10931,66 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get checkpointsClearDetail =>
       'The changes agents made in conversations that are not open can no longer be undone. The files themselves stay as they are.';
+
+  @override
+  String gitLogToday(String time) {
+    return 'Today $time';
+  }
+
+  @override
+  String gitLogYesterday(String time) {
+    return 'Yesterday $time';
+  }
+
+  @override
+  String get gitLogCheckoutRevision => 'Checkout Revision';
+
+  @override
+  String get gitLogNewBranch => 'New Branch…';
+
+  @override
+  String gitLogNewBranchAt(String commit) {
+    return 'New branch at $commit';
+  }
+
+  @override
+  String gitLogCheckoutBranch(String branch) {
+    return 'Checkout \'$branch\'';
+  }
+
+  @override
+  String get gitLogCopyHash => 'Copy the full hash';
+
+  @override
+  String get gitLogLoading => 'Loading history…';
+
+  @override
+  String get gitLogWorktree => 'Worktree';
+
+  @override
+  String gitLogWorktreeOf(String path) {
+    return 'Worktree: $path';
+  }
+
+  @override
+  String get gitLogFollowAgent => 'Follow the Agent';
+
+  @override
+  String get gitLogAgentHere => 'The agent works here';
+
+  @override
+  String gitLogWorktreeAt(String name, String path) {
+    return 'Checked out in worktree $name\n$path';
+  }
+
+  @override
+  String get gitLogMainWorktree => 'main worktree';
+
+  @override
+  String get gitLogWorktreeMissing => 'missing';
+
+  @override
+  String branchBarWorktree(String name, String path) {
+    return 'In worktree $name\n$path';
+  }
 }

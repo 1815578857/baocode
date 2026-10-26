@@ -108,6 +108,7 @@ class IdeGitRepository extends ChangeNotifier {
       }
       _loaded = true;
       _graphStale = true;
+      _worktreesStale = true;
       _notify();
     });
     if (!force) _pendingRefresh = run;
@@ -482,6 +483,44 @@ class IdeGitRepository extends ChangeNotifier {
       _error = error;
     }
     _notify();
+  }
+
+  /// The repository's working trees, its own first; read as they are
+  /// asked for, again after each status read (one may have been added or
+  /// removed meanwhile). Empty until read, or where Git cannot tell.
+  List<IdeGitWorktree> get worktrees {
+    if (_worktreesStale && _worktreesLoad == null && isRepository) {
+      _worktreesStale = false;
+      _worktreesLoad = _loadWorktrees().whenComplete(
+        () => _worktreesLoad = null,
+      );
+    }
+    return _worktrees;
+  }
+
+  List<IdeGitWorktree> _worktrees = const [];
+  bool _worktreesStale = true;
+  Future<void>? _worktreesLoad;
+
+  Future<void> _loadWorktrees() async {
+    List<IdeGitWorktree> worktrees;
+    try {
+      worktrees = await service.worktrees();
+    } catch (_) {
+      worktrees = const [];
+    }
+    if (_disposed || listEquals(worktrees, _worktrees)) return;
+    _worktrees = worktrees;
+    _notify();
+  }
+
+  /// Reads the worktrees again now (one was just made where the agent
+  /// works).
+  Future<void> reloadWorktrees() {
+    _worktreesStale = false;
+    return _worktreesLoad ??= _loadWorktrees().whenComplete(
+      () => _worktreesLoad = null,
+    );
   }
 
   /// [path]'s commits, newest first (the timeline).

@@ -1694,20 +1694,25 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     ];
     final l10n = context.l10n;
     final files = widget.workspace.files;
-    _scm.log.showDiff([
-      for (final change in resources)
-        ideLocalDiffFile(
-          git,
-          state,
-          change,
-          files.read,
-          l10n,
-          onOpenInEditor: () {
-            _leaveGitLog();
-            unawaited(_openChange(change, focusEditor: true));
-          },
-        ),
-    ], resources.indexOf(resource));
+    _scm.log.showDiff(
+      [
+        for (final change in resources)
+          ideLocalDiffFile(
+            git,
+            state,
+            change,
+            files.read,
+            l10n,
+            onOpenInEditor: () {
+              _leaveGitLog();
+              unawaited(_openChange(change, focusEditor: true));
+            },
+          ),
+        // The keys go on walking the changes.
+      ],
+      resources.indexOf(resource),
+      focus: false,
+    );
   }
 
   /// Opens [resource]'s change as the Git extension does (see

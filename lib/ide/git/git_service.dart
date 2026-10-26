@@ -578,6 +578,17 @@ class IdeGitService {
     return parseGitLog(output.stdout);
   }
 
+  /// The repository's working trees, its own first (`git worktree list
+  /// --porcelain`).
+  Future<List<IdeGitWorktree>> worktrees() async {
+    await _requireRoot();
+    final output = _check(
+      await _git(['worktree', 'list', '--porcelain']),
+      'Cannot read the worktrees.',
+    );
+    return parseGitWorktrees(output.stdout, normalize: pathContext.normalize);
+  }
+
   /// The branches, local and remote, that have [commit]
   /// (`git branch -a --contains`).
   Future<List<String>> branchesContaining(String commit) async {

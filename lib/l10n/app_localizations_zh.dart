@@ -10341,4 +10341,66 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get checkpointsClearDetail => '没有打开的对话里，智能体的改动将无法再撤销。项目里的文件本身不受影响。';
+
+  @override
+  String gitLogToday(String time) {
+    return '今天 $time';
+  }
+
+  @override
+  String gitLogYesterday(String time) {
+    return '昨天 $time';
+  }
+
+  @override
+  String get gitLogCheckoutRevision => '签出此修订';
+
+  @override
+  String get gitLogNewBranch => '新建分支…';
+
+  @override
+  String gitLogNewBranchAt(String commit) {
+    return '在 $commit 新建分支';
+  }
+
+  @override
+  String gitLogCheckoutBranch(String branch) {
+    return '签出“$branch”';
+  }
+
+  @override
+  String get gitLogCopyHash => '复制完整哈希';
+
+  @override
+  String get gitLogLoading => '正在读取历史…';
+
+  @override
+  String get gitLogWorktree => '工作树';
+
+  @override
+  String gitLogWorktreeOf(String path) {
+    return '工作树：$path';
+  }
+
+  @override
+  String get gitLogFollowAgent => '跟随 AI 所在位置';
+
+  @override
+  String get gitLogAgentHere => 'AI 正在这里工作';
+
+  @override
+  String gitLogWorktreeAt(String name, String path) {
+    return '已在工作树 $name 中签出\n$path';
+  }
+
+  @override
+  String get gitLogMainWorktree => '主工作树';
+
+  @override
+  String get gitLogWorktreeMissing => '已不存在';
+
+  @override
+  String branchBarWorktree(String name, String path) {
+    return '在工作树 $name 中\n$path';
+  }
 }

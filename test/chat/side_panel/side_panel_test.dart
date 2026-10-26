@@ -29,6 +29,7 @@ import 'package:baocode/chat/widgets/tool_call_row.dart';
 import 'package:baocode/ide/file_service.dart';
 import 'package:baocode/ide/git/commit_message.dart';
 import 'package:baocode/ide/git/git_repository.dart';
+import 'package:baocode/ide/git/ide_git_log_view.dart';
 import 'package:baocode/ide/git/ide_scm_view.dart';
 import 'package:baocode/ide/ide_code_diff.dart';
 import 'package:baocode/ide/ide_code_editor.dart';
@@ -133,6 +134,7 @@ Future<({AgentSidePanel panel, ChatSession session, _Files files})> _pumpChat(
   TerminalService? terminals,
   IdeGitRepository? git,
   IdeCommitMessageModel? commitMessage,
+  IdeGitWorktreeChoice Function(IdeGitRepository git)? worktreesOf,
   double titleBarInset = 0,
   Widget? leading,
 }) async {
@@ -159,6 +161,7 @@ Future<({AgentSidePanel panel, ChatSession session, _Files files})> _pumpChat(
           terminals: terminals,
           git: git,
           commitMessage: commitMessage,
+          worktreesOf: worktreesOf,
           titleBarInset: titleBarInset,
           leading: leading,
         ),
@@ -1293,6 +1296,52 @@ void main() {
     expect(panel.tabsOf(session).diffs, hasLength(1));
     // In the table, and as the message of the commit still selected.
     expect(find.text('Second'), findsNWidgets(2));
+  });
+
+  testWidgets('in a worktree where the agent works: its name, its branch '
+      'marked, the others to pick from', (tester) async {
+    final fake = FakeGit('/p-wt')
+      ..status = '## feature\x00 M lib/main.dart\x00'
+      ..worktrees =
+          'worktree /p\nHEAD ${'1' * 40}\nbranch refs/heads/main\n\n'
+          'worktree /p-wt\nHEAD ${'2' * 40}\nbranch refs/heads/feature\n'
+      ..log =
+          '${gitLogRecord('c2', ['c1'], 'Second', refs: 'HEAD -> refs/heads/feature')}\n'
+          '${gitLogRecord('c1', [], 'First', refs: 'refs/heads/main')}';
+    fake.refs['HEAD'] = 'c2';
+    final git = fake.repository();
+    addTearDown(git.dispose);
+    final picked = <String?>[];
+    final (:panel, :session, files: _) = await _pumpChat(
+      tester,
+      git: git,
+      texts: {'/p-wt/lib/main.dart': 'main\n'},
+      worktreesOf: (_) => IdeGitWorktreeChoice(
+        agentPath: '/p-wt/lib/main.dart',
+        onSelect: picked.add,
+      ),
+    );
+    panel.showSection(session, SidePanelSection.changes);
+    await tester.pumpAndSettle();
+    // Which worktree's changes, the agent's.
+    expect(
+      find.textContaining('p-wt · feature', findRichText: true),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('The agent works here'), findsWidgets);
+    // main is checked out in the other.
+    expect(
+      find.byTooltip('Checked out in worktree p\n/p'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('p-wt'));
+    await tester.pumpAndSettle();
+    expect(find.text('Follow the Agent'), findsOneWidget);
+    expect(find.text('p-wt  ✦ AI'), findsOneWidget);
+    await tester.tap(find.text('p  (main worktree)'));
+    await tester.pumpAndSettle();
+    expect(picked, ['/p']);
   });
 
   testWidgets('the changes page is the Source Control view: a message '
