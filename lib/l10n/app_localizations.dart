@@ -18110,6 +18110,168 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'From now on, work in {path} (branch {branch}): read and edit the files and run the commands there.'**
   String branchBarWorkIn(String path, String branch);
+
+  /// No description provided for @diffRevertChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Revert'**
+  String get diffRevertChange;
+
+  /// No description provided for @diffRemoveChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get diffRemoveChange;
+
+  /// No description provided for @diffPreviousDifference.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous Difference'**
+  String get diffPreviousDifference;
+
+  /// No description provided for @diffNextDifference.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Difference'**
+  String get diffNextDifference;
+
+  /// No description provided for @diffDifferenceOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} of {count}'**
+  String diffDifferenceOf(int current, int count);
+
+  /// No description provided for @diffDifferences.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No differences} =1{1 difference} other{{count} differences}}'**
+  String diffDifferences(int count);
+
+  /// No description provided for @diffSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewer Settings'**
+  String get diffSettings;
+
+  /// No description provided for @diffLayoutAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Side by Side When Wide Enough'**
+  String get diffLayoutAuto;
+
+  /// No description provided for @diffSideBySide.
+  ///
+  /// In en, this message translates to:
+  /// **'Side-by-Side Viewer'**
+  String get diffSideBySide;
+
+  /// No description provided for @diffUnified.
+  ///
+  /// In en, this message translates to:
+  /// **'Unified Viewer'**
+  String get diffUnified;
+
+  /// No description provided for @diffIgnoreWhitespace.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore Whitespace at Line Ends'**
+  String get diffIgnoreWhitespace;
+
+  /// No description provided for @diffHighlightCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight Characters'**
+  String get diffHighlightCharacters;
+
+  /// No description provided for @diffHighlightWords.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight Words'**
+  String get diffHighlightWords;
+
+  /// No description provided for @diffHighlightLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight Lines'**
+  String get diffHighlightLines;
+
+  /// No description provided for @diffHighlightNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Do Not Highlight'**
+  String get diffHighlightNone;
+
+  /// No description provided for @diffGoToFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Changed File'**
+  String get diffGoToFile;
+
+  /// No description provided for @lineChangePrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous Change'**
+  String get lineChangePrevious;
+
+  /// No description provided for @lineChangeNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Change'**
+  String get lineChangeNext;
+
+  /// No description provided for @lineChangeRollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Rollback'**
+  String get lineChangeRollback;
+
+  /// No description provided for @lineChangeShowDiff.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Diff'**
+  String get lineChangeShowDiff;
+
+  /// No description provided for @lineChangeCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Original Lines'**
+  String get lineChangeCopy;
+
+  /// No description provided for @cmdNextChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Next Change'**
+  String get cmdNextChange;
+
+  /// No description provided for @cmdPreviousChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Previous Change'**
+  String get cmdPreviousChange;
+
+  /// No description provided for @cmdShowNextChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Next Change'**
+  String get cmdShowNextChange;
+
+  /// No description provided for @cmdShowPreviousChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Previous Change'**
+  String get cmdShowPreviousChange;
+
+  /// No description provided for @gitAnnotate.
+  ///
+  /// In en, this message translates to:
+  /// **'Annotate with Git Blame'**
+  String get gitAnnotate;
+
+  /// No description provided for @gitCloseAnnotations.
+  ///
+  /// In en, this message translates to:
+  /// **'Close Annotations'**
+  String get gitCloseAnnotations;
 }
 
 class _AppLocalizationsDelegate

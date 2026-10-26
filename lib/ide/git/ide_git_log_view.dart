@@ -15,6 +15,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
+import 'package:bao_editor/monaco/flutter/diff_editor_model.dart'
+    show DiffHighlight;
 
 import '../../base/smooth_scroll.dart';
 import '../../chat/composer/composer_files.dart';
@@ -25,6 +27,7 @@ import '../../theme/material_file_icons.dart';
 import '../../theme/workbench_theme.dart';
 import '../ide_button.dart';
 import '../ide_code_diff.dart';
+import '../ide_diff_options.dart';
 import '../ide_dialog.dart';
 import '../ide_hover.dart';
 import '../ide_input.dart';
@@ -62,6 +65,7 @@ class IdeGitDiffFile {
     this.modifiedLabel = '',
     this.commitId,
     this.onOpenInEditor,
+    this.write,
   });
 
   final String path;
@@ -76,16 +80,27 @@ class IdeGitDiffFile {
 
   /// Opens it in the editor, where it can be edited; not offered when null.
   final VoidCallback? onOpenInEditor;
+
+  /// Writes its modified side, the file, once edited in the diff; read
+  /// only when null.
+  final Future<void> Function(String text)? write;
 }
 
 /// The files a diff steps through, [index] the one shown; [focus]: it
-/// takes the keyboard (not from a list the keys still walk).
+/// takes the keyboard (not from a list the keys still walk); [start]:
+/// where in the file it opens (its last change, stepped back into).
 class IdeGitLogDiff {
-  IdeGitLogDiff(this.files, this.index, {this.focus = true});
+  IdeGitLogDiff(
+    this.files,
+    this.index, {
+    this.focus = true,
+    this.start = IdeDiffStart.first,
+  });
 
   final List<IdeGitDiffFile> files;
   final int index;
   final bool focus;
+  final IdeDiffStart start;
 
   IdeGitDiffFile get file => files[index];
 }
@@ -134,6 +149,28 @@ class IdeGitLogController extends ChangeNotifier {
   IdeGitLogDiff? _diff;
   IdeGitLogDiff? get diff => _diff;
 
+  /// The row [reveal] asked to be scrolled to, until the log takes it.
+  String? _reveal;
+
+  /// Selects [id]'s row and has the log scroll to it, where it is loaded
+  /// (a commit pressed in an editor's annotations).
+  void reveal(String id) {
+    _reveal = id;
+    _diff = null;
+    if (id == _selected) {
+      notifyListeners();
+    } else {
+      selected = id;
+    }
+  }
+
+  /// [reveal]'s row, once.
+  String? takeReveal() {
+    final id = _reveal;
+    _reveal = null;
+    return id;
+  }
+
   /// Shows [files]' [index]th in the table's place; with [focus], it takes
   /// the keyboard.
   void showDiff(List<IdeGitDiffFile> files, int index, {bool focus = true}) {
@@ -147,12 +184,17 @@ class IdeGitLogController extends ChangeNotifier {
   }
 
   /// The next file's changes ([delta] 1), or the previous one's (-1).
-  void stepDiff(int delta) {
+  /// The file [delta] on; [start], where in it (F7 past a file's last
+  /// change: the next's first; Shift+F7 past its first: the previous's
+  /// last).
+  void stepDiff(int delta, {IdeDiffStart start = IdeDiffStart.first}) =>
+      showDiffAt((_diff?.index ?? 0) + delta, start: start);
+
+  /// The file at [index] of those the diff steps through.
+  void showDiffAt(int index, {IdeDiffStart start = IdeDiffStart.first}) {
     final diff = _diff;
-    if (diff == null) return;
-    final index = diff.index + delta;
-    if (index < 0 || index >= diff.files.length) return;
-    _diff = IdeGitLogDiff(diff.files, index, focus: diff.focus);
+    if (diff == null || index < 0 || index >= diff.files.length) return;
+    _diff = IdeGitLogDiff(diff.files, index, focus: diff.focus, start: start);
     notifyListeners();
   }
 
@@ -301,6 +343,8 @@ IdeGitDiffFile ideLocalDiffFile(
   Future<String> Function(String path) read,
   AppLocalizations l10n, {
   VoidCallback? onOpenInEditor,
+  Future<void> Function(String path, String text, {String? expectedText})?
+  write,
 }) {
   final editor = IdeGitChangeEditor.of(
     resource,
@@ -321,14 +365,35 @@ IdeGitDiffFile ideLocalDiffFile(
     '' => l10n.gitChangeIndex,
     final ref => ref,
   };
+  // The file's text as last read or written: what a write expects to find,
+  // so as not to write over what changed it meanwhile.
+  String? known;
+  var writing = Future<void>.value();
+  final right = editor.right;
   return IdeGitDiffFile(
     path: resource.path,
     status: resource.status,
     original: side(editor.left),
-    modified: side(editor.right),
+    modified: right != null && right.isFile
+        ? () async => known = await side(right)()
+        : side(right),
     originalLabel: label(editor.left),
     modifiedLabel: label(editor.right),
     onOpenInEditor: onOpenInEditor,
+    // The file itself on the right: edited in the diff, as in the editor.
+    write: switch ((right, write)) {
+      // One after another: each expects what the one before wrote.
+      (IdeGitSide(isFile: true, :final path), final write?) =>
+        (text) => writing = writing.then((_) async {
+          try {
+            await write(path, text, expectedText: known);
+            known = text;
+          } on Object {
+            // Told by [write]; the next expects what was there.
+          }
+        }),
+      _ => null,
+    },
   );
 }
 
@@ -474,11 +539,18 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                 _log,
                 for (final (_, repo) in widget.host.repositories) repo,
               ]),
-              builder: (context, _) => git.state == null
-                  // Not a repository (yet): Source Control's welcome, but
-                  // for a change opened.
-                  ? _overlay() ?? widget.changes
-                  : _page(git, git.state!),
+              builder: (context, _) {
+                if (_log.takeReveal() case final id?) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) _select(id, reveal: true);
+                  });
+                }
+                return git.state == null
+                    // Not a repository (yet): Source Control's welcome, but
+                    // for a change opened.
+                    ? _overlay() ?? widget.changes
+                    : _page(git, git.state!);
+              },
             ),
     );
   }
@@ -1264,6 +1336,7 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
         paths: git.service.pathContext,
         border: _border,
         onStep: _log.stepDiff,
+        onShow: _log.showDiffAt,
         onClose: () {
           final focused = diff.focus;
           _log.closeDiff();
@@ -2494,6 +2567,7 @@ class _DiffArea extends StatefulWidget {
     required this.paths,
     required this.border,
     required this.onStep,
+    required this.onShow,
     required this.onClose,
   });
 
@@ -2501,7 +2575,8 @@ class _DiffArea extends StatefulWidget {
   final String root;
   final p.Context paths;
   final Color border;
-  final ValueChanged<int> onStep;
+  final void Function(int delta, {IdeDiffStart start}) onStep;
+  final ValueChanged<int> onShow;
   final VoidCallback onClose;
 
   @override
@@ -2514,6 +2589,22 @@ String get _alt => defaultTargetPlatform == TargetPlatform.macOS ? '⌥' : 'Alt+
 class _DiffAreaState extends State<_DiffArea> {
   final FocusNode _focus = FocusNode(debugLabel: 'git log diff');
 
+  /// The diff shown, for its changes to be stepped through.
+  final GlobalKey<IdeCodeDiffState> _code = GlobalKey();
+
+  /// The next change (F7), or, past the file's last, the next file's
+  /// first; [delta] -1: the previous, or the previous file's last.
+  void _stepChange(int delta) {
+    if (_code.currentState?.step(delta) ?? false) return;
+    final diff = widget.diff;
+    final index = diff.index + delta;
+    if (index < 0 || index >= diff.files.length) return;
+    widget.onStep(
+      delta,
+      start: delta < 0 ? IdeDiffStart.last : IdeDiffStart.first,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -2523,10 +2614,85 @@ class _DiffAreaState extends State<_DiffArea> {
     });
   }
 
+  /// The change stepped to in the file shown, and how many it has.
+  final ValueNotifier<({int current, int count})> _position = ValueNotifier((
+    current: -1,
+    count: 0,
+  ));
+
+  @override
+  void didUpdateWidget(_DiffArea oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.diff.file != widget.diff.file) {
+      _position.value = (current: -1, count: 0);
+      // The keys still the diff's, its editor gone with the file.
+      if (_focus.hasFocus) _focus.requestFocus();
+    }
+  }
+
   @override
   void dispose() {
     _focus.dispose();
+    _position.dispose();
     super.dispose();
+  }
+
+  /// Go to Changed File: the files stepped through, the one shown checked.
+  Future<void> _goToFile(BuildContext anchor) async {
+    final box = anchor.findRenderObject();
+    if (box is! RenderBox) return;
+    final diff = widget.diff;
+    final paths = widget.paths;
+    await showIdeMenu(
+      context,
+      anchor: box.localToGlobal(Offset.zero) & box.size,
+      entries: [
+        for (final (index, file) in diff.files.indexed)
+          IdeMenuAction(
+            paths.relative(file.path, from: widget.root),
+            icon: FileIcon(file.path),
+            checked: index == diff.index,
+            onSelected: () => widget.onShow(index),
+          ),
+      ],
+    );
+  }
+
+  /// Viewer Settings: side by side or unified, whitespace, highlighting.
+  List<IdeMenuEntry> _settings() {
+    final l10n = context.l10n;
+    final options = IdeDiffOptions.instance;
+    IdeMenuAction layout(String label, IdeDiffLayout value) => IdeMenuAction(
+      label,
+      checked: options.layout == value,
+      onSelected: () => options.layout = value,
+    );
+    IdeMenuAction highlight(String label, DiffHighlight value) => IdeMenuAction(
+      label,
+      checked: options.highlight == value,
+      onSelected: () => options.highlight = value,
+    );
+    return ideMenuGroups([
+      [
+        layout(l10n.diffLayoutAuto, IdeDiffLayout.auto),
+        layout(l10n.diffSideBySide, IdeDiffLayout.sideBySide),
+        layout(l10n.diffUnified, IdeDiffLayout.unified),
+      ],
+      [
+        IdeMenuAction(
+          l10n.diffIgnoreWhitespace,
+          checked: options.ignoreTrimWhitespace,
+          onSelected: () =>
+              options.ignoreTrimWhitespace = !options.ignoreTrimWhitespace,
+        ),
+      ],
+      [
+        highlight(l10n.diffHighlightWords, DiffHighlight.words),
+        highlight(l10n.diffHighlightCharacters, DiffHighlight.characters),
+        highlight(l10n.diffHighlightLines, DiffHighlight.lines),
+        highlight(l10n.diffHighlightNone, DiffHighlight.none),
+      ],
+    ]);
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
@@ -2539,10 +2705,13 @@ class _DiffAreaState extends State<_DiffArea> {
       widget.onClose();
       return KeyEventResult.handled;
     }
+    if (key == LogicalKeyboardKey.f7) {
+      _stepChange(hardware.isShiftPressed ? -1 : 1);
+      return KeyEventResult.handled;
+    }
     final int? step = switch (key) {
       LogicalKeyboardKey.arrowUp when hardware.isAltPressed => -1,
       LogicalKeyboardKey.arrowDown when hardware.isAltPressed => 1,
-      LogicalKeyboardKey.f7 => hardware.isShiftPressed ? -1 : 1,
       _ => null,
     };
     if (step == null) return KeyEventResult.ignored;
@@ -2574,82 +2743,157 @@ class _DiffAreaState extends State<_DiffArea> {
             decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: border)),
             ),
-            child: Row(
-              children: [
-                FileIcon(file.path),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text.rich(
-                    TextSpan(
-                      children: [
-                        if (directory != '.')
-                          TextSpan(
-                            text: '$directory${paths.separator}',
-                            style: TextStyle(color: description),
-                          ),
-                        TextSpan(
-                          text: paths.basename(file.path),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: IdeListColors.foreground,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Narrow: the counts and the sides' labels go first.
+                final wide = constraints.maxWidth >= 620;
+                return Row(
+                  children: [
+                    // Go to Changed File, from its name.
+                    Flexible(
+                      child: Builder(
+                        builder: (anchor) => _Pressable(
+                          enabled: diff.files.length > 1,
+                          tooltip: l10n.diffGoToFile,
+                          onTap: () => unawaited(_goToFile(anchor)),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              FileIcon(file.path),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      if (directory != '.')
+                                        TextSpan(
+                                          text: '$directory${paths.separator}',
+                                          style: TextStyle(color: description),
+                                        ),
+                                      TextSpan(
+                                        text: paths.basename(file.path),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: IdeListColors.foreground,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ),
+                              if (diff.files.length > 1) ...[
+                                const SizedBox(width: 2),
+                                Icon(
+                                  Codicons.chevronDown,
+                                  size: 14,
+                                  color: description,
+                                ),
+                              ],
+                            ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                ),
-                if (file.originalLabel.isNotEmpty ||
-                    file.modifiedLabel.isNotEmpty) ...[
-                  const SizedBox(width: 10),
-                  Text(
-                    [
-                      if (file.originalLabel.isNotEmpty) file.originalLabel,
-                      if (file.modifiedLabel.isNotEmpty) file.modifiedLabel,
-                    ].join('  ↔  '),
-                    maxLines: 1,
-                    style: TextStyle(fontSize: 12, color: description),
-                  ),
-                ],
-                const Spacer(),
-                if (diff.files.length > 1)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Text(
-                      '${diff.index + 1} / ${diff.files.length}',
-                      style: TextStyle(fontSize: 12, color: description),
+                    if (wide &&
+                        (file.originalLabel.isNotEmpty ||
+                            file.modifiedLabel.isNotEmpty)) ...[
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(
+                          [
+                            if (file.originalLabel.isNotEmpty)
+                              file.originalLabel,
+                            if (file.modifiedLabel.isNotEmpty)
+                              file.modifiedLabel,
+                          ].join('  ↔  '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, color: description),
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
+                    // The differences: which, of how many; F7 and Shift+F7.
+                    if (wide)
+                      ValueListenableBuilder(
+                        valueListenable: _position,
+                        builder: (context, position, _) => Padding(
+                          padding: const EdgeInsets.only(right: 2),
+                          child: Text(
+                            position.current < 0 || position.count == 0
+                                ? l10n.diffDifferences(position.count)
+                                : l10n.diffDifferenceOf(
+                                    position.current + 1,
+                                    position.count,
+                                  ),
+                            style: TextStyle(fontSize: 12, color: description),
+                          ),
+                        ),
+                      ),
+                    IdeActionButton(
+                      icon: Codicons.arrowUp,
+                      tooltip: '${l10n.diffPreviousDifference} (⇧F7)',
+                      onPressed: () => _stepChange(-1),
                     ),
-                  ),
-                if (file.onOpenInEditor case final open?)
-                  IdeActionButton(
-                    icon: Codicons.goToFile,
-                    tooltip: l10n.gitLogOpenInEditor,
-                    onPressed: open,
-                  ),
-                IdeActionButton(
-                  icon: Codicons.arrowUp,
-                  tooltip: '${l10n.gitLogPreviousFile} ($_alt↑)',
-                  onPressed: diff.index > 0 ? () => onStep(-1) : null,
-                ),
-                IdeActionButton(
-                  icon: Codicons.arrowDown,
-                  tooltip: '${l10n.gitLogNextFile} ($_alt↓)',
-                  onPressed: diff.index < diff.files.length - 1
-                      ? () => onStep(1)
-                      : null,
-                ),
-                IdeActionButton(
-                  icon: Codicons.close,
-                  tooltip: '${l10n.gitLogBackToLog} (Esc)',
-                  onPressed: onClose,
-                ),
-              ],
+                    IdeActionButton(
+                      icon: Codicons.arrowDown,
+                      tooltip: '${l10n.diffNextDifference} (F7)',
+                      onPressed: () => _stepChange(1),
+                    ),
+                    _ToolbarSeparator(color: border),
+                    if (diff.files.length > 1)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 2),
+                        child: Text(
+                          '${diff.index + 1} / ${diff.files.length}',
+                          style: TextStyle(fontSize: 12, color: description),
+                        ),
+                      ),
+                    IdeActionButton(
+                      icon: Codicons.arrowLeft,
+                      tooltip: '${l10n.gitLogPreviousFile} ($_alt↑)',
+                      onPressed: diff.index > 0 ? () => onStep(-1) : null,
+                    ),
+                    IdeActionButton(
+                      icon: Codicons.arrowRight,
+                      tooltip: '${l10n.gitLogNextFile} ($_alt↓)',
+                      onPressed: diff.index < diff.files.length - 1
+                          ? () => onStep(1)
+                          : null,
+                    ),
+                    _ToolbarSeparator(color: border),
+                    IdeMenuButton(
+                      icon: Codicons.settingsGear,
+                      tooltip: l10n.diffSettings,
+                      entries: _settings,
+                    ),
+                    if (file.onOpenInEditor case final open?)
+                      IdeActionButton(
+                        icon: Codicons.goToFile,
+                        tooltip: l10n.gitLogOpenInEditor,
+                        onPressed: open,
+                      ),
+                    IdeActionButton(
+                      icon: Codicons.close,
+                      tooltip: '${l10n.gitLogBackToLog} (Esc)',
+                      onPressed: onClose,
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           Expanded(
-            child: _DiffBody(key: ValueKey(file), file: file),
+            child: _DiffBody(
+              key: ValueKey(file),
+              file: file,
+              start: diff.start,
+              code: _code,
+              position: _position,
+            ),
           ),
         ],
       ),
@@ -2659,9 +2903,18 @@ class _DiffAreaState extends State<_DiffArea> {
 
 /// Reads a file's two sides, then compares them.
 class _DiffBody extends StatefulWidget {
-  const _DiffBody({super.key, required this.file});
+  const _DiffBody({
+    super.key,
+    required this.file,
+    required this.start,
+    required this.code,
+    required this.position,
+  });
 
   final IdeGitDiffFile file;
+  final IdeDiffStart start;
+  final GlobalKey<IdeCodeDiffState> code;
+  final ValueNotifier<({int current, int count})> position;
 
   @override
   State<_DiffBody> createState() => _DiffBodyState();
@@ -2686,12 +2939,78 @@ class _DiffBodyState extends State<_DiffBody> {
         return const Center(child: _Spinner(size: 16));
       }
       return IdeCodeDiff(
+        key: widget.code,
         path: widget.file.path,
         original: data.$1,
         modified: data.$2,
+        start: widget.start,
+        onEdit: widget.file.write,
+        position: widget.position,
       );
     },
   );
+}
+
+/// A thin line between groups of a toolbar's buttons.
+class _ToolbarSeparator extends StatelessWidget {
+  const _ToolbarSeparator({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 1,
+    height: 16,
+    margin: const EdgeInsets.symmetric(horizontal: 4),
+    color: color,
+  );
+}
+
+/// [child], pressed as a button (hovered, with [tooltip]) while [enabled].
+class _Pressable extends StatefulWidget {
+  const _Pressable({
+    required this.enabled,
+    required this.tooltip,
+    required this.onTap,
+    required this.child,
+  });
+
+  final bool enabled;
+  final String tooltip;
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  State<_Pressable> createState() => _PressableState();
+}
+
+class _PressableState extends State<_Pressable> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.enabled) return widget.child;
+    return IdeHover(
+      message: widget.tooltip,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+            decoration: BoxDecoration(
+              color: _hover ? themeColors['toolbar.hoverBackground'] : null,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: widget.child,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// What is being read: the loading codicon, turning.

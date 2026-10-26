@@ -11,6 +11,7 @@ import '../../ide/ide_code_editor.dart' show IdeCodeHighlights;
 import '../../ide/ide_explorer.dart';
 import '../../ide/search/ide_search_view.dart';
 import '../../ide/search/text_search.dart';
+import '../../ide/ide_diff_options.dart';
 import '../../settings/user_settings.dart';
 import 'file_edit.dart';
 import 'file_open.dart';
@@ -116,6 +117,7 @@ class SidePanelTabs {
 /// tabs open are each conversation's own.
 class AgentSidePanel extends ChangeNotifier {
   AgentSidePanel({Map<String, Object?>? state, this.onSave, this.settings}) {
+    IdeDiffOptions.instance.attach(settings);
     _read(state);
   }
 

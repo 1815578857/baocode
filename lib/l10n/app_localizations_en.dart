@@ -11091,4 +11091,96 @@ class AppLocalizationsEn extends AppLocalizations {
   String branchBarWorkIn(String path, String branch) {
     return 'From now on, work in $path (branch $branch): read and edit the files and run the commands there.';
   }
+
+  @override
+  String get diffRevertChange => 'Revert';
+
+  @override
+  String get diffRemoveChange => 'Remove';
+
+  @override
+  String get diffPreviousDifference => 'Previous Difference';
+
+  @override
+  String get diffNextDifference => 'Next Difference';
+
+  @override
+  String diffDifferenceOf(int current, int count) {
+    return '$current of $count';
+  }
+
+  @override
+  String diffDifferences(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count differences',
+      one: '1 difference',
+      zero: 'No differences',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get diffSettings => 'Viewer Settings';
+
+  @override
+  String get diffLayoutAuto => 'Side by Side When Wide Enough';
+
+  @override
+  String get diffSideBySide => 'Side-by-Side Viewer';
+
+  @override
+  String get diffUnified => 'Unified Viewer';
+
+  @override
+  String get diffIgnoreWhitespace => 'Ignore Whitespace at Line Ends';
+
+  @override
+  String get diffHighlightCharacters => 'Highlight Characters';
+
+  @override
+  String get diffHighlightWords => 'Highlight Words';
+
+  @override
+  String get diffHighlightLines => 'Highlight Lines';
+
+  @override
+  String get diffHighlightNone => 'Do Not Highlight';
+
+  @override
+  String get diffGoToFile => 'Go to Changed File';
+
+  @override
+  String get lineChangePrevious => 'Previous Change';
+
+  @override
+  String get lineChangeNext => 'Next Change';
+
+  @override
+  String get lineChangeRollback => 'Rollback';
+
+  @override
+  String get lineChangeShowDiff => 'Show Diff';
+
+  @override
+  String get lineChangeCopy => 'Copy Original Lines';
+
+  @override
+  String get cmdNextChange => 'Go to Next Change';
+
+  @override
+  String get cmdPreviousChange => 'Go to Previous Change';
+
+  @override
+  String get cmdShowNextChange => 'Show Next Change';
+
+  @override
+  String get cmdShowPreviousChange => 'Show Previous Change';
+
+  @override
+  String get gitAnnotate => 'Annotate with Git Blame';
+
+  @override
+  String get gitCloseAnnotations => 'Close Annotations';
 }

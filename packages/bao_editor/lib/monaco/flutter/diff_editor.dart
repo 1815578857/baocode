@@ -10,10 +10,13 @@
 // diffEditorViewZones.ts and renderLines.ts (the zones and the inline view's
 // deleted code), features/overviewRulerFeature.ts and style.css.
 //
-// Deviations: no gutter menu (stage, revert), revert arrows, lightbulb on
-// deleted code, accessible diff viewer, moved code or hidden unchanged
-// regions; deleted code is not selectable, and draws tabs as the text
-// engine shapes them.
+// Deviations: no gutter menu (stage, revert), lightbulb on deleted code,
+// accessible diff viewer, moved code or hidden unchanged regions; deleted
+// code is not selectable, and draws tabs as the text engine shapes them.
+// Revert arrows and the like are the embedder's, laid over the editors
+// ([DiffEditor.overlay]); side by side or inline can be forced
+// ([DiffEditor.sideBySide]), and the inner changes highlighted by word,
+// by line or not at all ([DiffEditor.highlight]).
 
 import 'dart:math' as math;
 
@@ -47,6 +50,16 @@ class DiffEditorSide {
   final bool sideBySide;
 }
 
+/// Where a diff editor's parts are, for what is laid over them
+/// ([DiffEditor.overlay]): whether side by side, the split's (or, inline,
+/// the modified editor's left) x, and the width of the editors.
+typedef DiffEditorLayout = ({
+  bool sideBySide,
+  double splitLeft,
+  double modifiedLeft,
+  double contentWidth,
+});
+
 /// Two editors, [original] and [modified], built for what the diff of
 /// [model] gives each ([DiffEditorSide]): side by side with a sash between
 /// them, or, no wider than [inlineBreakpoint], the modified with the
@@ -65,7 +78,21 @@ class DiffEditor extends StatefulWidget {
     this.originalStyledLines,
     this.border,
     this.sashHover,
+    this.sideBySide,
+    this.highlight = DiffHighlight.characters,
+    this.overlay,
   });
+
+  /// Side by side (true) or inline (false); by the width when null
+  /// ([inlineBreakpoint]).
+  final bool? sideBySide;
+
+  /// How much of a changed line is marked.
+  final DiffHighlight highlight;
+
+  /// Laid over the editors, as they are laid out: the embedder's revert
+  /// arrows and the like.
+  final Widget Function(BuildContext context, DiffEditorLayout layout)? overlay;
 
   final DiffEditorModel model;
   final Widget Function(BuildContext context, DiffEditorSide side) original;
@@ -160,7 +187,14 @@ class _DiffEditorState extends State<DiffEditor> {
     final original = model.originalSnapshot;
     final modified = model.modified.snapshot;
     final mappings = model.mappings;
-    final diffKey = (mappings, original, modified, sideBySide, widget.colors);
+    final diffKey = (
+      mappings,
+      original,
+      modified,
+      sideBySide,
+      widget.colors,
+      widget.highlight,
+    );
     if (_diff == null || diffKey != _diffKey) {
       _diffKey = diffKey;
       if (original != null && mappings != null) {
@@ -177,6 +211,7 @@ class _DiffEditorState extends State<DiffEditor> {
           original,
           modified,
           widget.colors,
+          highlight: widget.highlight,
         );
         _diff = (
           originalZones: zones.original,
@@ -285,7 +320,8 @@ class _DiffEditorState extends State<DiffEditor> {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         final height = constraints.maxHeight;
-        final sideBySide = width > DiffEditor.inlineBreakpoint;
+        final sideBySide =
+            widget.sideBySide ?? width > DiffEditor.inlineBreakpoint;
         final lineHeight = _lineHeight(scaler);
         final sides = _sidesFor(sideBySide, lineHeight, scaler);
         final content = width - DiffEditor.overviewWidth;
@@ -354,6 +390,15 @@ class _DiffEditorState extends State<DiffEditor> {
               height: height,
               child: _overview(sides, lineHeight, height),
             ),
+            if (widget.overlay case final overlay?)
+              Positioned.fill(
+                child: overlay(context, (
+                  sideBySide: sideBySide,
+                  splitLeft: originalWidth,
+                  modifiedLeft: modifiedLeft,
+                  contentWidth: content,
+                )),
+              ),
           ],
         );
       },

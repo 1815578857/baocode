@@ -87,6 +87,7 @@ import 'ide_hover.dart';
 import 'ide_layout.dart';
 import 'ide_list.dart' show IdeKeyboardList;
 import 'ide_modern_ui.dart';
+import 'ide_diff_options.dart';
 import 'ide_notifications.dart';
 import 'ide_panes.dart';
 import 'ide_quick_input.dart';
@@ -1058,6 +1059,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   @override
   void initState() {
     super.initState();
+    IdeDiffOptions.instance.attach(widget.settings);
     FocusManager.instance.addEarlyKeyEventHandler(_onChordKey);
     FocusManager.instance.addLateKeyEventHandler(_onLateKey);
     KeybindingService.instance.addListener(_keybindingsChanged);
@@ -1669,6 +1671,12 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
 
   /// The explorer's view in place of the Git log, for the editor it hides
   /// to show.
+  /// [hash] selected in the Git log, shown in the editor's place.
+  void _showCommitInLog(String hash) {
+    _showView(IdeSideView.sourceControl);
+    _scm.log.reveal(hash);
+  }
+
   void _leaveGitLog() {
     if (_view == IdeSideView.sourceControl) {
       setState(() => _view = IdeSideView.explorer);
@@ -1708,12 +1716,37 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
               _leaveGitLog();
               unawaited(_openChange(change, focusEditor: true));
             },
+            write: _writeFromDiff,
           ),
         // The keys go on walking the changes.
       ],
       resources.indexOf(resource),
       focus: false,
     );
+  }
+
+  /// What was edited in a diff in the Git log's place: into the file's
+  /// open document, saved, where it has one; else into the file.
+  Future<void> _writeFromDiff(
+    String path,
+    String text, {
+    String? expectedText,
+  }) async {
+    final workspace = widget.workspace;
+    final doc = workspace.documents
+        .where((doc) => doc.path == path && doc.isFile)
+        .firstOrNull;
+    try {
+      if (doc == null) {
+        await workspace.files.write(path, text, expectedText: expectedText);
+      } else {
+        workspace.edit(path, text);
+        await workspace.save(doc);
+      }
+    } on Object catch (error) {
+      _notifications.notify(IdeSeverity.error, '$error');
+      rethrow;
+    }
   }
 
   /// Opens [resource]'s change as the Git extension does (see
@@ -3414,6 +3447,15 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         enabled: _languages != null,
         run: () => setState(() => _formatOnSave = !_formatOnSave),
       ),
+      IdeCommand(
+        id: 'baocode.git.toggleAnnotations',
+        category: 'Git',
+        label: _editor?.annotated ?? false
+            ? 'Close Annotations'
+            : 'Annotate with Git Blame',
+        enabled: _editor?.canAnnotate ?? false,
+        run: () => _editor?.toggleAnnotations(),
+      ),
       _catalogCommand(
         'git.blame.toggleEditorDecoration',
         () => setState(() => _gitBlame = !_gitBlame),
@@ -4130,6 +4172,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                                 onShowReferences: _showReferences,
                                 onShowCommands: () => _showQuickInput('>'),
                                 gitBlame: _gitBlame,
+                                onShowCommit: _showCommitInLog,
                                 keyResolver: _resolveEditorKey,
                                 onPaste: _pasteInEditor,
                                 formatOnSave: _formatOnSave,
