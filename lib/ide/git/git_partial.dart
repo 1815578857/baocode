@@ -156,3 +156,101 @@ class _FileChecks implements IdeDiffChecks {
   void removeListener(VoidCallback listener) =>
       selection.removeListener(listener);
 }
+
+/// [original] against [modified] as `git diff` writes it for [path] (from
+/// the repository's top), with [context] lines around each change: what
+/// the model writing a commit message is given of a file committed in
+/// part.
+Future<String> ideGitUnifiedDiff(
+  String path,
+  String original,
+  String modified, {
+  int context = 3,
+}) async {
+  // Git's lines: none after the last line break.
+  List<String> lines(String text) {
+    final snapshot = DocumentSnapshot(text);
+    final count = text.endsWith('\n')
+        ? snapshot.lineCount - 1
+        : snapshot.lineCount;
+    return [
+      for (var i = 0; i < count; i++)
+        snapshot.text.substring(
+          snapshot.lineStarts[i],
+          snapshot.contentEnds[i],
+        ),
+    ];
+  }
+
+  final a = lines(original);
+  final b = lines(modified);
+  final diff = isSmallLinesDiff(a, b)
+      ? DefaultLinesDiffComputer().computeDiff(a, b, ideGitHunkOptions)
+      : await computeLinesDiffOnIsolate(a, b, ideGitHunkOptions);
+  final changes = diff.changes;
+  if (changes.isEmpty) return '';
+  final out = StringBuffer()
+    ..writeln('diff --git a/$path b/$path')
+    ..writeln('--- a/$path')
+    ..writeln('+++ b/$path');
+  var i = 0;
+  while (i < changes.length) {
+    // The changes whose context lines meet, in one hunk.
+    var j = i;
+    while (j + 1 < changes.length &&
+        changes[j + 1].original.startLineNumber - context <=
+            changes[j].original.endLineNumberExclusive + context) {
+      j++;
+    }
+    final start = (changes[i].original.startLineNumber - context).clamp(
+      1,
+      a.length + 1,
+    );
+    final end = (changes[j].original.endLineNumberExclusive + context).clamp(
+      1,
+      a.length + 1,
+    );
+    final shift =
+        changes[i].modified.startLineNumber -
+        changes[i].original.startLineNumber;
+    final body = StringBuffer();
+    var removed = 0;
+    var added = 0;
+    var at = start;
+    for (var k = i; k <= j; k++) {
+      final change = changes[k];
+      for (; at < change.original.startLineNumber; at++) {
+        body.writeln(' ${a[at - 1]}');
+      }
+      for (
+        var line = change.original.startLineNumber;
+        line < change.original.endLineNumberExclusive;
+        line++
+      ) {
+        body.writeln('-${a[line - 1]}');
+        removed++;
+      }
+      for (
+        var line = change.modified.startLineNumber;
+        line < change.modified.endLineNumberExclusive;
+        line++
+      ) {
+        body.writeln('+${b[line - 1]}');
+        added++;
+      }
+      at = change.original.endLineNumberExclusive;
+    }
+    for (; at < end; at++) {
+      body.writeln(' ${a[at - 1]}');
+    }
+    final originalCount = end - start;
+    final kept = originalCount - removed;
+    out
+      ..writeln(
+        '@@ -$start,$originalCount +${start + shift},${kept + added} @@',
+      )
+      ..write(body);
+    i = j + 1;
+  }
+  return out.toString();
+}

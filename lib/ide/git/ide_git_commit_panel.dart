@@ -899,21 +899,52 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
     try {
       final files = _toCommit(git);
       // The files checked, as the commit takes them: HEAD against the
-      // working tree (with no HEAD yet, what is staged).
+      // working tree (with no HEAD yet, what is staged); a file committed
+      // in part, against what of it is.
       final unborn = state.head.unborn;
-      final diff = await git.service.diff(
+      final partial = [
+        if (!unborn)
+          for (final file in files)
+            if (_isPartial(file)) file,
+      ];
+      final whole = await git.service.diff(
         staged: unborn,
         paths: unborn
             ? null
             : [
                 for (final file in files)
-                  if (file.status != IdeGitStatus.untracked) file.path,
+                  if (file.status != IdeGitStatus.untracked &&
+                      !partial.contains(file))
+                    file.path,
               ],
         untracked: [
           for (final file in files)
             if (file.status == IdeGitStatus.untracked) file.path,
         ],
       );
+      final parts = StringBuffer();
+      for (final file in partial) {
+        final (original, modified) = await (
+          git.service.show('HEAD', file.path),
+          widget.host.files.read(file.path, force: true),
+        ).wait;
+        final text = await ideGitPartialText(
+          original,
+          modified,
+          widget.hunks!.excluded(file.path),
+        );
+        parts.write(
+          await ideGitUnifiedDiff(
+            git.service.pathContext.relative(
+              file.path,
+              from: git.service.root,
+            ),
+            original,
+            text,
+          ),
+        );
+      }
+      final diff = partial.isEmpty ? whole : '$whole$parts';
       if (cancel.isCompleted) return;
       if (diff.trim().isEmpty) {
         widget.notifications.notify(

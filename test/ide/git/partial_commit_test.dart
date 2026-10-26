@@ -43,6 +43,27 @@ void main() {
     expect(await ideGitPartialText(_original, _modified, {}), _modified);
   });
 
+  test("what of a file goes, as git diff writes it", () async {
+    final lines = [for (var i = 1; i <= 12; i++) 'l$i'];
+    final changed = [...lines]
+      ..[1] = 'L2'
+      ..[10] = 'L11';
+    expect(
+      await ideGitUnifiedDiff(
+        'a.txt',
+        '${lines.join('\n')}\n',
+        '${changed.join('\n')}\n',
+      ),
+      'diff --git a/a.txt b/a.txt\n'
+      '--- a/a.txt\n'
+      '+++ b/a.txt\n'
+      '@@ -1,5 +1,5 @@\n'
+      ' l1\n-l2\n+L2\n l3\n l4\n l5\n'
+      '@@ -8,5 +8,5 @@\n'
+      ' l8\n l9\n l10\n-l11\n+L11\n l12\n',
+    );
+  });
+
   test('a change keeps its key as lines come above it', () {
     final before = _keys(_original, _modified);
     final after = _keys('0\n$_original', '0\n$_modified');
