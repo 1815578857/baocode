@@ -11863,4 +11863,221 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitCommitNoHooks => 'Hooks skipped';
+
+  @override
+  String get gitLogInteractiveRebase => 'Interactively Rebase from Here…';
+
+  @override
+  String gitRebaseTitle(int count, String base) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Commits',
+      one: '1 Commit',
+    );
+    return 'Rebasing $_temp0 from $base';
+  }
+
+  @override
+  String get gitRebasePick => 'Pick';
+
+  @override
+  String get gitRebaseReword => 'Reword';
+
+  @override
+  String get gitRebaseEdit => 'Edit';
+
+  @override
+  String get gitRebaseSquash => 'Squash';
+
+  @override
+  String get gitRebaseFixup => 'Fixup';
+
+  @override
+  String get gitRebaseDrop => 'Drop';
+
+  @override
+  String get gitRebaseMoveUp => 'Move Up (Alt+Up)';
+
+  @override
+  String get gitRebaseMoveDown => 'Move Down (Alt+Down)';
+
+  @override
+  String get gitRebaseMessage => 'Commit message';
+
+  @override
+  String get gitRebaseStart => 'Start Rebasing';
+
+  @override
+  String get gitRebaseNothingBelow =>
+      'The oldest commit kept cannot be squashed or fixed up: there is nothing below it.';
+
+  @override
+  String get gitRebaseStopped =>
+      'The rebase stopped: amend the commit or resolve the conflicts, then Continue.';
+
+  @override
+  String get gitRebaseCleanUpWithAi => 'Clean Up with AI';
+
+  @override
+  String get gitRebaseCleanUpWithAiDetail =>
+      'Let the model suggest what to fix up, squash and reword; you look it over before the rebase starts';
+
+  @override
+  String get gitRebaseAiPlanning => 'Planning… (click to stop)';
+
+  @override
+  String get gitRebaseAiNoPlan =>
+      'The model\'s answer was not a rebase list of these commits.';
+
+  @override
+  String gitRebaseAiFailed(String error) {
+    return 'Could not clean up with AI: $error';
+  }
+
+  @override
+  String gitTagPushTo(String remote) {
+    return 'Push Tag to $remote';
+  }
+
+  @override
+  String gitTagDeleteOn(String remote) {
+    return 'Delete Tag on $remote';
+  }
+
+  @override
+  String gitTagDeleteOnConfirm(String name, String remote) {
+    return 'Delete the tag $name on $remote?';
+  }
+
+  @override
+  String get gitRemotesManage => 'Manage Remotes…';
+
+  @override
+  String get gitRemotesTitle => 'Git Remotes';
+
+  @override
+  String get gitRemotesNone => 'No remotes';
+
+  @override
+  String get gitRemoteAdd => 'Add Remote';
+
+  @override
+  String get gitRemoteEdit => 'Edit Remote';
+
+  @override
+  String get gitRemoteRemove => 'Remove';
+
+  @override
+  String get gitRemoteName => 'Name';
+
+  @override
+  String get gitRemoteUrl => 'URL';
+
+  @override
+  String gitRemoteRemoveConfirm(String name) {
+    return 'Remove the remote $name?';
+  }
+
+  @override
+  String get gitRemoteRemoveDetail =>
+      'Its remote branches go with it; nothing on the server changes.';
+
+  @override
+  String get gitCloneTitle => 'Get from Version Control';
+
+  @override
+  String get gitCloneUrl => 'URL';
+
+  @override
+  String get gitCloneDirectory => 'Directory';
+
+  @override
+  String get gitCloneBrowse => 'Browse…';
+
+  @override
+  String get gitCloneButton => 'Clone';
+
+  @override
+  String get gitCloning => 'Cloning…';
+
+  @override
+  String get gitCloneCommand => 'Clone Repository…';
+
+  @override
+  String get gitReviewWithAi => 'Review Changes with AI';
+
+  @override
+  String get gitReviewStop => 'Stop the Review';
+
+  @override
+  String get gitReviewBeforeCommit => 'Review with AI Before Committing';
+
+  @override
+  String get gitReviewRunning => 'Reviewing the changes…';
+
+  @override
+  String get gitReviewClean => 'No problems found';
+
+  @override
+  String gitReviewFound(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count problems found',
+      one: '1 problem found',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get gitReviewCommitAnyway => 'Commit Anyway';
+
+  @override
+  String get gitReviewCommitAndPushAnyway => 'Commit and Push Anyway';
+
+  @override
+  String gitReviewFailed(String error) {
+    return 'Could not review the changes: $error';
+  }
+
+  @override
+  String get gitAskAiCommit => 'Ask AI About This Commit';
+
+  @override
+  String gitAskAiCommitPrompt(String id, String subject) {
+    return 'Explain commit $id (“$subject”): what it changes and why, and anything in it that looks risky. Read it with `git show $id`.';
+  }
+
+  @override
+  String gitAskAiCommits(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ask AI About These $count Commits',
+      one: 'Ask AI About This Commit',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String gitAskAiCommitsPrompt(String ids) {
+    return 'Explain commits $ids: what they change together, and anything in them that looks risky. Read them with `git show`.';
+  }
+
+  @override
+  String get gitAskAiChanges => 'Ask AI About These Changes';
+
+  @override
+  String gitAskAiChangesPrompt(String paths) {
+    return 'Review my uncommitted changes in $paths (`git diff HEAD -- $paths`): explain what they do and point out anything wrong.';
+  }
+
+  @override
+  String get gitAskAiConflicts => 'Ask AI to Resolve the Conflicts';
+
+  @override
+  String gitAskAiConflictsPrompt(String paths) {
+    return 'Resolve the merge conflicts in $paths: keep what both sides meant, then tell me what you chose. Don\'t stage or commit.';
+  }
 }

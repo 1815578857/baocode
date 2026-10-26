@@ -194,6 +194,7 @@ String localizedCommandLabel(AppLocalizations l10n, String id, String english) {
     'git.commit' => l10n.scmCommit,
     'git.checkout' => l10n.cmdGitCheckout,
     'git.fetch' => l10n.scmFetch,
+    'git.clone' => l10n.gitCloneCommand,
     'git.fetchAll' => l10n.scmFetchFromAllRemotes,
     'git.pull' => l10n.scmPull,
     'git.push' => l10n.scmPush,

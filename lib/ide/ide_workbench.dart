@@ -140,6 +140,7 @@ class IdeWorkbench extends StatefulWidget {
     required this.visible,
     required this.chat,
     this.onAddToChat,
+    this.onAskInChat,
     required this.onBack,
     this.backLabel,
     this.editorBuilder,
@@ -207,6 +208,10 @@ class IdeWorkbench extends StatefulWidget {
   /// Puts files and folders in [chat]'s composer (Source Control's Add to
   /// Chat); none offered when null.
   final ValueChanged<List<ComposerFile>>? onAddToChat;
+
+  /// Puts a request in [chat]'s composer, to be sent once looked over
+  /// (Ask AI about a commit, changes, a conflict); none offered when null.
+  final ValueChanged<String>? onAskInChat;
   final VoidCallback onBack;
 
   /// The title bar's way back's label: Back to Chat, by default; in a
@@ -2557,6 +2562,12 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
 
   void _toggleChat() => _layout.toggleChat();
 
+  /// [text] in the chat's composer, the chat shown.
+  void _askInChat(String text) {
+    widget.onAskInChat?.call(text);
+    if (!_chatShown) _toggleChat();
+  }
+
   /// VS Code's Toggle Panel: the panel as it was last, or hidden.
   void _togglePanelVisibility() =>
       setState(() => _panel = _panel == null ? _lastPanel : null);
@@ -3566,6 +3577,13 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         run: _updateProject,
       ),
       IdeCommand(
+        id: 'baocode.git.manageRemotes',
+        category: 'Git',
+        label: 'Manage Remotes…',
+        enabled: widget.workspace.git?.state != null,
+        run: _manageRemotes,
+      ),
+      IdeCommand(
         id: 'baocode.git.showFileHistory',
         category: 'Git',
         label: 'Show History',
@@ -3861,12 +3879,15 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       host: widget.workspace,
       session: _scm,
       notifications: _notifications,
+      ai: widget.commitMessage,
+      onAsk: widget.onAskInChat == null ? null : _askInChat,
       onOpen: (path) {
         _leaveGitLog();
         unawaited(_open(path, focusEditor: true));
       },
       onAddToChat: widget.onAddToChat,
       changes: IdeGitCommitPanel(
+        onAsk: widget.onAskInChat == null ? null : _askInChat,
         key: _scmKey,
         host: widget.workspace,
         session: _scm,
@@ -3897,6 +3918,10 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         hunks: _hunks,
         changelists: _changelists,
         onShowDiff: (files, index) => _scm.log.showDiff(files, index),
+        onOpenAt: (path, line) {
+          _leaveGitLog();
+          return _open(path, line: line, center: true, focusEditor: true);
+        },
       ),
     ),
     IdeSideView.debug => switch (_debug) {
@@ -4204,6 +4229,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                             actions: [
                               for (final id in const [
                                 'workbench.action.files.openFolder',
+                                'git.clone',
                                 'baocode.remote.openFolder',
                                 IdeWorkbench.createWorkspaceCommandId,
                                 'workbench.action.files.openFile',

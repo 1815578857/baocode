@@ -425,6 +425,19 @@ class IdeGitRepository extends ChangeNotifier {
   Future<void> drop(IdeGitCommit commit) =>
       _operate(() => service.drop(commit));
 
+  /// Interactively Rebase from Here: the commits from [from] on as [steps]
+  /// say; true where the rebase stopped, still under way.
+  Future<bool> interactiveRebase(
+    IdeGitCommit from,
+    List<IdeGitRebaseStep> steps,
+  ) async {
+    var stopped = false;
+    await _operate(
+      () async => stopped = await service.interactiveRebase(from, steps),
+    );
+    return stopped;
+  }
+
   /// Push All up to Here: the current branch's commits up to [commit].
   Future<void> pushUpTo(String commit) => _operate(() async {
     final upstream = _state?.head.upstream;
@@ -474,6 +487,21 @@ class IdeGitRepository extends ChangeNotifier {
 
   Future<void> deleteTag(String name) =>
       _operate(() => service.deleteTag(name));
+
+  Future<void> pushTag(String remote, String name) =>
+      _operate(() => service.pushTag(remote, name));
+
+  Future<void> deleteRemoteTag(String remote, String name) =>
+      _operate(() => service.deleteRemoteTag(remote, name));
+
+  Future<void> addRemote(String name, String url) =>
+      _operate(() => service.addRemote(name, url));
+
+  Future<void> editRemote(String name, {String? to, String? url}) =>
+      _operate(() => service.editRemote(name, to: to, url: url));
+
+  Future<void> removeRemote(String name) =>
+      _operate(() => service.removeRemote(name));
 
   Future<void> createBranchAt(String name, String commit) =>
       _operate(() => service.createBranchAt(name, commit));

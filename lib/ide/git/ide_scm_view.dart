@@ -67,6 +67,7 @@ import '../save_copy.dart';
 import 'commit_message.dart';
 import 'git_graph_painter.dart';
 import 'git_model.dart';
+import 'git_review.dart';
 import 'git_repository.dart';
 import 'git_service.dart';
 import 'git_branch_tree.dart' show IdeGitFavoriteBranches;
@@ -157,6 +158,20 @@ class IdeScmSession {
   /// Whether the commit panel lists the ignored files.
   bool showIgnored = false;
 
+  /// `baocode.git.aiReview`: the model reviews a commit before it is made.
+  bool get aiReview => _choice('baocode.git.aiReview', false);
+  set aiReview(bool value) => _choose('baocode.git.aiReview', value);
+
+  /// What the last review found; null when there is none to show.
+  List<IdeGitReviewProblem>? review;
+
+  /// Completes to stop the review under way; null when none is.
+  Completer<void>? reviewing;
+
+  /// The commit the review holds back (with Push, or not), done when
+  /// committed anyway; null when none waits.
+  bool? reviewHeldPush;
+
   /// The list's focused row, selection and anchor, kept while the view is
   /// away (the Git log left for the editor) to be where they were.
   String? listSelected;
@@ -203,6 +218,7 @@ class IdeScmSession {
 
   void dispose() {
     generating?.complete();
+    reviewing?.complete();
     message.dispose();
     graph.dispose();
     log.dispose();

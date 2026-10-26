@@ -19394,6 +19394,342 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hooks skipped'**
   String get gitCommitNoHooks;
+
+  /// No description provided for @gitLogInteractiveRebase.
+  ///
+  /// In en, this message translates to:
+  /// **'Interactively Rebase from Here…'**
+  String get gitLogInteractiveRebase;
+
+  /// No description provided for @gitRebaseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rebasing {count, plural, =1{1 Commit} other{{count} Commits}} from {base}'**
+  String gitRebaseTitle(int count, String base);
+
+  /// No description provided for @gitRebasePick.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick'**
+  String get gitRebasePick;
+
+  /// No description provided for @gitRebaseReword.
+  ///
+  /// In en, this message translates to:
+  /// **'Reword'**
+  String get gitRebaseReword;
+
+  /// No description provided for @gitRebaseEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get gitRebaseEdit;
+
+  /// No description provided for @gitRebaseSquash.
+  ///
+  /// In en, this message translates to:
+  /// **'Squash'**
+  String get gitRebaseSquash;
+
+  /// No description provided for @gitRebaseFixup.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixup'**
+  String get gitRebaseFixup;
+
+  /// No description provided for @gitRebaseDrop.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop'**
+  String get gitRebaseDrop;
+
+  /// No description provided for @gitRebaseMoveUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Move Up (Alt+Up)'**
+  String get gitRebaseMoveUp;
+
+  /// No description provided for @gitRebaseMoveDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Move Down (Alt+Down)'**
+  String get gitRebaseMoveDown;
+
+  /// No description provided for @gitRebaseMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit message'**
+  String get gitRebaseMessage;
+
+  /// No description provided for @gitRebaseStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Rebasing'**
+  String get gitRebaseStart;
+
+  /// No description provided for @gitRebaseNothingBelow.
+  ///
+  /// In en, this message translates to:
+  /// **'The oldest commit kept cannot be squashed or fixed up: there is nothing below it.'**
+  String get gitRebaseNothingBelow;
+
+  /// No description provided for @gitRebaseStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'The rebase stopped: amend the commit or resolve the conflicts, then Continue.'**
+  String get gitRebaseStopped;
+
+  /// No description provided for @gitRebaseCleanUpWithAi.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean Up with AI'**
+  String get gitRebaseCleanUpWithAi;
+
+  /// No description provided for @gitRebaseCleanUpWithAiDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Let the model suggest what to fix up, squash and reword; you look it over before the rebase starts'**
+  String get gitRebaseCleanUpWithAiDetail;
+
+  /// No description provided for @gitRebaseAiPlanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Planning… (click to stop)'**
+  String get gitRebaseAiPlanning;
+
+  /// No description provided for @gitRebaseAiNoPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'The model\'s answer was not a rebase list of these commits.'**
+  String get gitRebaseAiNoPlan;
+
+  /// No description provided for @gitRebaseAiFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not clean up with AI: {error}'**
+  String gitRebaseAiFailed(String error);
+
+  /// No description provided for @gitTagPushTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Push Tag to {remote}'**
+  String gitTagPushTo(String remote);
+
+  /// No description provided for @gitTagDeleteOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Tag on {remote}'**
+  String gitTagDeleteOn(String remote);
+
+  /// No description provided for @gitTagDeleteOnConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the tag {name} on {remote}?'**
+  String gitTagDeleteOnConfirm(String name, String remote);
+
+  /// No description provided for @gitRemotesManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Remotes…'**
+  String get gitRemotesManage;
+
+  /// No description provided for @gitRemotesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Git Remotes'**
+  String get gitRemotesTitle;
+
+  /// No description provided for @gitRemotesNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No remotes'**
+  String get gitRemotesNone;
+
+  /// No description provided for @gitRemoteAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Remote'**
+  String get gitRemoteAdd;
+
+  /// No description provided for @gitRemoteEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Remote'**
+  String get gitRemoteEdit;
+
+  /// No description provided for @gitRemoteRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get gitRemoteRemove;
+
+  /// No description provided for @gitRemoteName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get gitRemoteName;
+
+  /// No description provided for @gitRemoteUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'URL'**
+  String get gitRemoteUrl;
+
+  /// No description provided for @gitRemoteRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the remote {name}?'**
+  String gitRemoteRemoveConfirm(String name);
+
+  /// No description provided for @gitRemoteRemoveDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Its remote branches go with it; nothing on the server changes.'**
+  String get gitRemoteRemoveDetail;
+
+  /// No description provided for @gitCloneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Get from Version Control'**
+  String get gitCloneTitle;
+
+  /// No description provided for @gitCloneUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'URL'**
+  String get gitCloneUrl;
+
+  /// No description provided for @gitCloneDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Directory'**
+  String get gitCloneDirectory;
+
+  /// No description provided for @gitCloneBrowse.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse…'**
+  String get gitCloneBrowse;
+
+  /// No description provided for @gitCloneButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone'**
+  String get gitCloneButton;
+
+  /// No description provided for @gitCloning.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloning…'**
+  String get gitCloning;
+
+  /// No description provided for @gitCloneCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone Repository…'**
+  String get gitCloneCommand;
+
+  /// No description provided for @gitReviewWithAi.
+  ///
+  /// In en, this message translates to:
+  /// **'Review Changes with AI'**
+  String get gitReviewWithAi;
+
+  /// No description provided for @gitReviewStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the Review'**
+  String get gitReviewStop;
+
+  /// No description provided for @gitReviewBeforeCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Review with AI Before Committing'**
+  String get gitReviewBeforeCommit;
+
+  /// No description provided for @gitReviewRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewing the changes…'**
+  String get gitReviewRunning;
+
+  /// No description provided for @gitReviewClean.
+  ///
+  /// In en, this message translates to:
+  /// **'No problems found'**
+  String get gitReviewClean;
+
+  /// No description provided for @gitReviewFound.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 problem found} other{{count} problems found}}'**
+  String gitReviewFound(int count);
+
+  /// No description provided for @gitReviewCommitAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit Anyway'**
+  String get gitReviewCommitAnyway;
+
+  /// No description provided for @gitReviewCommitAndPushAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit and Push Anyway'**
+  String get gitReviewCommitAndPushAnyway;
+
+  /// No description provided for @gitReviewFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not review the changes: {error}'**
+  String gitReviewFailed(String error);
+
+  /// No description provided for @gitAskAiCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask AI About This Commit'**
+  String get gitAskAiCommit;
+
+  /// No description provided for @gitAskAiCommitPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Explain commit {id} (“{subject}”): what it changes and why, and anything in it that looks risky. Read it with `git show {id}`.'**
+  String gitAskAiCommitPrompt(String id, String subject);
+
+  /// No description provided for @gitAskAiCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Ask AI About This Commit} other{Ask AI About These {count} Commits}}'**
+  String gitAskAiCommits(int count);
+
+  /// No description provided for @gitAskAiCommitsPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Explain commits {ids}: what they change together, and anything in them that looks risky. Read them with `git show`.'**
+  String gitAskAiCommitsPrompt(String ids);
+
+  /// No description provided for @gitAskAiChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask AI About These Changes'**
+  String get gitAskAiChanges;
+
+  /// No description provided for @gitAskAiChangesPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Review my uncommitted changes in {paths} (`git diff HEAD -- {paths}`): explain what they do and point out anything wrong.'**
+  String gitAskAiChangesPrompt(String paths);
+
+  /// No description provided for @gitAskAiConflicts.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask AI to Resolve the Conflicts'**
+  String get gitAskAiConflicts;
+
+  /// No description provided for @gitAskAiConflictsPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolve the merge conflicts in {paths}: keep what both sides meant, then tell me what you chose. Don\'t stage or commit.'**
+  String gitAskAiConflictsPrompt(String paths);
 }
 
 class _AppLocalizationsDelegate

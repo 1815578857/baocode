@@ -97,6 +97,26 @@ class IdeGitService {
     environment: environment,
   );
 
+  /// JetBrains' Get from Version Control: [url] cloned into [directory],
+  /// which Git makes; on this machine, or through [runner]. No prompt for
+  /// a password waits on a terminal there is none of.
+  static Future<void> clone(
+    String url,
+    String directory, {
+    IdeGitRunner? runner,
+    p.Context? pathContext,
+  }) async {
+    final paths = pathContext ?? p.context;
+    _check(
+      await (runner ?? platform.runGit)(
+        ['clone', '--', url, directory],
+        workingDirectory: paths.dirname(directory),
+        environment: const {'GIT_TERMINAL_PROMPT': '0'},
+      ),
+      'Cannot clone $url.',
+    );
+  }
+
   static IdeGitOutput _check(IdeGitOutput output, String what) {
     if (output.exitCode == 0) return output;
     final error = output.stderr.trim();
@@ -670,6 +690,80 @@ class IdeGitService {
     ];
   }
 
+  /// Each remote and the URL it fetches from (`git remote -v`), by name.
+  Future<Map<String, String>> remoteUrls() async {
+    await _requireRoot();
+    final output = _check(
+      await _git(['remote', '-v']),
+      'Cannot read the remotes.',
+    );
+    final urls = <String, String>{};
+    for (final line in output.stdout.split('\n')) {
+      final match = RegExp(r'^(\S+)\s+(.*?)\s+\((fetch|push)\)$')
+          .firstMatch(line.trim());
+      if (match == null) continue;
+      if (match[3] == 'fetch' || !urls.containsKey(match[1])) {
+        urls[match[1]!] = match[2]!;
+      }
+    }
+    return urls;
+  }
+
+  /// JetBrains' Manage Remotes: a remote added (`git remote add`).
+  Future<void> addRemote(String name, String url) async {
+    await _requireRoot();
+    _check(
+      await _git(['remote', 'add', '--', name, url]),
+      'Cannot add the remote $name.',
+    );
+  }
+
+  /// Remote [name] renamed [to] where it is not, its URL [url].
+  Future<void> editRemote(String name, {String? to, String? url}) async {
+    await _requireRoot();
+    var current = name;
+    if (to != null && to != name) {
+      _check(
+        await _git(['remote', 'rename', '--', name, to]),
+        'Cannot rename the remote $name.',
+      );
+      current = to;
+    }
+    if (url != null) {
+      _check(
+        await _git(['remote', 'set-url', '--', current, url]),
+        'Cannot change the URL of $current.',
+      );
+    }
+  }
+
+  /// Remote [name] removed, its remote branches with it.
+  Future<void> removeRemote(String name) async {
+    await _requireRoot();
+    _check(
+      await _git(['remote', 'remove', '--', name]),
+      'Cannot remove the remote $name.',
+    );
+  }
+
+  /// The tag [name] pushed to [remote].
+  Future<void> pushTag(String remote, String name) async {
+    await _requireRoot();
+    _check(
+      await _git(['push', remote, 'refs/tags/$name']),
+      'Cannot push the tag $name.',
+    );
+  }
+
+  /// The tag [name] deleted on [remote].
+  Future<void> deleteRemoteTag(String remote, String name) async {
+    await _requireRoot();
+    _check(
+      await _git(['push', remote, '--delete', 'refs/tags/$name']),
+      'Cannot delete the tag $name on $remote.',
+    );
+  }
+
   /// `git fetch <remote> --tags` for one remote, or `git fetch --all
   /// --tags` for every remote (`git.fetch`/`git.fetchAll`).
   Future<void> fetch({String? remote}) async {
@@ -1241,6 +1335,56 @@ class IdeGitService {
     await _rebaseFrom(commits.first, [
       '-i',
     ], sequenceEditor: 'sed -i.bak $script');
+  }
+
+  /// JetBrains' interactive rebase: the commits from [from] on, as [steps]
+  /// (oldest first, in their new order) say: each picked, reworded (its
+  /// message put in through Git, an `exec` amending it, so that a rebase
+  /// stopped and continued still has it), stopped at to be edited, squashed
+  /// or fixed up into the one before, or dropped. True where the rebase
+  /// stopped (to edit a commit, at a conflict): it is still under way.
+  Future<bool> interactiveRebase(
+    IdeGitCommit from,
+    List<IdeGitRebaseStep> steps,
+  ) async {
+    await _requireRoot();
+    await _requireLinearSince(from);
+    Future<String> blob(String text) async => _check(
+      await _git(['hash-object', '-w', '--stdin'], stdin: text),
+      'Cannot rebase.',
+    ).stdout.trim();
+    final todo = StringBuffer();
+    for (final step in steps) {
+      final id = step.commit;
+      switch (step.action) {
+        case IdeGitRebaseAction.reword:
+          todo
+            ..writeln('pick $id')
+            ..writeln(
+              'exec git cat-file blob ${await blob(step.message ?? '')} | '
+              'git commit --amend --only --allow-empty --no-verify -q -F -',
+            );
+        case final action:
+          todo.writeln('${action.name} $id');
+      }
+    }
+    final list = await blob(todo.toString());
+    final output = await _git([
+      '-c',
+      'sequence.editor=git cat-file blob $list >',
+      '-c',
+      'core.editor=:',
+      'rebase',
+      '-i',
+      '--autostash',
+      '--no-autosquash',
+      if (from.parentIds.isEmpty) '--root' else from.parentIds.first,
+    ]);
+    // Stopped where Git left REBASE_HEAD: at a commit to edit, or a
+    // conflict.
+    final underWay = await _operation() == IdeGitOperation.rebase;
+    if (output.exitCode != 0 && !underWay) _check(output, 'Cannot rebase.');
+    return underWay;
   }
 
   /// Rebases from [commit] with [options] and no editor (the list as it is,

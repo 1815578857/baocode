@@ -37,6 +37,9 @@ class FakeGit {
   /// `git remote` output.
   String remotes = 'origin\n';
 
+  /// `git remote -v`'s URLs, by remote.
+  final Map<String, String> remoteUrls = {};
+
   /// The pseudo-ref of the operation under way (`REBASE_HEAD`), if any.
   String? operation;
 
@@ -147,6 +150,14 @@ class FakeGit {
         return IdeGitOutput(0, show[commit] ?? '');
       case ['remote']:
         return IdeGitOutput(0, remotes);
+      case ['remote', '-v']:
+        return IdeGitOutput(
+          0,
+          [
+            for (final MapEntry(:key, :value) in remoteUrls.entries)
+              '$key\t$value (fetch)\n$key\t$value (push)\n',
+          ].join(),
+        );
       case ['worktree', 'list', '--porcelain']:
         return IdeGitOutput(0, worktrees);
       case [..., 'blame', '--root', '--incremental', '--', final path]:

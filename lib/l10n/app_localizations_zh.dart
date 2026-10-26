@@ -11241,4 +11241,198 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitCommitNoHooks => '跳过钩子';
+
+  @override
+  String get gitLogInteractiveRebase => '从这里开始交互式变基…';
+
+  @override
+  String gitRebaseTitle(int count, String base) {
+    return '变基 $count 个提交（从 $base 开始）';
+  }
+
+  @override
+  String get gitRebasePick => '保留';
+
+  @override
+  String get gitRebaseReword => '改信息';
+
+  @override
+  String get gitRebaseEdit => '编辑';
+
+  @override
+  String get gitRebaseSquash => '压缩';
+
+  @override
+  String get gitRebaseFixup => '修正';
+
+  @override
+  String get gitRebaseDrop => '丢弃';
+
+  @override
+  String get gitRebaseMoveUp => '上移 (Alt+↑)';
+
+  @override
+  String get gitRebaseMoveDown => '下移 (Alt+↓)';
+
+  @override
+  String get gitRebaseMessage => '提交信息';
+
+  @override
+  String get gitRebaseStart => '开始变基';
+
+  @override
+  String get gitRebaseNothingBelow => '保留下来的最早一个提交不能压缩或修正：它下面没有提交可以并入。';
+
+  @override
+  String get gitRebaseStopped => '变基已暂停：修改这个提交或解决冲突后，点「继续」。';
+
+  @override
+  String get gitRebaseCleanUpWithAi => '让 AI 整理';
+
+  @override
+  String get gitRebaseCleanUpWithAiDetail => '由模型建议哪些提交该修正、压缩、改信息；开始变基前你可以逐条检查';
+
+  @override
+  String get gitRebaseAiPlanning => '整理中…（点击停止）';
+
+  @override
+  String get gitRebaseAiNoPlan => '模型的回答不是这些提交的变基列表。';
+
+  @override
+  String gitRebaseAiFailed(String error) {
+    return 'AI 整理失败：$error';
+  }
+
+  @override
+  String gitTagPushTo(String remote) {
+    return '推送标签到 $remote';
+  }
+
+  @override
+  String gitTagDeleteOn(String remote) {
+    return '删除 $remote 上的标签';
+  }
+
+  @override
+  String gitTagDeleteOnConfirm(String name, String remote) {
+    return '删除 $remote 上的标签 $name？';
+  }
+
+  @override
+  String get gitRemotesManage => '管理远程仓库…';
+
+  @override
+  String get gitRemotesTitle => 'Git 远程仓库';
+
+  @override
+  String get gitRemotesNone => '没有远程仓库';
+
+  @override
+  String get gitRemoteAdd => '添加远程仓库';
+
+  @override
+  String get gitRemoteEdit => '编辑远程仓库';
+
+  @override
+  String get gitRemoteRemove => '移除';
+
+  @override
+  String get gitRemoteName => '名称';
+
+  @override
+  String get gitRemoteUrl => 'URL';
+
+  @override
+  String gitRemoteRemoveConfirm(String name) {
+    return '移除远程仓库 $name？';
+  }
+
+  @override
+  String get gitRemoteRemoveDetail => '它的远程分支会一起移除；服务器上的内容不受影响。';
+
+  @override
+  String get gitCloneTitle => '从版本控制获取';
+
+  @override
+  String get gitCloneUrl => 'URL';
+
+  @override
+  String get gitCloneDirectory => '目录';
+
+  @override
+  String get gitCloneBrowse => '浏览…';
+
+  @override
+  String get gitCloneButton => '克隆';
+
+  @override
+  String get gitCloning => '正在克隆…';
+
+  @override
+  String get gitCloneCommand => '克隆仓库…';
+
+  @override
+  String get gitReviewWithAi => '用 AI 审查改动';
+
+  @override
+  String get gitReviewStop => '停止审查';
+
+  @override
+  String get gitReviewBeforeCommit => '提交前用 AI 审查';
+
+  @override
+  String get gitReviewRunning => '正在审查改动…';
+
+  @override
+  String get gitReviewClean => '没有发现问题';
+
+  @override
+  String gitReviewFound(int count) {
+    return '发现 $count 个问题';
+  }
+
+  @override
+  String get gitReviewCommitAnyway => '仍然提交';
+
+  @override
+  String get gitReviewCommitAndPushAnyway => '仍然提交并推送';
+
+  @override
+  String gitReviewFailed(String error) {
+    return '审查失败：$error';
+  }
+
+  @override
+  String get gitAskAiCommit => '问 AI 这个提交';
+
+  @override
+  String gitAskAiCommitPrompt(String id, String subject) {
+    return '解释提交 $id（“$subject”）：改了什么、为什么改，以及有没有看起来有风险的地方。可以用 `git show $id` 查看。';
+  }
+
+  @override
+  String gitAskAiCommits(int count) {
+    return '问 AI 这 $count 个提交';
+  }
+
+  @override
+  String gitAskAiCommitsPrompt(String ids) {
+    return '解释提交 $ids：它们合起来改了什么，以及有没有看起来有风险的地方。可以用 `git show` 查看。';
+  }
+
+  @override
+  String get gitAskAiChanges => '问 AI 这些改动';
+
+  @override
+  String gitAskAiChangesPrompt(String paths) {
+    return '审查我在 $paths 中还没提交的改动（`git diff HEAD -- $paths`）：说明它们做了什么，指出有问题的地方。';
+  }
+
+  @override
+  String get gitAskAiConflicts => '让 AI 解决冲突';
+
+  @override
+  String gitAskAiConflictsPrompt(String paths) {
+    return '解决 $paths 中的合并冲突：保留双方各自的意图，然后告诉我你是怎么取舍的。不要暂存或提交。';
+  }
 }
