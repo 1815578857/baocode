@@ -1823,6 +1823,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sidebarUnread => 'Unread';
 
   @override
+  String sidebarHoverModel(String model) {
+    return 'Model: $model';
+  }
+
+  @override
   String get sidebarDone => 'Done';
 
   @override
