@@ -1204,7 +1204,8 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
       tooltip: l10n.gitLogWorktreeOf(shown?.path ?? git.service.root),
       active: shown != null && !shown.main,
       entries: () => ideMenuGroups([
-        if (select != null)
+        // Where there is no agent to follow (the IDE's), not offered.
+        if (select != null && (choice.agentPath != null || choice.following))
           [
             IdeMenuAction(
               l10n.gitLogFollowAgent,
