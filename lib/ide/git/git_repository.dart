@@ -197,6 +197,43 @@ class IdeGitRepository extends ChangeNotifier {
     ], unborn: _state?.head.unborn ?? false),
   );
 
+  /// Resolves the conflicts of [resources] with the current side's
+  /// version ([ours]) or the incoming side's; a file that side deleted is
+  /// removed.
+  Future<void> acceptSide(
+    Iterable<IdeGitResource> resources, {
+    required bool ours,
+  }) => _operate(() {
+    bool deletedOnSide(IdeGitStatus status) => switch (status) {
+      IdeGitStatus.bothDeleted => true,
+      IdeGitStatus.deletedByUs => ours,
+      IdeGitStatus.deletedByThem => !ours,
+      // The other side added it: this side has none.
+      IdeGitStatus.addedByUs => !ours,
+      IdeGitStatus.addedByThem => ours,
+      _ => false,
+    };
+    return service.acceptSide(
+      [
+        for (final resource in resources)
+          if (!deletedOnSide(resource.status)) resource.path,
+      ],
+      ours: ours,
+      deleted: [
+        for (final resource in resources)
+          if (deletedOnSide(resource.status)) resource.path,
+      ],
+    );
+  });
+
+  /// Continue, Abort or Skip of the operation under way.
+  Future<void> continueOperation({bool abort = false, bool skip = false}) =>
+      _operate(() async {
+        final operation = _state?.operation;
+        if (operation == null) return;
+        await service.continueOperation(operation, abort: abort, skip: skip);
+      });
+
   /// Stage All Changes: everything in the working tree, untracked files
   /// included.
   Future<void> stageAll() => _operate(() => service.stage(null));

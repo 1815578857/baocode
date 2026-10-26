@@ -18842,6 +18842,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Push…'**
   String get gitPushEllipsisCommand;
+
+  /// No description provided for @gitOperationRebasing.
+  ///
+  /// In en, this message translates to:
+  /// **'Rebasing'**
+  String get gitOperationRebasing;
+
+  /// No description provided for @gitOperationMerging.
+  ///
+  /// In en, this message translates to:
+  /// **'Merging'**
+  String get gitOperationMerging;
+
+  /// No description provided for @gitOperationCherryPicking.
+  ///
+  /// In en, this message translates to:
+  /// **'Cherry-picking'**
+  String get gitOperationCherryPicking;
+
+  /// No description provided for @gitOperationReverting.
+  ///
+  /// In en, this message translates to:
+  /// **'Reverting'**
+  String get gitOperationReverting;
+
+  /// No description provided for @gitOperationConflicts.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 conflict left} other{{count} conflicts left}}'**
+  String gitOperationConflicts(int count);
+
+  /// No description provided for @gitOperationResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'conflicts resolved'**
+  String get gitOperationResolved;
+
+  /// No description provided for @gitOperationContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get gitOperationContinue;
+
+  /// No description provided for @gitOperationSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get gitOperationSkip;
+
+  /// No description provided for @gitOperationAbort.
+  ///
+  /// In en, this message translates to:
+  /// **'Abort'**
+  String get gitOperationAbort;
+
+  /// No description provided for @gitOperationAbortConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Abort? {what} stops and what it did so far is undone.'**
+  String gitOperationAbortConfirm(String what);
+
+  /// No description provided for @gitConflictAcceptCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept Current (Ours)'**
+  String get gitConflictAcceptCurrent;
+
+  /// No description provided for @gitConflictAcceptIncoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept Incoming (Theirs)'**
+  String get gitConflictAcceptIncoming;
 }
 
 class _AppLocalizationsDelegate

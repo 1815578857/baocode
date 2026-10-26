@@ -11524,4 +11524,50 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitPushEllipsisCommand => 'Push…';
+
+  @override
+  String get gitOperationRebasing => 'Rebasing';
+
+  @override
+  String get gitOperationMerging => 'Merging';
+
+  @override
+  String get gitOperationCherryPicking => 'Cherry-picking';
+
+  @override
+  String get gitOperationReverting => 'Reverting';
+
+  @override
+  String gitOperationConflicts(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count conflicts left',
+      one: '1 conflict left',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get gitOperationResolved => 'conflicts resolved';
+
+  @override
+  String get gitOperationContinue => 'Continue';
+
+  @override
+  String get gitOperationSkip => 'Skip';
+
+  @override
+  String get gitOperationAbort => 'Abort';
+
+  @override
+  String gitOperationAbortConfirm(String what) {
+    return 'Abort? $what stops and what it did so far is undone.';
+  }
+
+  @override
+  String get gitConflictAcceptCurrent => 'Accept Current (Ours)';
+
+  @override
+  String get gitConflictAcceptIncoming => 'Accept Incoming (Theirs)';
 }

@@ -818,6 +818,8 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _toolbar(context),
+                    if (git.state?.operation case final operation?)
+                      _operationBanner(git, operation),
                     // Past Git's status limit: what is listed is not all.
                     if (git.state?.didHitLimit ?? false)
                       Padding(
@@ -848,6 +850,93 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
               },
             ),
     );
+  }
+
+  /// The merge, rebase, cherry-pick or revert Git stopped in: what, how
+  /// many conflicts are left, and Continue (once there are none), Skip
+  /// and Abort.
+  Widget _operationBanner(IdeGitRepository git, IdeGitOperation operation) {
+    final l10n = context.l10n;
+    final conflicts = git.state?.group(IdeGitGroup.merge).length ?? 0;
+    final branch = git.state?.head.branch;
+    final what = switch (operation) {
+      IdeGitOperation.rebase => l10n.gitOperationRebasing,
+      IdeGitOperation.merge => l10n.gitOperationMerging,
+      IdeGitOperation.cherryPick => l10n.gitOperationCherryPicking,
+      IdeGitOperation.revert => l10n.gitOperationReverting,
+    };
+    final warning = themeColors['editorWarning.foreground'];
+    return Container(
+      margin: const EdgeInsets.fromLTRB(8, 2, 8, 6),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: warning.withValues(alpha: .08),
+        border: Border.all(color: warning.withValues(alpha: .45)),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Codicons.gitMerge, size: 14, color: warning),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  [
+                    if (branch != null) '$what · $branch' else what,
+                    conflicts > 0
+                        ? l10n.gitOperationConflicts(conflicts)
+                        : l10n.gitOperationResolved,
+                  ].join('  —  '),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: IdeListColors.foreground,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              IdeButton(
+                label: l10n.gitOperationContinue,
+                onPressed: conflicts > 0
+                    ? null
+                    : () => unawaited(_run(git.continueOperation)),
+              ),
+              if (operation.skips)
+                IdeButton(
+                  label: l10n.gitOperationSkip,
+                  secondary: true,
+                  onPressed: () =>
+                      unawaited(_run(() => git.continueOperation(skip: true))),
+                ),
+              IdeButton(
+                label: l10n.gitOperationAbort,
+                secondary: true,
+                onPressed: () => unawaited(_abort(git, what)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Abort, once confirmed: what was done since it began is undone.
+  Future<void> _abort(IdeGitRepository git, String what) async {
+    final l10n = context.l10n;
+    final answer = await showIdeDialog(
+      context,
+      message: l10n.gitOperationAbortConfirm(what),
+      buttons: [l10n.gitOperationAbort],
+    );
+    if (answer != 0) return;
+    await _run(() => git.continueOperation(abort: true));
   }
 
   /// Not a repository: why, and Initialize Repository where Git is there.
@@ -1204,11 +1293,22 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
               l10n.gitCommitAddToVcs,
               onSelected: () => unawaited(_run(() => git.stage(untracked))),
             ),
-          if (conflicts.isNotEmpty)
+          if (conflicts.isNotEmpty) ...[
+            IdeMenuAction(
+              l10n.gitConflictAcceptCurrent,
+              onSelected: () =>
+                  unawaited(_run(() => git.acceptSide(conflicts, ours: true))),
+            ),
+            IdeMenuAction(
+              l10n.gitConflictAcceptIncoming,
+              onSelected: () =>
+                  unawaited(_run(() => git.acceptSide(conflicts, ours: false))),
+            ),
             IdeMenuAction(
               l10n.gitCommitMarkResolved,
               onSelected: () => unawaited(_run(() => git.stage(conflicts))),
             ),
+          ],
         ],
         [
           if (path != null) ...[

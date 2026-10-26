@@ -3130,5 +3130,17 @@
   "gitPushRemote": "远程",
   "gitPushNew": "新分支",
   "gitPushSelectCommit": "选一个提交，查看它的文件",
-  "gitPushEllipsisCommand": "推送…"
+  "gitPushEllipsisCommand": "推送…",
+  "gitOperationRebasing": "正在变基",
+  "gitOperationMerging": "正在合并",
+  "gitOperationCherryPicking": "正在 Cherry-pick",
+  "gitOperationReverting": "正在还原",
+  "gitOperationConflicts": "还剩 {count} 个冲突",
+  "gitOperationResolved": "冲突已解决",
+  "gitOperationContinue": "继续",
+  "gitOperationSkip": "跳过",
+  "gitOperationAbort": "中止",
+  "gitOperationAbortConfirm": "中止？{what}会停下，已经做的会撤销。",
+  "gitConflictAcceptCurrent": "采用当前的（Ours）",
+  "gitConflictAcceptIncoming": "采用传入的（Theirs）"
 }

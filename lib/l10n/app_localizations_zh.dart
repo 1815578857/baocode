@@ -10926,4 +10926,44 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitPushEllipsisCommand => '推送…';
+
+  @override
+  String get gitOperationRebasing => '正在变基';
+
+  @override
+  String get gitOperationMerging => '正在合并';
+
+  @override
+  String get gitOperationCherryPicking => '正在 Cherry-pick';
+
+  @override
+  String get gitOperationReverting => '正在还原';
+
+  @override
+  String gitOperationConflicts(int count) {
+    return '还剩 $count 个冲突';
+  }
+
+  @override
+  String get gitOperationResolved => '冲突已解决';
+
+  @override
+  String get gitOperationContinue => '继续';
+
+  @override
+  String get gitOperationSkip => '跳过';
+
+  @override
+  String get gitOperationAbort => '中止';
+
+  @override
+  String gitOperationAbortConfirm(String what) {
+    return '中止？$what会停下，已经做的会撤销。';
+  }
+
+  @override
+  String get gitConflictAcceptCurrent => '采用当前的（Ours）';
+
+  @override
+  String get gitConflictAcceptIncoming => '采用传入的（Theirs）';
 }

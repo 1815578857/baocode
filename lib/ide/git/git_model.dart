@@ -249,12 +249,17 @@ class IdeGitState {
     List<String> ignored = const [],
     this.didHitLimit = false,
     p.Context? pathContext,
+    this.operation,
   }) : resources = List.unmodifiable(resources),
        ignored = List.unmodifiable(ignored),
        pathContext = pathContext ?? p.context;
 
   /// The repository's top level.
   final String root;
+
+  /// The merge, rebase, cherry-pick or revert under way, stopped for
+  /// conflicts (or an edit); null for none.
+  final IdeGitOperation? operation;
 
   /// How the host the repository is on spells its paths.
   final p.Context pathContext;
@@ -482,6 +487,7 @@ IdeGitState parseGitStatus(
   String output, {
   bool truncated = false,
   p.Context? pathContext,
+  IdeGitOperation? operation,
 }) {
   final paths = pathContext ?? p.context;
   var head = const IdeGitHead();
@@ -603,6 +609,7 @@ IdeGitState parseGitStatus(
     ignored: ignored,
     didHitLimit: truncated,
     pathContext: paths,
+    operation: operation,
   );
 }
 
@@ -1530,4 +1537,25 @@ class IdeGitNotMergedException implements Exception {
 
   @override
   String toString() => 'The branch $branch is not fully merged.';
+}
+
+/// An operation Git stopped in the middle of, by the pseudo-ref it leaves
+/// ([ref]): JetBrains IDEs' banner over the changes offers to go on with it
+/// or abort it.
+enum IdeGitOperation {
+  merge('MERGE_HEAD', 'merge'),
+  rebase('REBASE_HEAD', 'rebase'),
+  cherryPick('CHERRY_PICK_HEAD', 'cherry-pick'),
+  revert('REVERT_HEAD', 'revert');
+
+  const IdeGitOperation(this.ref, this.command);
+
+  /// The pseudo-ref it leaves while under way.
+  final String ref;
+
+  /// The Git command that continues, aborts or skips it.
+  final String command;
+
+  /// Whether a commit of it can be skipped (`--skip`): a merge's cannot.
+  bool get skips => this != merge;
 }

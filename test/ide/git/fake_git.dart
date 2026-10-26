@@ -31,6 +31,9 @@ class FakeGit {
   /// `git remote` output.
   String remotes = 'origin\n';
 
+  /// The pseudo-ref of the operation under way (`REBASE_HEAD`), if any.
+  String? operation;
+
   /// `git --version` output (the service reads it to pick `restore` or the
   /// older `reset` for unstaging).
   String version = 'git version 2.39.0';
@@ -76,6 +79,10 @@ class FakeGit {
     required String workingDirectory,
     int? limit,
   }) async {
+    // The operation under way, read with each status: not counted.
+    if (arguments case ['log', '--no-walk', '--source', ...]) {
+      return IdeGitOutput(0, operation == null ? '' : '$operation\n');
+    }
     calls.add(arguments);
     await hold?.call(arguments);
     onCommand?.call(arguments);

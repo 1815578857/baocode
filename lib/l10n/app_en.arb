@@ -7788,5 +7788,19 @@
   "gitPushRemote": "Remote",
   "gitPushNew": "new",
   "gitPushSelectCommit": "Select a commit to see its files",
-  "gitPushEllipsisCommand": "Push…"
+  "gitPushEllipsisCommand": "Push…",
+  "gitOperationRebasing": "Rebasing",
+  "gitOperationMerging": "Merging",
+  "gitOperationCherryPicking": "Cherry-picking",
+  "gitOperationReverting": "Reverting",
+  "gitOperationConflicts": "{count, plural, =1{1 conflict left} other{{count} conflicts left}}",
+  "@gitOperationConflicts": {"placeholders": {"count": {"type": "int"}}},
+  "gitOperationResolved": "conflicts resolved",
+  "gitOperationContinue": "Continue",
+  "gitOperationSkip": "Skip",
+  "gitOperationAbort": "Abort",
+  "gitOperationAbortConfirm": "Abort? {what} stops and what it did so far is undone.",
+  "@gitOperationAbortConfirm": {"placeholders": {"what": {"type": "String"}}},
+  "gitConflictAcceptCurrent": "Accept Current (Ours)",
+  "gitConflictAcceptIncoming": "Accept Incoming (Theirs)"
 }
