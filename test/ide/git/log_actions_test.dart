@@ -118,10 +118,7 @@ void main() {
   ) async {
     await pump(tester);
     await menu(tester, 'Second', 'Edit Commit Message…');
-    final box = find.descendant(
-      of: editor,
-      matching: find.byType(TextField),
-    );
+    final box = find.descendant(of: editor, matching: find.byType(TextField));
     expect(tester.widget<TextField>(box).controller!.text, 'Second');
     await tester.enterText(box, 'Second, better\n\nWhy.');
     await tester.tap(find.text('Save'));
@@ -149,10 +146,7 @@ void main() {
     expect(editor, findsNothing);
 
     await menu(tester, 'First', 'Edit Commit Message…');
-    final box = find.descendant(
-      of: editor,
-      matching: find.byType(TextField),
-    );
+    final box = find.descendant(of: editor, matching: find.byType(TextField));
     await tester.enterText(box, 'First, reworded');
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
@@ -243,5 +237,51 @@ void main() {
     expect(find.text('commit: c1'), findsOneWidget);
     await menu(tester, 'First', 'Go to Child Commit');
     expect(find.text('commit: c3'), findsOneWidget);
+  });
+
+  testWidgets('Ctrl-click and Shift-click select more; together they are '
+      'squashed, reverted or compared', (tester) async {
+    await pump(tester);
+    await tester.tap(find.text('Second').first);
+    await tester.pumpAndSettle();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.tap(find.text('First').first);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pumpAndSettle();
+    expect(find.text('2 commits selected'), findsOneWidget);
+
+    await menu(tester, 'First', 'Squash 2 Commits into One');
+    final rebase = git.calls.where((call) => call.contains('rebase')).single;
+    expect(rebase.sublist(0, 2), [
+      '-c',
+      "sequence.editor=sed -i.bak -e 's/^pick \\(c2[0-9a-f]*\\) /squash \\1 /'",
+    ]);
+    expect(rebase.last, '--root');
+
+    await menu(tester, 'First', 'Revert 2 Commits');
+    expect(git.callsTo('revert').last, ['revert', '--no-edit', 'c2', 'c1']);
+    await menu(tester, 'First', 'Compare Commits');
+    expect(git.callsTo('diff').last, [
+      'diff',
+      '--name-status',
+      '-z',
+      '-M',
+      'c1',
+      'c2',
+      '--',
+    ]);
+
+    // Shift: all from the one clicked last.
+    await tester.tap(find.text('Topic work').first);
+    await tester.pumpAndSettle();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.tap(find.text('First').first);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pumpAndSettle();
+    expect(find.text('3 commits selected'), findsOneWidget);
+    // A plain click: that one alone.
+    await tester.tap(find.text('Second').first);
+    await tester.pumpAndSettle();
+    expect(find.text('commit: c2'), findsOneWidget);
   });
 }

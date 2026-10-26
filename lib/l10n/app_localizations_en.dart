@@ -11266,4 +11266,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitLogNoDifferences => 'No differences from the working tree';
+
+  @override
+  String get gitLogCopyHashes => 'Copy Commit Hashes';
+
+  @override
+  String gitLogCherryPickCount(int count) {
+    return 'Cherry-Pick $count Commits';
+  }
+
+  @override
+  String get gitLogCompareCommits => 'Compare Commits';
+
+  @override
+  String gitLogRevertCommits(int count) {
+    return 'Revert $count Commits';
+  }
+
+  @override
+  String gitLogSquashCommits(int count) {
+    return 'Squash $count Commits into One';
+  }
+
+  @override
+  String gitLogCommitsSelected(int count) {
+    return '$count commits selected';
+  }
 }

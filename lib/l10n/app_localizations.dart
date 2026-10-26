@@ -18422,6 +18422,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No differences from the working tree'**
   String get gitLogNoDifferences;
+
+  /// No description provided for @gitLogCopyHashes.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Commit Hashes'**
+  String get gitLogCopyHashes;
+
+  /// No description provided for @gitLogCherryPickCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Cherry-Pick {count} Commits'**
+  String gitLogCherryPickCount(int count);
+
+  /// No description provided for @gitLogCompareCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare Commits'**
+  String get gitLogCompareCommits;
+
+  /// No description provided for @gitLogRevertCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'Revert {count} Commits'**
+  String gitLogRevertCommits(int count);
+
+  /// No description provided for @gitLogSquashCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'Squash {count} Commits into One'**
+  String gitLogSquashCommits(int count);
+
+  /// No description provided for @gitLogCommitsSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} commits selected'**
+  String gitLogCommitsSelected(int count);
 }
 
 class _AppLocalizationsDelegate

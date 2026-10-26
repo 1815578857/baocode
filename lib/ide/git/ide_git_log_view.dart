@@ -138,10 +138,30 @@ class IdeGitLogController extends ChangeNotifier {
   /// local changes' until one is picked.
   String? get selected => _selected;
   set selected(String? id) {
-    if (id == _selected) return;
+    if (id == _selected && _more.isEmpty) return;
     _selected = id;
+    _more.clear();
     _branchesShown = false;
     // Another row's details: the changes of the one before go.
+    _diff = null;
+    notifyListeners();
+  }
+
+  final Set<String> _more = {};
+
+  /// The commits selected with [selected] (Cmd/Ctrl- or Shift-clicked).
+  Set<String> get moreSelected => _more;
+
+  /// Whether [id]'s row is selected.
+  bool isSelected(String id) => id == _selected || _more.contains(id);
+
+  /// [selected] with [more] selected too.
+  void selectMany(String selected, Iterable<String> more) {
+    _selected = selected;
+    _more
+      ..clear()
+      ..addAll(more.where((id) => id != selected));
+    _branchesShown = false;
     _diff = null;
     notifyListeners();
   }
@@ -1236,8 +1256,10 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
   String _selectedOf(IdeGitRepository git, IdeGitState state) =>
       _log.selected ?? ideGitWorkingTreeId;
 
-  void _select(String id, {bool reveal = false}) {
-    _log.selected = id;
+  /// Selects [id] alone, or with [keep] leaves the selection as it is;
+  /// scrolled to with [reveal].
+  void _select(String id, {bool reveal = false, bool keep = false}) {
+    if (!keep) _log.selected = id;
     if (!reveal) return;
     final git = _git;
     if (git == null) return;
@@ -1246,6 +1268,56 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
       ideRevealRow(_log.scroll, index, rowHeight: IdeGitLogView.rowHeight);
     }
   }
+
+  /// The row selection grows from with Shift.
+  String? _anchor;
+
+  /// A commit's row clicked: it alone, or with Cmd/Ctrl added to or taken
+  /// from those selected, or with Shift those from the last clicked to it.
+  void _clicked(IdeGitRepository git, String id, {bool synthetic = false}) {
+    final keys = HardwareKeyboard.instance;
+    final toggle = defaultTargetPlatform == TargetPlatform.macOS
+        ? keys.isMetaPressed
+        : keys.isControlPressed;
+    final selected = _log.selected;
+    final commits = selected != null && selected != ideGitWorkingTreeId;
+    if (!synthetic && commits && toggle) {
+      final all = {selected, ..._log.moreSelected};
+      if (!all.remove(id)) {
+        _log.selectMany(id, all);
+        _anchor = id;
+      } else if (all.isNotEmpty) {
+        _log.selectMany(id == selected ? all.first : selected, all);
+      }
+      return;
+    }
+    if (!synthetic && commits && keys.isShiftPressed) {
+      final ids = [
+        for (final row in git.graph ?? const <IdeGraphRow>[])
+          if (!_isSynthetic(row.commit.id)) row.commit.id,
+      ];
+      final from = ids.indexOf(_anchor ?? selected);
+      final to = ids.indexOf(id);
+      if (from >= 0 && to >= 0) {
+        final range = ids.sublist(math.min(from, to), math.max(from, to) + 1);
+        _log.selectMany(id, range);
+        return;
+      }
+    }
+    _anchor = id;
+    _select(id);
+  }
+
+  static bool _isSynthetic(String id) =>
+      id == ideIncomingChangesId || id == ideOutgoingChangesId;
+
+  /// The commits selected, in the graph's order (newest first); one or
+  /// none without others.
+  List<IdeGitCommit> _selectedCommits(IdeGitRepository git) => [
+    for (final row in git.graph ?? const <IdeGraphRow>[])
+      if (_log.isSelected(row.commit.id) && !_isSynthetic(row.commit.id))
+        row.commit,
+  ];
 
   void _goToCurrent(IdeGitRepository git) {
     for (final row in git.graph ?? const <IdeGraphRow>[]) {
@@ -1303,7 +1375,15 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
       _ => null,
     };
     if (to == null) return KeyEventResult.ignored;
-    _select(ids[to.clamp(0, ids.length - 1)], reveal: true);
+    final id = ids[to.clamp(0, ids.length - 1)];
+    // Shift: the selection grown to it, as a Shift-click does.
+    if (hardware.isShiftPressed && id != ideGitWorkingTreeId) {
+      _clicked(git, id);
+      _select(id, reveal: true, keep: true);
+      return KeyEventResult.handled;
+    }
+    _anchor = id;
+    _select(id, reveal: true);
     return KeyEventResult.handled;
   }
 
@@ -1415,7 +1495,7 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                 return _commitRow(
                   git,
                   row,
-                  selected == row.commit.id,
+                  _log.isSelected(row.commit.id),
                   graphWidth: graphWidth,
                   narrowed: narrowed,
                   columns: columns,
@@ -1557,11 +1637,16 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
       focused: focused,
       onTap: () {
         _log.focusNode.requestFocus();
-        _select(commit.id);
+        _clicked(git, commit.id, synthetic: synthetic);
       },
       onContextMenu: synthetic
           ? null
           : (position) {
+              final many = _selectedCommits(git);
+              if (many.length > 1 && _log.isSelected(commit.id)) {
+                unawaited(_commitsMenu(position, git, many));
+                return;
+              }
               _select(commit.id);
               unawaited(_commitMenu(position, git, commit));
             },
@@ -1939,6 +2024,110 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     );
   }
 
+  /// The menu of [commits] selected together (newest first).
+  Future<void> _commitsMenu(
+    Offset position,
+    IdeGitRepository git,
+    List<IdeGitCommit> commits,
+  ) {
+    final l10n = context.l10n;
+    final oldestFirst = commits.reversed.toList();
+    final inBranch = [
+      for (final commit in commits)
+        if (git.state?.head.branch != null && _inHeadHistory(git, commit))
+          commit,
+    ];
+    final elsewhere = commits.length - inBranch.length;
+    return showIdeMenu(
+      context,
+      position: position,
+      entries: ideMenuGroups([
+        [
+          IdeMenuAction(
+            l10n.gitLogCopyHashes,
+            onSelected: () => unawaited(
+              Clipboard.setData(
+                ClipboardData(text: commits.map((c) => c.id).join('\n')),
+              ),
+            ),
+          ),
+        ],
+        [
+          if (elsewhere == commits.length)
+            IdeMenuAction(
+              l10n.gitLogCherryPickCount(commits.length),
+              onSelected: () => unawaited(
+                _run(() => git.cherryPick([for (final c in oldestFirst) c.id])),
+              ),
+            ),
+          if (commits.length == 2)
+            IdeMenuAction(
+              l10n.gitLogCompareCommits,
+              onSelected: () =>
+                  unawaited(_compareCommits(git, commits.last, commits.first)),
+            ),
+        ],
+        [
+          IdeMenuAction(
+            l10n.gitLogRevertCommits(commits.length),
+            onSelected: () => unawaited(
+              _run(() => git.revert([for (final c in commits) c.id])),
+            ),
+          ),
+          if (inBranch.length == commits.length &&
+              _consecutive(git, commits) &&
+              commits.every((c) => c.parentIds.length <= 1))
+            IdeMenuAction(
+              l10n.gitLogSquashCommits(commits.length),
+              onSelected: () => unawaited(_run(() => git.squash(oldestFirst))),
+            ),
+        ],
+      ]),
+    );
+  }
+
+  /// Whether [commits] (newest first) follow one another by first parents.
+  static bool _consecutive(IdeGitRepository git, List<IdeGitCommit> commits) {
+    for (var i = 0; i + 1 < commits.length; i++) {
+      if (commits[i].parentIds.firstOrNull != commits[i + 1].id) return false;
+    }
+    return true;
+  }
+
+  /// Two commits compared: the files [from] and [to] differ in, [from]'s
+  /// side against [to]'s, in the table's place.
+  Future<void> _compareCommits(
+    IdeGitRepository git,
+    IdeGitCommit from,
+    IdeGitCommit to,
+  ) async {
+    final List<IdeGitCommitChange> changes;
+    try {
+      changes = await git.service.changesSince(from.id, other: to.id);
+    } catch (error) {
+      _report(error);
+      return;
+    }
+    if (!mounted || changes.isEmpty) return;
+    Future<String> show(String ref, String path) =>
+        git.service.show(ref, path).catchError((Object _) => '');
+    _log.showDiff([
+      for (final change in changes)
+        IdeGitDiffFile(
+          path: change.path,
+          status: ideCommitChangeStatus(change.status),
+          original: () => change.status == 'A'
+              ? Future.value('')
+              : show(from.id, change.originalPath ?? change.path),
+          modified: () => change.status == 'D'
+              ? Future.value('')
+              : show(to.id, change.path),
+          originalLabel: from.shortId,
+          modifiedLabel: to.shortId,
+        ),
+    ], 0);
+  }
+
   /// Whether [commit] is HEAD's or one before it, by the graph's first
   /// parents.
   static bool _inHeadHistory(IdeGitRepository git, IdeGitCommit commit) {
@@ -2149,6 +2338,20 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
           break;
         }
       }
+    }
+    final many = local ? const <IdeGitCommit>[] : _selectedCommits(git);
+    if (many.length > 1) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Visibility(
+            visible: false,
+            maintainState: true,
+            child: widget.changes,
+          ),
+          _SelectionSummary(commits: many),
+        ],
+      );
     }
     return Stack(
       fit: StackFit.expand,
@@ -3853,6 +4056,52 @@ class _MessageEditorState extends State<_MessageEditor> {
             ),
           ],
         ),
+      ],
+    );
+  }
+}
+
+/// The commits selected together, in the details' place: how many, and
+/// each one's id and subject.
+class _SelectionSummary extends StatelessWidget {
+  const _SelectionSummary({required this.commits});
+
+  final List<IdeGitCommit> commits;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final description = IdeListColors.description;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      children: [
+        Text(
+          l10n.gitLogCommitsSelected(commits.length),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: IdeListColors.foreground,
+          ),
+        ),
+        const SizedBox(height: 8),
+        for (final commit in commits)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '${commit.shortId}  ',
+                    style: TextStyle(color: description),
+                  ),
+                  TextSpan(text: commit.subject),
+                ],
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12, color: IdeListColors.foreground),
+            ),
+          ),
       ],
     );
   }

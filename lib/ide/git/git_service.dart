@@ -764,11 +764,15 @@ class IdeGitService {
   }
 
   /// The files that differ between [commit] and the working tree
-  /// (`git diff --name-status <commit>`): Compare with Local.
-  Future<List<IdeGitCommitChange>> changesSince(String commit) async {
+  /// (`git diff --name-status <commit>`): Compare with Local; or [other]
+  /// (two commits compared).
+  Future<List<IdeGitCommitChange>> changesSince(
+    String commit, {
+    String? other,
+  }) async {
     final top = await _requireRoot();
     final output = _check(
-      await _git(['diff', '--name-status', '-z', '-M', commit, '--']),
+      await _git(['diff', '--name-status', '-z', '-M', commit, ?other, '--']),
       'Cannot compare with $commit.',
     );
     return _parseNameStatus(top, output.stdout);
@@ -894,16 +898,35 @@ class IdeGitService {
     }
   }
 
-  /// Rebases from [commit] with [options] and no editor; aborted, then
-  /// [undo] run, where it fails.
+  /// Squashes [commits] (oldest first, one after another in the current
+  /// branch) into the first, their messages one after another: a rebase
+  /// whose list `sed` edits, no editor.
+  Future<void> squash(List<IdeGitCommit> commits) async {
+    await _requireRoot();
+    if (commits.length < 2) return;
+    await _requireLinearSince(commits.first);
+    final script = [
+      for (final commit in commits.skip(1))
+        "-e 's/^pick \\(${commit.id.length > 7 ? commit.id.substring(0, 7) : commit.id}[0-9a-f]*\\) /"
+            "squash \\1 /'",
+    ].join(' ');
+    await _rebaseFrom(commits.first, [
+      '-i',
+    ], sequenceEditor: 'sed -i.bak $script');
+  }
+
+  /// Rebases from [commit] with [options] and no editor (the list as it is,
+  /// or as [sequenceEditor] makes it); aborted, then [undo] run, where it
+  /// fails.
   Future<void> _rebaseFrom(
     IdeGitCommit commit,
     List<String> options, {
+    String sequenceEditor = ':',
     Future<void> Function()? undo,
   }) async {
     final output = await _git([
       '-c',
-      'sequence.editor=:',
+      'sequence.editor=$sequenceEditor',
       '-c',
       'core.editor=:',
       'rebase',

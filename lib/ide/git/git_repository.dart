@@ -324,6 +324,10 @@ class IdeGitRepository extends ChangeNotifier {
   Future<void> reword(IdeGitCommit commit, String message) =>
       _operate(() => service.reword(commit, message));
 
+  /// Squash Commits: [commits] (oldest first, one after another) made one.
+  Future<void> squash(List<IdeGitCommit> commits) =>
+      _operate(() => service.squash(commits));
+
   /// Drop Commit: [commit] taken out of the current branch.
   Future<void> drop(IdeGitCommit commit) =>
       _operate(() => service.drop(commit));

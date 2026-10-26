@@ -7695,5 +7695,15 @@
   "gitLogGoToChild": "Go to Child Commit",
   "gitLogComparedWithLocal": "{commit} ↔ Local",
   "@gitLogComparedWithLocal": {"placeholders": {"commit": {"type": "String"}}},
-  "gitLogNoDifferences": "No differences from the working tree"
+  "gitLogNoDifferences": "No differences from the working tree",
+  "gitLogCopyHashes": "Copy Commit Hashes",
+  "gitLogCherryPickCount": "Cherry-Pick {count} Commits",
+  "@gitLogCherryPickCount": {"placeholders": {"count": {"type": "int"}}},
+  "gitLogCompareCommits": "Compare Commits",
+  "gitLogRevertCommits": "Revert {count} Commits",
+  "@gitLogRevertCommits": {"placeholders": {"count": {"type": "int"}}},
+  "gitLogSquashCommits": "Squash {count} Commits into One",
+  "@gitLogSquashCommits": {"placeholders": {"count": {"type": "int"}}},
+  "gitLogCommitsSelected": "{count} commits selected",
+  "@gitLogCommitsSelected": {"placeholders": {"count": {"type": "int"}}}
 }

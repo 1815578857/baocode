@@ -10668,4 +10668,30 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitLogNoDifferences => '与工作区没有差异';
+
+  @override
+  String get gitLogCopyHashes => '复制提交哈希';
+
+  @override
+  String gitLogCherryPickCount(int count) {
+    return '拣选这 $count 个提交';
+  }
+
+  @override
+  String get gitLogCompareCommits => '比较这两个提交';
+
+  @override
+  String gitLogRevertCommits(int count) {
+    return '还原这 $count 个提交';
+  }
+
+  @override
+  String gitLogSquashCommits(int count) {
+    return '把这 $count 个提交合成一个（Squash）';
+  }
+
+  @override
+  String gitLogCommitsSelected(int count) {
+    return '已选 $count 个提交';
+  }
 }

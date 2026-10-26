@@ -3060,5 +3060,11 @@
   "gitLogGoToParent": "转到父提交",
   "gitLogGoToChild": "转到子提交",
   "gitLogComparedWithLocal": "{commit} ↔ 本地",
-  "gitLogNoDifferences": "与工作区没有差异"
+  "gitLogNoDifferences": "与工作区没有差异",
+  "gitLogCopyHashes": "复制提交哈希",
+  "gitLogCherryPickCount": "拣选这 {count} 个提交",
+  "gitLogCompareCommits": "比较这两个提交",
+  "gitLogRevertCommits": "还原这 {count} 个提交",
+  "gitLogSquashCommits": "把这 {count} 个提交合成一个（Squash）",
+  "gitLogCommitsSelected": "已选 {count} 个提交"
 }
