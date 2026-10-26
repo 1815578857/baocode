@@ -72,6 +72,7 @@ import 'git_repository.dart';
 import 'git_service.dart';
 import 'git_branch_tree.dart' show IdeGitFavoriteBranches;
 import 'ide_git_log_view.dart';
+import 'ide_git_ref_labels.dart';
 import 'scm_host.dart';
 import 'scm_tree.dart';
 
@@ -3807,9 +3808,18 @@ class IdeGitRefBadge extends StatelessWidget {
 /// A commit's hover, as the graph and the timeline show it: the author,
 /// when, the message, its references and its id.
 class IdeCommitHover extends StatelessWidget {
-  const IdeCommitHover(this.commit, {super.key, this.referenceColors});
+  const IdeCommitHover(
+    this.commit, {
+    super.key,
+    this.referenceColors,
+    this.labels = false,
+  });
 
   final IdeGitCommit commit;
+
+  /// The references as the Git log draws them ([IdeGitRefLabelView]), not
+  /// as badges.
+  final bool labels;
 
   /// The graph's color ids of [commit]'s references, by id (the others in
   /// the default label's); without them (the timeline's), the references
@@ -3866,11 +3876,15 @@ class IdeCommitHover extends StatelessWidget {
               when commit.references.isNotEmpty) ...[
             const SizedBox(height: 8),
             Wrap(
-              spacing: 4,
+              spacing: labels ? 12 : 4,
               runSpacing: 4,
               children: [
-                for (final ref in commit.references)
-                  IdeGitRefBadge(ref, referenceColors[ref.id]),
+                if (labels)
+                  for (final label in ideGitRefLabels(commit.references))
+                    IdeGitRefLabelView(label, foreground: foreground)
+                else
+                  for (final ref in commit.references)
+                    IdeGitRefBadge(ref, referenceColors[ref.id]),
               ],
             ),
           ],

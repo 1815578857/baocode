@@ -2033,23 +2033,27 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                 child: GiveWayRow(
                   children: [
                     GiveWay.fill(
-                      Text.rich(
-                        TextSpan(
-                          children: _highlighted(
-                            _subjectOf(commit),
-                            synthetic ? const [] : git.graphFilter.terms,
+                      _commitHover(
+                        row,
+                        synthetic: synthetic,
+                        child: Text.rich(
+                          TextSpan(
+                            children: _highlighted(
+                              _subjectOf(commit),
+                              synthetic ? const [] : git.graphFilter.terms,
+                            ),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: foreground,
+                            fontWeight: weight,
+                            fontStyle: synthetic ? FontStyle.italic : null,
                           ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: foreground,
-                          fontWeight: weight,
-                          fontStyle: synthetic ? FontStyle.italic : null,
-                        ),
                       ),
-                      minWidth: 120,
+                      minWidth: 60,
                     ),
                     ..._labels(row, foreground),
                   ],
@@ -2158,9 +2162,28 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     return _formatDate(date);
   }
 
+  /// Over a commit's subject, the whole of it: its author and date, its
+  /// message and references, its hash.
+  Widget _commitHover(
+    IdeGraphRow row, {
+    required bool synthetic,
+    required Widget child,
+  }) => synthetic
+      ? child
+      : IdeHover(
+          content: IdeCommitHover(
+            row.commit,
+            referenceColors: row.referenceColors,
+            labels: true,
+          ),
+          compact: false,
+          child: child,
+        );
+
   /// The references' labels at the row's end, as JetBrains IDEs align
-  /// them: short of room the last give way first, to their icons alone,
-  /// then gone.
+  /// them, the subject cut short before them: short of room the tags give
+  /// way first, to their icons alone, then gone; then the remote branches;
+  /// the branches last.
   List<GiveWay> _labels(IdeGraphRow row, Color foreground) {
     final labels = ideGitRefLabels(row.commit.references);
     return [
@@ -2181,7 +2204,14 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
             padding: EdgeInsets.only(left: index == 0 ? 12 : 4),
             child: IdeGitRefLabelView(label, compact: true),
           ),
-          priority: labels.length - index,
+          priority:
+              switch (label.ref.kind) {
+                IdeGitRefKind.head => 3000,
+                IdeGitRefKind.branch => 2000,
+                IdeGitRefKind.remote => 1000,
+                IdeGitRefKind.tag => 0,
+              } -
+              index,
         ),
     ];
   }
