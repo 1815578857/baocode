@@ -47,7 +47,7 @@ import 'debug_editor_glue.dart';
 import 'git/git_annotations.dart';
 import 'git/git_blame.dart';
 import 'git/git_line_changes.dart';
-import 'git/git_model.dart' show IdeGitBlameInformation;
+import 'git/git_model.dart' show IdeGitBlameInformation, IdeGitLogLines;
 import 'ide_agent_edits.dart';
 import 'ide_line_change_popup.dart';
 import 'ide_diff_options.dart';
@@ -102,6 +102,7 @@ class IdeEditor extends StatefulWidget {
     this.formatOnSave = false,
     this.gitBlame = true,
     this.onShowCommit,
+    this.onShowHistory,
     this.keyResolver,
     this.onPaste,
     this.debug,
@@ -141,6 +142,10 @@ class IdeEditor extends StatefulWidget {
 
   /// Shows a commit in the Git log: Annotate's pressed.
   final ValueChanged<String>? onShowCommit;
+
+  /// Shows the Git log of a file, or of some of its lines (their numbers
+  /// at HEAD): Show History, and Show History for Selection.
+  final void Function(String path, IdeGitLogLines? lines)? onShowHistory;
 
   /// The app's keybindings (the workbench resolves them with its context):
   /// which command a key runs, the editor's own included. Without it the
@@ -1251,6 +1256,46 @@ class IdeEditorState extends State<IdeEditor> {
       widget.active.diff == null &&
       widget.workspace.gitAt(widget.active.path) != null;
 
+  /// Whether the active file's Git history can be shown.
+  bool get canShowHistory =>
+      widget.onShowHistory != null &&
+      widget.active.isFile &&
+      widget.active.diff == null &&
+      widget.workspace.gitAt(widget.active.path) != null;
+
+  /// The lines selected in the active file as they were at HEAD (Show
+  /// History for Selection's); null without a selection, or where it is
+  /// all new lines.
+  IdeGitLogLines? get selectionHistoryLines {
+    final controller = _nativeController;
+    if (!canShowHistory || controller == null) return null;
+    final selection = controller.value.selection;
+    if (selection.isCollapsed) return null;
+    final snapshot = widget.active.model.snapshot;
+    final from = snapshot.positionAtOffset(selection.start);
+    final to = snapshot.positionAtOffset(selection.end);
+    // Up to a line's start: that line is not selected.
+    final last = to.column == 1 && to.lineNumber > from.lineNumber
+        ? to.lineNumber - 1
+        : to.lineNumber;
+    final lines = ideGitHeadLines(
+      from.lineNumber,
+      last,
+      _lineChangesOf(widget.active)?.changes ?? const [],
+    );
+    if (lines == null) return null;
+    return (path: widget.active.path, start: lines.start, end: lines.end);
+  }
+
+  /// Show History: the active file's commits in the Git log; with
+  /// [selection], those that changed the lines selected.
+  void showHistory({bool selection = false}) {
+    if (!canShowHistory) return;
+    final lines = selection ? selectionHistoryLines : null;
+    if (selection && lines == null) return;
+    widget.onShowHistory!(widget.active.path, lines);
+  }
+
   /// Annotate with Git Blame, or Close Annotations.
   void toggleAnnotations() {
     final doc = widget.active;
@@ -1928,6 +1973,13 @@ class IdeEditorState extends State<IdeEditor> {
               )
             else if (canAnnotate)
               IdeMenuAction(l10n.gitAnnotate, onSelected: toggleAnnotations),
+            if (canShowHistory)
+              IdeMenuAction(l10n.gitShowHistory, onSelected: showHistory),
+            if (hasSelection && selectionHistoryLines != null)
+              IdeMenuAction(
+                l10n.gitShowHistoryForSelection,
+                onSelected: () => showHistory(selection: true),
+              ),
           ],
           [
             if (showCommands != null)

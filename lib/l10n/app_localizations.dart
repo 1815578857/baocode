@@ -7230,7 +7230,7 @@ abstract class AppLocalizations {
   /// No description provided for @gitBranches.
   ///
   /// In en, this message translates to:
-  /// **'branches'**
+  /// **'Branches'**
   String get gitBranches;
 
   /// No description provided for @gitRemoteBranches.
@@ -18272,6 +18272,438 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close Annotations'**
   String get gitCloseAnnotations;
+
+  /// No description provided for @gitLogCopyPatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy as Patch'**
+  String get gitLogCopyPatch;
+
+  /// No description provided for @gitLogCherryPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Cherry-Pick'**
+  String get gitLogCherryPick;
+
+  /// No description provided for @gitLogCompareWithLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare with Local'**
+  String get gitLogCompareWithLocal;
+
+  /// No description provided for @gitLogResetToHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Current Branch to Here'**
+  String get gitLogResetToHere;
+
+  /// No description provided for @gitLogResetSoft.
+  ///
+  /// In en, this message translates to:
+  /// **'Soft: keep the changes staged'**
+  String get gitLogResetSoft;
+
+  /// No description provided for @gitLogResetMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed: keep the changes, not staged'**
+  String get gitLogResetMixed;
+
+  /// No description provided for @gitLogResetHard.
+  ///
+  /// In en, this message translates to:
+  /// **'Hard: discard the changes'**
+  String get gitLogResetHard;
+
+  /// No description provided for @gitLogResetKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep: keep the local changes'**
+  String get gitLogResetKeep;
+
+  /// No description provided for @gitLogResetHardConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset “{branch}” to {commit} and discard every change since, committed or not?'**
+  String gitLogResetHardConfirm(String branch, String commit);
+
+  /// No description provided for @gitLogResetButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get gitLogResetButton;
+
+  /// No description provided for @gitLogRevertCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Revert Commit'**
+  String get gitLogRevertCommit;
+
+  /// No description provided for @gitLogEditMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Commit Message…'**
+  String get gitLogEditMessage;
+
+  /// No description provided for @gitLogDropCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop Commit'**
+  String get gitLogDropCommit;
+
+  /// No description provided for @gitLogDropConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Take {commit} “{subject}” out of the branch?'**
+  String gitLogDropConfirm(String commit, String subject);
+
+  /// No description provided for @gitLogDropButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop'**
+  String get gitLogDropButton;
+
+  /// No description provided for @gitLogPushUpToHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Push All up to Here'**
+  String get gitLogPushUpToHere;
+
+  /// No description provided for @gitLogNewTag.
+  ///
+  /// In en, this message translates to:
+  /// **'New Tag…'**
+  String get gitLogNewTag;
+
+  /// No description provided for @gitLogNewTagAt.
+  ///
+  /// In en, this message translates to:
+  /// **'New tag at {commit}'**
+  String gitLogNewTagAt(String commit);
+
+  /// No description provided for @gitTagName.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag name'**
+  String get gitTagName;
+
+  /// No description provided for @gitTagMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message (optional: an annotated tag)'**
+  String get gitTagMessage;
+
+  /// No description provided for @gitLogCreateTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Tag'**
+  String get gitLogCreateTag;
+
+  /// No description provided for @gitLogGoToParent.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Parent Commit'**
+  String get gitLogGoToParent;
+
+  /// No description provided for @gitLogGoToChild.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Child Commit'**
+  String get gitLogGoToChild;
+
+  /// No description provided for @gitLogComparedWithLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'{commit} ↔ Local'**
+  String gitLogComparedWithLocal(String commit);
+
+  /// No description provided for @gitLogNoDifferences.
+  ///
+  /// In en, this message translates to:
+  /// **'No differences from the working tree'**
+  String get gitLogNoDifferences;
+
+  /// No description provided for @gitLogCopyHashes.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Commit Hashes'**
+  String get gitLogCopyHashes;
+
+  /// No description provided for @gitLogCherryPickCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Cherry-Pick {count} Commits'**
+  String gitLogCherryPickCount(int count);
+
+  /// No description provided for @gitLogCompareCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare Commits'**
+  String get gitLogCompareCommits;
+
+  /// No description provided for @gitLogRevertCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'Revert {count} Commits'**
+  String gitLogRevertCommits(int count);
+
+  /// No description provided for @gitLogSquashCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'Squash {count} Commits into One'**
+  String gitLogSquashCommits(int count);
+
+  /// No description provided for @gitLogCommitsSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} commits selected'**
+  String gitLogCommitsSelected(int count);
+
+  /// No description provided for @gitLogPaths.
+  ///
+  /// In en, this message translates to:
+  /// **'Paths'**
+  String get gitLogPaths;
+
+  /// No description provided for @gitLogAllPaths.
+  ///
+  /// In en, this message translates to:
+  /// **'All Paths'**
+  String get gitLogAllPaths;
+
+  /// No description provided for @gitLogCurrentFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Current File: {path}'**
+  String gitLogCurrentFile(String path);
+
+  /// No description provided for @gitLogCurrentFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Its Folder: {path}'**
+  String gitLogCurrentFolder(String path);
+
+  /// No description provided for @gitLogPathCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} paths'**
+  String gitLogPathCount(int count);
+
+  /// No description provided for @gitLogLinesOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{file}: lines {start}–{end}'**
+  String gitLogLinesOf(String file, int start, int end);
+
+  /// No description provided for @gitShowHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Show History'**
+  String get gitShowHistory;
+
+  /// No description provided for @gitShowHistoryForSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Show History for Selection'**
+  String get gitShowHistoryForSelection;
+
+  /// No description provided for @gitShowBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Branches'**
+  String get gitShowBranches;
+
+  /// No description provided for @gitHideBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide Branches'**
+  String get gitHideBranches;
+
+  /// No description provided for @gitBranchesFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter branches'**
+  String get gitBranchesFilter;
+
+  /// No description provided for @gitBranchesHead.
+  ///
+  /// In en, this message translates to:
+  /// **'HEAD (Current Branch)'**
+  String get gitBranchesHead;
+
+  /// No description provided for @gitBranchCheckout.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout'**
+  String get gitBranchCheckout;
+
+  /// No description provided for @gitBranchNewFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'New Branch from “{name}”…'**
+  String gitBranchNewFrom(String name);
+
+  /// No description provided for @gitBranchCheckoutRebase.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout and Rebase onto “{current}”'**
+  String gitBranchCheckoutRebase(String current);
+
+  /// No description provided for @gitBranchCompare.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare with “{current}”'**
+  String gitBranchCompare(String current);
+
+  /// No description provided for @gitBranchDiffWorkingTree.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Diff with Working Tree'**
+  String get gitBranchDiffWorkingTree;
+
+  /// No description provided for @gitBranchRebaseOnto.
+  ///
+  /// In en, this message translates to:
+  /// **'Rebase “{current}” onto “{name}”'**
+  String gitBranchRebaseOnto(String current, String name);
+
+  /// No description provided for @gitBranchMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge “{name}” into “{current}”'**
+  String gitBranchMerge(String name, String current);
+
+  /// No description provided for @gitBranchPullRebase.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull into “{current}” Using Rebase'**
+  String gitBranchPullRebase(String current);
+
+  /// No description provided for @gitBranchPullMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull into “{current}” Using Merge'**
+  String gitBranchPullMerge(String current);
+
+  /// No description provided for @gitBranchUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get gitBranchUpdate;
+
+  /// No description provided for @gitBranchPush.
+  ///
+  /// In en, this message translates to:
+  /// **'Push'**
+  String get gitBranchPush;
+
+  /// No description provided for @gitBranchPushTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Push to {upstream}'**
+  String gitBranchPushTo(String upstream);
+
+  /// No description provided for @gitBranchUpstream.
+  ///
+  /// In en, this message translates to:
+  /// **'Upstream'**
+  String get gitBranchUpstream;
+
+  /// No description provided for @gitBranchUnsetUpstream.
+  ///
+  /// In en, this message translates to:
+  /// **'Unset Upstream'**
+  String get gitBranchUnsetUpstream;
+
+  /// No description provided for @gitBranchRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename…'**
+  String get gitBranchRename;
+
+  /// No description provided for @gitBranchRenameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename the branch “{name}”'**
+  String gitBranchRenameTitle(String name);
+
+  /// No description provided for @gitBranchRenameButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get gitBranchRenameButton;
+
+  /// No description provided for @gitBranchFavorite.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Favorites'**
+  String get gitBranchFavorite;
+
+  /// No description provided for @gitBranchUnfavorite.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from Favorites'**
+  String get gitBranchUnfavorite;
+
+  /// No description provided for @gitBranchShowOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Only This in the Log'**
+  String get gitBranchShowOnly;
+
+  /// No description provided for @gitBranchDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get gitBranchDelete;
+
+  /// No description provided for @gitTagDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Tag'**
+  String get gitTagDelete;
+
+  /// No description provided for @gitBranchDeleteButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get gitBranchDeleteButton;
+
+  /// No description provided for @gitBranchDeleteRemoteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the branch “{name}” on its remote?'**
+  String gitBranchDeleteRemoteConfirm(String name);
+
+  /// No description provided for @gitBranchNotMergedConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” has commits merged into no other branch. Delete it anyway?'**
+  String gitBranchNotMergedConfirm(String name);
+
+  /// No description provided for @gitBranchDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted the branch “{name}”.'**
+  String gitBranchDeleted(String name);
+
+  /// No description provided for @gitTagDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted the tag “{name}”.'**
+  String gitTagDeleted(String name);
+
+  /// No description provided for @gitBranchRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get gitBranchRestore;
+
+  /// No description provided for @gitBranchCompared.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” has {ahead} commits “{current}” has not; “{current}” has {behind} it has not.'**
+  String gitBranchCompared(String name, String current, int ahead, int behind);
 }
 
 class _AppLocalizationsDelegate

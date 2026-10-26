@@ -4409,7 +4409,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitCheckoutDetached => 'Checkout detached...';
 
   @override
-  String get gitBranches => 'branches';
+  String get gitBranches => 'Branches';
 
   @override
   String get gitRemoteBranches => 'remote branches';
@@ -11183,4 +11183,272 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitCloseAnnotations => 'Close Annotations';
+
+  @override
+  String get gitLogCopyPatch => 'Copy as Patch';
+
+  @override
+  String get gitLogCherryPick => 'Cherry-Pick';
+
+  @override
+  String get gitLogCompareWithLocal => 'Compare with Local';
+
+  @override
+  String get gitLogResetToHere => 'Reset Current Branch to Here';
+
+  @override
+  String get gitLogResetSoft => 'Soft: keep the changes staged';
+
+  @override
+  String get gitLogResetMixed => 'Mixed: keep the changes, not staged';
+
+  @override
+  String get gitLogResetHard => 'Hard: discard the changes';
+
+  @override
+  String get gitLogResetKeep => 'Keep: keep the local changes';
+
+  @override
+  String gitLogResetHardConfirm(String branch, String commit) {
+    return 'Reset “$branch” to $commit and discard every change since, committed or not?';
+  }
+
+  @override
+  String get gitLogResetButton => 'Reset';
+
+  @override
+  String get gitLogRevertCommit => 'Revert Commit';
+
+  @override
+  String get gitLogEditMessage => 'Edit Commit Message…';
+
+  @override
+  String get gitLogDropCommit => 'Drop Commit';
+
+  @override
+  String gitLogDropConfirm(String commit, String subject) {
+    return 'Take $commit “$subject” out of the branch?';
+  }
+
+  @override
+  String get gitLogDropButton => 'Drop';
+
+  @override
+  String get gitLogPushUpToHere => 'Push All up to Here';
+
+  @override
+  String get gitLogNewTag => 'New Tag…';
+
+  @override
+  String gitLogNewTagAt(String commit) {
+    return 'New tag at $commit';
+  }
+
+  @override
+  String get gitTagName => 'Tag name';
+
+  @override
+  String get gitTagMessage => 'Message (optional: an annotated tag)';
+
+  @override
+  String get gitLogCreateTag => 'Create Tag';
+
+  @override
+  String get gitLogGoToParent => 'Go to Parent Commit';
+
+  @override
+  String get gitLogGoToChild => 'Go to Child Commit';
+
+  @override
+  String gitLogComparedWithLocal(String commit) {
+    return '$commit ↔ Local';
+  }
+
+  @override
+  String get gitLogNoDifferences => 'No differences from the working tree';
+
+  @override
+  String get gitLogCopyHashes => 'Copy Commit Hashes';
+
+  @override
+  String gitLogCherryPickCount(int count) {
+    return 'Cherry-Pick $count Commits';
+  }
+
+  @override
+  String get gitLogCompareCommits => 'Compare Commits';
+
+  @override
+  String gitLogRevertCommits(int count) {
+    return 'Revert $count Commits';
+  }
+
+  @override
+  String gitLogSquashCommits(int count) {
+    return 'Squash $count Commits into One';
+  }
+
+  @override
+  String gitLogCommitsSelected(int count) {
+    return '$count commits selected';
+  }
+
+  @override
+  String get gitLogPaths => 'Paths';
+
+  @override
+  String get gitLogAllPaths => 'All Paths';
+
+  @override
+  String gitLogCurrentFile(String path) {
+    return 'Current File: $path';
+  }
+
+  @override
+  String gitLogCurrentFolder(String path) {
+    return 'Its Folder: $path';
+  }
+
+  @override
+  String gitLogPathCount(int count) {
+    return '$count paths';
+  }
+
+  @override
+  String gitLogLinesOf(String file, int start, int end) {
+    return '$file: lines $start–$end';
+  }
+
+  @override
+  String get gitShowHistory => 'Show History';
+
+  @override
+  String get gitShowHistoryForSelection => 'Show History for Selection';
+
+  @override
+  String get gitShowBranches => 'Show Branches';
+
+  @override
+  String get gitHideBranches => 'Hide Branches';
+
+  @override
+  String get gitBranchesFilter => 'Filter branches';
+
+  @override
+  String get gitBranchesHead => 'HEAD (Current Branch)';
+
+  @override
+  String get gitBranchCheckout => 'Checkout';
+
+  @override
+  String gitBranchNewFrom(String name) {
+    return 'New Branch from “$name”…';
+  }
+
+  @override
+  String gitBranchCheckoutRebase(String current) {
+    return 'Checkout and Rebase onto “$current”';
+  }
+
+  @override
+  String gitBranchCompare(String current) {
+    return 'Compare with “$current”';
+  }
+
+  @override
+  String get gitBranchDiffWorkingTree => 'Show Diff with Working Tree';
+
+  @override
+  String gitBranchRebaseOnto(String current, String name) {
+    return 'Rebase “$current” onto “$name”';
+  }
+
+  @override
+  String gitBranchMerge(String name, String current) {
+    return 'Merge “$name” into “$current”';
+  }
+
+  @override
+  String gitBranchPullRebase(String current) {
+    return 'Pull into “$current” Using Rebase';
+  }
+
+  @override
+  String gitBranchPullMerge(String current) {
+    return 'Pull into “$current” Using Merge';
+  }
+
+  @override
+  String get gitBranchUpdate => 'Update';
+
+  @override
+  String get gitBranchPush => 'Push';
+
+  @override
+  String gitBranchPushTo(String upstream) {
+    return 'Push to $upstream';
+  }
+
+  @override
+  String get gitBranchUpstream => 'Upstream';
+
+  @override
+  String get gitBranchUnsetUpstream => 'Unset Upstream';
+
+  @override
+  String get gitBranchRename => 'Rename…';
+
+  @override
+  String gitBranchRenameTitle(String name) {
+    return 'Rename the branch “$name”';
+  }
+
+  @override
+  String get gitBranchRenameButton => 'Rename';
+
+  @override
+  String get gitBranchFavorite => 'Add to Favorites';
+
+  @override
+  String get gitBranchUnfavorite => 'Remove from Favorites';
+
+  @override
+  String get gitBranchShowOnly => 'Show Only This in the Log';
+
+  @override
+  String get gitBranchDelete => 'Delete';
+
+  @override
+  String get gitTagDelete => 'Delete Tag';
+
+  @override
+  String get gitBranchDeleteButton => 'Delete';
+
+  @override
+  String gitBranchDeleteRemoteConfirm(String name) {
+    return 'Delete the branch “$name” on its remote?';
+  }
+
+  @override
+  String gitBranchNotMergedConfirm(String name) {
+    return '“$name” has commits merged into no other branch. Delete it anyway?';
+  }
+
+  @override
+  String gitBranchDeleted(String name) {
+    return 'Deleted the branch “$name”.';
+  }
+
+  @override
+  String gitTagDeleted(String name) {
+    return 'Deleted the tag “$name”.';
+  }
+
+  @override
+  String get gitBranchRestore => 'Restore';
+
+  @override
+  String gitBranchCompared(String name, String current, int ahead, int behind) {
+    return '“$name” has $ahead commits “$current” has not; “$current” has $behind it has not.';
+  }
 }

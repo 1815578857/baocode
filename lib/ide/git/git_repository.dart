@@ -304,6 +304,43 @@ class IdeGitRepository extends ChangeNotifier {
   Future<void> undoCommit(IdeGitCommit head) =>
       _operate(() => service.undoCommit(head));
 
+  /// Cherry-picks [commits] (oldest first) onto HEAD.
+  Future<void> cherryPick(List<String> commits) =>
+      _operate(() => service.cherryPick(commits));
+
+  /// Reverts [commits] (newest first), a commit each.
+  Future<void> revert(List<String> commits) =>
+      _operate(() => service.revert(commits));
+
+  /// Reset Current Branch to Here.
+  Future<void> reset(String commit, IdeGitResetMode mode) =>
+      _operate(() => service.reset(commit, mode));
+
+  /// New Tag at [commit].
+  Future<void> tag(String name, String commit, {String? message}) =>
+      _operate(() => service.tag(name, commit, message: message));
+
+  /// Edit Commit Message of [commit] in the current branch.
+  Future<void> reword(IdeGitCommit commit, String message) =>
+      _operate(() => service.reword(commit, message));
+
+  /// Squash Commits: [commits] (oldest first, one after another) made one.
+  Future<void> squash(List<IdeGitCommit> commits) =>
+      _operate(() => service.squash(commits));
+
+  /// Drop Commit: [commit] taken out of the current branch.
+  Future<void> drop(IdeGitCommit commit) =>
+      _operate(() => service.drop(commit));
+
+  /// Push All up to Here: the current branch's commits up to [commit].
+  Future<void> pushUpTo(String commit) => _operate(() async {
+    final upstream = _state?.head.upstream;
+    if (upstream == null) {
+      throw const IdeGitException('The branch has no upstream.');
+    }
+    await service.pushUpTo(commit, upstream);
+  });
+
   /// Stages the untracked changes too, then commits everything: VS Code's
   /// smart commit with `git.smartCommitChanges: all`. Past the status's
   /// limit, not all of them are known: the whole tree is staged.
@@ -329,6 +366,61 @@ class IdeGitRepository extends ChangeNotifier {
   /// The local branches tracking the remote branch [upstream].
   Future<List<String>> trackingBranches(String upstream) =>
       service.trackingBranches(upstream);
+
+  // --- Branches (JetBrains' branch popup, the log's branch tree) ----------
+
+  Future<void> renameBranch(String from, String to) =>
+      _operate(() => service.renameBranch(from, to));
+
+  /// Deletes the branch [name]; see [IdeGitService.deleteBranch].
+  Future<void> deleteBranch(String name, {bool force = false}) =>
+      _operate(() => service.deleteBranch(name, force: force));
+
+  Future<void> deleteRemoteBranch(String remote, String name) =>
+      _operate(() => service.deleteRemoteBranch(remote, name));
+
+  Future<void> deleteTag(String name) =>
+      _operate(() => service.deleteTag(name));
+
+  Future<void> createBranchAt(String name, String commit) =>
+      _operate(() => service.createBranchAt(name, commit));
+
+  Future<void> merge(String ref) => _operate(() => service.merge(ref));
+
+  /// Rebases [branch] (the current one when null) onto [onto].
+  Future<void> rebaseOnto(String onto, {String? branch}) =>
+      _operate(() => service.rebaseOnto(onto, branch: branch));
+
+  /// Pulls the remote branch [ref] (`origin/main`) into the current one.
+  Future<void> pullInto(String ref, {required bool rebase}) =>
+      _whileSyncing(() async {
+        final (remote, name) = splitUpstream(ref, await service.remotes());
+        await service.pullInto(remote, name, rebase: rebase);
+      });
+
+  /// Fast-forwards the branch [name], not checked out, to [upstream].
+  Future<void> updateBranch(String name, String upstream) =>
+      _whileSyncing(() => service.updateBranch(name, upstream));
+
+  /// Pushes the branch [name]: to its [upstream] (`remote/branch`), else
+  /// to [remote] as its upstream (`git push -u`).
+  Future<void> pushBranch(String name, {String? upstream, String? remote}) =>
+      _whileSyncing(() async {
+        final remotes = await service.remotes();
+        if (upstream != null) {
+          final (to, branch) = splitUpstream(upstream, remotes);
+          await service.push(to, '$name:$branch');
+          return;
+        }
+        final to =
+            remote ??
+            (remotes.contains('origin') ? 'origin' : remotes.firstOrNull);
+        if (to == null) throw const IdeGitException('There is no remote.');
+        await service.push(to, '$name:$name', setUpstream: true);
+      });
+
+  Future<void> setUpstream(String name, String? upstream) =>
+      _operate(() => service.setUpstream(name, upstream));
 
   /// Checks [treeish] out (`Repository.checkout`); [detached] detaches HEAD
   /// there.

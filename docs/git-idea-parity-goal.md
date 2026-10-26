@@ -34,8 +34,8 @@ Git 日志和 IDEA 式提交面板已经上线（#328）。用户反馈 IDEA 的
 | 点彩条弹出小 diff：回滚、复制、上一处 / 下一处 | ✅ | 还有「显示差异」（打开和 HEAD 的 diff 标签）；Esc 或点别处关闭 |
 | 上一处 / 下一处改动快捷键 | ✅ | Alt+F5 / Shift+Alt+F5 跳转，Alt+F3 / Shift+Alt+F3 跳转并弹出（VS Code 的命令 id，键位可改） |
 | Annotate（整列 blame，按时间着色，点了在日志里打开那次提交） | ✅ | 编辑器右键 / 命令面板「用 Git Blame 注释」；行号右侧一列「日期 作者」，越新颜色越深，悬停看提交详情，点击在日志里选中那次提交；改过的行留空 |
-| 选中几行，看它们的历史 | ❌ | |
-| 文件 / 文件夹历史 | 🟡 | Timeline 是 VS Code 式的；日志不能按路径筛选 |
+| 选中几行，看它们的历史 | ✅ | 编辑器右键 / 命令面板「显示所选内容的历史」：`git log -L`，行号先换算到 HEAD |
+| 文件 / 文件夹历史 | ✅ | 资源管理器和编辑器右键「显示历史」：在日志里按路径筛选 |
 
 ## 三、提交
 | IDEA | 状态 | 说明 |
@@ -54,34 +54,34 @@ Git 日志和 IDEA 式提交面板已经上线（#328）。用户反馈 IDEA 的
 | IDEA | 状态 | 说明 |
 |---|---|---|
 | 图谱、搜索、按分支 / 作者 / 日期筛选、高亮 | ✅ | |
-| 按路径筛选 | ❌ | |
-| 左侧分支树（本地 / 远程，收藏，搜索） | ❌ | |
+| 按路径筛选 | ✅ | 「路径」筛选：当前文件、所在文件夹、最近用过的；Git 会改写父提交，分支线仍然连着 |
+| 左侧分支树（本地 / 远程，收藏，搜索） | ✅ | 单击选中分支最新的提交，双击只看这个分支；右键是分支操作；收藏随窗口状态保存 |
 | 提交详情：文件树、所在分支 | ✅ | |
-| Cherry-pick（可多选） | ❌ | |
-| Revert Commit | ❌ | |
-| Reset Current Branch to Here（soft / mixed / hard / keep） | ❌ | |
+| Cherry-pick（可多选） | ✅ | 日志支持 Cmd/Ctrl 点选、Shift 连选、Shift+方向键 |
+| Revert Commit | ✅ | |
+| Reset Current Branch to Here（soft / mixed / hard / keep） | ✅ | Hard 先确认 |
 | Undo Commit | ✅ | |
-| 修改提交信息（任意提交） | ❌ | |
-| Fixup / Squash Into / Drop | ❌ | |
+| 修改提交信息（任意提交） | ✅ | 在详情里原地编辑，不弹窗；旧提交用 amend! + autosquash，不开编辑器、自动 stash；之后有合并提交时拒绝 |
+| Fixup / Squash Into / Drop | 🟡 | Drop（先确认）、多选相邻提交 Squash 已有；Fixup（把本地改动并进某个提交）放到提交面板阶段 |
 | 交互式变基（拖动排序，pick / reword / squash / fixup / drop） | ❌ | |
-| New Branch / New Tag | 🟡 | 能新建分支，不能打标签 |
+| New Branch / New Tag | ✅ | 标签可带说明（附注标签） |
 | Checkout Revision | ✅ | |
-| Compare with Local；多选两次提交互相比较 | ❌ | |
-| Create Patch / 复制为补丁 | ❌ | |
-| Push All up to Here | ❌ | |
-| 跳到父提交 / 子提交 | ❌ | |
+| Compare with Local；多选两次提交互相比较 | ✅ | |
+| Create Patch / 复制为补丁 | ✅ | 复制为补丁（format-patch） |
+| Push All up to Here | ✅ | 只对未推送的提交显示 |
+| 跳到父提交 / 子提交 | ✅ | |
 
 ## 五、分支
 | IDEA | 状态 | 说明 |
 |---|---|---|
-| 分支弹窗：最近、本地、远程、搜索 | 🟡 | 输入框下的分支菜单只列本地分支 |
+| 分支弹窗：最近、本地、远程、搜索 | 🟡 | 日志的分支树已有全部分支操作；状态栏 / 输入框下的弹窗还是 VS Code 式 |
 | Checkout / New Branch from | ✅ | |
-| Checkout and Rebase onto Current | ❌ | |
-| Compare with Current / Show Diff with Working Tree | ❌ | |
-| Rebase Current onto / Merge into Current | ❌ | |
-| Pull into Current Using Rebase / Merge | ❌ | |
-| 推送某个分支、重命名、删除、设置上游 | ❌ | |
-| 收藏分支 | ❌ | |
+| Checkout and Rebase onto Current | ✅ | |
+| Compare with Current / Show Diff with Working Tree | ✅ | 先提示双方各多几个提交，再列出不同的文件 |
+| Rebase Current onto / Merge into Current | ✅ | |
+| Pull into Current Using Rebase / Merge | ✅ | |
+| 推送某个分支、重命名、删除、设置上游 | ✅ | 删除后可以「恢复」；没合并的分支要确认才删 |
+| 收藏分支 | ✅ | |
 | Update Project（选 merge 或 rebase，自动 stash） | 🟡 | 只有 pull |
 | 领先 / 落后计数 | ✅ | |
 

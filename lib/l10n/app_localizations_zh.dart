@@ -10585,4 +10585,272 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitCloseAnnotations => '关闭注释';
+
+  @override
+  String get gitLogCopyPatch => '复制为补丁';
+
+  @override
+  String get gitLogCherryPick => '拣选到当前分支（Cherry-Pick）';
+
+  @override
+  String get gitLogCompareWithLocal => '与本地比较';
+
+  @override
+  String get gitLogResetToHere => '将当前分支重置到这里';
+
+  @override
+  String get gitLogResetSoft => 'Soft：改动留在暂存区';
+
+  @override
+  String get gitLogResetMixed => 'Mixed：改动留在工作区，不暂存';
+
+  @override
+  String get gitLogResetHard => 'Hard：丢弃改动';
+
+  @override
+  String get gitLogResetKeep => 'Keep：保留本地未提交的改动';
+
+  @override
+  String gitLogResetHardConfirm(String branch, String commit) {
+    return '把“$branch”重置到 $commit，并丢弃之后的所有改动（不论是否已提交）？';
+  }
+
+  @override
+  String get gitLogResetButton => '重置';
+
+  @override
+  String get gitLogRevertCommit => '还原提交（Revert）';
+
+  @override
+  String get gitLogEditMessage => '修改提交信息…';
+
+  @override
+  String get gitLogDropCommit => '删除提交';
+
+  @override
+  String gitLogDropConfirm(String commit, String subject) {
+    return '从分支中拿掉 $commit“$subject”？';
+  }
+
+  @override
+  String get gitLogDropButton => '删除';
+
+  @override
+  String get gitLogPushUpToHere => '推送到这里为止';
+
+  @override
+  String get gitLogNewTag => '新建标签…';
+
+  @override
+  String gitLogNewTagAt(String commit) {
+    return '在 $commit 新建标签';
+  }
+
+  @override
+  String get gitTagName => '标签名';
+
+  @override
+  String get gitTagMessage => '说明（可选，填了就是附注标签）';
+
+  @override
+  String get gitLogCreateTag => '创建标签';
+
+  @override
+  String get gitLogGoToParent => '转到父提交';
+
+  @override
+  String get gitLogGoToChild => '转到子提交';
+
+  @override
+  String gitLogComparedWithLocal(String commit) {
+    return '$commit ↔ 本地';
+  }
+
+  @override
+  String get gitLogNoDifferences => '与工作区没有差异';
+
+  @override
+  String get gitLogCopyHashes => '复制提交哈希';
+
+  @override
+  String gitLogCherryPickCount(int count) {
+    return '拣选这 $count 个提交';
+  }
+
+  @override
+  String get gitLogCompareCommits => '比较这两个提交';
+
+  @override
+  String gitLogRevertCommits(int count) {
+    return '还原这 $count 个提交';
+  }
+
+  @override
+  String gitLogSquashCommits(int count) {
+    return '把这 $count 个提交合成一个（Squash）';
+  }
+
+  @override
+  String gitLogCommitsSelected(int count) {
+    return '已选 $count 个提交';
+  }
+
+  @override
+  String get gitLogPaths => '路径';
+
+  @override
+  String get gitLogAllPaths => '所有路径';
+
+  @override
+  String gitLogCurrentFile(String path) {
+    return '当前文件：$path';
+  }
+
+  @override
+  String gitLogCurrentFolder(String path) {
+    return '所在文件夹：$path';
+  }
+
+  @override
+  String gitLogPathCount(int count) {
+    return '$count 个路径';
+  }
+
+  @override
+  String gitLogLinesOf(String file, int start, int end) {
+    return '$file：第 $start–$end 行';
+  }
+
+  @override
+  String get gitShowHistory => '显示历史';
+
+  @override
+  String get gitShowHistoryForSelection => '显示所选内容的历史';
+
+  @override
+  String get gitShowBranches => '显示分支';
+
+  @override
+  String get gitHideBranches => '隐藏分支';
+
+  @override
+  String get gitBranchesFilter => '筛选分支';
+
+  @override
+  String get gitBranchesHead => 'HEAD（当前分支）';
+
+  @override
+  String get gitBranchCheckout => '检出';
+
+  @override
+  String gitBranchNewFrom(String name) {
+    return '从“$name”新建分支…';
+  }
+
+  @override
+  String gitBranchCheckoutRebase(String current) {
+    return '检出并变基到“$current”上';
+  }
+
+  @override
+  String gitBranchCompare(String current) {
+    return '与“$current”比较';
+  }
+
+  @override
+  String get gitBranchDiffWorkingTree => '与工作区比较';
+
+  @override
+  String gitBranchRebaseOnto(String current, String name) {
+    return '把“$current”变基到“$name”上';
+  }
+
+  @override
+  String gitBranchMerge(String name, String current) {
+    return '把“$name”合并到“$current”';
+  }
+
+  @override
+  String gitBranchPullRebase(String current) {
+    return '拉取到“$current”（变基）';
+  }
+
+  @override
+  String gitBranchPullMerge(String current) {
+    return '拉取到“$current”（合并）';
+  }
+
+  @override
+  String get gitBranchUpdate => '更新';
+
+  @override
+  String get gitBranchPush => '推送';
+
+  @override
+  String gitBranchPushTo(String upstream) {
+    return '推送到 $upstream';
+  }
+
+  @override
+  String get gitBranchUpstream => '上游分支';
+
+  @override
+  String get gitBranchUnsetUpstream => '取消上游';
+
+  @override
+  String get gitBranchRename => '重命名…';
+
+  @override
+  String gitBranchRenameTitle(String name) {
+    return '重命名分支“$name”';
+  }
+
+  @override
+  String get gitBranchRenameButton => '重命名';
+
+  @override
+  String get gitBranchFavorite => '加入收藏';
+
+  @override
+  String get gitBranchUnfavorite => '取消收藏';
+
+  @override
+  String get gitBranchShowOnly => '日志里只看它';
+
+  @override
+  String get gitBranchDelete => '删除';
+
+  @override
+  String get gitTagDelete => '删除标签';
+
+  @override
+  String get gitBranchDeleteButton => '删除';
+
+  @override
+  String gitBranchDeleteRemoteConfirm(String name) {
+    return '删除远程上的分支“$name”？';
+  }
+
+  @override
+  String gitBranchNotMergedConfirm(String name) {
+    return '“$name”有还没合并到其他分支的提交。仍然删除？';
+  }
+
+  @override
+  String gitBranchDeleted(String name) {
+    return '已删除分支“$name”。';
+  }
+
+  @override
+  String gitTagDeleted(String name) {
+    return '已删除标签“$name”。';
+  }
+
+  @override
+  String get gitBranchRestore => '恢复';
+
+  @override
+  String gitBranchCompared(String name, String current, int ahead, int behind) {
+    return '“$name”有 $ahead 个“$current”没有的提交；“$current”有 $behind 个它没有的提交。';
+  }
 }

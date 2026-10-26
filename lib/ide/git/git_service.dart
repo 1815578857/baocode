@@ -621,22 +621,39 @@ class IdeGitService {
     IdeGitLogFilter filter = const IdeGitLogFilter(),
     bool dateOrder = false,
   }) async {
-    await _requireRoot();
+    final top = await _requireRoot();
+    final lines = filter.lines;
     final output = _check(
       await _git([
         'log',
         dateOrder ? '--date-order' : '--topo-order',
         '--decorate=full',
-        '--format=$ideGitLogFormat',
+        // Each record marked: an older Git prints -L's patches all the same.
+        '--format=${lines == null ? '' : '%x1d'}$ideGitLogFormat',
         '-n',
         '$limit',
         ...filter.arguments,
-        ...refs,
+        if (lines != null) ...[
+          '--no-patch',
+          '-L${lines.start},${lines.end}:${_relative(top, [lines.path]).single}',
+        ],
+        // -L digs from one commit only: the first ref's (HEAD's).
+        if (lines == null) ...refs else refs.first,
         '--',
+        if (lines == null) ..._relative(top, filter.paths),
       ]),
       'Cannot read the Git history.',
     );
-    return parseGitLog(output.stdout);
+    if (lines == null) return parseGitLog(output.stdout);
+    return parseGitLog(
+      output.stdout
+          .split('\x1e')
+          .map((record) {
+            final start = record.indexOf('\x1d');
+            return start < 0 ? '' : record.substring(start + 1);
+          })
+          .join('\x1e'),
+    );
   }
 
   /// The repository's working trees, its own first (`git worktree list
@@ -760,7 +777,365 @@ class IdeGitService {
       ]),
       'Cannot read the commit.',
     );
-    final fields = output.stdout.split('\x00');
+    return _parseNameStatus(top, output.stdout);
+  }
+
+  /// The files that differ between [commit] and the working tree
+  /// (`git diff --name-status <commit>`): Compare with Local; or [other]
+  /// (two commits compared).
+  Future<List<IdeGitCommitChange>> changesSince(
+    String commit, {
+    String? other,
+  }) async {
+    final top = await _requireRoot();
+    final output = _check(
+      await _git(['diff', '--name-status', '-z', '-M', commit, ?other, '--']),
+      'Cannot compare with $commit.',
+    );
+    return _parseNameStatus(top, output.stdout);
+  }
+
+  // --- Commit operations (JetBrains' Git log) --------------------------------
+
+  /// Applies [commits] (oldest first) on HEAD: `git cherry-pick`.
+  Future<void> cherryPick(List<String> commits) async {
+    await _requireRoot();
+    _check(await _git(['cherry-pick', ...commits]), 'Cannot cherry-pick.');
+  }
+
+  /// Commits the inverse of [commits] (newest first): `git revert`.
+  Future<void> revert(List<String> commits) async {
+    await _requireRoot();
+    _check(await _git(['revert', '--no-edit', ...commits]), 'Cannot revert.');
+  }
+
+  /// Moves the current branch to [commit]: `git reset --<mode>`.
+  Future<void> reset(String commit, IdeGitResetMode mode) async {
+    await _requireRoot();
+    _check(
+      await _git(['reset', '--${mode.name}', commit]),
+      'Cannot reset to $commit.',
+    );
+  }
+
+  /// Tags [commit] [name]; annotated with [message] where there is one.
+  Future<void> tag(String name, String commit, {String? message}) async {
+    await _requireRoot();
+    _check(
+      await _git([
+        'tag',
+        if (message != null && message.isNotEmpty) ...['-a', '-m', message],
+        name,
+        commit,
+      ]),
+      'Cannot create the tag $name.',
+    );
+  }
+
+  /// [commit] as a patch (`git format-patch --stdout`).
+  Future<String> patch(String commit) async {
+    await _requireRoot();
+    return _check(
+      await _git(['format-patch', '-1', '--stdout', commit]),
+      'Cannot make a patch of $commit.',
+    ).stdout;
+  }
+
+  /// Gives [commit], HEAD or one before it, [message]: HEAD amended (its
+  /// message only), an older one by an `amend!` commit squashed into it
+  /// (`rebase -i --autosquash`, no editor), the changes not committed set
+  /// aside meanwhile. Merges after it would be flattened: refused.
+  Future<void> reword(IdeGitCommit commit, String message) async {
+    await _requireRoot();
+    final head = await revParse('HEAD');
+    if (head == commit.id) {
+      _check(
+        await _git([
+          'commit',
+          '--amend',
+          '--only',
+          '--allow-empty',
+          '-m',
+          message,
+        ]),
+        'Cannot edit the commit message.',
+      );
+      return;
+    }
+    await _requireLinearSince(commit);
+    final tree = _check(
+      await _git(['rev-parse', 'HEAD^{tree}']),
+      'Cannot edit the commit message.',
+    ).stdout.trim();
+    final amend = _check(
+      await _git([
+        'commit-tree',
+        tree,
+        '-p',
+        'HEAD',
+        '-m',
+        'amend! ${commit.id}',
+        '-m',
+        message,
+      ]),
+      'Cannot edit the commit message.',
+    ).stdout.trim();
+    _check(
+      await _git(['update-ref', '-m', 'reword', 'HEAD', amend]),
+      'Cannot edit the commit message.',
+    );
+    await _rebaseFrom(
+      commit,
+      ['-i', '--autosquash'],
+      undo: () async {
+        await _git(['reset', '--soft', 'HEAD~']);
+      },
+    );
+  }
+
+  /// Takes [commit] out of the branch: the commits after it rebased onto
+  /// its parent (`git rebase --onto`), the changes not committed set aside
+  /// meanwhile.
+  Future<void> drop(IdeGitCommit commit) async {
+    await _requireRoot();
+    await _requireLinearSince(commit);
+    if (commit.parentIds.isEmpty) {
+      throw const IdeGitException('Cannot drop the first commit.');
+    }
+    final output = await _git([
+      'rebase',
+      '--autostash',
+      '--onto',
+      commit.parentIds.first,
+      commit.id,
+    ]);
+    if (output.exitCode != 0) {
+      await _git(['rebase', '--abort']);
+      _check(output, 'Cannot drop ${commit.shortId}.');
+    }
+  }
+
+  /// Squashes [commits] (oldest first, one after another in the current
+  /// branch) into the first, their messages one after another: a rebase
+  /// whose list `sed` edits, no editor.
+  Future<void> squash(List<IdeGitCommit> commits) async {
+    await _requireRoot();
+    if (commits.length < 2) return;
+    await _requireLinearSince(commits.first);
+    final script = [
+      for (final commit in commits.skip(1))
+        "-e 's/^pick \\(${commit.id.length > 7 ? commit.id.substring(0, 7) : commit.id}[0-9a-f]*\\) /"
+            "squash \\1 /'",
+    ].join(' ');
+    await _rebaseFrom(commits.first, [
+      '-i',
+    ], sequenceEditor: 'sed -i.bak $script');
+  }
+
+  /// Rebases from [commit] with [options] and no editor (the list as it is,
+  /// or as [sequenceEditor] makes it); aborted, then [undo] run, where it
+  /// fails.
+  Future<void> _rebaseFrom(
+    IdeGitCommit commit,
+    List<String> options, {
+    String sequenceEditor = ':',
+    Future<void> Function()? undo,
+  }) async {
+    final output = await _git([
+      '-c',
+      'sequence.editor=$sequenceEditor',
+      '-c',
+      'core.editor=:',
+      'rebase',
+      ...options,
+      '--autostash',
+      if (commit.parentIds.isEmpty) '--root' else commit.parentIds.first,
+    ]);
+    if (output.exitCode != 0) {
+      await _git(['rebase', '--abort']);
+      await undo?.call();
+      _check(output, 'Cannot rewrite the history.');
+    }
+  }
+
+  /// Throws unless [commit] is in HEAD's history with no merge after it.
+  Future<void> _requireLinearSince(IdeGitCommit commit) async {
+    final ancestor = await _git([
+      'merge-base',
+      '--is-ancestor',
+      commit.id,
+      'HEAD',
+    ]);
+    if (ancestor.exitCode != 0) {
+      throw IdeGitException('${commit.shortId} is not on the current branch.');
+    }
+    final merges = await _git([
+      'rev-list',
+      '--merges',
+      '--count',
+      '${commit.id}..HEAD',
+    ]);
+    if (merges.exitCode == 0 && (int.tryParse(merges.stdout.trim()) ?? 0) > 0) {
+      throw const IdeGitException(
+        'There are merge commits after it; rewrite the history from a '
+        'terminal.',
+      );
+    }
+  }
+
+  // --- Branches (JetBrains' branch popup, the log's branch tree) ----------
+
+  /// Renames the branch [from] to [to]: `git branch -m`.
+  Future<void> renameBranch(String from, String to) async {
+    await _requireRoot();
+    _check(
+      await _git(['branch', '-m', from, to]),
+      'Cannot rename the branch $from.',
+    );
+  }
+
+  /// Deletes the branch [name]: `git branch -d`, or `-D` with [force].
+  /// Throws an [IdeGitNotMergedException] where it has commits merged
+  /// nowhere and not [force].
+  Future<void> deleteBranch(String name, {bool force = false}) async {
+    await _requireRoot();
+    final output = await _git(['branch', force ? '-D' : '-d', name]);
+    if (!force &&
+        output.exitCode != 0 &&
+        output.stderr.contains('not fully merged')) {
+      throw IdeGitNotMergedException(name);
+    }
+    _check(output, 'Cannot delete the branch $name.');
+  }
+
+  /// Deletes the branch [name] of [remote]: `git push --delete`.
+  Future<void> deleteRemoteBranch(String remote, String name) async {
+    await _requireRoot();
+    _check(
+      await _git(['push', remote, '--delete', name]),
+      'Cannot delete $remote/$name.',
+    );
+  }
+
+  /// Deletes the tag [name]: `git tag -d`.
+  Future<void> deleteTag(String name) async {
+    await _requireRoot();
+    _check(await _git(['tag', '-d', name]), 'Cannot delete the tag $name.');
+  }
+
+  /// Makes the branch [name] at [commit] (no checkout): Restore after a
+  /// branch's deleted.
+  Future<void> createBranchAt(String name, String commit) async {
+    await _requireRoot();
+    _check(
+      await _git(['branch', name, commit]),
+      'Cannot create the branch $name.',
+    );
+  }
+
+  /// Merges [ref] into the current branch: `git merge --no-edit`.
+  Future<void> merge(String ref) async {
+    await _requireRoot();
+    _check(await _git(['merge', '--no-edit', ref]), 'Cannot merge $ref.');
+  }
+
+  /// Rebases [branch] (the current one when null) onto [onto]:
+  /// `git rebase --autostash <onto> [<branch>]`; with a branch, it is
+  /// checked out.
+  Future<void> rebaseOnto(String onto, {String? branch}) async {
+    await _requireRoot();
+    _check(
+      await _git(['rebase', '--autostash', onto, ?branch]),
+      'Cannot rebase onto $onto.',
+    );
+  }
+
+  /// Pulls [branch] of [remote] into the current branch, by rebase or by
+  /// merge.
+  Future<void> pullInto(
+    String remote,
+    String branch, {
+    required bool rebase,
+  }) async {
+    await _requireRoot();
+    _check(
+      await _git([
+        'pull',
+        rebase ? '--rebase' : '--no-rebase',
+        '--autostash',
+        remote,
+        branch,
+      ]),
+      'Cannot pull $remote/$branch.',
+    );
+  }
+
+  /// Fast-forwards the branch [name], not checked out, to its upstream
+  /// [upstream] (`remote/branch`): `git fetch <remote> <branch>:<name>`.
+  Future<void> updateBranch(String name, String upstream) async {
+    await _requireRoot();
+    final slash = upstream.indexOf('/');
+    if (slash <= 0) throw IdeGitException('No remote in $upstream.');
+    _check(
+      await _git([
+        'fetch',
+        upstream.substring(0, slash),
+        '${upstream.substring(slash + 1)}:$name',
+      ]),
+      'Cannot update $name.',
+    );
+  }
+
+  /// Sets the branch [name]'s upstream to [upstream], or unsets it.
+  Future<void> setUpstream(String name, String? upstream) async {
+    await _requireRoot();
+    _check(
+      await _git([
+        'branch',
+        if (upstream == null)
+          '--unset-upstream'
+        else
+          '--set-upstream-to=$upstream',
+        name,
+      ]),
+      'Cannot set the upstream of $name.',
+    );
+  }
+
+  /// How many commits [ref] has that HEAD has not, and HEAD has that it
+  /// has not: `git rev-list --left-right --count`.
+  Future<({int ahead, int behind})> compareWithHead(String ref) async {
+    await _requireRoot();
+    final output = _check(
+      await _git(['rev-list', '--left-right', '--count', '$ref...HEAD']),
+      'Cannot compare $ref with HEAD.',
+    );
+    final counts = output.stdout.trim().split(RegExp(r'\s+'));
+    return (
+      ahead: int.tryParse(counts.first) ?? 0,
+      behind: counts.length > 1 ? int.tryParse(counts[1]) ?? 0 : 0,
+    );
+  }
+
+  /// Pushes the current branch up to [commit] to its upstream
+  /// ([upstream], `remote/branch`): `git push <remote> <commit>:<branch>`.
+  Future<void> pushUpTo(String commit, String upstream) async {
+    await _requireRoot();
+    final slash = upstream.indexOf('/');
+    if (slash <= 0) throw IdeGitException('No remote in $upstream.');
+    _check(
+      await _git([
+        'push',
+        upstream.substring(0, slash),
+        '$commit:refs/heads/${upstream.substring(slash + 1)}',
+      ]),
+      'Cannot push.',
+    );
+  }
+
+  /// `--name-status -z` output, its paths absolute.
+  List<IdeGitCommitChange> _parseNameStatus(String top, String stdout) {
+    final fields = stdout.split('\x00');
     final changes = <IdeGitCommitChange>[];
     String absolute(String relative) => pathContext.normalize(
       pathContext.join(top, pathContext.joinAll(relative.split('/'))),

@@ -235,6 +235,11 @@ class IdeGitHead {
   final bool unborn;
 }
 
+/// How Reset Current Branch to Here leaves the changes (`git reset`):
+/// staged, in the working tree, gone, or kept where the commits do not
+/// touch them.
+enum IdeGitResetMode { soft, mixed, hard, keep }
+
 /// A repository's status.
 class IdeGitState {
   IdeGitState({
@@ -663,6 +668,7 @@ class IdeGitRef {
     this.details,
     this.ahead,
     this.behind,
+    this.upstream,
   });
 
   /// `refs/heads/main`.
@@ -685,6 +691,9 @@ class IdeGitRef {
   /// none or is level with it.
   final int? ahead;
   final int? behind;
+
+  /// A branch's upstream: `origin/main`.
+  final String? upstream;
 }
 
 /// The `git for-each-ref` format [parseGitRefs] reads (upstream
@@ -694,7 +703,8 @@ class IdeGitRef {
 const ideGitRefsFormat =
     '%(refname)%00%(objectname)%00%(*objectname)%00%(parent)%00%(*parent)'
     '%00%(authorname)%00%(*authorname)%00%(committerdate:raw)'
-    '%00%(*committerdate:raw)%00%(subject)%00%(*subject)%00%(upstream:track)';
+    '%00%(*committerdate:raw)%00%(subject)%00%(*subject)%00%(upstream:track)'
+    '%00%(upstream:short)';
 
 /// Parses `git for-each-ref --format=<ideGitRefsFormat>` (upstream
 /// `parseRefs`): the local branches, remote branches and tags, an annotated
@@ -724,6 +734,7 @@ List<IdeGitRef> parseGitRefs(String output) {
     final date = either(5, 4);
     final subject = either(7, 6);
     final status = field(8);
+    final upstream = field(9);
     final commitDetails =
         parents.isNotEmpty &&
             subject.isNotEmpty &&
@@ -748,6 +759,7 @@ List<IdeGitRef> parseGitRefs(String output) {
           details: commitDetails,
           ahead: status.isEmpty ? null : int.tryParse(track?[1] ?? '') ?? 0,
           behind: status.isEmpty ? null : int.tryParse(track?[2] ?? '') ?? 0,
+          upstream: upstream.isEmpty ? null : upstream,
         ),
       );
     } else if (remoteHeadRegex.firstMatch(ref) case final remote?) {
@@ -834,13 +846,27 @@ List<IdeGitCommit> parseGitLog(String output) {
 }
 
 /// Which commits the log shows: [text] in their messages (terms split by
-/// `|`, any of them, case ignored), by [author], since [since].
+/// `|`, any of them, case ignored), by [author], since [since]; those that
+/// changed [paths] (files or folders), or [lines] of a file.
 class IdeGitLogFilter {
-  const IdeGitLogFilter({this.text = '', this.author, this.since});
+  const IdeGitLogFilter({
+    this.text = '',
+    this.author,
+    this.since,
+    this.paths = const [],
+    this.lines,
+  });
 
   final String text;
   final String? author;
   final DateTime? since;
+
+  /// Absolute paths; the commits that changed any of them.
+  final List<String> paths;
+
+  /// A file's lines, from 1 (`git log -L`): the commits that changed
+  /// them, [paths] aside.
+  final IdeGitLogLines? lines;
 
   /// The message's terms.
   List<String> get terms => [
@@ -848,21 +874,25 @@ class IdeGitLogFilter {
       if (term.trim().isNotEmpty) term.trim(),
   ];
 
-  /// Whether some commits are left out: the lanes then do not join up.
-  bool get narrowed => terms.isNotEmpty || author != null || since != null;
+  /// Whether some commits are left out such that the lanes do not join
+  /// up; by [paths] they do (Git rewrites the parents past the others).
+  bool get narrowed =>
+      terms.isNotEmpty || author != null || since != null || lines != null;
 
-  /// `git log`'s options for it.
+  /// Whether some commits are left out.
+  bool get filtered => narrowed || paths.isNotEmpty;
+
+  /// `git log`'s options for it but the paths and lines.
   List<String> get arguments {
-    if (!narrowed) return const [];
     String two(int value) => value.toString().padLeft(2, '0');
     return [
-      '-i',
-      '--fixed-strings',
+      if (terms.isNotEmpty || author != null) ...['-i', '--fixed-strings'],
       for (final term in terms) '--grep=$term',
       if (author case final author?) '--author=$author',
       if (since case final since?)
         '--since=${since.year}-${two(since.month)}-${two(since.day)} '
             '${two(since.hour)}:${two(since.minute)}:${two(since.second)}',
+      if (paths.isNotEmpty && lines == null) '--parents',
     ];
   }
 
@@ -870,10 +900,14 @@ class IdeGitLogFilter {
     String? text,
     String? Function()? author,
     DateTime? Function()? since,
+    List<String>? paths,
+    IdeGitLogLines? Function()? lines,
   }) => IdeGitLogFilter(
     text: text ?? this.text,
     author: author == null ? this.author : author(),
     since: since == null ? this.since : since(),
+    paths: paths ?? this.paths,
+    lines: lines == null ? this.lines : lines(),
   );
 
   @override
@@ -881,11 +915,19 @@ class IdeGitLogFilter {
       other is IdeGitLogFilter &&
       other.text == text &&
       other.author == author &&
-      other.since == since;
+      other.since == since &&
+      other.lines == lines &&
+      other.paths.length == paths.length &&
+      Iterable<int>.generate(paths.length)
+          .every((index) => other.paths[index] == paths[index]);
 
   @override
-  int get hashCode => Object.hash(text, author, since);
+  int get hashCode =>
+      Object.hash(text, author, since, lines, Object.hashAll(paths));
 }
+
+/// Lines [start] to [end] (from 1) of the file at [path].
+typedef IdeGitLogLines = ({String path, int start, int end});
 
 /// Parses `git show --numstat -z`: each file's added and deleted lines, by
 /// its path (the new one of a rename) as [resolve] makes it of Git's; null
@@ -1477,4 +1519,15 @@ IdeGitWorktree? ideWorktreeOf(
     }
   }
   return found;
+}
+
+/// A branch not deleted for its commits merged nowhere else (`git branch
+/// -d`'s "not fully merged"): deleted only once confirmed.
+class IdeGitNotMergedException implements Exception {
+  const IdeGitNotMergedException(this.branch);
+
+  final String branch;
+
+  @override
+  String toString() => 'The branch $branch is not fully merged.';
 }

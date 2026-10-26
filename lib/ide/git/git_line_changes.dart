@@ -167,3 +167,31 @@ List<EditorDecoration> ideLineChangeDecorations(
   }
   return decorations;
 }
+
+/// Lines [start] to [end] (from 1) of the document as they were at HEAD,
+/// past [changes]: an end inside a change goes to the change's lines at
+/// HEAD. Null where the lines are all new.
+({int start, int end})? ideGitHeadLines(
+  int start,
+  int end,
+  List<LineRangeMapping> changes,
+) {
+  int map(int line, {required bool first}) {
+    var delta = 0;
+    for (final change in changes) {
+      final modified = change.modified;
+      if (line < modified.startLineNumber) break;
+      if (line < modified.endLineNumberExclusive) {
+        return first
+            ? change.original.startLineNumber
+            : change.original.endLineNumberExclusive - 1;
+      }
+      delta += modified.length - change.original.length;
+    }
+    return line - delta;
+  }
+
+  final from = map(start, first: true);
+  final to = map(end, first: false);
+  return to < from ? null : (start: from, end: to);
+}
