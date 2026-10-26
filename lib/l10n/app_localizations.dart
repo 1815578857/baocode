@@ -19881,6 +19881,36 @@ abstract class AppLocalizations {
   /// **'Changed'**
   String get compareFoldersModified;
 
+  /// No description provided for @compareWithLocalHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Local History…'**
+  String get compareWithLocalHistory;
+
+  /// No description provided for @localHistoryShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Local History'**
+  String get localHistoryShow;
+
+  /// No description provided for @localHistoryNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No local history of “{name}” yet: it is kept as the file is saved.'**
+  String localHistoryNone(String name);
+
+  /// No description provided for @localHistoryPick.
+  ///
+  /// In en, this message translates to:
+  /// **'A version of “{name}” to compare with'**
+  String localHistoryPick(String name);
+
+  /// No description provided for @localHistoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (Local History, {time})'**
+  String localHistoryLabel(String name, String time);
+
   /// No description provided for @explorerCompareSelected.
   ///
   /// In en, this message translates to:

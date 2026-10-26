@@ -523,6 +523,7 @@ class IdeExplorer extends StatefulWidget {
     this.onOpenInDefaultApp,
     this.onFindInFolder,
     this.onShowHistory,
+    this.onShowLocalHistory,
     this.onCompareFiles,
     this.onOpenInTerminal,
     this.isBound,
@@ -580,6 +581,9 @@ class IdeExplorer extends StatefulWidget {
 
   /// Shows the Git log of a file or folder: Show History.
   final ValueChanged<String>? onShowHistory;
+
+  /// Show Local History: a file's versions as saved, apart from Git.
+  final ValueChanged<String>? onShowLocalHistory;
 
   /// Compares two files, the first's text against the second's (JetBrains'
   /// Compare Files, VS Code's Compare with Selected), or two folders.
@@ -1889,6 +1893,9 @@ class IdeExplorerState extends State<IdeExplorer>
               when !multiple &&
                   (widget.git != null || widget.repositories.isNotEmpty))
             IdeMenuAction(l10n.gitShowHistory, onSelected: () => show(path)),
+          if (widget.onShowLocalHistory case final show?
+              when !multiple && !isFolder)
+            IdeMenuAction(l10n.localHistoryShow, onSelected: () => show(path)),
         ],
         if (widget.onCompareFiles case final compare?)
           [

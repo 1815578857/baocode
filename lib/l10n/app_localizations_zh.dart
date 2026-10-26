@@ -11530,6 +11530,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get compareFoldersModified => '有改动';
 
   @override
+  String get compareWithLocalHistory => '本地历史…';
+
+  @override
+  String get localHistoryShow => '查看本地历史';
+
+  @override
+  String localHistoryNone(String name) {
+    return '“$name”还没有本地历史：保存文件时才会记录。';
+  }
+
+  @override
+  String localHistoryPick(String name) {
+    return '选择“$name”的一个版本来比较';
+  }
+
+  @override
+  String localHistoryLabel(String name, String time) {
+    return '$name（本地历史，$time）';
+  }
+
+  @override
   String get explorerCompareSelected => '比较所选文件';
 
   @override

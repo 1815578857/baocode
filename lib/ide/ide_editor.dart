@@ -85,7 +85,7 @@ typedef IdeEditorPosition = ({
 });
 
 /// What a file is compared with (JetBrains' Compare with…).
-enum IdeCompareWith { branch, revision, clipboard }
+enum IdeCompareWith { branch, revision, clipboard, localHistory }
 
 /// The Fast IDE editor: the painted Monaco port by default, with the Flutter
 /// TextField kept as a fallback (`--dart-define=BAOCODE_NATIVE_EDITOR=false`).
@@ -2040,6 +2040,13 @@ class IdeEditorState extends State<IdeEditor> {
                     l10n.compareWithClipboard,
                     onSelected: () =>
                         compare(widget.active.path, IdeCompareWith.clipboard),
+                  ),
+                  IdeMenuAction(
+                    l10n.compareWithLocalHistory,
+                    onSelected: () => compare(
+                      widget.active.path,
+                      IdeCompareWith.localHistory,
+                    ),
                   ),
                 ],
               ),

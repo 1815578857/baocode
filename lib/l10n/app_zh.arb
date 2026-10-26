@@ -3304,6 +3304,11 @@
   "compareFoldersPick": "“{original}”和“{modified}”不同的文件",
   "compareFoldersOnlyIn": "只在“{name}”里",
   "compareFoldersModified": "有改动",
+  "compareWithLocalHistory": "本地历史…",
+  "localHistoryShow": "查看本地历史",
+  "localHistoryNone": "“{name}”还没有本地历史：保存文件时才会记录。",
+  "localHistoryPick": "选择“{name}”的一个版本来比较",
+  "localHistoryLabel": "{name}（本地历史，{time}）",
   "explorerCompareSelected": "比较所选文件",
   "compareFilesLabel": "{original} \u2194 {modified}"
 }

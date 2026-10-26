@@ -94,7 +94,9 @@ import 'markdown/markdown_paste.dart';
 import 'markdown/markdown_preview.dart';
 import 'ide_explorer.dart';
 import 'ide_code_diff.dart' show IdeDiffAgentMarks;
+import 'ide_dates.dart' show ideFromNow;
 import 'ide_folder_compare.dart';
+import 'ide_local_history.dart';
 import 'ide_hover.dart';
 import 'ide_layout.dart';
 import 'ide_list.dart' show IdeKeyboardList;
@@ -1099,6 +1101,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   void initState() {
     super.initState();
     IdeDiffOptions.instance.attach(widget.settings);
+    widget.workspace.localHistory ??= IdeLocalHistory.inDataDirectory();
     FocusManager.instance.addEarlyKeyEventHandler(_onChordKey);
     FocusManager.instance.addLateKeyEventHandler(_onLateKey);
     KeybindingService.instance.addListener(_keybindingsChanged);
@@ -1771,6 +1774,8 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
             original: () =>
                 git.service.show(ref.name, path).catchError((Object _) => ''),
           );
+        case IdeCompareWith.localHistory:
+          await _showLocalHistory(path);
         case IdeCompareWith.revision:
           if (git == null) return;
           final commit = await ideGitPickRevision(
@@ -1791,6 +1796,57 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     } catch (error) {
       _report(error);
     }
+  }
+
+  /// Show Local History: the file's versions as saved, the latest first;
+  /// one picked, in a diff tab against the file, to be taken back from.
+  Future<void> _showLocalHistory(String path) async {
+    final l10n = context.l10n;
+    final workspace = widget.workspace;
+    final history = workspace.localHistory;
+    if (history == null) return;
+    final name = p.basename(path);
+    final List<IdeLocalVersion> versions;
+    try {
+      versions = await history.versionsOf(path);
+    } catch (error) {
+      _report(error);
+      return;
+    }
+    if (!mounted) return;
+    if (versions.isEmpty) {
+      _notifications.notify(IdeSeverity.info, l10n.localHistoryNone(name));
+      return;
+    }
+    String two(int n) => '$n'.padLeft(2, '0');
+    String stamp(DateTime t) =>
+        '${t.year}-${two(t.month)}-${two(t.day)} '
+        '${two(t.hour)}:${two(t.minute)}:${two(t.second)}';
+    final items = {
+      for (final version in versions)
+        IdeQuickPickItem(
+          label: stamp(version.time),
+          description: ideFromNow(version.time, ago: true, l10n: l10n),
+        ): version,
+    };
+    _showQuickModel(
+      IdeQuickPick(
+        placeholder: l10n.localHistoryPick(name),
+        sortByLabel: false,
+        items: items.keys.toList(),
+        onDidAccept: (item) {
+          final version = items[item];
+          if (version == null) return;
+          unawaited(
+            workspace.openDiff(
+              path,
+              label: l10n.localHistoryLabel(name, stamp(version.time)),
+              original: () => history.read(version),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   /// Compare Files: [original]'s text against [modified]'s. Two folders:
@@ -3779,6 +3835,19 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         run: _manageRemotes,
       ),
       IdeCommand(
+        id: 'baocode.localHistory.show',
+        category: 'Local History',
+        label: 'Show History',
+        enabled:
+            widget.workspace.localHistory != null &&
+            (widget.workspace.active?.isFile ?? false),
+        run: () {
+          if (widget.workspace.active case final doc? when doc.isFile) {
+            unawaited(_showLocalHistory(doc.path));
+          }
+        },
+      ),
+      IdeCommand(
         id: 'baocode.git.showFileHistory',
         category: 'Git',
         label: 'Show History',
@@ -4299,6 +4368,8 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                                 ? null
                                 : _openInTerminal,
                             onShowHistory: _showHistory,
+                            onShowLocalHistory: (path) =>
+                                unawaited(_showLocalHistory(path)),
                             onCompareFiles:
                                 (original, modified, {folders = false}) =>
                                     unawaited(

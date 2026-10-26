@@ -12,6 +12,7 @@ import 'git/git_repository.dart';
 import 'git/scm_host.dart';
 import 'git/repository_scan.dart';
 import 'ide_layout.dart';
+import 'ide_local_history.dart';
 import 'ide_notifications.dart';
 import 'lsp/language_features.dart';
 import 'lsp/lsp_protocol.dart';
@@ -1125,6 +1126,9 @@ class IdeWorkspace extends ChangeNotifier
   /// again).
   void Function(String path)? onSaved;
 
+  /// Keeps each file's text as it was before a save and as saved.
+  IdeLocalHistory? localHistory;
+
   /// Opens a new file, not saved anywhere yet (`Untitled-1`), and selects
   /// it.
   IdeDocument newUntitled() {
@@ -1203,7 +1207,11 @@ class IdeWorkspace extends ChangeNotifier
           // Back meanwhile: written over only if it is as it was.
         }
       }
+      if (expectedText != null) {
+        unawaited(localHistory?.record(doc.path, expectedText));
+      }
       await files.write(doc.path, text, expectedText: expectedText);
+      unawaited(localHistory?.record(doc.path, text));
       if (_disposed || !_documents.contains(doc)) return;
       doc.deleted = false;
       doc.savedText = text;
