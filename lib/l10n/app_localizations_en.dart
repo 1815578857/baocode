@@ -1840,6 +1840,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sidebarAgents => 'Agents';
 
   @override
+  String get sidebarCollapseAll => 'Collapse All';
+
+  @override
+  String get sidebarExpandAll => 'Expand All';
+
+  @override
   String get sidebarNoMatchingAgents => 'No matching agents';
 
   @override

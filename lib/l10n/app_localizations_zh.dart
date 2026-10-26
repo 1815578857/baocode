@@ -1784,6 +1784,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sidebarAgents => '智能体';
 
   @override
+  String get sidebarCollapseAll => '全部折叠';
+
+  @override
+  String get sidebarExpandAll => '全部展开';
+
+  @override
   String get sidebarNoMatchingAgents => '没有匹配的智能体';
 
   @override
