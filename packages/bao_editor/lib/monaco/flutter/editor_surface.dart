@@ -33,6 +33,7 @@ import 'wheel_glide.dart';
 
 export 'editor_decorations.dart'
     show
+        EditorChangeBar,
         EditorDecoration,
         EditorDecorationKind,
         EditorDecorationProvider,
@@ -134,6 +135,7 @@ class EditorSurface extends StatefulWidget {
     this.onContentPointerDown,
     this.onContextMenu,
     this.onViewChanged,
+    this.onChangeBarTap,
     this.contentCursor,
   });
 
@@ -254,6 +256,11 @@ class EditorSurface extends StatefulWidget {
   /// Called after the view scrolls or is laid out anew, so overlays anchored
   /// with [EditorSurfaceView] can follow.
   final VoidCallback? onViewChanged;
+
+  /// A press on a change mark ([EditorChangeBar]) by [lineNumber], at
+  /// [globalPosition]: VS Code's dirty diff peek, JetBrains' change popup.
+  /// The mark shows a pointer while there is one.
+  final void Function(int lineNumber, Offset globalPosition)? onChangeBarTap;
 
   /// Overrides the text cursor over the content (e.g. a pointer on a link).
   final MouseCursor? contentCursor;
@@ -426,6 +433,10 @@ class _EditorSurfaceState extends State<EditorSurface>
   ScrollbarPart _hoveredScrollbar = ScrollbarPart.none;
   bool _pointerInside = false;
   _Part _hover = _Part.none;
+
+  /// Whether the pointer is on a change mark [EditorSurface.onChangeBarTap]
+  /// takes presses on.
+  bool _hoverChangeBar = false;
 
   // Pointer interaction.
   _DragMode _dragMode = _DragMode.none;
@@ -1475,6 +1486,28 @@ class _EditorSurfaceState extends State<EditorSurface>
     onContextMenu(event.position);
   }
 
+  /// The line whose change mark is under [position], if any.
+  int? _changeBarAt(Offset position) {
+    final layout = _layout;
+    final geometry = _geometry;
+    if (layout == null || geometry == null) return null;
+    final left = geometry.changeBarLeft;
+    if (position.dx < left - 2 || position.dx >= left + 6) return null;
+    if (position.dx >= geometry.contentLeft) return null;
+    final line = _lineAtY(layout, position.dy)!;
+    final snapshot = layout.snapshot;
+    final start = snapshot.lineStarts[line - 1];
+    final end = snapshot.contentEnds[line - 1];
+    for (final decoration in _decorations.intersecting(start, end)) {
+      if (decoration.changeBar != null &&
+          decoration.start <= end &&
+          decoration.end >= start) {
+        return line;
+      }
+    }
+    return null;
+  }
+
   int? _lineAtY(ViewportLayout layout, double y) {
     final offset = layout.hitTest(Offset(-1e6, y));
     return layout.snapshot.positionAtOffset(offset).lineNumber;
@@ -1487,6 +1520,12 @@ class _EditorSurfaceState extends State<EditorSurface>
   ) {
     final position = event.localPosition;
     final line = _lineAtY(layout, position.dy)!;
+    if (widget.onChangeBarTap case final onTap?
+        when _changeBarAt(position) != null) {
+      _dragPointer = null;
+      onTap(line, event.position);
+      return;
+    }
     if (widget.folding &&
         position.dx >= geometry.decorationsLeft &&
         _folding.regionAt(line) >= 0) {
@@ -1819,10 +1858,17 @@ class _EditorSurfaceState extends State<EditorSurface>
         }
       }
     }
-    if (part != _hover || scrollbar != _hoveredScrollbar) {
+    final changeBar =
+        part == _Part.gutter &&
+        widget.onChangeBarTap != null &&
+        _changeBarAt(position) != null;
+    if (part != _hover ||
+        scrollbar != _hoveredScrollbar ||
+        changeBar != _hoverChangeBar) {
       setState(() {
         _hover = part;
         _hoveredScrollbar = scrollbar;
+        _hoverChangeBar = changeBar;
       });
     }
   }
@@ -2534,6 +2580,8 @@ class _EditorSurfaceState extends State<EditorSurface>
                         ? _injectionCursor ?? widget.contentCursor
                         : null) ??
                     SystemMouseCursors.text
+              : _hoverChangeBar && _dragMode == _DragMode.none
+              ? SystemMouseCursors.click
               : MouseCursor.defer,
           onEnter: _onEnter,
           onExit: _onExit,

@@ -36,6 +36,7 @@ Future<FocusNode> _mount(
   List<EditorDecoration> decorations = const [],
   bool wrap = false,
   FoldingRules? foldingRules,
+  void Function(int lineNumber, Offset globalPosition)? onChangeBarTap,
 }) async {
   final focus = FocusNode();
   addTearDown(focus.dispose);
@@ -51,6 +52,7 @@ Future<FocusNode> _mount(
             decorations: decorations,
             wrap: wrap,
             foldingRules: foldingRules,
+            onChangeBarTap: onChangeBarTap,
           ),
         ),
       ),
@@ -404,6 +406,76 @@ void main() {
     expect(EditorCaretStyle.fromApi(2), EditorCaretStyle.block);
     expect(EditorLineNumbersStyle.fromApi(2), EditorLineNumbersStyle.relative);
     expect(EditorCaretStyle.fromApi(9), isNull);
+  });
+
+  testWidgets('change marks: a bar or a wedge right of the chevrons, '
+      'pressed apart from the line', (tester) async {
+    final controller = _controller('one\ntwo\nthree\nfour\nfive');
+    final snapshot = controller.document.snapshot;
+    const added = Color(0xff00ff00);
+    const deleted = Color(0xffff0000);
+    final pressed = <int>[];
+    await _mount(
+      tester,
+      controller,
+      decorations: [
+        EditorDecoration(
+          start: snapshot.lineStarts[1],
+          end: snapshot.contentEnds[2],
+          changeBar: const EditorChangeBar(added),
+        ),
+        EditorDecoration(
+          start: snapshot.lineStarts[4],
+          end: snapshot.lineStarts[4],
+          changeBar: const EditorChangeBar(deleted, deleted: true),
+        ),
+      ],
+      onChangeBarTap: (line, _) => pressed.add(line),
+    );
+    final gutter = _gutter(tester);
+    final geometry = gutter.geometry;
+    final layout = gutter.layout;
+    final lineHeight = layout.lineHeight;
+    expect(
+      geometry.changeBarLeft,
+      geometry.foldingLeft + geometry.foldingWidth + 1,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is CustomPaint && widget.painter is EditorGutterPainter,
+      ),
+      paints
+        // The gutter's background, then the marks.
+        ..rect()
+        ..rect(
+          rect: Rect.fromLTWH(
+            geometry.changeBarLeft,
+            layout.lineTop(2),
+            EditorViewGeometry.changeBarWidth,
+            lineHeight,
+          ),
+          color: added,
+        )
+        ..rect(color: added)
+        ..path(color: deleted),
+    );
+
+    Offset bar(int line) =>
+        _origin(tester) +
+        Offset(
+          geometry.changeBarLeft + 1,
+          layout.lineTop(line) + lineHeight / 2,
+        );
+    await _click(tester, bar(3), at: const Duration(seconds: 1));
+    await _click(tester, bar(5), at: const Duration(seconds: 2));
+    // No mark there: the line selected, as a press in the gutter does.
+    await _click(tester, bar(1), at: const Duration(seconds: 3));
+    expect(pressed, [3, 5]);
+    expect(
+      controller.value.selection,
+      const TextSelection(baseOffset: 0, extentOffset: 4),
+    );
   });
 
   testWidgets('indent folding hides lines and unfolds for selections', (

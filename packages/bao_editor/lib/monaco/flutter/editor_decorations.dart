@@ -280,6 +280,30 @@ class EditorInjectedText {
   String toString() => 'EditorInjectedText($text)';
 }
 
+/// A mark by changed lines between the line numbers and the text: VS
+/// Code's dirty diff (`dirty-diff-added`, `-modified`, `-deleted`),
+/// JetBrains' change markers. A bar of [color] by each line of the
+/// decoration; [deleted], a wedge at the bottom of its line (lines deleted
+/// after it), or at the top with [above] (deleted before the first).
+@immutable
+class EditorChangeBar {
+  const EditorChangeBar(this.color, {this.deleted = false, this.above = false});
+
+  final Color color;
+  final bool deleted;
+  final bool above;
+
+  @override
+  bool operator ==(Object other) =>
+      other is EditorChangeBar &&
+      other.color == color &&
+      other.deleted == deleted &&
+      other.above == above;
+
+  @override
+  int get hashCode => Object.hash(color, deleted, above);
+}
+
 /// An icon in the glyph margin (a decoration type's `gutterIconPath` with
 /// `gutterIconSize`: `auto`, `contain`, `cover` or a percentage). The
 /// surface's `gutterIconBuilder` draws it.
@@ -345,6 +369,7 @@ class EditorDecoration {
     this.after,
     this.hoverMessage,
     this.showIfCollapsed = false,
+    this.changeBar,
   });
 
   const EditorDecoration.findMatch(int start, int end)
@@ -440,6 +465,9 @@ class EditorDecoration {
   /// Keeps an empty range's injected text and marks (`showIfCollapsed`).
   final bool showIfCollapsed;
 
+  /// A change mark by its lines (see [EditorChangeBar]).
+  final EditorChangeBar? changeBar;
+
   /// Whether the layout must know of this decoration: it changes how the
   /// text is shaped (style, opacity) or adds text to it.
   bool get affectsLayout =>
@@ -483,6 +511,7 @@ class EditorDecoration {
           after: after,
           hoverMessage: hoverMessage,
           showIfCollapsed: showIfCollapsed,
+          changeBar: changeBar,
         );
 
   EditorUnderlineStyle get resolvedUnderlineStyle =>
@@ -578,7 +607,8 @@ class EditorDecoration {
       other.before == before &&
       other.after == after &&
       other.hoverMessage == hoverMessage &&
-      other.showIfCollapsed == showIfCollapsed;
+      other.showIfCollapsed == showIfCollapsed &&
+      other.changeBar == changeBar;
 
   @override
   int get hashCode => Object.hashAll([
@@ -615,6 +645,7 @@ class EditorDecoration {
     after,
     hoverMessage,
     showIfCollapsed,
+    changeBar,
   ]);
 }
 

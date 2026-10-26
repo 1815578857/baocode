@@ -93,6 +93,10 @@ class EditorViewGeometry {
   double get foldingLeft => decorationsLeft + 2;
   double get foldingWidth => math.max(0, decorationsWidth - 10);
 
+  /// Where change marks ([EditorChangeBar]) go: right of the chevrons.
+  double get changeBarLeft => foldingLeft + foldingWidth + 1;
+  static const double changeBarWidth = 3;
+
   Rect get contentRect =>
       Rect.fromLTWH(contentLeft, 0, contentWidth, size.height);
   Rect get gutterRect => Rect.fromLTWH(0, 0, contentLeft, size.height);
@@ -1229,13 +1233,15 @@ class EditorGutterPainter extends CustomPainter {
     )) {
       final margin = decoration.marginColor;
       final icon = decoration.lineDecorationIcon;
-      if (margin == null && icon == null) continue;
+      final bar = decoration.changeBar;
+      if (margin == null && icon == null && bar == null) continue;
       final first = snapshot.positionAtOffset(decoration.start).lineNumber;
       final last = snapshot.positionAtOffset(decoration.end).lineNumber;
       for (final line in visible) {
         if (line < first || line > last) continue;
         final top = layout.lineTop(line) - scrollTop;
         final height = layout.lineRowsHeight(line);
+        if (bar != null) _paintChangeBar(canvas, bar, top, height);
         if (margin != null) {
           canvas.drawRect(
             Rect.fromLTWH(0, top, rect.width, height),
@@ -1275,6 +1281,34 @@ class EditorGutterPainter extends CustomPainter {
     for (final glyph in icons.values) {
       glyph.dispose();
     }
+  }
+
+  /// `.dirty-diff-glyph`: a 3px bar the line's height, or for lines
+  /// deleted a 4px wedge on the line's edge.
+  void _paintChangeBar(
+    Canvas canvas,
+    EditorChangeBar bar,
+    double top,
+    double height,
+  ) {
+    final left = geometry.changeBarLeft;
+    final paint = Paint()..color = bar.color;
+    if (!bar.deleted) {
+      canvas.drawRect(
+        Rect.fromLTWH(left, top, EditorViewGeometry.changeBarWidth, height),
+        paint,
+      );
+      return;
+    }
+    final y = bar.above ? top : top + height;
+    canvas.drawPath(
+      Path()
+        ..moveTo(left, y - 4)
+        ..lineTo(left + 4, y)
+        ..lineTo(left, y + 4)
+        ..close(),
+      paint,
+    );
   }
 
   @override

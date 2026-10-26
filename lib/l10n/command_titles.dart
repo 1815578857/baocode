@@ -447,6 +447,10 @@ String localizedCommandLabel(AppLocalizations l10n, String id, String english) {
     'editor.action.marker.next' => l10n.cmdEditorMarkerNext,
     'editor.action.marker.prev' => l10n.cmdEditorMarkerPrev,
     'editor.action.showContextMenu' => l10n.cmdEditorShowContextMenu,
+    'workbench.action.editor.nextChange' => l10n.cmdNextChange,
+    'workbench.action.editor.previousChange' => l10n.cmdPreviousChange,
+    'editor.action.dirtydiff.next' => l10n.cmdShowNextChange,
+    'editor.action.dirtydiff.previous' => l10n.cmdShowPreviousChange,
     'acceptSelectedSuggestion' => l10n.cmdEditorAcceptSelectedSuggestion,
     'acceptAlternativeSelectedSuggestion' =>
       l10n.cmdEditorAcceptAlternativeSelectedSuggestion,

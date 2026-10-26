@@ -10552,4 +10552,31 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get diffGoToFile => '转到改动的文件';
+
+  @override
+  String get lineChangePrevious => '上一处改动';
+
+  @override
+  String get lineChangeNext => '下一处改动';
+
+  @override
+  String get lineChangeRollback => '回滚';
+
+  @override
+  String get lineChangeShowDiff => '显示差异';
+
+  @override
+  String get lineChangeCopy => '复制原来的内容';
+
+  @override
+  String get cmdNextChange => '转到下一处改动';
+
+  @override
+  String get cmdPreviousChange => '转到上一处改动';
+
+  @override
+  String get cmdShowNextChange => '显示下一处改动';
+
+  @override
+  String get cmdShowPreviousChange => '显示上一处改动';
 }

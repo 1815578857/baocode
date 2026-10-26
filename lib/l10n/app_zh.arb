@@ -3024,5 +3024,14 @@
   "diffHighlightWords": "按词高亮",
   "diffHighlightLines": "按行高亮",
   "diffHighlightNone": "不高亮",
-  "diffGoToFile": "转到改动的文件"
+  "diffGoToFile": "转到改动的文件",
+  "lineChangePrevious": "上一处改动",
+  "lineChangeNext": "下一处改动",
+  "lineChangeRollback": "回滚",
+  "lineChangeShowDiff": "显示差异",
+  "lineChangeCopy": "复制原来的内容",
+  "cmdNextChange": "转到下一处改动",
+  "cmdPreviousChange": "转到上一处改动",
+  "cmdShowNextChange": "显示下一处改动",
+  "cmdShowPreviousChange": "显示上一处改动"
 }

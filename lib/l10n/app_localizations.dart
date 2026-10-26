@@ -18206,6 +18206,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Go to Changed File'**
   String get diffGoToFile;
+
+  /// No description provided for @lineChangePrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous Change'**
+  String get lineChangePrevious;
+
+  /// No description provided for @lineChangeNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Change'**
+  String get lineChangeNext;
+
+  /// No description provided for @lineChangeRollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Rollback'**
+  String get lineChangeRollback;
+
+  /// No description provided for @lineChangeShowDiff.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Diff'**
+  String get lineChangeShowDiff;
+
+  /// No description provided for @lineChangeCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Original Lines'**
+  String get lineChangeCopy;
+
+  /// No description provided for @cmdNextChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Next Change'**
+  String get cmdNextChange;
+
+  /// No description provided for @cmdPreviousChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Previous Change'**
+  String get cmdPreviousChange;
+
+  /// No description provided for @cmdShowNextChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Next Change'**
+  String get cmdShowNextChange;
+
+  /// No description provided for @cmdShowPreviousChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Previous Change'**
+  String get cmdShowPreviousChange;
 }
 
 class _AppLocalizationsDelegate

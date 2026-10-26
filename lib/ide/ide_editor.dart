@@ -18,6 +18,8 @@ import '../theme/workbench_theme.dart' hide ColorScheme;
 import 'package:bao_editor/monaco/flutter/diff_editor.dart';
 import 'package:bao_editor/monaco/flutter/diff_editor_model.dart';
 import 'package:bao_editor/monaco/flutter/document_snapshot.dart';
+import 'package:bao_editor/monaco/vs/editor/common/diff/range_mapping.dart'
+    show DetailedLineRangeMapping, LineRangeMapping;
 import 'package:bao_editor/monaco/flutter/editor_surface.dart';
 import 'package:bao_editor/monaco/flutter/editor_surface_controller.dart';
 import 'package:bao_editor/monaco/flutter/monaco_syntax.dart';
@@ -43,7 +45,9 @@ import '../debug/base/event.dart' show DisposableStore;
 import '../debug/service/debug_service.dart';
 import 'debug_editor_glue.dart';
 import 'git/git_blame.dart';
+import 'git/git_line_changes.dart';
 import 'ide_agent_edits.dart';
+import 'ide_line_change_popup.dart';
 import 'ide_diff_options.dart';
 import 'ide_commands.dart';
 import 'ide_find_widget.dart';
@@ -205,6 +209,13 @@ class IdeEditorState extends State<IdeEditor> {
 
   /// Each open file's agent change, shown in it ([IdeEditor.agentEdits]).
   final Map<IdeDocument, IdeAgentDiff> _agentDiffs = {};
+
+  /// Each open file's lines changed since HEAD, marked by its line numbers.
+  final Map<IdeDocument, IdeGitLineChanges> _lineChanges = {};
+
+  /// The change shown under its lines (its mark pressed), of the active
+  /// file's [_lineChanges].
+  DetailedLineRangeMapping? _lineChangeShown;
 
   /// Bumped as the text scrolls or is laid out again: the agent changes'
   /// buttons follow it.
@@ -577,6 +588,12 @@ class IdeEditorState extends State<IdeEditor> {
   /// editor's own bindings; everything else (e.g. F8, workbench shortcuts)
   /// keeps bubbling.
   KeyEventResult _onEditorKey(KeyEvent event) {
+    if (_lineChangeShown != null &&
+        event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.escape) {
+      _hideLineChange();
+      return KeyEventResult.handled;
+    }
     if (widget.keyResolver != null) return _onTextKey(event);
     final session = _language;
     if (session == null) return KeyEventResult.ignored;
@@ -723,6 +740,12 @@ class IdeEditorState extends State<IdeEditor> {
       'editor.action.marker.prev' => widget.workspace.languages != null,
       'editor.action.format' => _language != null,
       'editor.action.showContextMenu' => _nativeController != null,
+      'workbench.action.editor.nextChange' ||
+      'workbench.action.editor.previousChange' ||
+      'editor.action.dirtydiff.next' ||
+      'editor.action.dirtydiff.previous' =>
+        _nativeController != null &&
+            (_lineChangesOf(widget.active)?.changes.isNotEmpty ?? false),
       _ when _findCommands.contains(id) => true,
       _ => _language != null,
     };
@@ -805,6 +828,14 @@ class IdeEditorState extends State<IdeEditor> {
         _gotoMarker(next: false);
       case 'editor.action.showContextMenu':
         _showContextMenuAtCaret();
+      case 'workbench.action.editor.nextChange':
+        _goToLineChange(1);
+      case 'workbench.action.editor.previousChange':
+        _goToLineChange(-1);
+      case 'editor.action.dirtydiff.next':
+        _goToLineChange(1, from: _lineChangeShown, show: true);
+      case 'editor.action.dirtydiff.previous':
+        _goToLineChange(-1, from: _lineChangeShown, show: true);
       case 'editor.action.format':
         // Upstream: the selection's when there is one, else the document's.
         final selected =
@@ -1124,6 +1155,7 @@ class IdeEditorState extends State<IdeEditor> {
           _nativeControllers.remove(entry.key);
           _diffs.remove(entry.key)?.dispose();
           _agentDiffs.remove(entry.key)?.dispose();
+          _lineChanges.remove(entry.key)?.dispose();
           _tokenizedDocuments.remove(entry.key);
           _textMateDocuments.remove(entry.key)?.$2.dispose();
           if (identical(_language?.controller, controller)) {
@@ -1182,6 +1214,181 @@ class IdeEditorState extends State<IdeEditor> {
       diff.dispose();
     }
     _agentDiffs.clear();
+    for (final changes in _lineChanges.values) {
+      changes.dispose();
+    }
+    _lineChanges.clear();
+  }
+
+  /// [doc]'s lines changed since HEAD, where it is a file in a repository
+  /// shown in its own tab.
+  IdeGitLineChanges? _lineChangesOf(IdeDocument doc) {
+    final repository = doc.isFile && doc.diff == null
+        ? widget.workspace.gitAt(doc.path)
+        : null;
+    final shown = _lineChanges[doc];
+    if (shown != null &&
+        identical(shown.repository, repository) &&
+        identical(shown.document, doc.model)) {
+      return shown;
+    }
+    _lineChanges.remove(doc)?.dispose();
+    if (repository == null) return null;
+    return _lineChanges[doc] = IdeGitLineChanges(
+      repository: repository,
+      path: doc.path,
+      document: doc.model,
+    )..addListener(_rebuildSoon);
+  }
+
+  /// The marks of the active file's changes since HEAD.
+  List<EditorDecoration> _lineChangeDecorations(WorkbenchColors colors) {
+    final changes = _lineChangesOf(widget.active)?.changes;
+    if (changes == null || changes.isEmpty) return const [];
+    return ideLineChangeDecorations(
+      changes,
+      widget.active.model.snapshot,
+      colors.get,
+    );
+  }
+
+  /// A change's mark pressed: the change under its lines, or hidden again.
+  void _lineChangeMarkPressed(int lineNumber, Offset _) {
+    final change = _lineChangesOf(widget.active)?.changeAt(lineNumber);
+    setState(
+      () => _lineChangeShown = identical(change, _lineChangeShown)
+          ? null
+          : change,
+    );
+  }
+
+  void _hideLineChange() {
+    if (_lineChangeShown != null) setState(() => _lineChangeShown = null);
+  }
+
+  /// The change [delta] on from [from] (or from the caret's line), round
+  /// past the ends: put the caret at its start and shown there; under its
+  /// lines too with [show] (or while one is).
+  void _goToLineChange(
+    int delta, {
+    DetailedLineRangeMapping? from,
+    bool? show,
+  }) {
+    final changes = _lineChangesOf(widget.active)?.changes;
+    final controller = _nativeController;
+    if (changes == null || changes.isEmpty || controller == null) return;
+    final snapshot = widget.active.model.snapshot;
+    int index;
+    if (from != null && changes.contains(from)) {
+      index = (changes.indexOf(from) + delta) % changes.length;
+    } else {
+      final line = snapshot
+          .positionAtOffset(controller.value.selection.extentOffset)
+          .lineNumber;
+      if (delta > 0) {
+        index = changes.indexWhere(
+          (change) => ideLineChangeLines(change).first > line,
+        );
+        if (index < 0) index = 0;
+      } else {
+        index = changes.lastIndexWhere(
+          (change) => ideLineChangeLines(change).last < line,
+        );
+        if (index < 0) index = changes.length - 1;
+      }
+    }
+    final change = changes[index];
+    final first = ideLineChangeLines(change).first.clamp(1, snapshot.lineCount);
+    final offset = snapshot.lineStarts[first - 1];
+    controller.select(offset, offset);
+    if (_surfaceKey.currentState case final EditorSurfaceView view) {
+      view.revealRange(offset, offset, center: true);
+    }
+    if (show ?? _lineChangeShown != null) {
+      setState(() => _lineChangeShown = change);
+    }
+  }
+
+  /// [change] taken out of the text: its lines as HEAD has them.
+  void _rollBackLineChange(LineRangeMapping change) {
+    final changes = _lineChangesOf(widget.active);
+    final original = changes?.model.originalSnapshot;
+    final controller = _nativeController;
+    if (changes == null || original == null || controller == null) return;
+    final spans = agentHunkSpans(
+      change,
+      original,
+      controller.document.snapshot,
+    );
+    controller.applyEdits([
+      EditorOffsetEdit(
+        spans.modifiedStart,
+        spans.modifiedEnd,
+        original.text.substring(spans.originalStart, spans.originalEnd),
+      ),
+    ]);
+    changes.model.refresh();
+    _hideLineChange();
+  }
+
+  /// The active file against HEAD in a diff tab.
+  void _showLineChangeDiff(IdeGitLineChanges changes) {
+    final original = changes.original;
+    if (original == null) return;
+    _hideLineChange();
+    unawaited(
+      widget.workspace.openDiff(
+        widget.active.path,
+        label: _l10n.gitChangeWorkingTree,
+        original: () async => original,
+      ),
+    );
+  }
+
+  /// [_lineChangeShown] under its lines; null while none is, or it is no
+  /// more (the text changed).
+  Widget? _lineChangePopup(WorkbenchColors colors) {
+    final change = _lineChangeShown;
+    if (change == null) return null;
+    final changes = _lineChangesOf(widget.active);
+    final original = changes?.model.originalSnapshot;
+    final index = changes?.changes.indexOf(change) ?? -1;
+    if (changes == null || original == null || index < 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && identical(_lineChangeShown, change)) _hideLineChange();
+      });
+      return null;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _viewTick.value++;
+    });
+    return TapRegion(
+      onTapOutside: (_) {
+        if (identical(_lineChangeShown, change)) _hideLineChange();
+      },
+      child: IdeLineChangePopup(
+        key: ObjectKey(change),
+        change: change,
+        index: index,
+        count: changes.changes.length,
+        text: widget.active.model.snapshot,
+        original: original,
+        view: () => switch (_surfaceKey.currentState) {
+          final EditorSurfaceView view => view,
+          _ => null,
+        },
+        repaint: _viewTick,
+        style: _editorStyle(colors),
+        onPrevious: () => _goToLineChange(-1, from: change, show: true),
+        onNext: () => _goToLineChange(1, from: change, show: true),
+        onRollback: () => _rollBackLineChange(change),
+        onShowDiff: () => _showLineChangeDiff(changes),
+        onCopy: () {
+          final popup = IdeLineChangePopup.originalOf(change, original);
+          unawaited(Clipboard.setData(ClipboardData(text: popup)));
+        },
+      ),
+    );
   }
 
   /// [doc]'s diff and original side, where it is a diff tab.
@@ -2140,6 +2347,7 @@ class IdeEditorState extends State<IdeEditor> {
       ..._findDecorations,
       ..._blameDecorations(colors),
       ..._debugDecorations(),
+      if (side == null) ..._lineChangeDecorations(colors),
     ],
     // A diff editor's editors fold nothing and have no minimap.
     viewZones: side?.zones ?? agent?.zones ?? const [],
@@ -2154,6 +2362,7 @@ class IdeEditorState extends State<IdeEditor> {
     onContentPointerDown: _language?.onPointerDown,
     onContextMenu: _showContextMenu,
     onViewChanged: _viewChanged,
+    onChangeBarTap: side == null ? _lineChangeMarkPressed : null,
     contentCursor: _language?.link == null ? null : SystemMouseCursors.click,
     style: _editorStyle(colors),
   );
@@ -2356,6 +2565,8 @@ class IdeEditorState extends State<IdeEditor> {
                 Positioned(left: 0, top: 0, bottom: 0, child: margin),
               if (_agentHunkActions(agent) case final actions?)
                 Positioned.fill(child: actions),
+              if (_lineChangePopup(colors) case final popup?)
+                Positioned.fill(child: popup),
               if (_language case final session?)
                 Positioned.fill(
                   // Hovers and suggestions are sized with the code.

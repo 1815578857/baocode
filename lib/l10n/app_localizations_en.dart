@@ -11150,4 +11150,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get diffGoToFile => 'Go to Changed File';
+
+  @override
+  String get lineChangePrevious => 'Previous Change';
+
+  @override
+  String get lineChangeNext => 'Next Change';
+
+  @override
+  String get lineChangeRollback => 'Rollback';
+
+  @override
+  String get lineChangeShowDiff => 'Show Diff';
+
+  @override
+  String get lineChangeCopy => 'Copy Original Lines';
+
+  @override
+  String get cmdNextChange => 'Go to Next Change';
+
+  @override
+  String get cmdPreviousChange => 'Go to Previous Change';
+
+  @override
+  String get cmdShowNextChange => 'Show Next Change';
+
+  @override
+  String get cmdShowPreviousChange => 'Show Previous Change';
 }
