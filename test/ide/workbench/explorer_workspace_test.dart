@@ -133,17 +133,27 @@ void main() {
 
     await chord(tester, LogicalKeyboardKey.keyG, control: true, shift: true);
     await tester.pumpAndSettle();
-    // Each under its header in CHANGES (#76), with its branch (the status
-    // bar's the one shown) and its changes.
+    // Each under its header in the local changes (#76), with its branch
+    // (the status bar's the one shown) and its changes.
     expect(find.text('Repositories'), findsNothing);
-    expect(find.text('main*'), findsOneWidget);
-    expect(find.text('dev*'), findsOneWidget);
+    for (final (root, branch) in [('site', 'main'), ('api', 'dev')]) {
+      expect(
+        find.descendant(
+          of: find.byKey(ValueKey('r:${inRoot(root)}')),
+          matching: find.textContaining(
+            RegExp('^$root\\s+$branch\$'),
+            findRichText: true,
+          ),
+        ),
+        findsOneWidget,
+      );
+    }
     expect(_statusBar('main'), findsOneWidget);
     expect(find.text('index.html'), findsWidgets);
     expect(find.text('new.go'), findsOneWidget);
 
     // The one clicked is the one shown.
-    await tester.tap(find.byKey(ValueKey('repo:${inRoot('api')}')).first);
+    await tester.tap(find.byKey(ValueKey('r:${inRoot('api')}')).first);
     await tester.pumpAndSettle();
     expect(_statusBar('dev'), findsOneWidget);
     expect(_statusBar('main'), findsNothing);

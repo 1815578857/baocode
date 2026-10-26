@@ -116,6 +116,13 @@ class IdeScmSession {
   /// The tree's collapsed folders (`group:folder:path`).
   final Set<String> collapsedFolders = {};
 
+  /// The commit panel's check marks by path, where they are not the
+  /// default (the tracked changes checked, the unversioned files not).
+  final Map<String, bool> included = {};
+
+  /// The commit panel's Amend.
+  bool amend = false;
+
   /// The list's focused row, selection and anchor, kept while the view is
   /// away (the Git log left for the editor) to be where they were.
   String? listSelected;
@@ -828,42 +835,42 @@ class IdeScmViewState extends State<IdeScmView>
             body: _changesList(git, state),
           ),
           if (widget.showGraph)
-          IdePane(
-            id: 'graph',
-            title: l10n.scmGraph,
-            // Which repository's, with several.
-            description: _grouped ? p.basename(git.service.root) : null,
-            weight: 2,
-            actions: [
-              IdePaneAction(
-                icon: Codicons.target,
-                tooltip: l10n.scmGoToCurrent,
-                onPressed: () => _graph.goToCurrent(git),
-              ),
-              IdeMenuButton(
-                icon: Codicons.gitBranch,
-                tooltip: l10n.scmGraphBranches,
-                entries: () => [
-                  IdeMenuAction(
-                    l10n.scmGraphCurrentBranch,
-                    checked: git.graphBranch == ideGraphCurrentBranch,
-                    onSelected: () => git.graphBranch = ideGraphCurrentBranch,
-                  ),
-                  IdeMenuAction(
-                    l10n.scmGraphAllBranches,
-                    checked: git.graphBranch == null,
-                    onSelected: () => git.graphBranch = null,
-                  ),
-                ],
-              ),
-              IdePaneAction(
-                icon: Codicons.refresh,
-                tooltip: l10n.commonRefresh,
-                onPressed: () => unawaited(git.refresh()),
-              ),
-            ],
-            body: _graphList(git),
-          ),
+            IdePane(
+              id: 'graph',
+              title: l10n.scmGraph,
+              // Which repository's, with several.
+              description: _grouped ? p.basename(git.service.root) : null,
+              weight: 2,
+              actions: [
+                IdePaneAction(
+                  icon: Codicons.target,
+                  tooltip: l10n.scmGoToCurrent,
+                  onPressed: () => _graph.goToCurrent(git),
+                ),
+                IdeMenuButton(
+                  icon: Codicons.gitBranch,
+                  tooltip: l10n.scmGraphBranches,
+                  entries: () => [
+                    IdeMenuAction(
+                      l10n.scmGraphCurrentBranch,
+                      checked: git.graphBranch == ideGraphCurrentBranch,
+                      onSelected: () => git.graphBranch = ideGraphCurrentBranch,
+                    ),
+                    IdeMenuAction(
+                      l10n.scmGraphAllBranches,
+                      checked: git.graphBranch == null,
+                      onSelected: () => git.graphBranch = null,
+                    ),
+                  ],
+                ),
+                IdePaneAction(
+                  icon: Codicons.refresh,
+                  tooltip: l10n.commonRefresh,
+                  onPressed: () => unawaited(git.refresh()),
+                ),
+              ],
+              body: _graphList(git),
+            ),
         ],
       );
     }

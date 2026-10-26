@@ -64,6 +64,7 @@ import 'git/git_change_editor.dart';
 import 'git/git_checkout.dart';
 import 'git/git_model.dart';
 import 'git/git_repository.dart';
+import 'git/ide_git_commit_panel.dart';
 import 'git/ide_git_log_view.dart';
 import 'git/ide_scm_view.dart';
 import 'git/ide_timeline_view.dart';
@@ -478,7 +479,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   /// only then are they shown in the file manager, opened in other apps,
   /// or moved to the trash.
   bool get _local => widget.workspace.files is! IdeHostFiles;
-  final _scmKey = GlobalKey<IdeScmViewState>();
+  final _scmKey = GlobalKey<IdeGitCommitPanelState>();
   final _gitLogKey = GlobalKey<IdeGitLogViewState>();
   IdeGitRepository? _git;
 
@@ -3701,7 +3702,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       },
       onCheckout: _gitCheckoutOf,
       onAddToChat: widget.onAddToChat,
-      changes: IdeScmView(
+      changes: IdeGitCommitPanel(
         key: _scmKey,
         host: widget.workspace,
         session: _scm,
@@ -3712,21 +3713,20 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                 () => IdeScmSession(settings: widget.settings),
               ),
         notifications: _notifications,
-        showTitle: false,
-        showGraph: false,
         onOpen: (path, {focusEditor = false}) {
           _leaveGitLog();
           return _open(path, focusEditor: focusEditor);
         },
         onOpenChange: _openChangeInLog,
-        onRevealInExplorer: _revealInExplorer,
-        onOpenInTerminal: _terminals == null ? null : _openInTerminal,
+        onRevealInExplorer: (path) {
+          _leaveGitLog();
+          _revealInExplorer(path);
+        },
         onAddToChat: widget.onAddToChat,
         trash: WindowControls.canMoveToTrash
             ? WindowControls.moveToTrash
             : null,
         commitMessage: widget.commitMessage,
-        onCheckout: _gitCheckoutOf,
       ),
     ),
     IdeSideView.debug => switch (_debug) {

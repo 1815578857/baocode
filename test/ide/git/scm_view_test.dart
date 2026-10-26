@@ -1,14 +1,12 @@
-import 'dart:async';
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:baocode/ide/git/ide_git_commit_panel.dart';
 import 'package:baocode/ide/git/git_model.dart';
 import 'package:baocode/ide/git/git_service.dart';
-import 'package:baocode/ide/git/ide_scm_view.dart';
 import 'package:baocode/ide/ide_code_diff.dart';
-import 'package:baocode/ide/ide_hover.dart';
+import 'package:baocode/ide/ide_button.dart';
 import 'package:baocode/ide/ide_input.dart';
 import 'package:baocode/ide/ide_explorer.dart';
 import 'package:baocode/ide/ide_list.dart';
@@ -61,7 +59,10 @@ void main() {
 
   /// The commit message's input, under the local changes' row.
   final message = find
-      .descendant(of: find.byType(IdeScmView), matching: find.byType(TextField))
+      .descendant(
+        of: find.byType(IdeGitCommitPanel),
+        matching: find.byType(TextField),
+      )
       .first;
 
   Future<void> rightClick(WidgetTester tester, Finder finder) async {
@@ -70,22 +71,6 @@ void main() {
       buttons: kSecondaryMouseButton,
       kind: PointerDeviceKind.mouse,
     );
-    await tester.pumpAndSettle();
-  }
-
-  TestGesture? mouse;
-  tearDown(() => mouse = null);
-
-  Future<void> hover(WidgetTester tester, Finder finder) async {
-    if (mouse case final mouse?) {
-      await mouse.moveTo(tester.getCenter(finder));
-    } else {
-      final created = mouse = await tester.createGesture(
-        kind: PointerDeviceKind.mouse,
-      );
-      addTearDown(created.removePointer);
-      await created.addPointer(location: tester.getCenter(finder));
-    }
     await tester.pumpAndSettle();
   }
 
@@ -111,36 +96,38 @@ void main() {
     expect(find.text('Local Changes (3)'), findsOneWidget);
   });
 
-  testWidgets('shows the groups, their counts, letters and the badge', (
+  /// Clicks a row's check box.
+  Future<void> check(WidgetTester tester, String name) async {
+    await tester.tap(
+      find.descendant(
+        of: rowOf(name).last,
+        matching: find.byWidgetPredicate(
+          (widget) => widget.runtimeType.toString() == '_Check',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  Finder button(String label) =>
+      find.ancestor(of: find.text(label), matching: find.byType(IdeButton));
+
+  testWidgets('lists the changes as JetBrains IDEs do: the tracked ones '
+      'checked, the unversioned not, the names in their status\'s colors', (
     tester,
   ) async {
     await pumpScm(tester);
     // The log's first row, the local changes, selected.
     expect(find.text('Local Changes (3)'), findsOneWidget);
     final input = tester.widget<TextField>(message);
-    expect(input.decoration!.hintText, contains('to commit on "main")'));
+    expect(input.decoration!.hintText, 'Commit Message');
 
-    expect(find.text('Staged Changes'), findsOneWidget);
-    expect(
-      find.descendant(
-        of: rowOf('Staged Changes'),
-        matching: find.byType(IdeTitleBadge),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      tester
-          .widget<IdeTitleBadge>(
-            find.descendant(
-              of: rowOf('Changes').last,
-              matching: find.byType(IdeTitleBadge),
-            ),
-          )
-          .count,
-      2,
-    );
-    // As a tree (the default): the folder, then the name and the status
-    // letter.
+    expect(find.text('Changes'), findsOneWidget);
+    expect(find.text('Unversioned Files'), findsOneWidget);
+    expect(find.text('2 files'), findsOneWidget);
+    expect(find.text('1 file'), findsOneWidget);
+    expect(find.text('2 of 3 files checked'), findsOneWidget);
+    // By directory (the default): the folder, then the name in its color.
     expect(rowOf('lib'), findsWidgets);
     final a = tester.widget<IdeResourceLabel>(
       find.descendant(
@@ -148,15 +135,14 @@ void main() {
         matching: find.byType(IdeResourceLabel),
       ),
     );
-    expect((a.description, a.letter), (null, 'M'));
-    expect(a.letterColor, IdeGitStatus.modified.color);
-    final notes = tester.widget<IdeResourceLabel>(
-      find.descendant(
-        of: rowOf('notes.md'),
-        matching: find.byType(IdeResourceLabel),
-      ),
-    );
-    expect((notes.description, notes.letter), (null, 'U'));
+    expect(a.nameColor, IdeGitStatus.modified.color);
+
+    // Checked, the unversioned file counts.
+    await check(tester, 'notes.md');
+    expect(find.text('3 of 3 files checked'), findsOneWidget);
+    // A folder unchecks what is under it.
+    await check(tester, 'lib');
+    expect(find.text('1 of 3 files checked'), findsOneWidget);
 
     // The activity bar counts every change.
     expect(find.text('3'), findsOneWidget);
@@ -184,198 +170,136 @@ void main() {
     expect(find.textContaining('too many changes'), findsOneWidget);
     expect(find.text('10K'), findsWidgets);
     expect(find.byType(IdeListRow).evaluate().length, lessThan(100));
-
-    // The wheel's: dragging a row drags its file out.
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: tester.getCenter(text('f0.txt')),
-        scrollDelta: const Offset(0, 2000),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(text('f0.txt'), findsNothing);
-    expect(find.byType(IdeListRow).evaluate().length, lessThan(100));
   });
 
-  testWidgets('a group collapses and expands', (tester) async {
+  testWidgets('a group folds and unfolds', (tester) async {
     await pumpScm(tester);
-    await tester.tap(find.text('Staged Changes'));
+    await tester.tap(find.text('Unversioned Files'));
     await tester.pumpAndSettle();
-    expect(text('staged.dart'), findsNothing);
-    await tester.tap(find.text('Staged Changes'));
+    expect(text('notes.md'), findsNothing);
+    await tester.tap(find.text('Unversioned Files'));
     await tester.pumpAndSettle();
-    expect(text('staged.dart'), findsOneWidget);
+    expect(text('notes.md'), findsOneWidget);
   });
 
-  testWidgets('committing without a message asks for one', (tester) async {
-    await pumpScm(tester);
-    await tester.tap(find.byTooltip('Commit Changes (Ctrl+Enter)'));
-    await tester.pumpAndSettle();
-    expect(find.text('Please provide a commit message'), findsOneWidget);
-    expect(git.callsTo('commit'), isEmpty);
-    await tester.enterText(message, 'W');
-    await tester.pumpAndSettle();
-    expect(find.text('Please provide a commit message'), findsNothing);
-  });
-
-  testWidgets('commits the staged changes and clears the message', (
+  testWidgets('committing asks for a message, and for files checked', (
     tester,
   ) async {
     await pumpScm(tester);
+    await tester.tap(button('Commit'));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter a commit message.'), findsOneWidget);
+    expect(git.callsTo('commit'), isEmpty);
+    await tester.enterText(message, 'W');
+    await tester.pumpAndSettle();
+    expect(find.text('Enter a commit message.'), findsNothing);
+
+    await check(tester, 'lib');
+    await tester.tap(button('Commit'));
+    await tester.pumpAndSettle();
+    expect(find.text('Check the files to commit.'), findsOneWidget);
+    expect(git.callsTo('commit'), isEmpty);
+  });
+
+  testWidgets('commits the files checked as they are, an unversioned one '
+      'added first, and clears the message', (tester) async {
+    await pumpScm(tester);
+    await check(tester, 'notes.md');
     await tester.enterText(message, 'Fix a bug');
     git.onCommand = (arguments) {
       if (arguments.first == 'commit') git.status = '## main\x00';
     };
-    await tester.tap(find.byTooltip('Commit Changes (Ctrl+Enter)'));
+    await tester.tap(button('Commit'));
     await tester.pumpAndSettle();
+    expect(git.callsTo('add').single, ['add', '-A', '--', 'notes.md']);
     expect(git.callsTo('commit').single, [
       'commit',
       '--quiet',
       '-m',
       'Fix a bug',
+      '--only',
+      '--',
+      'lib/a.dart',
+      'lib/staged.dart',
+      'notes.md',
     ]);
     expect(find.text('Fix a bug'), findsNothing);
-    expect(text('staged.dart'), findsNothing);
+    expect(find.text('No local changes'), findsOneWidget);
   });
 
-  testWidgets('with nothing staged, the smart commit asks, then commits all', (
+  testWidgets('Amend brings the last commit\'s message, and amends it', (
     tester,
   ) async {
-    git.status = '## main\x00 M lib/a.dart\x00?? notes.md\x00';
+    git.refs['HEAD'] = 'c2';
+    git.log = gitLogRecord('c2', ['c1'], 'Oops');
     await pumpScm(tester);
-    await tester.enterText(message, 'Everything');
-    await tester.tap(find.byTooltip('Commit Changes (Ctrl+Enter)'));
+    await tester.tap(find.text('Amend'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(message).controller!.text, 'Oops');
+    await tester.tap(button('Commit'));
     await tester.pumpAndSettle();
     expect(
-      find.textContaining('There are no staged changes to commit.'),
-      findsOneWidget,
+      git.callsTo('commit').single,
+      containsAllInOrder([
+        'commit',
+        '--quiet',
+        '--amend',
+        '-m',
+        'Oops',
+        '--only',
+      ]),
     );
-    await tester.tap(find.text('Yes'));
-    await tester.pumpAndSettle();
-    // The untracked file is staged first (`git.smartCommitChanges: all`).
-    expect(git.callsTo('add').single, ['add', '-A', '--', 'notes.md']);
-    expect(git.callsTo('commit').single, [
-      'commit',
-      '--quiet',
-      '--all',
-      '-m',
-      'Everything',
-    ]);
   });
 
-  testWidgets('Never stops the smart commit from asking or committing', (
+  testWidgets('Commit and Push publishes a branch without an upstream', (
     tester,
   ) async {
-    git.status = '## main\x00 M lib/a.dart\x00';
+    git.status = '## feature/x\x00 M lib/a.dart\x00';
     await pumpScm(tester);
-    await tester.enterText(message, 'Nope');
-    await tester.tap(find.byTooltip('Commit Changes (Ctrl+Enter)'));
+    await tester.enterText(message, 'Ship it');
+    await tester.tap(button('Commit and Push'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Never'));
-    await tester.pumpAndSettle();
-    // Nothing to commit now: the branch's own action takes the button.
-    expect(find.byTooltip('Commit Changes (Ctrl+Enter)'), findsNothing);
-    expect(find.text('Publish Branch'), findsOneWidget);
-    await tester.tap(message);
-    await chord(tester, LogicalKeyboardKey.enter, control: true);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('no staged changes'), findsNothing);
-    expect(git.callsTo('commit'), isEmpty);
+    expect(git.callsTo('commit'), hasLength(1));
+    expect(git.callsTo('push').single, ['push', '-u', 'origin', 'feature/x']);
   });
 
-  testWidgets('inline actions stage and unstage', (tester) async {
-    await pumpScm(tester);
-    await hover(tester, rowOf('a.dart'));
-    await tester.tap(
-      find.descendant(
-        of: rowOf('a.dart'),
-        matching: find.byTooltip('Stage Changes'),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(git.callsTo('add').single, ['add', '-A', '--', 'lib/a.dart']);
-
-    await hover(tester, rowOf('Staged Changes'));
-    await tester.tap(find.byTooltip('Unstage All Changes'));
-    await tester.pumpAndSettle();
-    expect(git.callsTo('restore').single, ['restore', '--staged', '--', '.']);
-  });
-
-  testWidgets('discarding a tracked file confirms as VS Code does', (
+  testWidgets('Rollback asks, then brings the file back from HEAD', (
     tester,
   ) async {
     await pumpScm(tester);
     await rightClick(tester, rowOf('a.dart'));
-    expect(find.text('Open File'), findsOneWidget);
-    expect(find.text('Add to .gitignore'), findsOneWidget);
-    expect(find.text('Reveal in Explorer View'), findsOneWidget);
-    await tester.tap(find.text('Discard Changes'));
+    for (final item in [
+      'Show Diff',
+      'Jump to Source',
+      'Rollback…',
+      'Copy Path',
+      'Copy Relative Path',
+      'Reveal in Explorer View',
+    ]) {
+      expect(find.text(item), findsOneWidget, reason: item);
+    }
+    await tester.tap(find.text('Rollback…'));
     await tester.pumpAndSettle();
-    expect(
-      find.text("Are you sure you want to discard changes in 'a.dart'?"),
-      findsOneWidget,
-    );
-    await tester.tap(find.text('Discard File'));
+    expect(find.text('Roll back the changes of 1 file?'), findsOneWidget);
+    await tester.tap(find.text('Rollback'));
     await tester.pumpAndSettle();
     expect(git.callsTo('checkout').single, [
       'checkout',
       '-q',
+      'HEAD',
       '--',
       'lib/a.dart',
     ]);
   });
 
-  testWidgets('a folder\'s menu has, besides Git\'s, the reveals, its path '
-      'and folding; a file\'s its paths', (tester) async {
-    await pumpScm(tester);
-    await rightClick(tester, rowOf('lib').last);
-    for (final item in [
-      'Discard Changes',
-      'Stage Changes',
-      'Add to .gitignore',
-      'Reveal in Explorer View',
-      'Copy Path',
-      'Copy Relative Path',
-      'Collapse All',
-    ]) {
-      expect(find.text(item), findsOneWidget, reason: item);
-    }
-    await tester.tap(find.text('Collapse All'));
-    await tester.pumpAndSettle();
-    expect(text('a.dart'), findsNothing);
-
-    await rightClick(tester, rowOf('notes.md'));
-    for (final item in ['Open File', 'Copy Path', 'Copy Relative Path']) {
-      expect(find.text(item), findsOneWidget, reason: item);
-    }
-  });
-
-  testWidgets('Discard All Changes offers tracked files alone, or all', (
+  testWidgets('an unversioned file is added to Git from its menu', (
     tester,
   ) async {
     await pumpScm(tester);
-    await rightClick(tester, rowOf('Changes').last);
-    await tester.tap(find.text('Discard All Changes'));
+    await rightClick(tester, rowOf('notes.md'));
+    await tester.tap(find.text('Add to VCS'));
     await tester.pumpAndSettle();
-    expect(
-      find.textContaining(
-        "Are you sure you want to DELETE the following untracked file: "
-        "'notes.md'?",
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('Discard 1 Tracked File'), findsOneWidget);
-    await tester.tap(find.text('Discard All 2 Files'));
-    await tester.pumpAndSettle();
-    expect(git.callsTo('checkout'), hasLength(1));
-    // Without a Trash (off macOS), untracked files are deleted.
-    expect(git.callsTo('clean').single, [
-      'clean',
-      '-f',
-      '-q',
-      '--',
-      'notes.md',
-    ]);
+    expect(git.callsTo('add').single, ['add', '-A', '--', 'notes.md']);
   });
 
   testWidgets('a resource shows its change in the log; Reveal in Explorer '
@@ -410,7 +334,7 @@ void main() {
     expect(explorer.controller.selected, inRoot('notes.md'));
   });
 
-  testWidgets('Open Changes opens the change in the editor, the log left', (
+  testWidgets('Enter opens the change in the editor, the log left', (
     tester,
   ) async {
     final workspace = await pumpWorkbench(tester, const {
@@ -420,8 +344,9 @@ void main() {
     }, git: git.repository());
     await tester.pumpAndSettle();
     await showScm(tester);
-    await rightClick(tester, rowOf('a.dart'));
-    await tester.tap(find.text('Open Changes'));
+    await tester.tap(rowOf('a.dart'));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
     expect(workspace.active?.title, 'a.dart (Working Tree)');
     expect(find.text('Local Changes (3)'), findsNothing);
@@ -449,10 +374,7 @@ void main() {
 
     await tester.tap(find.text('Second'));
     await tester.pumpAndSettle();
-    expect(
-      git.callsTo('show').map((call) => call.last),
-      everyElement('c2'),
-    );
+    expect(git.callsTo('show').map((call) => call.last), everyElement('c2'));
     expect(find.text('commit: c2'), findsOneWidget);
     expect(find.text('2 files'), findsOneWidget);
     expect(text('b.dart'), findsOneWidget);
@@ -572,211 +494,28 @@ void main() {
     expect(lastLog(), contains('--branches'));
   });
 
-  testWidgets('Undo Last Commit restores its message to the input', (
+  testWidgets('Undo Commit on the last commit brings its message back', (
     tester,
   ) async {
     git.status = '## main\x00';
     git.refs['HEAD'] = 'c2';
-    git.log = gitLogRecord('c2', ['c1'], 'Oops\n\nDetails');
-    await pumpScm(tester);
-    await hover(tester, find.text('Changes').first);
-    await tester.tap(
-      find.descendant(
-        of: find.byType(IdeScmView),
-        matching: find.byTooltip('More Actions...'),
-      ),
+    git.log = gitLogRecord(
+      'c2',
+      ['c1'],
+      'Oops\n\nDetails',
+      refs: 'HEAD -> refs/heads/main',
     );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Commit').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Undo Last Commit'));
+    git.onCommand = (arguments) {
+      if (arguments.first == 'reset') {
+        git.status = '## main\x00 M lib/a.dart\x00';
+      }
+    };
+    await pumpScm(tester);
+    await rightClick(tester, find.text('Oops'));
+    await tester.tap(find.text('Undo Commit'));
     await tester.pumpAndSettle();
     expect(git.callsTo('reset').single, ['reset', '--soft', 'HEAD~']);
     final input = tester.widget<TextField>(message);
     expect(input.controller!.text, 'Oops\n\nDetails');
-  });
-
-  group('the action button, with nothing to commit', () {
-    Finder button(String label) => find.ancestor(
-      of: find.text(label),
-      matching: find.byWidgetPredicate((widget) => widget is IdeHover),
-    );
-
-    testWidgets('Sync Changes pulls, then pushes, once confirmed', (
-      tester,
-    ) async {
-      git.status = '## main...origin/main [ahead 2, behind 1]\x00';
-      await pumpScm(tester);
-      expect(find.text('Sync Changes'), findsOneWidget);
-      expect(find.text(' 1'), findsOneWidget);
-      expect(find.text(' 2'), findsOneWidget);
-      expect(
-        find.byTooltip('Pull 1 and push 2 commits between origin/main'),
-        findsOneWidget,
-      );
-      expect(find.byTooltip('Commit Changes (Ctrl+Enter)'), findsNothing);
-
-      await tester.tap(find.text('Sync Changes'));
-      await tester.pumpAndSettle();
-      expect(
-        find.text(
-          'This action will pull and push commits from and to '
-          '"origin/main".',
-        ),
-        findsOneWidget,
-      );
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      expect(git.callsTo('pull'), isEmpty);
-
-      git.onCommand = (arguments) {
-        if (arguments.first == 'push') git.status = '## main...origin/main\x00';
-      };
-      await tester.tap(find.text('Sync Changes'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('OK'));
-      await tester.pumpAndSettle();
-      expect(git.callsTo('pull').single, ['pull', '--tags', 'origin', 'main']);
-      expect(git.callsTo('push').single, ['push', 'origin', 'main:main']);
-      // In sync: Commit, with nothing to commit.
-      expect(find.text('Sync Changes'), findsNothing);
-      expect(find.byTooltip('Commit Changes (Ctrl+Enter)'), findsOneWidget);
-    });
-
-    testWidgets('behind alone, it pulls and does not push; Don\'t Show Again '
-        'syncs straight away after', (tester) async {
-      git.status = '## main...origin/main [behind 3]\x00';
-      await pumpScm(tester);
-      expect(find.byTooltip('Pull 3 commits from origin/main'), findsOneWidget);
-      await tester.tap(find.text('Sync Changes'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text("OK, Don't Show Again"));
-      await tester.pumpAndSettle();
-      expect(git.callsTo('pull'), hasLength(1));
-      expect(git.callsTo('push'), isEmpty);
-
-      await tester.tap(find.text('Sync Changes'));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('This action will pull'), findsNothing);
-      expect(git.callsTo('pull'), hasLength(2));
-    });
-
-    testWidgets('a remote with a slash in its name is told from the branch', (
-      tester,
-    ) async {
-      git
-        ..remotes = 'origin\nteam/fork\n'
-        ..status = '## topic...team/fork/feature/x [ahead 1]\x00';
-      await pumpScm(tester);
-      expect(find.byTooltip('Push 1 commits to team/fork/feature/x'), findsOne);
-      await tester.tap(find.text('Sync Changes'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('OK'));
-      await tester.pumpAndSettle();
-      expect(git.callsTo('pull').single, [
-        'pull',
-        '--tags',
-        'team/fork',
-        'feature/x',
-      ]);
-      expect(git.callsTo('push').single, [
-        'push',
-        'team/fork',
-        'topic:feature/x',
-      ]);
-    });
-
-    testWidgets('while it syncs, the icon spins and the button waits', (
-      tester,
-    ) async {
-      git.status = '## main...origin/main [ahead 1]\x00';
-      await pumpScm(tester);
-      await tester.tap(find.text('Sync Changes'));
-      await tester.pumpAndSettle();
-      final pushed = Completer<void>();
-      git.hold = (arguments) =>
-          arguments.first == 'push' ? pushed.future : null;
-      await tester.tap(find.text('OK'));
-      await tester.pump();
-      await tester.pump();
-      expect(find.byTooltip('Synchronizing Changes...'), findsOneWidget);
-      final spinning = find.descendant(
-        of: button('Sync Changes'),
-        matching: find.byType(RotationTransition),
-      );
-      expect(spinning, findsOneWidget);
-      final turned = tester.widget<RotationTransition>(spinning).turns.value;
-      await tester.pump(const Duration(milliseconds: 500));
-      expect(
-        tester.widget<RotationTransition>(spinning).turns.value,
-        isNot(turned),
-      );
-      // Disabled: another tap asks nothing.
-      await tester.tap(find.text('Sync Changes'));
-      await tester.pump();
-      expect(find.textContaining('This action will pull'), findsNothing);
-
-      pushed.complete();
-      await tester.pumpAndSettle();
-      expect(find.byType(RotationTransition), findsNothing);
-      expect(git.callsTo('push'), hasLength(1));
-    });
-
-    testWidgets('Publish Branch pushes the branch to the only remote and '
-        'sets its upstream', (tester) async {
-      git.status = '## feature/x\x00';
-      await pumpScm(tester);
-      expect(find.byTooltip('Publish Branch "feature/x"'), findsOneWidget);
-      await tester.tap(find.text('Publish Branch'));
-      await tester.pumpAndSettle();
-      expect(git.callsTo('push').single, ['push', '-u', 'origin', 'feature/x']);
-    });
-
-    testWidgets('with more remotes, Publish Branch asks which', (tester) async {
-      git
-        ..remotes = 'origin\nupstream\n'
-        ..status = '## feature/x\x00';
-      await pumpScm(tester);
-      await tester.tap(find.text('Publish Branch'));
-      await tester.pumpAndSettle();
-      expect(git.callsTo('push'), isEmpty);
-      await tester.tap(find.text('upstream'));
-      await tester.pumpAndSettle();
-      expect(git.callsTo('push').single, [
-        'push',
-        '-u',
-        'upstream',
-        'feature/x',
-      ]);
-    });
-
-    testWidgets('without remotes, Publish Branch says so', (tester) async {
-      git
-        ..remotes = ''
-        ..status = '## feature/x\x00';
-      await pumpScm(tester);
-      await tester.tap(find.text('Publish Branch'));
-      await tester.pumpAndSettle();
-      expect(
-        find.text('Your repository has no remotes configured to publish to.'),
-        findsOneWidget,
-      );
-      expect(git.callsTo('push'), isEmpty);
-    });
-
-    testWidgets('a failed push is reported', (tester) async {
-      git
-        ..status = '## feature/x\x00'
-        ..answers['push'] = const IdeGitOutput(
-          128,
-          '',
-          "fatal: could not read Username for 'https://example.com'",
-        );
-      await pumpScm(tester);
-      await tester.tap(find.text('Publish Branch'));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('Cannot push.'), findsOneWidget);
-      expect(find.text('Publish Branch'), findsOneWidget);
-    });
   });
 }

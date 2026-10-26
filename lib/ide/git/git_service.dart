@@ -41,9 +41,7 @@ typedef IdeGitWatcher = Stream<void> Function(String repositoryRoot);
 /// (an unexpected spelling).
 (int, int)? parseGitVersion(String output) {
   final match = RegExp(r'(\d+)\.(\d+)').firstMatch(output);
-  return match == null
-      ? null
-      : (int.parse(match[1]!), int.parse(match[2]!));
+  return match == null ? null : (int.parse(match[1]!), int.parse(match[2]!));
 }
 
 /// A file a commit changed.
@@ -348,21 +346,84 @@ class IdeGitService {
     );
   }
 
+  /// Commits [paths] as they are in the working tree, whatever is staged
+  /// (`git commit --only -- <paths>`, as JetBrains IDEs commit the files
+  /// checked); [amend] replaces the last commit, its message kept when
+  /// [message] is empty.
+  Future<void> commitPaths(
+    String message,
+    Iterable<String> paths, {
+    bool amend = false,
+  }) async {
+    final top = await _requireRoot();
+    final relative = _relative(top, paths);
+    _check(
+      await _git([
+        'commit',
+        '--quiet',
+        if (amend) '--amend',
+        if (message.isEmpty && amend) '--no-edit' else ...['-m', message],
+        if (relative.isNotEmpty) ...['--only', '--', ...relative],
+      ]),
+      'Cannot commit.',
+    );
+  }
+
+  /// Rolls [paths] back to HEAD, index and working tree both
+  /// (`git checkout HEAD -- <paths>`); [added] ones, not in HEAD, are left
+  /// untracked (`git rm --cached`).
+  Future<void> rollback(
+    Iterable<String> paths, {
+    Iterable<String> added = const [],
+  }) async {
+    final top = await _requireRoot();
+    if (added.isNotEmpty) {
+      _check(
+        await _git([
+          'rm',
+          '--cached',
+          '-q',
+          '-r',
+          '--',
+          ..._relative(top, added),
+        ]),
+        'Cannot roll back the changes.',
+      );
+    }
+    if (paths.isNotEmpty) {
+      _check(
+        await _git(['checkout', '-q', 'HEAD', '--', ..._relative(top, paths)]),
+        'Cannot roll back the changes.',
+      );
+    }
+  }
+
   /// What a commit would take, as a unified diff: the staged changes
   /// ([staged]), else the tracked ones, and each of [untracked] as a new
   /// file (`git diff --no-index`, which exits 1 when there is a
-  /// difference).
+  /// difference). With [paths], HEAD against the working tree for those
+  /// alone, staged or not (as a commit of them takes them).
   Future<String> diff({
     required bool staged,
     Iterable<String> untracked = const [],
+    Iterable<String>? paths,
   }) async {
     final top = await _requireRoot();
     const options = ['--no-color', '--no-ext-diff'];
+    final relative = paths == null ? null : _relative(top, paths);
     final out = StringBuffer(
-      _check(
-        await _git(['diff', ...options, '-M', if (staged) '--cached']),
-        'Cannot read the changes.',
-      ).stdout,
+      relative != null && relative.isEmpty
+          ? ''
+          : _check(
+              await _git([
+                'diff',
+                ...options,
+                '-M',
+                if (relative != null) 'HEAD' else if (staged) '--cached',
+                if (relative != null) ...['--', ...relative],
+              ]),
+              'Cannot read the changes.',
+            ).stdout,
     );
     for (final path in _relative(top, untracked)) {
       final added = await _git([
@@ -594,13 +655,7 @@ class IdeGitService {
   Future<List<String>> branchesContaining(String commit) async {
     await _requireRoot();
     final output = _check(
-      await _git([
-        'branch',
-        '-a',
-        '--contains',
-        commit,
-        '--format=%(refname)',
-      ]),
+      await _git(['branch', '-a', '--contains', commit, '--format=%(refname)']),
       'Cannot read the branches.',
     );
     return [

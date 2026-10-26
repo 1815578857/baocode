@@ -1239,7 +1239,7 @@ extension _PanelKeys on IdeWorkbenchState {
 
 extension _ScmKeys on IdeWorkbenchState {
   /// Runs [action] on the Source Control view, shown first if it is not.
-  void _onScmView(void Function(IdeScmViewState view) action) {
+  void _onScmView(void Function(IdeGitCommitPanelState view) action) {
     if (_scmKey.currentState case final view?) return action(view);
     _showView(IdeSideView.sourceControl);
     WidgetsBinding.instance.addPostFrameCallback((_) {

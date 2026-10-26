@@ -17948,6 +17948,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'In worktree {name}\n{path}'**
   String branchBarWorktree(String name, String path);
+
+  /// No description provided for @gitCommitChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes'**
+  String get gitCommitChanges;
+
+  /// No description provided for @gitCommitUnversioned.
+  ///
+  /// In en, this message translates to:
+  /// **'Unversioned Files'**
+  String get gitCommitUnversioned;
+
+  /// No description provided for @gitCommitConflicts.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge Conflicts'**
+  String get gitCommitConflicts;
+
+  /// No description provided for @gitCommitAmend.
+  ///
+  /// In en, this message translates to:
+  /// **'Amend'**
+  String get gitCommitAmend;
+
+  /// No description provided for @gitCommitMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit Message'**
+  String get gitCommitMessage;
+
+  /// No description provided for @gitCommitButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit'**
+  String get gitCommitButton;
+
+  /// No description provided for @gitCommitAndPush.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit and Push'**
+  String get gitCommitAndPush;
+
+  /// No description provided for @gitCommitRollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Rollback…'**
+  String get gitCommitRollback;
+
+  /// No description provided for @gitCommitRollbackConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Roll back the changes of {count, plural, =1{1 file} other{{count} files}}?'**
+  String gitCommitRollbackConfirm(int count);
+
+  /// No description provided for @gitCommitRollbackDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'They go back to how they were last committed; files not committed yet are deleted.'**
+  String get gitCommitRollbackDetail;
+
+  /// No description provided for @gitCommitRollbackButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Rollback'**
+  String get gitCommitRollbackButton;
+
+  /// No description provided for @gitCommitShowDiff.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Diff'**
+  String get gitCommitShowDiff;
+
+  /// No description provided for @gitCommitJumpToSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump to Source'**
+  String get gitCommitJumpToSource;
+
+  /// No description provided for @gitCommitAddToVcs.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to VCS'**
+  String get gitCommitAddToVcs;
+
+  /// No description provided for @gitCommitMarkResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark Resolved'**
+  String get gitCommitMarkResolved;
+
+  /// No description provided for @gitCommitExpandAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand All'**
+  String get gitCommitExpandAll;
+
+  /// No description provided for @gitCommitCollapseAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse All'**
+  String get gitCommitCollapseAll;
+
+  /// No description provided for @gitCommitGroupByDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Group by Directory'**
+  String get gitCommitGroupByDirectory;
+
+  /// No description provided for @gitCommitEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a commit message.'**
+  String get gitCommitEmptyMessage;
+
+  /// No description provided for @gitCommitNothingSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the files to commit.'**
+  String get gitCommitNothingSelected;
+
+  /// No description provided for @gitCommitNoChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'No local changes'**
+  String get gitCommitNoChanges;
+
+  /// No description provided for @gitCommitSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{checked} of {total} files checked'**
+  String gitCommitSelected(int checked, int total);
+
+  /// No description provided for @gitLogUndoCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo Commit'**
+  String get gitLogUndoCommit;
 }
 
 class _AppLocalizationsDelegate

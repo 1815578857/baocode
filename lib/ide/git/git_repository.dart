@@ -235,6 +235,64 @@ class IdeGitRepository extends ChangeNotifier {
     () => service.commit(message, all: all, amend: amend, empty: empty),
   );
 
+  /// Commits [resources] as they are in the working tree (the files
+  /// checked in the commit panel), untracked ones added first; [amend]
+  /// replaces the last commit. With none, only the message is amended.
+  Future<void> commitResources(
+    String message,
+    Iterable<IdeGitResource> resources, {
+    bool amend = false,
+  }) => _operate(() async {
+    final untracked = [
+      for (final resource in resources)
+        if (resource.status == IdeGitStatus.untracked) resource.path,
+    ];
+    if (untracked.isNotEmpty) await service.stage(untracked);
+    await service.commitPaths(message, {
+      for (final resource in resources) ...[
+        resource.path,
+        ?resource.originalPath,
+      ],
+    }, amend: amend);
+  });
+
+  /// Rolls [resources] back to the last commit (JetBrains' Rollback):
+  /// untracked files deleted, or moved to the Trash when [trash] does;
+  /// files added since left untracked; the others as they were committed.
+  Future<void> rollback(
+    Iterable<IdeGitResource> resources, {
+    Future<bool> Function(String path)? trash,
+  }) => _operate(() async {
+    final untracked = <IdeGitResource>[];
+    final added = <String>[];
+    final restored = <String>[];
+    final unborn = _state?.head.unborn ?? false;
+    for (final resource in resources) {
+      switch (resource.status) {
+        case IdeGitStatus.untracked:
+          if (trash == null || !await trash(resource.path)) {
+            untracked.add(resource);
+          }
+        case IdeGitStatus.indexAdded || IdeGitStatus.intentToAdd:
+          added.add(resource.path);
+        case IdeGitStatus.indexRenamed || IdeGitStatus.indexCopied:
+          added.add(resource.path);
+          if (resource.originalPath case final original?
+              when resource.status == IdeGitStatus.indexRenamed) {
+            restored.add(original);
+          }
+        case _ when unborn:
+          added.add(resource.path);
+        case _:
+          restored.add(resource.path);
+      }
+    }
+    if (added.isNotEmpty || restored.isNotEmpty) {
+      await service.rollback(restored, added: added);
+    }
+    if (untracked.isNotEmpty) await service.discard(untracked);
+  });
+
   /// The last commit, or null before the first.
   Future<IdeGitCommit?> headCommit() async {
     if (_state?.head.unborn ?? true) return null;
@@ -542,8 +600,9 @@ class IdeGitRepository extends ChangeNotifier {
       service.branchesContaining(commit);
 
   /// The user's email as Git commits with it (`user.email`), read once.
-  Future<String?> get userEmail =>
-      _userEmail ??= service.config('user.email').catchError((Object _) => null);
+  Future<String?> get userEmail => _userEmail ??= service
+      .config('user.email')
+      .catchError((Object _) => null);
   Future<String?>? _userEmail;
 
   void _notify() {

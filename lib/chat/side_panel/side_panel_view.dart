@@ -14,7 +14,7 @@ import '../../ide/git/commit_message.dart';
 import '../../ide/git/git_repository.dart';
 import '../../ide/git/ide_git_log_view.dart'
     show IdeGitLogView, IdeGitWorktreeChoice;
-import '../../ide/git/ide_scm_view.dart' show IdeScmView;
+import '../../ide/git/ide_git_commit_panel.dart';
 import '../../ide/git/scm_host.dart';
 import '../../ide/ide_button.dart';
 import '../../ide/ide_dialog.dart';
@@ -682,7 +682,6 @@ class AgentSidePanelView extends StatelessWidget {
     final git = _git;
     final active = tabs.activeDiff;
     final local = files is! IdeHostFiles;
-    final terminals = this.terminals;
     if (git == null) {
       // No repository: the changes opened from the conversation alone.
       return KeyedSubtree(
@@ -725,16 +724,12 @@ class AgentSidePanelView extends StatelessWidget {
         onCloseOverlay: () => panel.showLog(session),
         onAddToChat: session.draft.insertFiles,
         worktrees: worktreesOf?.call(git) ?? const IdeGitWorktreeChoice(),
-        changes: IdeScmView(
+        changes: IdeGitCommitPanel(
           key: ValueKey(('scm', session.root)),
           host: host,
           session: panel.scmOf(git),
           sessionOf: panel.scmOf,
           notifications: notifications,
-          // The log names it already.
-          showTitle: false,
-          showGraph: false,
-          background: AppColors.code,
           onOpen: (path, {focusEditor = false}) async =>
               panel.open(session, FileOpenRequest(path)),
           // Its diff; its HEAD side is the diff's left.
@@ -746,21 +741,12 @@ class AgentSidePanelView extends StatelessWidget {
           },
           onRevealInExplorer: _revealInFiles,
           revealInExplorerLabel: context.l10n.sidePanelRevealInFiles,
-          onOpenInTerminal: terminals == null
-              ? null
-              : (folder) {
-                  final shell = terminals.create(cwd: folder);
-                  panel.openTerminal(session, shell);
-                  WidgetsBinding.instance.addPostFrameCallback(
-                    (_) => shell.focus(),
-                  );
-                },
-          onTreeViewChanged: (tree) => panel.changesAsTree = tree,
           onAddToChat: session.draft.insertFiles,
           trash: local && WindowControls.canMoveToTrash
               ? WindowControls.moveToTrash
               : null,
           commitMessage: commitMessage,
+          onTreeViewChanged: (tree) => panel.changesAsTree = tree,
         ),
       ),
     );

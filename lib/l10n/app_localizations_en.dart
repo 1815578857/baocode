@@ -10993,4 +10993,84 @@ class AppLocalizationsEn extends AppLocalizations {
   String branchBarWorktree(String name, String path) {
     return 'In worktree $name\n$path';
   }
+
+  @override
+  String get gitCommitChanges => 'Changes';
+
+  @override
+  String get gitCommitUnversioned => 'Unversioned Files';
+
+  @override
+  String get gitCommitConflicts => 'Merge Conflicts';
+
+  @override
+  String get gitCommitAmend => 'Amend';
+
+  @override
+  String get gitCommitMessage => 'Commit Message';
+
+  @override
+  String get gitCommitButton => 'Commit';
+
+  @override
+  String get gitCommitAndPush => 'Commit and Push';
+
+  @override
+  String get gitCommitRollback => 'Rollback…';
+
+  @override
+  String gitCommitRollbackConfirm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files',
+      one: '1 file',
+    );
+    return 'Roll back the changes of $_temp0?';
+  }
+
+  @override
+  String get gitCommitRollbackDetail =>
+      'They go back to how they were last committed; files not committed yet are deleted.';
+
+  @override
+  String get gitCommitRollbackButton => 'Rollback';
+
+  @override
+  String get gitCommitShowDiff => 'Show Diff';
+
+  @override
+  String get gitCommitJumpToSource => 'Jump to Source';
+
+  @override
+  String get gitCommitAddToVcs => 'Add to VCS';
+
+  @override
+  String get gitCommitMarkResolved => 'Mark Resolved';
+
+  @override
+  String get gitCommitExpandAll => 'Expand All';
+
+  @override
+  String get gitCommitCollapseAll => 'Collapse All';
+
+  @override
+  String get gitCommitGroupByDirectory => 'Group by Directory';
+
+  @override
+  String get gitCommitEmptyMessage => 'Enter a commit message.';
+
+  @override
+  String get gitCommitNothingSelected => 'Check the files to commit.';
+
+  @override
+  String get gitCommitNoChanges => 'No local changes';
+
+  @override
+  String gitCommitSelected(int checked, int total) {
+    return '$checked of $total files checked';
+  }
+
+  @override
+  String get gitLogUndoCommit => 'Undo Commit';
 }

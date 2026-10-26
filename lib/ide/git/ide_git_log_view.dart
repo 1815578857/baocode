@@ -1765,8 +1765,38 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
             onSelected: () => unawaited(_newBranch(git, commit)),
           ),
         ],
+        [
+          // The last commit, not pushed yet: undone, its changes and its
+          // message back to commit again.
+          if (_isHead(git, commit) &&
+              (head?.upstream == null || head!.ahead > 0))
+            IdeMenuAction(
+              l10n.gitLogUndoCommit,
+              onSelected: () => unawaited(_undoCommit(git, commit)),
+            ),
+        ],
       ]),
     );
+  }
+
+  static bool _isHead(IdeGitRepository git, IdeGitCommit commit) {
+    for (final row in git.graph ?? const <IdeGraphRow>[]) {
+      if (row.kind == IdeGraphRowKind.head) return row.commit.id == commit.id;
+    }
+    return false;
+  }
+
+  /// Undo Commit: HEAD back to its parent, its changes kept, its message
+  /// in the commit message for the next.
+  Future<void> _undoCommit(IdeGitRepository git, IdeGitCommit commit) async {
+    await _run(() => git.undoCommit(commit));
+    if (!mounted) return;
+    final message = commit.message.trim();
+    widget.session.message.value = TextEditingValue(
+      text: message,
+      selection: TextSelection.collapsed(offset: message.length),
+    );
+    showLocalChanges();
   }
 
   /// Asks for a name, then makes a branch at [commit] and checks it out.

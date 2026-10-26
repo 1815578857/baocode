@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:baocode/ide/git/ide_scm_view.dart';
+import 'package:baocode/ide/git/ide_git_commit_panel.dart';
 import 'package:baocode/ide/ide_list.dart';
 import 'package:baocode/ide/ide_workbench.dart';
 import 'package:baocode/ide/ide_workspace.dart';
@@ -11,8 +11,9 @@ import 'package:baocode/keybindings/keybinding_service.dart';
 import '../git/fake_git.dart';
 import 'fake_files.dart';
 
-/// The Source Control view's keys as VS Code's (scm.contribution.ts, the
-/// tree's `list.*`), against a fake Git.
+/// The local changes' keys: the commit input's as VS Code's
+/// (scm.contribution.ts), the tree's `list.*` with Space checking as in
+/// JetBrains IDEs, against a fake Git.
 void main() {
   late FakeGit git;
 
@@ -51,7 +52,10 @@ void main() {
 
   /// The commit message's input, under the Git log's local changes.
   final message = find
-      .descendant(of: find.byType(IdeScmView), matching: find.byType(TextField))
+      .descendant(
+        of: find.byType(IdeGitCommitPanel),
+        matching: find.byType(TextField),
+      )
       .first;
 
   TextField input(WidgetTester tester) => tester.widget<TextField>(message);
@@ -66,25 +70,22 @@ void main() {
   }
 
   testWidgets('the commit input: Escape clears the validation, then the '
-      'message; Ctrl+Enter commits; the placeholder shows its keys', (
+      'message; Ctrl+Enter commits, as does the user\'s keybinding', (
     tester,
   ) async {
     await pumpScm(tester);
     final state = workbench(tester);
-    expect(
-      input(tester).decoration!.hintText,
-      'Message (Ctrl+Enter to commit on "main")',
-    );
+    expect(input(tester).decoration!.hintText, 'Commit Message');
     await tester.tap(message);
     await tester.pump();
     expect(state.keyContext('scmRepository'), isTrue);
 
     // Without a message it asks for one; Escape takes that away.
     await key(tester, LogicalKeyboardKey.enter, control: true);
-    expect(find.text('Please provide a commit message'), findsOneWidget);
+    expect(find.text('Enter a commit message.'), findsOneWidget);
     expect(state.keyContext('scmInputHasValidationMessage'), isTrue);
     await key(tester, LogicalKeyboardKey.escape);
-    expect(find.text('Please provide a commit message'), findsNothing);
+    expect(find.text('Enter a commit message.'), findsNothing);
     expect(git.callsTo('commit'), isEmpty);
 
     // Escape clears the message, but not while some of it is selected.
@@ -100,14 +101,19 @@ void main() {
 
     await tester.enterText(message, 'Fix a bug');
     await key(tester, LogicalKeyboardKey.enter, control: true);
+    // The files checked: the tracked ones.
     expect(git.callsTo('commit').single, [
       'commit',
       '--quiet',
       '-m',
       'Fix a bug',
+      '--only',
+      '--',
+      'lib/a.dart',
+      'lib/staged.dart',
     ]);
 
-    // The user's keybinding is the one the placeholder shows.
+    // The user's keybinding commits too.
     KeybindingService.instance.userEntries = const [
       KeybindingEntry(
         key: 'ctrl+alt+enter',
@@ -116,7 +122,11 @@ void main() {
       ),
     ];
     await tester.pumpAndSettle();
-    expect(input(tester).decoration!.hintText, contains('Ctrl+Alt+Enter'));
+    await tester.enterText(message, 'Again');
+    await tester.pump();
+    await chord(tester, LogicalKeyboardKey.enter, control: true, alt: true);
+    await tester.pumpAndSettle();
+    expect(git.callsTo('commit'), hasLength(2));
   });
 
   testWidgets('Focus on Changes View; the changes as a tree the arrows '
@@ -144,12 +154,17 @@ void main() {
     await key(tester, LogicalKeyboardKey.arrowRight);
     expect(rowOf('a.dart'), findsOneWidget);
 
-    // Home: Staged Changes; down to staged.dart, which Enter opens.
+    // Home: Changes; down past lib and a.dart to staged.dart, which Space
+    // unchecks and Enter opens.
     await key(tester, LogicalKeyboardKey.home);
     expect(state.keyContext('treeElementHasParent'), isFalse);
     expect(state.keyContext('treeElementHasChild'), isTrue);
     await key(tester, LogicalKeyboardKey.arrowDown);
     await key(tester, LogicalKeyboardKey.arrowDown);
+    await key(tester, LogicalKeyboardKey.arrowDown);
+    expect(find.text('2 of 3 files checked'), findsOneWidget);
+    await key(tester, LogicalKeyboardKey.space);
+    expect(find.text('1 of 3 files checked'), findsOneWidget);
     await key(tester, LogicalKeyboardKey.enter);
     expect(workspace.active?.path, inRoot('lib/staged.dart'));
     expect(state.keyContext('listFocus'), isFalse);
@@ -183,7 +198,7 @@ void main() {
     await key(tester, LogicalKeyboardKey.arrowUp);
     expect(find.text('commit: c2'), findsOneWidget);
     await key(tester, LogicalKeyboardKey.home);
-    expect(find.byType(IdeScmView), findsOneWidget);
+    expect(find.byType(IdeGitCommitPanel), findsOneWidget);
     expect(find.text('commit: c2'), findsNothing);
   });
 

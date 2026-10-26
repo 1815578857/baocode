@@ -10403,4 +10403,77 @@ class AppLocalizationsZh extends AppLocalizations {
   String branchBarWorktree(String name, String path) {
     return '在工作树 $name 中\n$path';
   }
+
+  @override
+  String get gitCommitChanges => '更改';
+
+  @override
+  String get gitCommitUnversioned => '未纳入版本控制的文件';
+
+  @override
+  String get gitCommitConflicts => '合并冲突';
+
+  @override
+  String get gitCommitAmend => '修改上一次提交';
+
+  @override
+  String get gitCommitMessage => '提交信息';
+
+  @override
+  String get gitCommitButton => '提交';
+
+  @override
+  String get gitCommitAndPush => '提交并推送';
+
+  @override
+  String get gitCommitRollback => '回滚…';
+
+  @override
+  String gitCommitRollbackConfirm(int count) {
+    return '回滚 $count 个文件的更改？';
+  }
+
+  @override
+  String get gitCommitRollbackDetail => '这些文件将恢复到上次提交时的样子；尚未提交过的新文件会被删除。';
+
+  @override
+  String get gitCommitRollbackButton => '回滚';
+
+  @override
+  String get gitCommitShowDiff => '显示差异';
+
+  @override
+  String get gitCommitJumpToSource => '跳转到源';
+
+  @override
+  String get gitCommitAddToVcs => '添加到 VCS';
+
+  @override
+  String get gitCommitMarkResolved => '标记为已解决';
+
+  @override
+  String get gitCommitExpandAll => '全部展开';
+
+  @override
+  String get gitCommitCollapseAll => '全部折叠';
+
+  @override
+  String get gitCommitGroupByDirectory => '按目录分组';
+
+  @override
+  String get gitCommitEmptyMessage => '请填写提交信息。';
+
+  @override
+  String get gitCommitNothingSelected => '请勾选要提交的文件。';
+
+  @override
+  String get gitCommitNoChanges => '没有本地更改';
+
+  @override
+  String gitCommitSelected(int checked, int total) {
+    return '已勾选 $checked/$total 个文件';
+  }
+
+  @override
+  String get gitLogUndoCommit => '撤销提交';
 }
