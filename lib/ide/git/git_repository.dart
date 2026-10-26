@@ -425,6 +425,19 @@ class IdeGitRepository extends ChangeNotifier {
   Future<void> drop(IdeGitCommit commit) =>
       _operate(() => service.drop(commit));
 
+  /// Interactively Rebase from Here: the commits from [from] on as [steps]
+  /// say; true where the rebase stopped, still under way.
+  Future<bool> interactiveRebase(
+    IdeGitCommit from,
+    List<IdeGitRebaseStep> steps,
+  ) async {
+    var stopped = false;
+    await _operate(
+      () async => stopped = await service.interactiveRebase(from, steps),
+    );
+    return stopped;
+  }
+
   /// Push All up to Here: the current branch's commits up to [commit].
   Future<void> pushUpTo(String commit) => _operate(() async {
     final upstream = _state?.head.upstream;

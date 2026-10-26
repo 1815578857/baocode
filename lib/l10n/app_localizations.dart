@@ -19394,6 +19394,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hooks skipped'**
   String get gitCommitNoHooks;
+
+  /// No description provided for @gitLogInteractiveRebase.
+  ///
+  /// In en, this message translates to:
+  /// **'Interactively Rebase from Here…'**
+  String get gitLogInteractiveRebase;
+
+  /// No description provided for @gitRebaseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rebasing {count, plural, =1{1 Commit} other{{count} Commits}} from {base}'**
+  String gitRebaseTitle(int count, String base);
+
+  /// No description provided for @gitRebasePick.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick'**
+  String get gitRebasePick;
+
+  /// No description provided for @gitRebaseReword.
+  ///
+  /// In en, this message translates to:
+  /// **'Reword'**
+  String get gitRebaseReword;
+
+  /// No description provided for @gitRebaseEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get gitRebaseEdit;
+
+  /// No description provided for @gitRebaseSquash.
+  ///
+  /// In en, this message translates to:
+  /// **'Squash'**
+  String get gitRebaseSquash;
+
+  /// No description provided for @gitRebaseFixup.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixup'**
+  String get gitRebaseFixup;
+
+  /// No description provided for @gitRebaseDrop.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop'**
+  String get gitRebaseDrop;
+
+  /// No description provided for @gitRebaseMoveUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Move Up (Alt+Up)'**
+  String get gitRebaseMoveUp;
+
+  /// No description provided for @gitRebaseMoveDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Move Down (Alt+Down)'**
+  String get gitRebaseMoveDown;
+
+  /// No description provided for @gitRebaseMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit message'**
+  String get gitRebaseMessage;
+
+  /// No description provided for @gitRebaseStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Rebasing'**
+  String get gitRebaseStart;
+
+  /// No description provided for @gitRebaseNothingBelow.
+  ///
+  /// In en, this message translates to:
+  /// **'The oldest commit kept cannot be squashed or fixed up: there is nothing below it.'**
+  String get gitRebaseNothingBelow;
+
+  /// No description provided for @gitRebaseStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'The rebase stopped: amend the commit or resolve the conflicts, then Continue.'**
+  String get gitRebaseStopped;
+
+  /// No description provided for @gitRebaseCleanUpWithAi.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean Up with AI'**
+  String get gitRebaseCleanUpWithAi;
+
+  /// No description provided for @gitRebaseCleanUpWithAiDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Let the model suggest what to fix up, squash and reword; you look it over before the rebase starts'**
+  String get gitRebaseCleanUpWithAiDetail;
+
+  /// No description provided for @gitRebaseAiPlanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Planning… (click to stop)'**
+  String get gitRebaseAiPlanning;
+
+  /// No description provided for @gitRebaseAiNoPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'The model\'s answer was not a rebase list of these commits.'**
+  String get gitRebaseAiNoPlan;
+
+  /// No description provided for @gitRebaseAiFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not clean up with AI: {error}'**
+  String gitRebaseAiFailed(String error);
 }
 
 class _AppLocalizationsDelegate

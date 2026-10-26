@@ -11863,4 +11863,75 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitCommitNoHooks => 'Hooks skipped';
+
+  @override
+  String get gitLogInteractiveRebase => 'Interactively Rebase from Here…';
+
+  @override
+  String gitRebaseTitle(int count, String base) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Commits',
+      one: '1 Commit',
+    );
+    return 'Rebasing $_temp0 from $base';
+  }
+
+  @override
+  String get gitRebasePick => 'Pick';
+
+  @override
+  String get gitRebaseReword => 'Reword';
+
+  @override
+  String get gitRebaseEdit => 'Edit';
+
+  @override
+  String get gitRebaseSquash => 'Squash';
+
+  @override
+  String get gitRebaseFixup => 'Fixup';
+
+  @override
+  String get gitRebaseDrop => 'Drop';
+
+  @override
+  String get gitRebaseMoveUp => 'Move Up (Alt+Up)';
+
+  @override
+  String get gitRebaseMoveDown => 'Move Down (Alt+Down)';
+
+  @override
+  String get gitRebaseMessage => 'Commit message';
+
+  @override
+  String get gitRebaseStart => 'Start Rebasing';
+
+  @override
+  String get gitRebaseNothingBelow =>
+      'The oldest commit kept cannot be squashed or fixed up: there is nothing below it.';
+
+  @override
+  String get gitRebaseStopped =>
+      'The rebase stopped: amend the commit or resolve the conflicts, then Continue.';
+
+  @override
+  String get gitRebaseCleanUpWithAi => 'Clean Up with AI';
+
+  @override
+  String get gitRebaseCleanUpWithAiDetail =>
+      'Let the model suggest what to fix up, squash and reword; you look it over before the rebase starts';
+
+  @override
+  String get gitRebaseAiPlanning => 'Planning… (click to stop)';
+
+  @override
+  String get gitRebaseAiNoPlan =>
+      'The model\'s answer was not a rebase list of these commits.';
+
+  @override
+  String gitRebaseAiFailed(String error) {
+    return 'Could not clean up with AI: $error';
+  }
 }

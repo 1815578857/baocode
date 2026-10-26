@@ -257,6 +257,29 @@ class IdeGitCommitOptions {
   ];
 }
 
+/// What an interactive rebase does with a commit.
+enum IdeGitRebaseAction {
+  pick,
+  reword,
+  edit,
+  squash,
+  fixup,
+  drop;
+
+  /// Whether the commit goes into the one before it.
+  bool get unites => this == squash || this == fixup;
+}
+
+/// A commit ([commit], its id) in an interactive rebase's list, what is
+/// done with it, and a reworded one's new [message].
+class IdeGitRebaseStep {
+  const IdeGitRebaseStep(this.commit, this.action, {this.message});
+
+  final String commit;
+  final IdeGitRebaseAction action;
+  final String? message;
+}
+
 /// What may be wrong with a commit message, as JetBrains IDEs' commit
 /// message inspections find it: a subject longer than [subjectLimit], a
 /// body not set apart from it by a blank line.

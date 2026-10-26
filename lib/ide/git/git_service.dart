@@ -1243,6 +1243,56 @@ class IdeGitService {
     ], sequenceEditor: 'sed -i.bak $script');
   }
 
+  /// JetBrains' interactive rebase: the commits from [from] on, as [steps]
+  /// (oldest first, in their new order) say: each picked, reworded (its
+  /// message put in through Git, an `exec` amending it, so that a rebase
+  /// stopped and continued still has it), stopped at to be edited, squashed
+  /// or fixed up into the one before, or dropped. True where the rebase
+  /// stopped (to edit a commit, at a conflict): it is still under way.
+  Future<bool> interactiveRebase(
+    IdeGitCommit from,
+    List<IdeGitRebaseStep> steps,
+  ) async {
+    await _requireRoot();
+    await _requireLinearSince(from);
+    Future<String> blob(String text) async => _check(
+      await _git(['hash-object', '-w', '--stdin'], stdin: text),
+      'Cannot rebase.',
+    ).stdout.trim();
+    final todo = StringBuffer();
+    for (final step in steps) {
+      final id = step.commit;
+      switch (step.action) {
+        case IdeGitRebaseAction.reword:
+          todo
+            ..writeln('pick $id')
+            ..writeln(
+              'exec git cat-file blob ${await blob(step.message ?? '')} | '
+              'git commit --amend --only --allow-empty --no-verify -q -F -',
+            );
+        case final action:
+          todo.writeln('${action.name} $id');
+      }
+    }
+    final list = await blob(todo.toString());
+    final output = await _git([
+      '-c',
+      'sequence.editor=git cat-file blob $list >',
+      '-c',
+      'core.editor=:',
+      'rebase',
+      '-i',
+      '--autostash',
+      '--no-autosquash',
+      if (from.parentIds.isEmpty) '--root' else from.parentIds.first,
+    ]);
+    // Stopped where Git left REBASE_HEAD: at a commit to edit, or a
+    // conflict.
+    final underWay = await _operation() == IdeGitOperation.rebase;
+    if (output.exitCode != 0 && !underWay) _check(output, 'Cannot rebase.');
+    return underWay;
+  }
+
   /// Rebases from [commit] with [options] and no editor (the list as it is,
   /// or as [sequenceEditor] makes it); aborted, then [undo] run, where it
   /// fails.

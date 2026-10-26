@@ -3861,6 +3861,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       host: widget.workspace,
       session: _scm,
       notifications: _notifications,
+      ai: widget.commitMessage,
       onOpen: (path) {
         _leaveGitLog();
         unawaited(_open(path, focusEditor: true));

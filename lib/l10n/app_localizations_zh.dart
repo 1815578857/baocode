@@ -11241,4 +11241,65 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitCommitNoHooks => '跳过钩子';
+
+  @override
+  String get gitLogInteractiveRebase => '从这里开始交互式变基…';
+
+  @override
+  String gitRebaseTitle(int count, String base) {
+    return '变基 $count 个提交（从 $base 开始）';
+  }
+
+  @override
+  String get gitRebasePick => '保留';
+
+  @override
+  String get gitRebaseReword => '改信息';
+
+  @override
+  String get gitRebaseEdit => '编辑';
+
+  @override
+  String get gitRebaseSquash => '压缩';
+
+  @override
+  String get gitRebaseFixup => '修正';
+
+  @override
+  String get gitRebaseDrop => '丢弃';
+
+  @override
+  String get gitRebaseMoveUp => '上移 (Alt+↑)';
+
+  @override
+  String get gitRebaseMoveDown => '下移 (Alt+↓)';
+
+  @override
+  String get gitRebaseMessage => '提交信息';
+
+  @override
+  String get gitRebaseStart => '开始变基';
+
+  @override
+  String get gitRebaseNothingBelow => '保留下来的最早一个提交不能压缩或修正：它下面没有提交可以并入。';
+
+  @override
+  String get gitRebaseStopped => '变基已暂停：修改这个提交或解决冲突后，点「继续」。';
+
+  @override
+  String get gitRebaseCleanUpWithAi => '让 AI 整理';
+
+  @override
+  String get gitRebaseCleanUpWithAiDetail => '由模型建议哪些提交该修正、压缩、改信息；开始变基前你可以逐条检查';
+
+  @override
+  String get gitRebaseAiPlanning => '整理中…（点击停止）';
+
+  @override
+  String get gitRebaseAiNoPlan => '模型的回答不是这些提交的变基列表。';
+
+  @override
+  String gitRebaseAiFailed(String error) {
+    return 'AI 整理失败：$error';
+  }
 }

@@ -38,6 +38,7 @@ import '../ide_modern_ui.dart';
 import '../ide_notifications.dart';
 import '../ide_spinning.dart';
 import 'git_branch_actions.dart';
+import 'commit_message.dart';
 import 'git_branch_tree.dart';
 import 'ide_git_branch_popup.dart';
 import 'git_change_editor.dart';
@@ -47,6 +48,7 @@ import 'git_model.dart';
 import 'git_partial.dart';
 import 'git_repository.dart';
 import 'git_service.dart';
+import 'ide_git_rebase_dialog.dart';
 import 'ide_scm_view.dart';
 import 'scm_host.dart';
 import 'scm_tree.dart';
@@ -591,7 +593,12 @@ class IdeGitLogView extends StatefulWidget {
     this.worktrees = const IdeGitWorktreeChoice(),
     this.background,
     this.border,
+    this.ai,
   });
+
+  /// The model that cleans up a branch in an interactive rebase; not
+  /// offered when null.
+  final IdeCommitMessageModel? ai;
 
   /// The IDE's workspace, or the chat window's side panel's project.
   final IdeScmHost host;
@@ -2278,6 +2285,19 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
             IdeMenuAction(
               l10n.gitLogDropCommit,
               onSelected: () => unawaited(_drop(git, commit)),
+            ),
+          if ((isHead || inBranch) && commit.parentIds.length <= 1)
+            IdeMenuAction(
+              l10n.gitLogInteractiveRebase,
+              onSelected: () => unawaited(
+                showIdeGitRebaseDialog(
+                  context,
+                  git: git,
+                  from: commit,
+                  notifications: widget.notifications,
+                  ai: widget.ai,
+                ),
+              ),
             ),
         ],
         [
