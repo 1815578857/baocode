@@ -3513,6 +3513,13 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         run: _showBranchPopup,
       ),
       IdeCommand(
+        id: 'baocode.git.updateProject',
+        category: 'Git',
+        label: 'Update Project…',
+        enabled: widget.workspace.git?.state != null,
+        run: _updateProject,
+      ),
+      IdeCommand(
         id: 'baocode.git.showFileHistory',
         category: 'Git',
         label: 'Show History',

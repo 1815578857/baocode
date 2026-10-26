@@ -7773,5 +7773,9 @@
   "gitNewBranchEllipsis": "New Branch…",
   "gitCheckoutRevision": "Checkout Tag or Revision…",
   "gitBranchesTitle": "Git Branches",
-  "gitRevisionPlaceholder": "A tag, a branch or a commit hash"
+  "gitRevisionPlaceholder": "A tag, a branch or a commit hash",
+  "gitUpdateProjectDetail": "Bring each repository's current branch up to its upstream: merge its new commits in, or rebase the branch's own onto them. Local changes are stashed meanwhile.",
+  "gitUpdateMerge": "Merge",
+  "gitUpdateRebase": "Rebase",
+  "gitDontAskAgain": "Don't ask again"
 }

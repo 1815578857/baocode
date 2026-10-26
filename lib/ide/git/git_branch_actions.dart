@@ -20,6 +20,7 @@ import 'git_checkout.dart' show ideSanitizeBranchName;
 import 'git_model.dart';
 import 'git_repository.dart';
 import 'ide_git_branch_popup.dart' show IdeGitBranchPopupAction;
+import 'ide_scm_view.dart' show IdeScmSession;
 import 'ide_git_log_view.dart'
     show IdeGitDiffFile, ideGitRevisionsDiff, ideGitWorkingTreeDiff;
 
@@ -32,6 +33,12 @@ abstract interface class IdeGitBranchHost {
   IdeFileService get files;
 
   IdeGitFavoriteBranches get favoriteBranches;
+
+  /// Where Update Project's way is kept.
+  IdeScmSession get session;
+
+  /// The repositories Update Project updates: the window's all.
+  List<IdeGitRepository> get repositories;
 
   /// Runs an operation, its failure told.
   Future<void> run(Future<void> Function() operation);
@@ -218,7 +225,7 @@ class IdeGitBranchActions {
     return [
       IdeGitBranchPopupAction(
         l10n.gitUpdateProject,
-        () => unawaited(host.run(git.pull)),
+        () => unawaited(updateProject()),
         icon: Codicons.repoPull,
       ),
       if (onCommit != null)
@@ -242,6 +249,33 @@ class IdeGitBranchActions {
         () => unawaited(checkoutRevision()),
       ),
     ];
+  }
+
+  /// Update Project: each repository's branch brought up to its upstream,
+  /// by merge or by rebase, as asked (until told not to ask again).
+  Future<void> updateProject() async {
+    final l10n = context.l10n;
+    final session = host.session;
+    var rebase = session.rebaseWhenSync;
+    if (session.updateProjectAsks) {
+      final result = await showIdeInputDialog(
+        context,
+        message: l10n.gitUpdateProject,
+        detail: l10n.gitUpdateProjectDetail,
+        buttons: [l10n.gitUpdateMerge, l10n.gitUpdateRebase],
+        checkbox: l10n.gitDontAskAgain,
+        type: IdeDialogType.question,
+      );
+      if (result == null || result.button < 0) return;
+      rebase = result.button == 1;
+      session.rebaseWhenSync = rebase;
+      if (result.checked) session.updateProjectAsks = false;
+    }
+    final repositories = host.repositories.isEmpty ? [git] : host.repositories;
+    for (final repository in repositories) {
+      if (repository.state?.head.upstream == null) continue;
+      await host.run(() => repository.updateProject(rebase: rebase));
+    }
   }
 
   /// New Branch: asks for its name, then makes it at HEAD and checks it

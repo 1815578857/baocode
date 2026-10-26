@@ -82,7 +82,7 @@ Git 日志和 IDEA 式提交面板已经上线（#328）。用户反馈 IDEA 的
 | Pull into Current Using Rebase / Merge | ✅ | |
 | 推送某个分支、重命名、删除、设置上游 | ✅ | 删除后可以「恢复」；没合并的分支要确认才删 |
 | 收藏分支 | ✅ | |
-| Update Project（选 merge 或 rebase，自动 stash） | 🟡 | 只有 pull |
+| Update Project（选 merge 或 rebase，自动 stash） | ✅ | 分支弹窗和命令面板；第一次问合并还是变基（可以不再询问），工作区里的每个仓库都更新 |
 | 领先 / 落后计数 | ✅ | |
 
 ## 六、推送

@@ -11478,4 +11478,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitRevisionPlaceholder => 'A tag, a branch or a commit hash';
+
+  @override
+  String get gitUpdateProjectDetail =>
+      'Bring each repository\'s current branch up to its upstream: merge its new commits in, or rebase the branch\'s own onto them. Local changes are stashed meanwhile.';
+
+  @override
+  String get gitUpdateMerge => 'Merge';
+
+  @override
+  String get gitUpdateRebase => 'Rebase';
+
+  @override
+  String get gitDontAskAgain => 'Don\'t ask again';
 }

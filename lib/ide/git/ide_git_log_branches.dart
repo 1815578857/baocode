@@ -60,6 +60,12 @@ class _LogBranchHost implements IdeGitBranchHost {
   IdeGitFavoriteBranches get favoriteBranches => view._log.favoriteBranches;
 
   @override
+  IdeScmSession get session => view.widget.session;
+
+  @override
+  List<IdeGitRepository> get repositories => [?view._git];
+
+  @override
   Future<void> run(Future<void> Function() operation) => view._run(operation);
 
   @override

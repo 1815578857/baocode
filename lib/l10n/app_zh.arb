@@ -3116,5 +3116,9 @@
   "gitNewBranchEllipsis": "新建分支…",
   "gitCheckoutRevision": "检出标签或修订…",
   "gitBranchesTitle": "Git 分支",
-  "gitRevisionPlaceholder": "标签、分支或提交哈希"
+  "gitRevisionPlaceholder": "标签、分支或提交哈希",
+  "gitUpdateProjectDetail": "把每个仓库的当前分支更新到它的上游：合并上游的新提交，或者把本分支自己的提交变基到上面。期间本地改动会先暂存（stash）。",
+  "gitUpdateMerge": "合并",
+  "gitUpdateRebase": "变基",
+  "gitDontAskAgain": "不再询问"
 }

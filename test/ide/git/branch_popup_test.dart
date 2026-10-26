@@ -124,4 +124,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(IdeGitBranchPopup), findsNothing);
   });
+
+  testWidgets('Update Project asks: merge or rebase; told not to ask again, '
+      'it does as chosen', (tester) async {
+    await open(tester);
+    await tester.tap(inPopup(find.text('Update Project')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Don't ask again"));
+    await tester.tap(find.text('Rebase'));
+    await tester.pumpAndSettle();
+    expect(git.callsTo('fetch'), [
+      ['fetch', '--all', '--tags'],
+    ]);
+    expect(git.callsTo('pull'), [
+      ['pull', '--rebase', '--autostash', 'origin', 'main'],
+    ]);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(IdeStatusBar),
+        matching: find.text('main'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(inPopup(find.text('Update Project')));
+    await tester.pumpAndSettle();
+    expect(find.text('Merge'), findsNothing);
+    expect(git.callsTo('pull'), hasLength(2));
+    expect(git.callsTo('pull').last, contains('--rebase'));
+  });
 }

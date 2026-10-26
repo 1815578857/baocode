@@ -10880,4 +10880,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitRevisionPlaceholder => '标签、分支或提交哈希';
+
+  @override
+  String get gitUpdateProjectDetail =>
+      '把每个仓库的当前分支更新到它的上游：合并上游的新提交，或者把本分支自己的提交变基到上面。期间本地改动会先暂存（stash）。';
+
+  @override
+  String get gitUpdateMerge => '合并';
+
+  @override
+  String get gitUpdateRebase => '变基';
+
+  @override
+  String get gitDontAskAgain => '不再询问';
 }

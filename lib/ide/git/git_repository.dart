@@ -398,6 +398,15 @@ class IdeGitRepository extends ChangeNotifier {
         await service.pullInto(remote, name, rebase: rebase);
       });
 
+  /// Update Project: fetches from every remote, then brings the current
+  /// branch up to its upstream, by rebase or by merge, local changes
+  /// stashed meanwhile. Throws where the branch has no upstream.
+  Future<void> updateProject({required bool rebase}) => _whileSyncing(() async {
+    await service.fetch();
+    final (remote, name) = await _upstream('update');
+    await service.pullInto(remote, name, rebase: rebase);
+  });
+
   /// Fast-forwards the branch [name], not checked out, to [upstream].
   Future<void> updateBranch(String name, String upstream) =>
       _whileSyncing(() => service.updateBranch(name, upstream));

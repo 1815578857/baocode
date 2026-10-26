@@ -1280,6 +1280,19 @@ extension _ScmKeys on IdeWorkbenchState {
     );
   }
 
+  /// Update Project, on the window's repositories.
+  void _updateProject() {
+    final git = widget.workspace.git;
+    if (git == null) return;
+    unawaited(
+      IdeGitBranchActions(
+        context,
+        git,
+        _WorkbenchBranchHost(this),
+      ).updateProject(),
+    );
+  }
+
   /// Checkout to… on [git] (a repository's `...` in Source Control's
   /// REPOSITORIES, through [IdeScmView.onCheckout]).
   void _gitCheckoutOf(IdeGitRepository git) {
@@ -1418,6 +1431,14 @@ class _WorkbenchBranchHost implements IdeGitBranchHost {
 
   @override
   IdeGitFavoriteBranches get favoriteBranches => workbench._favoriteBranches;
+
+  @override
+  IdeScmSession get session => workbench._scm;
+
+  @override
+  List<IdeGitRepository> get repositories => [
+    for (final (_, git) in workbench.widget.workspace.repositories) git,
+  ];
 
   @override
   Future<void> run(Future<void> Function() operation) async {

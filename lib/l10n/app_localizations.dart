@@ -18758,6 +18758,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A tag, a branch or a commit hash'**
   String get gitRevisionPlaceholder;
+
+  /// No description provided for @gitUpdateProjectDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring each repository\'s current branch up to its upstream: merge its new commits in, or rebase the branch\'s own onto them. Local changes are stashed meanwhile.'**
+  String get gitUpdateProjectDetail;
+
+  /// No description provided for @gitUpdateMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge'**
+  String get gitUpdateMerge;
+
+  /// No description provided for @gitUpdateRebase.
+  ///
+  /// In en, this message translates to:
+  /// **'Rebase'**
+  String get gitUpdateRebase;
+
+  /// No description provided for @gitDontAskAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t ask again'**
+  String get gitDontAskAgain;
 }
 
 class _AppLocalizationsDelegate
