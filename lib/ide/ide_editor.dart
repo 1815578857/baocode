@@ -44,6 +44,7 @@ import '../base/uri.dart' show VsUri;
 import '../debug/base/event.dart' show DisposableStore;
 import '../debug/service/debug_service.dart';
 import 'debug_editor_glue.dart';
+import 'editor_word_wrap.dart';
 import 'git/git_annotations.dart';
 import 'git/git_blame.dart';
 import 'git/git_line_changes.dart';
@@ -326,6 +327,7 @@ class IdeEditorState extends State<IdeEditor> {
     EditorLanguageOverrides.instance.addListener(_languageModesChanged);
     widget.agentEdits?.addListener(_rebuildSoon);
     IdeDiffOptions.instance.addListener(_diffOptionsChanged);
+    EditorWordWrap.on.addListener(_rebuildSoon);
     if (widget.nativeEditorEnabled) _activateNativeController();
     _selectionChanged();
     _updateBlame(navigated: false);
@@ -1818,6 +1820,7 @@ class IdeEditorState extends State<IdeEditor> {
     widget.workspace.removeListener(_workspaceChanged);
     _themes.removeListener(_colorThemeChanged);
     IdeDiffOptions.instance.removeListener(_diffOptionsChanged);
+    EditorWordWrap.on.removeListener(_rebuildSoon);
     EditorLanguageOverrides.instance.removeListener(_languageModesChanged);
     widget.agentEdits?.removeListener(_rebuildSoon);
     _debugListeners?.dispose();
@@ -2051,6 +2054,7 @@ class IdeEditorState extends State<IdeEditor> {
                 ],
               ),
           ],
+          [wordWrapMenuAction(l10n)],
           [
             if (showCommands != null)
               IdeMenuAction(
@@ -2633,6 +2637,8 @@ class IdeEditorState extends State<IdeEditor> {
     controller: _nativeController!,
     focusNode: _focusNode,
     readOnly: widget.active.readOnly,
+    // A diff's sides keep their lines aligned unwrapped.
+    wrap: side == null && EditorWordWrap.on.value,
     backgroundColor: colors['editor.background'],
     selectionColor: colors['editor.selectionBackground'],
     caretColor: colors['editorCursor.foreground'],

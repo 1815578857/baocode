@@ -151,7 +151,13 @@ class EditorSurface extends StatefulWidget {
   /// Selection fill while focused (`editor.selectionBackground`).
   final Color selectionColor;
   final Color caretColor;
+
+  /// Whether long lines wrap at the text area's width; documents longer
+  /// than [maxWrappedLines] do not (a wrapped layout shapes every line).
   final bool wrap;
+
+  /// The most lines a document may have and still wrap.
+  static const maxWrappedLines = 5000;
 
   /// Optional one-based token spans, supplied by the active theme/tokenizer.
   /// Read lazily for painted lines; spans whose text no longer matches a
@@ -2289,7 +2295,10 @@ class _EditorSurfaceState extends State<EditorSurface>
       for (final zone in _zones)
         ViewportZone(zone.afterLineNumber, zone.heightInLines * lineHeight),
     ];
-    final wrap = widget.wrap && size.width > 0;
+    final wrap =
+        widget.wrap &&
+        size.width > 0 &&
+        snapshot.lineCount <= EditorSurface.maxWrappedLines;
     // Lines are decorated only while some decoration changes their layout.
     final decorations = _decorationsAffectLayout ? _decorations : null;
     final current = _layout;

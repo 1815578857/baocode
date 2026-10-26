@@ -37,6 +37,7 @@ import 'customize/customization_store.dart';
 import 'customize/customizations.dart';
 import 'customize/customize_view.dart';
 import 'extensions/theme_extensions.dart';
+import 'ide/editor_word_wrap.dart';
 import 'ide/git/git_model.dart' show ideWorktreeOf;
 import 'ide/git/git_repository.dart';
 import 'ide/git/ide_git_clone_dialog.dart';
@@ -1931,6 +1932,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
             () => unawaited(_clearRecent()),
           ),
           command(toggleAutoSaveCommandId, _toggleAutoSave),
+          command(EditorWordWrap.commandId, EditorWordWrap.toggle),
           for (final MapEntry(key: id, value: run) in _windowCommands().entries)
             command(id, run),
           if (folder != _noFolder) ...[

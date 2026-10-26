@@ -2108,6 +2108,18 @@ abstract class AppLocalizations {
   /// **'Toggle Full Screen'**
   String get cmdToggleFullScreen;
 
+  /// No description provided for @cmdToggleWordWrap.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle Word Wrap'**
+  String get cmdToggleWordWrap;
+
+  /// No description provided for @menuWordWrap.
+  ///
+  /// In en, this message translates to:
+  /// **'Word Wrap'**
+  String get menuWordWrap;
+
   /// No description provided for @cmdTogglePanel.
   ///
   /// In en, this message translates to:
@@ -12248,6 +12260,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Draws sequences such as => and != as one glyph where the font has one. The terminal does not.'**
   String get appearanceSettingsLigaturesDescription;
+
+  /// No description provided for @appearanceSettingsWordWrap.
+  ///
+  /// In en, this message translates to:
+  /// **'Word Wrap'**
+  String get appearanceSettingsWordWrap;
+
+  /// No description provided for @appearanceSettingsWordWrapDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Wraps long lines at the editor\'s width, in every editor. An editor\'s context menu and the Command Palette (Toggle Word Wrap) switch it too. Files of more than 5,000 lines are not wrapped.'**
+  String get appearanceSettingsWordWrapDescription;
 
   /// No description provided for @appearanceSettingsUiScale.
   ///

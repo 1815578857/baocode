@@ -1067,6 +1067,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cmdToggleFullScreen => 'Toggle Full Screen';
 
   @override
+  String get cmdToggleWordWrap => 'Toggle Word Wrap';
+
+  @override
+  String get menuWordWrap => 'Word Wrap';
+
+  @override
   String get cmdTogglePanel => 'Toggle Panel Visibility';
 
   @override
@@ -7542,6 +7548,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get appearanceSettingsLigaturesDescription =>
       'Draws sequences such as => and != as one glyph where the font has one. The terminal does not.';
+
+  @override
+  String get appearanceSettingsWordWrap => 'Word Wrap';
+
+  @override
+  String get appearanceSettingsWordWrapDescription =>
+      'Wraps long lines at the editor\'s width, in every editor. An editor\'s context menu and the Command Palette (Toggle Word Wrap) switch it too. Files of more than 5,000 lines are not wrapped.';
 
   @override
   String get appearanceSettingsUiScale => 'Interface Size';
