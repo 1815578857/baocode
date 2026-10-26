@@ -3235,7 +3235,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       l10n: context.l10n,
       added: _workspace.sshHosts,
       labelOf: _workspace.hostLabel,
-      addressOf: (host) => _workspace.sshServers[host]?.address ?? host,
+      addressOf: (host) =>
+          _workspace.sshServers[host]?.address ?? RemoteLocation.hostName(host),
       iconOf: _hostIcon,
       onAdd: (address) =>
           unawaited(_editSshServer(flow: flow, address: address)),

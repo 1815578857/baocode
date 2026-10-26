@@ -7735,28 +7735,28 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String remoteStatus(String host) {
-    return 'SSH: $host';
+  String remoteStatus(String kind, String host) {
+    return '$kind: $host';
   }
 
   @override
-  String remoteStatusConnecting(String host) {
-    return 'SSH: $host (connecting...)';
+  String remoteStatusConnecting(String kind, String host) {
+    return '$kind: $host (connecting...)';
   }
 
   @override
-  String remoteStatusReconnecting(String host) {
-    return 'SSH: $host (reconnecting...)';
+  String remoteStatusReconnecting(String kind, String host) {
+    return '$kind: $host (reconnecting...)';
   }
 
   @override
-  String remoteStatusFailed(String host) {
-    return 'SSH: $host (disconnected)';
+  String remoteStatusFailed(String kind, String host) {
+    return '$kind: $host (disconnected)';
   }
 
   @override
-  String remoteStatusInstalling(String host, int percent) {
-    return 'SSH: $host (installing Claude Code $percent%)';
+  String remoteStatusInstalling(String kind, String host, int percent) {
+    return '$kind: $host (installing Claude Code $percent%)';
   }
 
   @override
@@ -7780,8 +7780,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String remoteStatusTooltip(String host) {
-    return 'Connected to $host over SSH';
+  String remoteStatusTooltip(String kind, String host) {
+    return 'Connected to $host over $kind';
   }
 
   @override
@@ -7798,8 +7798,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get remoteReconnect => 'Reconnect';
 
   @override
-  String remoteProjectTooltip(String host) {
-    return 'On $host, over SSH';
+  String remoteProjectTooltip(String kind, String host) {
+    return 'On $host, over $kind';
   }
 
   @override
@@ -10222,6 +10222,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get remoteFailUnreachable =>
       'The server could not be reached: check the address, port and network.';
+
+  @override
+  String get remoteFailWsl =>
+      'WSL could not start this distribution: check that WSL is installed and that the distribution is listed by wsl --list.';
 
   @override
   String get channelSetupTitle => 'Welcome to BaoCode';
