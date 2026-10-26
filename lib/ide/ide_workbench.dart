@@ -730,6 +730,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     _chatWidth = size('chatWidth') ?? _chatWidth;
     _panelHeight = size('panelHeight');
     _changelists.restore(kept['gitChangelists']);
+    _search.restore(kept['search']);
     if (kept['gitFavoriteBranches'] case final Object json) {
       final favorites = IdeGitFavoriteBranches.fromJson(json);
       _favoriteBranches.restore(favorites);
@@ -770,12 +771,14 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         if (doc.label == null && (doc.isFile || doc.isMedia)) doc.path,
     ];
     final active = widget.workspace.active?.key;
+    final search = _search.kept;
     return {
       'sidebarWidth': _sidebarWidth,
       'chatWidth': _chatWidth,
       'panelHeight': ?_panelHeight,
       ..._layout.toJson(),
       'view': _view.name,
+      if (search.isNotEmpty) 'search': search,
       if (_markdownSources.isNotEmpty) 'markdownSource': [..._markdownSources],
       if (!_favoriteBranches.isEmpty)
         'gitFavoriteBranches': _favoriteBranches.toJson(),
@@ -1129,6 +1132,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       ];
     }
     _restoreView();
+    _search.keptChanges.addListener(_keepViewSoon);
     _favoriteBranches.addListener(_keepViewSoon);
     _changelists.addListener(_keepViewSoon);
     widget.agentEdits?.addListener(_assignTurns);
@@ -1540,6 +1544,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     _workbenchFocus.dispose();
     _explorerFocus.dispose();
     _timeline.dispose();
+    _search.keptChanges.removeListener(_keepViewSoon);
     _search.dispose();
     _scm.dispose();
     for (final subscription in _terminalRequests) {
