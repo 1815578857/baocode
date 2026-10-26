@@ -18,6 +18,7 @@ import 'package:path/path.dart' as p;
 import 'package:bao_editor/monaco/flutter/diff_editor_model.dart'
     show DiffHighlight;
 
+import '../../base/give_way_row.dart';
 import '../../base/smooth_scroll.dart';
 import '../../chat/composer/composer_files.dart';
 import '../../l10n/l10n.dart';
@@ -49,6 +50,7 @@ import 'git_partial.dart';
 import 'git_repository.dart';
 import 'git_service.dart';
 import 'ide_git_rebase_dialog.dart';
+import 'ide_git_ref_labels.dart';
 import 'ide_scm_view.dart';
 import 'scm_host.dart';
 import 'scm_tree.dart';
@@ -2020,11 +2022,12 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
               ),
             ),
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) => Row(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GiveWayRow(
                   children: [
-                    Flexible(
-                      child: Text.rich(
+                    GiveWay.fill(
+                      Text.rich(
                         TextSpan(
                           children: _highlighted(
                             _subjectOf(commit),
@@ -2040,20 +2043,9 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                           fontStyle: synthetic ? FontStyle.italic : null,
                         ),
                       ),
+                      minWidth: 120,
                     ),
-                    if (commit.references.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: constraints.maxWidth * .5,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: _badges(row),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(width: 8),
+                    ..._labels(row, foreground),
                   ],
                 ),
               ),
@@ -2160,19 +2152,31 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     return _formatDate(date);
   }
 
-  /// The references' badges: the colored ones first.
-  List<Widget> _badges(IdeGraphRow row) {
-    String? color(IdeGitRef ref) => row.referenceColors[ref.id];
-    final refs = [
-      ...row.commit.references.where((ref) => color(ref) != null),
-      ...row.commit.references.where((ref) => color(ref) == null),
-    ];
+  /// The references' labels at the row's end, as JetBrains IDEs align
+  /// them: short of room the last give way first, to their icons alone,
+  /// then gone.
+  List<GiveWay> _labels(IdeGraphRow row, Color foreground) {
+    final labels = ideGitRefLabels(row.commit.references);
     return [
-      for (final (index, ref) in refs.indexed) ...[
-        if (index > 0) const SizedBox(width: 4),
-        Flexible(child: IdeGitRefBadge(ref, color(ref))),
-        ..._worktreeMarks(ref),
-      ],
+      for (final (index, label) in labels.indexed)
+        GiveWay(
+          Padding(
+            padding: EdgeInsets.only(left: index == 0 ? 12 : 10),
+            child: IdeGitRefLabelView(
+              label,
+              foreground: foreground,
+              trailing: [
+                for (final ref in [label.ref, ...label.remotes])
+                  ..._worktreeMarks(ref),
+              ],
+            ),
+          ),
+          compact: Padding(
+            padding: EdgeInsets.only(left: index == 0 ? 12 : 4),
+            child: IdeGitRefLabelView(label, compact: true),
+          ),
+          priority: labels.length - index,
+        ),
     ];
   }
 
@@ -2977,11 +2981,13 @@ class _CommitDetails extends StatelessWidget {
                     if (commit.references.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Wrap(
-                        spacing: 4,
+                        spacing: 12,
                         runSpacing: 4,
                         children: [
-                          for (final ref in commit.references)
-                            IdeGitRefBadge(ref, row.referenceColors[ref.id]),
+                          for (final label in ideGitRefLabels(
+                            commit.references,
+                          ))
+                            IdeGitRefLabelView(label),
                         ],
                       ),
                     ],
@@ -3103,11 +3109,11 @@ class _CommitDetails extends StatelessWidget {
         );
       }
       return Wrap(
-        spacing: 4,
+        spacing: 12,
         runSpacing: 4,
         children: [
-          for (final branch in data)
-            IdeGitRefBadge(
+          for (final label in ideGitRefLabels([
+            for (final branch in data)
               IdeGitRef(
                 branch,
                 branch,
@@ -3115,8 +3121,8 @@ class _CommitDetails extends StatelessWidget {
                     ? IdeGitRefKind.remote
                     : IdeGitRefKind.branch,
               ),
-              null,
-            ),
+          ]))
+            IdeGitRefLabelView(label),
         ],
       );
     },
