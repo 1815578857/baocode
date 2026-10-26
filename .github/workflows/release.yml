@@ -290,6 +290,8 @@ jobs:
           git clone --depth 1 --branch "$env:FLUTTER_VERSION" https://github.com/flutter/flutter.git "$env:RUNNER_TEMP\flutter"
           "$env:RUNNER_TEMP\flutter\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           & "$env:RUNNER_TEMP\flutter\bin\flutter.bat" --version
+          # The engine's artifacts and packages (sky_engine), for pub.
+          & "$env:RUNNER_TEMP\flutter\bin\flutter.bat" precache --windows
       - name: Install Inno Setup
         if: matrix.arch == 'x64'
         run: choco install innosetup --no-progress -y
