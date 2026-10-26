@@ -10853,4 +10853,208 @@ class AppLocalizationsZh extends AppLocalizations {
   String gitBranchCompared(String name, String current, int ahead, int behind) {
     return '“$name”有 $ahead 个“$current”没有的提交；“$current”有 $behind 个它没有的提交。';
   }
+
+  @override
+  String get gitBranchesRecent => '最近';
+
+  @override
+  String get gitBranchesSearch => '搜索分支和操作';
+
+  @override
+  String get gitUpdateProject => '更新项目';
+
+  @override
+  String get gitCommitEllipsis => '提交…';
+
+  @override
+  String get gitPushEllipsis => '推送…';
+
+  @override
+  String get gitNewBranchEllipsis => '新建分支…';
+
+  @override
+  String get gitCheckoutRevision => '检出标签或修订…';
+
+  @override
+  String get gitBranchesTitle => 'Git 分支';
+
+  @override
+  String get gitRevisionPlaceholder => '标签、分支或提交哈希';
+
+  @override
+  String get gitUpdateProjectDetail =>
+      '把每个仓库的当前分支更新到它的上游：合并上游的新提交，或者把本分支自己的提交变基到上面。期间本地改动会先暂存（stash）。';
+
+  @override
+  String get gitUpdateMerge => '合并';
+
+  @override
+  String get gitUpdateRebase => '变基';
+
+  @override
+  String get gitDontAskAgain => '不再询问';
+
+  @override
+  String get gitPushTitle => '推送提交';
+
+  @override
+  String get gitPushTags => '推送标签';
+
+  @override
+  String get gitPushForce => '强制推送';
+
+  @override
+  String gitPushForceConfirm(String targets) {
+    return '强制推送到 $targets？';
+  }
+
+  @override
+  String get gitPushForceDetail =>
+      '远程上的内容会被你推送的替换（with lease：只在远程还是上次获取时的样子才会覆盖，别人更新的提交不会丢）。';
+
+  @override
+  String get gitPushNothing => '没有要推送的提交';
+
+  @override
+  String get gitPushRemote => '远程';
+
+  @override
+  String get gitPushNew => '新分支';
+
+  @override
+  String get gitPushSelectCommit => '选一个提交，查看它的文件';
+
+  @override
+  String get gitPushEllipsisCommand => '推送…';
+
+  @override
+  String get gitOperationRebasing => '正在变基';
+
+  @override
+  String get gitOperationMerging => '正在合并';
+
+  @override
+  String get gitOperationCherryPicking => '正在 Cherry-pick';
+
+  @override
+  String get gitOperationReverting => '正在还原';
+
+  @override
+  String gitOperationConflicts(int count) {
+    return '还剩 $count 个冲突';
+  }
+
+  @override
+  String get gitOperationResolved => '冲突已解决';
+
+  @override
+  String get gitOperationContinue => '继续';
+
+  @override
+  String get gitOperationSkip => '跳过';
+
+  @override
+  String get gitOperationAbort => '中止';
+
+  @override
+  String gitOperationAbortConfirm(String what) {
+    return '中止？$what会停下，已经做的会撤销。';
+  }
+
+  @override
+  String get gitConflictAcceptCurrent => '采用当前的（Ours）';
+
+  @override
+  String get gitConflictAcceptIncoming => '采用传入的（Theirs）';
+
+  @override
+  String get gitConflictMerge => '合并…';
+
+  @override
+  String gitMergeTitle(String path) {
+    return '合并 $path 的修订';
+  }
+
+  @override
+  String get gitMergeOurs => '当前的（Ours）';
+
+  @override
+  String get gitMergeResult => '结果';
+
+  @override
+  String get gitMergeTheirs => '传入的（Theirs）';
+
+  @override
+  String gitMergeConflictsLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '还剩 $count 个冲突',
+      zero: '冲突已全部解决',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String gitMergeChangesApplied(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已应用 $count 处无冲突的更改',
+      zero: '',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get gitMergePrevious => '上一个冲突';
+
+  @override
+  String get gitMergeNext => '下一个冲突';
+
+  @override
+  String get gitMergeApply => '应用';
+
+  @override
+  String get gitMergeAppend => '追加';
+
+  @override
+  String get gitMergeIgnore => '忽略';
+
+  @override
+  String get gitMergeAi => 'AI 合并';
+
+  @override
+  String get gitMergeAiAll => '用 AI 合并全部冲突';
+
+  @override
+  String gitMergeAiFailed(String error) {
+    return 'AI 没能合并这个冲突：$error';
+  }
+
+  @override
+  String get gitMergeAiNoAnswer => '回复里没有合并后的代码';
+
+  @override
+  String get gitMergeAcceptOurs => '采用当前的';
+
+  @override
+  String get gitMergeAcceptTheirs => '采用传入的';
+
+  @override
+  String gitMergeUnresolved(int count) {
+    return '还有 $count 个冲突没解决。';
+  }
+
+  @override
+  String get gitMergeUnresolvedDetail => '按现在的结果保存，并把文件标记为已解决？';
+
+  @override
+  String get gitMergeSaveAnyway => '保存并标记为已解决';
+
+  @override
+  String get gitMergeDiscard => '放弃这次合并的结果？';
+
+  @override
+  String get gitMergeDiscardButton => '放弃';
 }

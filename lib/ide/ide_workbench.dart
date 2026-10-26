@@ -58,9 +58,16 @@ import 'explorer_history.dart'
     show explorerRedoCommandId, explorerUndoCommandId;
 import 'file_views.dart';
 import 'file_service.dart'
-    show IdeFileListing, IdeHostFiles, localizedFileError, readFileBytes;
+    show
+        IdeFileListing,
+        IdeFileService,
+        IdeHostFiles,
+        localizedFileError,
+        readFileBytes;
 import 'git/commit_message.dart';
+import 'git/git_branch_actions.dart';
 import 'git/git_branch_tree.dart' show IdeGitFavoriteBranches;
+import 'git/ide_git_branch_popup.dart';
 import 'git/git_change_editor.dart';
 import 'git/git_checkout.dart';
 import 'git/git_model.dart';
@@ -3499,6 +3506,27 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         run: () => _editor?.toggleAnnotations(),
       ),
       IdeCommand(
+        id: 'baocode.git.branches',
+        category: 'Git',
+        label: 'Branches…',
+        enabled: widget.workspace.git?.state != null,
+        run: _showBranchPopup,
+      ),
+      IdeCommand(
+        id: 'baocode.git.pushDialog',
+        category: 'Git',
+        label: 'Push…',
+        enabled: widget.workspace.git?.state?.head.branch != null,
+        run: _pushDialog,
+      ),
+      IdeCommand(
+        id: 'baocode.git.updateProject',
+        category: 'Git',
+        label: 'Update Project…',
+        enabled: widget.workspace.git?.state != null,
+        run: _updateProject,
+      ),
+      IdeCommand(
         id: 'baocode.git.showFileHistory',
         category: 'Git',
         label: 'Show History',
@@ -3798,7 +3826,6 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         _leaveGitLog();
         unawaited(_open(path, focusEditor: true));
       },
-      onCheckout: _gitCheckoutOf,
       onAddToChat: widget.onAddToChat,
       changes: IdeGitCommitPanel(
         key: _scmKey,
@@ -4808,11 +4835,11 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
             branch,
             icon: Codicons.gitBranch,
             tooltip: keys.titleWithKeybinding(
-              '${p.basename(state.root)} (Git) - '
-                  '$branch, ${l10n.gitCheckoutBranchTag}',
-              'git.checkout',
+              '${p.basename(state.root)} (Git) - $branch, '
+                  '${l10n.gitBranchesTitle}',
+              'baocode.git.branches',
             ),
-            onTap: _gitCheckout,
+            onTapRect: _showBranchPopup,
           )
         else
           IdeStatusBarItem(

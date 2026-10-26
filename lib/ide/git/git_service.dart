@@ -203,6 +203,8 @@ class IdeGitService {
     if (top == null) return null;
     final version = await _gitVersion();
     final matching = version == null || _atLeast(version, 2, 16);
+    // Read alongside the status.
+    final operation = _operation().catchError((Object _) => null);
     final output = _check(
       await _git(
         [
@@ -241,6 +243,95 @@ class IdeGitService {
       records,
       truncated: output.truncated,
       pathContext: pathContext,
+      operation: await operation,
+    );
+  }
+
+  /// The operation Git stopped in the middle of, by the pseudo-refs it
+  /// leaves: one `git log` of those there are (`--ignore-missing`), each
+  /// by its name (`%S`).
+  Future<IdeGitOperation?> _operation() async {
+    final output = await _git([
+      'log',
+      '--no-walk',
+      '--source',
+      '--ignore-missing',
+      '--format=%S',
+      for (final operation in IdeGitOperation.values) operation.ref,
+      '--',
+    ]);
+    if (output.exitCode != 0) return null;
+    final refs = output.stdout.split('\n').map((line) => line.trim()).toSet();
+    // A rebase that stopped on a merge also has MERGE_HEAD: the rebase is
+    // what goes on.
+    for (final operation in const [
+      IdeGitOperation.rebase,
+      IdeGitOperation.cherryPick,
+      IdeGitOperation.revert,
+      IdeGitOperation.merge,
+    ]) {
+      if (refs.contains(operation.ref)) return operation;
+    }
+    return null;
+  }
+
+  /// Resolves the conflicts of [paths] with one side's version: the
+  /// current one's (`--ours`) or the incoming one's (`--theirs`), staged;
+  /// [deleted], those that side deleted, removed.
+  Future<void> acceptSide(
+    Iterable<String> paths, {
+    required bool ours,
+    Iterable<String> deleted = const [],
+  }) async {
+    final top = await _requireRoot();
+    final kept = _relative(top, paths);
+    if (kept.isNotEmpty) {
+      _check(
+        await _git([
+          'checkout',
+          ours ? '--ours' : '--theirs',
+          '--',
+          ...kept,
+        ]),
+        'Cannot take ${ours ? 'the current' : 'the incoming'} version.',
+      );
+      _check(
+        await _git(['add', '--', ...kept]),
+        'Cannot mark the conflicts resolved.',
+      );
+    }
+    final removed = _relative(top, deleted);
+    if (removed.isNotEmpty) {
+      _check(
+        await _git(['rm', '-q', '--', ...removed]),
+        'Cannot mark the conflicts resolved.',
+      );
+    }
+  }
+
+  /// Goes on with [operation] (`--continue`), its conflicts resolved and
+  /// staged; or aborts it (`--abort`), or skips the commit it stopped on
+  /// (`--skip`).
+  Future<void> continueOperation(
+    IdeGitOperation operation, {
+    bool abort = false,
+    bool skip = false,
+  }) async {
+    await _requireRoot();
+    _check(
+      await _git([
+        // Its commit's message as it is: no editor.
+        '-c',
+        'core.editor=:',
+        operation.command,
+        abort
+            ? '--abort'
+            : skip
+            ? '--skip'
+            : '--continue',
+      ]),
+      'Cannot ${abort ? 'abort' : skip ? 'skip' : 'continue'} the '
+      '${operation.command}.',
     );
   }
 
@@ -526,10 +617,19 @@ class IdeGitService {
     String remote,
     String name, {
     bool setUpstream = false,
+    bool forceWithLease = false,
+    bool followTags = false,
   }) async {
     await _requireRoot();
     _check(
-      await _git(['push', if (setUpstream) '-u', remote, name]),
+      await _git([
+        'push',
+        if (setUpstream) '-u',
+        if (forceWithLease) '--force-with-lease',
+        if (followTags) '--follow-tags',
+        remote,
+        name,
+      ]),
       'Cannot push.',
     );
   }
@@ -984,6 +1084,25 @@ class IdeGitService {
   }
 
   // --- Branches (JetBrains' branch popup, the log's branch tree) ----------
+
+  /// The branches checked out of late, the latest first, by the reflog's
+  /// `checkout: moving from <a> to <b>`: the branch popup's Recent.
+  Future<List<String>> recentBranches({int limit = 8}) async {
+    await _requireRoot();
+    final output = await _git(['reflog', '-n', '500', '--format=%gs']);
+    if (output.exitCode != 0) return const [];
+    final pattern = RegExp(r'^checkout: moving from (.+) to (.+)$');
+    final names = <String>[];
+    for (final line in output.stdout.split('\n')) {
+      final match = pattern.firstMatch(line.trim());
+      if (match == null) continue;
+      for (final name in [match[2]!, match[1]!]) {
+        if (!names.contains(name)) names.add(name);
+      }
+      if (names.length >= limit) break;
+    }
+    return names;
+  }
 
   /// Renames the branch [from] to [to]: `git branch -m`.
   Future<void> renameBranch(String from, String to) async {

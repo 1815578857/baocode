@@ -7230,7 +7230,7 @@ abstract class AppLocalizations {
   /// No description provided for @gitBranches.
   ///
   /// In en, this message translates to:
-  /// **'Branches'**
+  /// **'branches'**
   String get gitBranches;
 
   /// No description provided for @gitRemoteBranches.
@@ -18704,6 +18704,354 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'“{name}” has {ahead} commits “{current}” has not; “{current}” has {behind} it has not.'**
   String gitBranchCompared(String name, String current, int ahead, int behind);
+
+  /// No description provided for @gitBranchesRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get gitBranchesRecent;
+
+  /// No description provided for @gitBranchesSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search for branches and actions'**
+  String get gitBranchesSearch;
+
+  /// No description provided for @gitUpdateProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Project'**
+  String get gitUpdateProject;
+
+  /// No description provided for @gitCommitEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit…'**
+  String get gitCommitEllipsis;
+
+  /// No description provided for @gitPushEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'Push…'**
+  String get gitPushEllipsis;
+
+  /// No description provided for @gitNewBranchEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'New Branch…'**
+  String get gitNewBranchEllipsis;
+
+  /// No description provided for @gitCheckoutRevision.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout Tag or Revision…'**
+  String get gitCheckoutRevision;
+
+  /// No description provided for @gitBranchesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Git Branches'**
+  String get gitBranchesTitle;
+
+  /// No description provided for @gitRevisionPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'A tag, a branch or a commit hash'**
+  String get gitRevisionPlaceholder;
+
+  /// No description provided for @gitUpdateProjectDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring each repository\'s current branch up to its upstream: merge its new commits in, or rebase the branch\'s own onto them. Local changes are stashed meanwhile.'**
+  String get gitUpdateProjectDetail;
+
+  /// No description provided for @gitUpdateMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge'**
+  String get gitUpdateMerge;
+
+  /// No description provided for @gitUpdateRebase.
+  ///
+  /// In en, this message translates to:
+  /// **'Rebase'**
+  String get gitUpdateRebase;
+
+  /// No description provided for @gitDontAskAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t ask again'**
+  String get gitDontAskAgain;
+
+  /// No description provided for @gitPushTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Push Commits'**
+  String get gitPushTitle;
+
+  /// No description provided for @gitPushTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Push tags'**
+  String get gitPushTags;
+
+  /// No description provided for @gitPushForce.
+  ///
+  /// In en, this message translates to:
+  /// **'Force Push'**
+  String get gitPushForce;
+
+  /// No description provided for @gitPushForceConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Force push to {targets}?'**
+  String gitPushForceConfirm(String targets);
+
+  /// No description provided for @gitPushForceDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'What is there is replaced by what you push (with lease: only as last fetched, so nobody\'s newer commits are lost).'**
+  String get gitPushForceDetail;
+
+  /// No description provided for @gitPushNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to push'**
+  String get gitPushNothing;
+
+  /// No description provided for @gitPushRemote.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote'**
+  String get gitPushRemote;
+
+  /// No description provided for @gitPushNew.
+  ///
+  /// In en, this message translates to:
+  /// **'new'**
+  String get gitPushNew;
+
+  /// No description provided for @gitPushSelectCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a commit to see its files'**
+  String get gitPushSelectCommit;
+
+  /// No description provided for @gitPushEllipsisCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Push…'**
+  String get gitPushEllipsisCommand;
+
+  /// No description provided for @gitOperationRebasing.
+  ///
+  /// In en, this message translates to:
+  /// **'Rebasing'**
+  String get gitOperationRebasing;
+
+  /// No description provided for @gitOperationMerging.
+  ///
+  /// In en, this message translates to:
+  /// **'Merging'**
+  String get gitOperationMerging;
+
+  /// No description provided for @gitOperationCherryPicking.
+  ///
+  /// In en, this message translates to:
+  /// **'Cherry-picking'**
+  String get gitOperationCherryPicking;
+
+  /// No description provided for @gitOperationReverting.
+  ///
+  /// In en, this message translates to:
+  /// **'Reverting'**
+  String get gitOperationReverting;
+
+  /// No description provided for @gitOperationConflicts.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 conflict left} other{{count} conflicts left}}'**
+  String gitOperationConflicts(int count);
+
+  /// No description provided for @gitOperationResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'conflicts resolved'**
+  String get gitOperationResolved;
+
+  /// No description provided for @gitOperationContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get gitOperationContinue;
+
+  /// No description provided for @gitOperationSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get gitOperationSkip;
+
+  /// No description provided for @gitOperationAbort.
+  ///
+  /// In en, this message translates to:
+  /// **'Abort'**
+  String get gitOperationAbort;
+
+  /// No description provided for @gitOperationAbortConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Abort? {what} stops and what it did so far is undone.'**
+  String gitOperationAbortConfirm(String what);
+
+  /// No description provided for @gitConflictAcceptCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept Current (Ours)'**
+  String get gitConflictAcceptCurrent;
+
+  /// No description provided for @gitConflictAcceptIncoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept Incoming (Theirs)'**
+  String get gitConflictAcceptIncoming;
+
+  /// No description provided for @gitConflictMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge…'**
+  String get gitConflictMerge;
+
+  /// No description provided for @gitMergeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge Revisions for {path}'**
+  String gitMergeTitle(String path);
+
+  /// No description provided for @gitMergeOurs.
+  ///
+  /// In en, this message translates to:
+  /// **'Current (Ours)'**
+  String get gitMergeOurs;
+
+  /// No description provided for @gitMergeResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Result'**
+  String get gitMergeResult;
+
+  /// No description provided for @gitMergeTheirs.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming (Theirs)'**
+  String get gitMergeTheirs;
+
+  /// No description provided for @gitMergeConflictsLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{All conflicts resolved} =1{1 conflict left} other{{count} conflicts left}}'**
+  String gitMergeConflictsLeft(int count);
+
+  /// No description provided for @gitMergeChangesApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{} =1{1 change applied without conflict} other{{count} changes applied without conflict}}'**
+  String gitMergeChangesApplied(int count);
+
+  /// No description provided for @gitMergePrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous Conflict'**
+  String get gitMergePrevious;
+
+  /// No description provided for @gitMergeNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Conflict'**
+  String get gitMergeNext;
+
+  /// No description provided for @gitMergeApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get gitMergeApply;
+
+  /// No description provided for @gitMergeAppend.
+  ///
+  /// In en, this message translates to:
+  /// **'Append'**
+  String get gitMergeAppend;
+
+  /// No description provided for @gitMergeIgnore.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore'**
+  String get gitMergeIgnore;
+
+  /// No description provided for @gitMergeAi.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge with AI'**
+  String get gitMergeAi;
+
+  /// No description provided for @gitMergeAiAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge Conflicts with AI'**
+  String get gitMergeAiAll;
+
+  /// No description provided for @gitMergeAiFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'AI could not merge the conflict: {error}'**
+  String gitMergeAiFailed(String error);
+
+  /// No description provided for @gitMergeAiNoAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'the reply had no merged lines'**
+  String get gitMergeAiNoAnswer;
+
+  /// No description provided for @gitMergeAcceptOurs.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept Current'**
+  String get gitMergeAcceptOurs;
+
+  /// No description provided for @gitMergeAcceptTheirs.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept Incoming'**
+  String get gitMergeAcceptTheirs;
+
+  /// No description provided for @gitMergeUnresolved.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 conflict is not resolved.} other{{count} conflicts are not resolved.}}'**
+  String gitMergeUnresolved(int count);
+
+  /// No description provided for @gitMergeUnresolvedDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Save the result as it is and mark the file resolved?'**
+  String get gitMergeUnresolvedDetail;
+
+  /// No description provided for @gitMergeSaveAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Save and Mark Resolved'**
+  String get gitMergeSaveAnyway;
+
+  /// No description provided for @gitMergeDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard the merge result?'**
+  String get gitMergeDiscard;
+
+  /// No description provided for @gitMergeDiscardButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get gitMergeDiscardButton;
 }
 
 class _AppLocalizationsDelegate

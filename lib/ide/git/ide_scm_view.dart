@@ -147,6 +147,16 @@ class IdeScmSession {
   bool get confirmSync => _choice('git.confirmSync', true);
   set confirmSync(bool value) => _choose('git.confirmSync', value);
 
+  /// `git.rebaseWhenSync`: Update Project (and Sync) rebases, else merges.
+  bool get rebaseWhenSync => _choice('git.rebaseWhenSync', false);
+  set rebaseWhenSync(bool value) => _choose('git.rebaseWhenSync', value);
+
+  /// Whether Update Project asks how, as JetBrains IDEs' does until told
+  /// not to.
+  bool get updateProjectAsks => _choice('baocode.git.updateProjectAsks', true);
+  set updateProjectAsks(bool value) =>
+      _choose('baocode.git.updateProjectAsks', value);
+
   /// Completes to cancel the commit message being generated; null when
   /// none is. Kept here, so that the message still arrives when the view
   /// has closed meanwhile.

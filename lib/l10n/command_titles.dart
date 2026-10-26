@@ -104,6 +104,9 @@ String localizedCommandLabel(AppLocalizations l10n, String id, String english) {
     'baocode.ide.retryLanguageServices' => l10n.cmdRetryLanguageServices,
     'baocode.git.toggleAnnotations' =>
       english.startsWith('Close') ? l10n.gitCloseAnnotations : l10n.gitAnnotate,
+    'baocode.git.branches' => l10n.gitBranchesTitle,
+    'baocode.git.pushDialog' => l10n.gitPushEllipsis,
+    'baocode.git.updateProject' => '${l10n.gitUpdateProject}…',
     'baocode.git.showFileHistory' => l10n.gitShowHistory,
     'baocode.git.showSelectionHistory' => l10n.gitShowHistoryForSelection,
     'baocode.ide.backToChat' => l10n.cmdBackToChat,

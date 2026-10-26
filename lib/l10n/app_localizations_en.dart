@@ -4409,7 +4409,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitCheckoutDetached => 'Checkout detached...';
 
   @override
-  String get gitBranches => 'Branches';
+  String get gitBranches => 'branches';
 
   @override
   String get gitRemoteBranches => 'remote branches';
@@ -11451,4 +11451,223 @@ class AppLocalizationsEn extends AppLocalizations {
   String gitBranchCompared(String name, String current, int ahead, int behind) {
     return '“$name” has $ahead commits “$current” has not; “$current” has $behind it has not.';
   }
+
+  @override
+  String get gitBranchesRecent => 'Recent';
+
+  @override
+  String get gitBranchesSearch => 'Search for branches and actions';
+
+  @override
+  String get gitUpdateProject => 'Update Project';
+
+  @override
+  String get gitCommitEllipsis => 'Commit…';
+
+  @override
+  String get gitPushEllipsis => 'Push…';
+
+  @override
+  String get gitNewBranchEllipsis => 'New Branch…';
+
+  @override
+  String get gitCheckoutRevision => 'Checkout Tag or Revision…';
+
+  @override
+  String get gitBranchesTitle => 'Git Branches';
+
+  @override
+  String get gitRevisionPlaceholder => 'A tag, a branch or a commit hash';
+
+  @override
+  String get gitUpdateProjectDetail =>
+      'Bring each repository\'s current branch up to its upstream: merge its new commits in, or rebase the branch\'s own onto them. Local changes are stashed meanwhile.';
+
+  @override
+  String get gitUpdateMerge => 'Merge';
+
+  @override
+  String get gitUpdateRebase => 'Rebase';
+
+  @override
+  String get gitDontAskAgain => 'Don\'t ask again';
+
+  @override
+  String get gitPushTitle => 'Push Commits';
+
+  @override
+  String get gitPushTags => 'Push tags';
+
+  @override
+  String get gitPushForce => 'Force Push';
+
+  @override
+  String gitPushForceConfirm(String targets) {
+    return 'Force push to $targets?';
+  }
+
+  @override
+  String get gitPushForceDetail =>
+      'What is there is replaced by what you push (with lease: only as last fetched, so nobody\'s newer commits are lost).';
+
+  @override
+  String get gitPushNothing => 'Nothing to push';
+
+  @override
+  String get gitPushRemote => 'Remote';
+
+  @override
+  String get gitPushNew => 'new';
+
+  @override
+  String get gitPushSelectCommit => 'Select a commit to see its files';
+
+  @override
+  String get gitPushEllipsisCommand => 'Push…';
+
+  @override
+  String get gitOperationRebasing => 'Rebasing';
+
+  @override
+  String get gitOperationMerging => 'Merging';
+
+  @override
+  String get gitOperationCherryPicking => 'Cherry-picking';
+
+  @override
+  String get gitOperationReverting => 'Reverting';
+
+  @override
+  String gitOperationConflicts(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count conflicts left',
+      one: '1 conflict left',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get gitOperationResolved => 'conflicts resolved';
+
+  @override
+  String get gitOperationContinue => 'Continue';
+
+  @override
+  String get gitOperationSkip => 'Skip';
+
+  @override
+  String get gitOperationAbort => 'Abort';
+
+  @override
+  String gitOperationAbortConfirm(String what) {
+    return 'Abort? $what stops and what it did so far is undone.';
+  }
+
+  @override
+  String get gitConflictAcceptCurrent => 'Accept Current (Ours)';
+
+  @override
+  String get gitConflictAcceptIncoming => 'Accept Incoming (Theirs)';
+
+  @override
+  String get gitConflictMerge => 'Merge…';
+
+  @override
+  String gitMergeTitle(String path) {
+    return 'Merge Revisions for $path';
+  }
+
+  @override
+  String get gitMergeOurs => 'Current (Ours)';
+
+  @override
+  String get gitMergeResult => 'Result';
+
+  @override
+  String get gitMergeTheirs => 'Incoming (Theirs)';
+
+  @override
+  String gitMergeConflictsLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count conflicts left',
+      one: '1 conflict left',
+      zero: 'All conflicts resolved',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String gitMergeChangesApplied(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes applied without conflict',
+      one: '1 change applied without conflict',
+      zero: '',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get gitMergePrevious => 'Previous Conflict';
+
+  @override
+  String get gitMergeNext => 'Next Conflict';
+
+  @override
+  String get gitMergeApply => 'Apply';
+
+  @override
+  String get gitMergeAppend => 'Append';
+
+  @override
+  String get gitMergeIgnore => 'Ignore';
+
+  @override
+  String get gitMergeAi => 'Merge with AI';
+
+  @override
+  String get gitMergeAiAll => 'Merge Conflicts with AI';
+
+  @override
+  String gitMergeAiFailed(String error) {
+    return 'AI could not merge the conflict: $error';
+  }
+
+  @override
+  String get gitMergeAiNoAnswer => 'the reply had no merged lines';
+
+  @override
+  String get gitMergeAcceptOurs => 'Accept Current';
+
+  @override
+  String get gitMergeAcceptTheirs => 'Accept Incoming';
+
+  @override
+  String gitMergeUnresolved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count conflicts are not resolved.',
+      one: '1 conflict is not resolved.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get gitMergeUnresolvedDetail =>
+      'Save the result as it is and mark the file resolved?';
+
+  @override
+  String get gitMergeSaveAnyway => 'Save and Mark Resolved';
+
+  @override
+  String get gitMergeDiscard => 'Discard the merge result?';
+
+  @override
+  String get gitMergeDiscardButton => 'Discard';
 }

@@ -197,6 +197,43 @@ class IdeGitRepository extends ChangeNotifier {
     ], unborn: _state?.head.unborn ?? false),
   );
 
+  /// Resolves the conflicts of [resources] with the current side's
+  /// version ([ours]) or the incoming side's; a file that side deleted is
+  /// removed.
+  Future<void> acceptSide(
+    Iterable<IdeGitResource> resources, {
+    required bool ours,
+  }) => _operate(() {
+    bool deletedOnSide(IdeGitStatus status) => switch (status) {
+      IdeGitStatus.bothDeleted => true,
+      IdeGitStatus.deletedByUs => ours,
+      IdeGitStatus.deletedByThem => !ours,
+      // The other side added it: this side has none.
+      IdeGitStatus.addedByUs => !ours,
+      IdeGitStatus.addedByThem => ours,
+      _ => false,
+    };
+    return service.acceptSide(
+      [
+        for (final resource in resources)
+          if (!deletedOnSide(resource.status)) resource.path,
+      ],
+      ours: ours,
+      deleted: [
+        for (final resource in resources)
+          if (deletedOnSide(resource.status)) resource.path,
+      ],
+    );
+  });
+
+  /// Continue, Abort or Skip of the operation under way.
+  Future<void> continueOperation({bool abort = false, bool skip = false}) =>
+      _operate(() async {
+        final operation = _state?.operation;
+        if (operation == null) return;
+        await service.continueOperation(operation, abort: abort, skip: skip);
+      });
+
   /// Stage All Changes: everything in the working tree, untracked files
   /// included.
   Future<void> stageAll() => _operate(() => service.stage(null));
@@ -397,6 +434,39 @@ class IdeGitRepository extends ChangeNotifier {
         final (remote, name) = splitUpstream(ref, await service.remotes());
         await service.pullInto(remote, name, rebase: rebase);
       });
+
+  /// The Push dialog's push: the current branch to [target] on [remote],
+  /// made its upstream where it has none; [force] with lease (the remote
+  /// branch only overwritten as last fetched); [tags], the annotated tags
+  /// of the commits pushed.
+  Future<void> pushTo(
+    String remote,
+    String target, {
+    bool force = false,
+    bool tags = false,
+  }) => _whileSyncing(() async {
+    final head = _state?.head;
+    final branch = head?.branch;
+    if (branch == null) {
+      throw const IdeGitException('HEAD is on no branch: nothing to push.');
+    }
+    await service.push(
+      remote,
+      '$branch:$target',
+      setUpstream: head?.upstream == null,
+      forceWithLease: force,
+      followTags: tags,
+    );
+  });
+
+  /// Update Project: fetches from every remote, then brings the current
+  /// branch up to its upstream, by rebase or by merge, local changes
+  /// stashed meanwhile. Throws where the branch has no upstream.
+  Future<void> updateProject({required bool rebase}) => _whileSyncing(() async {
+    await service.fetch();
+    final (remote, name) = await _upstream('update');
+    await service.pullInto(remote, name, rebase: rebase);
+  });
 
   /// Fast-forwards the branch [name], not checked out, to [upstream].
   Future<void> updateBranch(String name, String upstream) =>

@@ -1255,6 +1255,53 @@ extension _ScmKeys on IdeWorkbenchState {
     _gitCheckoutOf(git);
   }
 
+  /// The branch popup (JetBrains') by [anchor], the status bar's branch;
+  /// from the palette, at the window's top.
+  void _showBranchPopup([Rect? anchor]) {
+    final git = widget.workspace.git;
+    if (git == null || git.state == null) return;
+    final size = MediaQuery.sizeOf(context);
+    final host = _WorkbenchBranchHost(this);
+    unawaited(
+      showIdeGitBranchPopup(
+        context,
+        git: git,
+        anchor:
+            anchor ??
+            Rect.fromLTWH((size.width - IdeGitBranchPopup.width) / 2, 60, 0, 0),
+        host: host,
+        actions: IdeGitBranchActions(context, git, host).repositoryActions(
+          onCommit: () {
+            _showView(IdeSideView.sourceControl);
+            _gitLogKey.currentState?.showLocalChanges();
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Push…: the Push dialog, for the window's repositories.
+  void _pushDialog() {
+    final git = widget.workspace.git;
+    if (git == null) return;
+    unawaited(
+      IdeGitBranchActions(context, git, _WorkbenchBranchHost(this)).push(),
+    );
+  }
+
+  /// Update Project, on the window's repositories.
+  void _updateProject() {
+    final git = widget.workspace.git;
+    if (git == null) return;
+    unawaited(
+      IdeGitBranchActions(
+        context,
+        git,
+        _WorkbenchBranchHost(this),
+      ).updateProject(),
+    );
+  }
+
   /// Checkout to… on [git] (a repository's `...` in Source Control's
   /// REPOSITORIES, through [IdeScmView.onCheckout]).
   void _gitCheckoutOf(IdeGitRepository git) {
@@ -1376,4 +1423,50 @@ extension on IdePanelTab {
     IdePanelTab.debugConsole => 'workbench.panel.repl',
     IdePanelTab.terminal => 'terminal',
   };
+}
+
+/// What the branch actions do from the window: a comparison or a branch's
+/// log in the Git log, shown first.
+class _WorkbenchBranchHost implements IdeGitBranchHost {
+  _WorkbenchBranchHost(this.workbench);
+
+  final IdeWorkbenchState workbench;
+
+  @override
+  IdeNotifications get notifications => workbench._notifications;
+
+  @override
+  IdeFileService get files => workbench.widget.workspace.files;
+
+  @override
+  IdeGitFavoriteBranches get favoriteBranches => workbench._favoriteBranches;
+
+  @override
+  IdeScmSession get session => workbench._scm;
+
+  @override
+  List<IdeGitRepository> get repositories => [
+    for (final (_, git) in workbench.widget.workspace.repositories) git,
+  ];
+
+  @override
+  Future<void> run(Future<void> Function() operation) async {
+    try {
+      await operation();
+    } catch (error) {
+      workbench._report(error);
+    }
+  }
+
+  @override
+  void showDiff(List<IdeGitDiffFile> files) {
+    workbench._showView(IdeSideView.sourceControl);
+    workbench._scm.log.showDiff(files, 0);
+  }
+
+  @override
+  void showOnly(IdeGitRepository git, IdeGitRef ref) {
+    workbench._showView(IdeSideView.sourceControl);
+    git.graphBranch = ref.id;
+  }
 }

@@ -25,6 +25,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/codicons.dart';
 import '../../theme/material_file_icons.dart';
 import '../../theme/workbench_theme.dart';
+import '../file_service.dart';
 import '../ide_button.dart';
 import '../ide_code_diff.dart';
 import '../ide_diff_options.dart';
@@ -36,7 +37,9 @@ import '../ide_menu.dart';
 import '../ide_modern_ui.dart';
 import '../ide_notifications.dart';
 import '../ide_spinning.dart';
+import 'git_branch_actions.dart';
 import 'git_branch_tree.dart';
+import 'ide_git_branch_popup.dart';
 import 'git_change_editor.dart';
 import 'git_checkout.dart' show ideSanitizeBranchName;
 import 'git_graph_painter.dart';
@@ -398,6 +401,62 @@ class IdeGitLogController extends ChangeNotifier {
   }
 }
 
+/// The files [revision] (a commit, a branch) and the working tree differ
+/// in, its side ([label]) against the file's ([workingTree]); none where
+/// they do not.
+Future<List<IdeGitDiffFile>> ideGitWorkingTreeDiff(
+  IdeGitRepository git,
+  IdeFileService files,
+  String revision,
+  String label,
+  String workingTree,
+) async {
+  final changes = await git.service.changesSince(revision);
+  Future<String> show(String path) =>
+      git.service.show(revision, path).catchError((Object _) => '');
+  return [
+    for (final change in changes)
+      IdeGitDiffFile(
+        path: change.path,
+        status: ideCommitChangeStatus(change.status),
+        original: () => change.status == 'A'
+            ? Future.value('')
+            : show(change.originalPath ?? change.path),
+        modified: () => change.status == 'D'
+            ? Future.value('')
+            : files.read(change.path).catchError((Object _) => ''),
+        originalLabel: label,
+        modifiedLabel: workingTree,
+      ),
+  ];
+}
+
+/// The files the revisions [from] and [to] differ in, [from]'s side
+/// against [to]'s, each with its label.
+Future<List<IdeGitDiffFile>> ideGitRevisionsDiff(
+  IdeGitRepository git,
+  (String id, String label) from,
+  (String id, String label) to,
+) async {
+  final changes = await git.service.changesSince(from.$1, other: to.$1);
+  Future<String> show(String ref, String path) =>
+      git.service.show(ref, path).catchError((Object _) => '');
+  return [
+    for (final change in changes)
+      IdeGitDiffFile(
+        path: change.path,
+        status: ideCommitChangeStatus(change.status),
+        original: () => change.status == 'A'
+            ? Future.value('')
+            : show(from.$1, change.originalPath ?? change.path),
+        modified: () =>
+            change.status == 'D' ? Future.value('') : show(to.$1, change.path),
+        originalLabel: from.$2,
+        modifiedLabel: to.$2,
+      ),
+  ];
+}
+
 /// The status of a commit's change by its letter (`git show
 /// --name-status`).
 IdeGitStatus ideCommitChangeStatus(String letter) => switch (letter) {
@@ -511,7 +570,6 @@ class IdeGitLogView extends StatefulWidget {
     this.overlay,
     this.overlayTabs,
     this.onCloseOverlay,
-    this.onCheckout,
     this.onAddToChat,
     this.worktrees = const IdeGitWorktreeChoice(),
     this.background,
@@ -543,9 +601,6 @@ class IdeGitLogView extends StatefulWidget {
   final Widget? overlay;
   final Widget? overlayTabs;
   final VoidCallback? onCloseOverlay;
-
-  /// Checkout to… on a repository; not offered when null.
-  final ValueChanged<IdeGitRepository>? onCheckout;
 
   /// Puts files in the chat's composer; not offered when null.
   final ValueChanged<List<ComposerFile>>? onAddToChat;
@@ -881,6 +936,29 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     },
   );
 
+  /// The branch's button: where the branch popup opens.
+  final GlobalKey _branchButton = GlobalKey();
+
+  /// The branch popup, under the branch's button.
+  void _showBranches(IdeGitRepository git) {
+    final box = _branchButton.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final host = _LogBranchHost(this);
+    unawaited(
+      showIdeGitBranchPopup(
+        context,
+        git: git,
+        anchor: box.localToGlobal(Offset.zero) & box.size,
+        host: host,
+        actions: IdeGitBranchActions(
+          context,
+          git,
+          host,
+        ).repositoryActions(onCommit: showLocalChanges),
+      ),
+    );
+  }
+
   /// Below this width, the toolbar takes two rows and the repository's
   /// actions go in its menu.
   static const _compactToolbar = 860.0;
@@ -1139,14 +1217,15 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     void toggleSort() => git.graphDateOrder = !git.graphDateOrder;
     return [
       if (!head.unborn)
-        _DropButton(
-          icon: Codicons.gitBranch,
-          label: head.branch ?? _detachedLabel(git),
-          tooltip: l10n.gitLogCheckout,
-          maxWidth: compact ? 110 : 180,
-          onPressed: widget.onCheckout == null
-              ? null
-              : () => widget.onCheckout!(git),
+        KeyedSubtree(
+          key: _branchButton,
+          child: _DropButton(
+            icon: Codicons.gitBranch,
+            label: head.branch ?? _detachedLabel(git),
+            tooltip: l10n.gitBranchesTitle,
+            maxWidth: compact ? 110 : 180,
+            onPressed: () => _showBranches(git),
+          ),
         ),
       if (!compact) ...[
         IdeActionButton(
@@ -1167,7 +1246,9 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
           child: IdeActionButton(
             icon: Codicons.repoPush,
             tooltip: pushLabel,
-            onPressed: () => unawaited(_run(git.push)),
+            onPressed: () => unawaited(
+              IdeGitBranchActions(context, git, _LogBranchHost(this)).push(),
+            ),
           ),
         ),
         IdeActionButton(
@@ -1191,8 +1272,14 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                 onSelected: () => unawaited(_run(git.pull)),
               ),
               IdeMenuAction(
-                pushLabel,
-                onSelected: () => unawaited(_run(git.push)),
+                '$pushLabel…',
+                onSelected: () => unawaited(
+                  IdeGitBranchActions(
+                    context,
+                    git,
+                    _LogBranchHost(this),
+                  ).push(),
+                ),
               ),
             ],
           [
@@ -2290,39 +2377,29 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     IdeGitRepository git,
     (String id, String label) from,
     (String id, String label) to,
+  ) => _showComparison(() => ideGitRevisionsDiff(git, from, to));
+
+  /// [compare]'s files in the table's place; that there are none, or why
+  /// they could not be read, told.
+  Future<void> _showComparison(
+    Future<List<IdeGitDiffFile>> Function() compare,
   ) async {
-    final List<IdeGitCommitChange> changes;
+    final List<IdeGitDiffFile> files;
     try {
-      changes = await git.service.changesSince(from.$1, other: to.$1);
+      files = await compare();
     } catch (error) {
       _report(error);
       return;
     }
     if (!mounted) return;
-    if (changes.isEmpty) {
+    if (files.isEmpty) {
       widget.notifications.notify(
         IdeSeverity.info,
         context.l10n.gitLogNoDifferences,
       );
       return;
     }
-    Future<String> show(String ref, String path) =>
-        git.service.show(ref, path).catchError((Object _) => '');
-    _log.showDiff([
-      for (final change in changes)
-        IdeGitDiffFile(
-          path: change.path,
-          status: ideCommitChangeStatus(change.status),
-          original: () => change.status == 'A'
-              ? Future.value('')
-              : show(from.$1, change.originalPath ?? change.path),
-          modified: () => change.status == 'D'
-              ? Future.value('')
-              : show(to.$1, change.path),
-          originalLabel: from.$2,
-          modifiedLabel: to.$2,
-        ),
-    ], 0);
+    _log.showDiff(files, 0);
   }
 
   /// Whether [commit] is HEAD's or one before it, by the graph's first
@@ -2454,39 +2531,15 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
     IdeGitRepository git,
     String revision,
     String label,
-  ) async {
-    final l10n = context.l10n;
-    final List<IdeGitCommitChange> changes;
-    try {
-      changes = await git.service.changesSince(revision);
-    } catch (error) {
-      _report(error);
-      return;
-    }
-    if (!mounted) return;
-    if (changes.isEmpty) {
-      widget.notifications.notify(IdeSeverity.info, l10n.gitLogNoDifferences);
-      return;
-    }
-    final files = widget.host.files;
-    Future<String> show(String path) =>
-        git.service.show(revision, path).catchError((Object _) => '');
-    _log.showDiff([
-      for (final change in changes)
-        IdeGitDiffFile(
-          path: change.path,
-          status: ideCommitChangeStatus(change.status),
-          original: () => change.status == 'A'
-              ? Future.value('')
-              : show(change.originalPath ?? change.path),
-          modified: () => change.status == 'D'
-              ? Future.value('')
-              : files.read(change.path).catchError((Object _) => ''),
-          originalLabel: label,
-          modifiedLabel: l10n.gitChangeWorkingTree,
-        ),
-    ], 0);
-  }
+  ) => _showComparison(
+    () => ideGitWorkingTreeDiff(
+      git,
+      widget.host.files,
+      revision,
+      label,
+      context.l10n.gitChangeWorkingTree,
+    ),
+  );
 
   static bool _isHead(IdeGitRepository git, IdeGitCommit commit) {
     for (final row in git.graph ?? const <IdeGraphRow>[]) {
