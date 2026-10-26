@@ -688,6 +688,15 @@ void main() {
         ],
         [('/p/a.txt', 2, 0), ('/p/b.txt', 2, 1)],
       );
+      // A Write's file before is not known; an Edit's, by its texts.
+      final originals = [
+        for (final event in events.whereType<FileEdited>()) event.original,
+      ];
+      expect(originals.first, isNull);
+      expect(
+        (originals.last! as OriginalByEdits).edits,
+        [(before: 'x', after: 'y\nz')],
+      );
       expect(events.whereType<FilesMayHaveChanged>(), isEmpty);
 
       call('b1', 'Bash', {'command': 'echo c > c.txt'}, parent: 'agent-1');

@@ -677,6 +677,28 @@ final class OriginalByPatch extends FileOriginal {
   final String diff;
 }
 
+/// The edits made, in order, each a text put in place of another once (an
+/// Edit's, a MultiEdit's, as their input tells them): taken back out of the
+/// file as they left it, the last first, where each text put in is there
+/// once (else what it was is not known).
+final class OriginalByEdits extends FileOriginal {
+  const OriginalByEdits(this.edits);
+
+  final List<({String before, String after})> edits;
+
+  /// The text before them, from [text] as they left it; null where it
+  /// cannot be told.
+  String? undo(String text) {
+    for (final edit in edits.reversed) {
+      if (edit.after.isEmpty) return null;
+      final at = text.indexOf(edit.after);
+      if (at < 0 || text.indexOf(edit.after, at + 1) >= 0) return null;
+      text = text.replaceRange(at, at + edit.after.length, edit.before);
+    }
+    return text;
+  }
+}
+
 /// A file an agent changed, with its line counts.
 class FileChange {
   const FileChange({
