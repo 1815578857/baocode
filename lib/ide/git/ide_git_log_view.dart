@@ -852,14 +852,17 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                     _Sash(
                       vertical: false,
                       color: _border,
-                      onDrag: (delta) => _log.resizeBranchTree(tree + delta),
+                      size: tree,
+                      onResize: _log.resizeBranchTree,
                     ),
                   ],
                   Expanded(child: main),
                   _Sash(
                     vertical: false,
                     color: _border,
-                    onDrag: (delta) => _log.resizeDetails(width: width - delta),
+                    size: width,
+                    after: true,
+                    onResize: (width) => _log.resizeDetails(width: width),
                   ),
                   SizedBox(width: width, child: details),
                 ],
@@ -876,7 +879,9 @@ class IdeGitLogViewState extends State<IdeGitLogView> {
                 _Sash(
                   vertical: true,
                   color: _border,
-                  onDrag: (delta) => _log.resizeDetails(height: height - delta),
+                  size: height,
+                  after: true,
+                  onResize: (height) => _log.resizeDetails(height: height),
                 ),
                 SizedBox(height: height, child: details),
               ],
@@ -4302,53 +4307,113 @@ class _LoadMoreState extends State<_LoadMore> {
 }
 
 /// The line between the table and the details, dragged to size them:
-/// across ([vertical]) where they are one under the other.
+/// across ([vertical]) where they are one under the other. What it sizes
+/// goes by how far the pointer is from where the drag began, so that the
+/// line stays under it, back from past where the size stops too; while
+/// dragged, the cursor is its own over the whole window (VS Code's drag
+/// shield).
 class _Sash extends StatefulWidget {
   const _Sash({
     required this.vertical,
     required this.color,
-    required this.onDrag,
+    required this.size,
+    required this.onResize,
+    this.after = false,
   });
 
   final bool vertical;
   final Color color;
 
-  /// How far it moved, to the right or down, since it was last told.
-  final ValueChanged<double> onDrag;
+  /// The size of what it sizes, now: the part before it, or ([after]) the
+  /// one after it.
+  final double size;
+  final bool after;
+
+  /// What it sizes, sized anew.
+  final ValueChanged<double> onResize;
 
   @override
   State<_Sash> createState() => _SashState();
 }
 
 class _SashState extends State<_Sash> {
-  bool _active = false;
+  bool _hover = false;
+  bool _dragging = false;
+
+  /// Where the drag began, and the size then.
+  double _start = 0;
+  double _startSize = 0;
+
+  OverlayEntry? _shield;
+
+  MouseCursor get _cursor => widget.vertical
+      ? SystemMouseCursors.resizeRow
+      : SystemMouseCursors.resizeColumn;
+
+  double _along(Offset position) => widget.vertical ? position.dy : position.dx;
+
+  void _begin(DragStartDetails details) {
+    _start = _along(details.globalPosition);
+    _startSize = widget.size;
+    setState(() => _dragging = true);
+    if (Overlay.maybeOf(context) case final overlay?) {
+      _shield = OverlayEntry(
+        builder: (context) => MouseRegion(cursor: _cursor, opaque: true),
+      );
+      overlay.insert(_shield!);
+    }
+  }
+
+  void _update(DragUpdateDetails details) {
+    final moved = _along(details.globalPosition) - _start;
+    widget.onResize(_startSize + (widget.after ? -moved : moved));
+  }
+
+  void _end() {
+    _removeShield();
+    if (mounted) setState(() => _dragging = false);
+  }
+
+  void _removeShield() {
+    _shield
+      ?..remove()
+      ..dispose();
+    _shield = null;
+  }
+
+  @override
+  void dispose() {
+    _removeShield();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final vertical = widget.vertical;
+    final active = _hover || _dragging;
     return MouseRegion(
-      cursor: vertical
-          ? SystemMouseCursors.resizeRow
-          : SystemMouseCursors.resizeColumn,
-      onEnter: (_) => setState(() => _active = true),
-      onExit: (_) => setState(() => _active = false),
+      cursor: _cursor,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         dragStartBehavior: DragStartBehavior.down,
-        onVerticalDragUpdate: vertical
-            ? (details) => widget.onDrag(details.delta.dy)
-            : null,
-        onHorizontalDragUpdate: vertical
-            ? null
-            : (details) => widget.onDrag(details.delta.dx),
+        onVerticalDragStart: vertical ? _begin : null,
+        onVerticalDragUpdate: vertical ? _update : null,
+        onVerticalDragEnd: vertical ? (_) => _end() : null,
+        onVerticalDragCancel: vertical ? _end : null,
+        onHorizontalDragStart: vertical ? null : _begin,
+        onHorizontalDragUpdate: vertical ? null : _update,
+        onHorizontalDragEnd: vertical ? null : (_) => _end(),
+        onHorizontalDragCancel: vertical ? null : _end,
         child: SizedBox(
           width: vertical ? null : 5,
           height: vertical ? 5 : null,
           child: Center(
             child: Container(
-              width: vertical ? null : (_active ? 3 : 1),
-              height: vertical ? (_active ? 3 : 1) : null,
-              color: _active ? IdeModernUI.sashHover : widget.color,
+              width: vertical ? null : (active ? 3 : 1),
+              height: vertical ? (active ? 3 : 1) : null,
+              color: active ? IdeModernUI.sashHover : widget.color,
             ),
           ),
         ),
