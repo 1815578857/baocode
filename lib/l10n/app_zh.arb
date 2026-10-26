@@ -3279,5 +3279,17 @@
   "gitAskAiChangesPrompt": "审查我在 {paths} 中还没提交的改动（`git diff HEAD -- {paths}`）：说明它们做了什么，指出有问题的地方。",
   "gitAskAiConflicts": "让 AI 解决冲突",
   "gitAskAiConflictsPrompt": "解决 {paths} 中的合并冲突：保留双方各自的意图，然后告诉我你是怎么取舍的。不要暂存或提交。",
-  "gitLogFixup": "用勾选的改动修正 (Fixup)"
+  "gitLogFixup": "用勾选的改动修正 (Fixup)",
+  "compareWith": "比较",
+  "compareWithClipboard": "剪贴板",
+  "compareWithClipboardLabel": "{name}（剪贴板 \u2194 文件）",
+  "gitCompareWithBranch": "分支或标签…",
+  "gitCompareWithRevision": "某个版本…",
+  "gitCompareWithBranchPlaceholder": "选择要与文件比较的分支或标签",
+  "gitCompareWithRevisionPlaceholder": "选择要比较的文件版本",
+  "gitCompareLabel": "{name}（{other} \u2194 工作区）",
+  "explorerSelectForCompare": "选择以进行比较",
+  "explorerCompareWithSelected": "与“{name}”比较",
+  "explorerCompareSelected": "比较所选文件",
+  "compareFilesLabel": "{original} \u2194 {modified}"
 }

@@ -7976,5 +7976,21 @@
   "gitAskAiConflicts": "Ask AI to Resolve the Conflicts",
   "gitAskAiConflictsPrompt": "Resolve the merge conflicts in {paths}: keep what both sides meant, then tell me what you chose. Don't stage or commit.",
   "@gitAskAiConflictsPrompt": {"placeholders": {"paths": {"type": "String"}}},
-  "gitLogFixup": "Fixup with Checked Changes"
+  "gitLogFixup": "Fixup with Checked Changes",
+  "compareWith": "Compare With",
+  "compareWithClipboard": "Clipboard",
+  "compareWithClipboardLabel": "{name} (Clipboard \u2194 File)",
+  "@compareWithClipboardLabel": {"placeholders": {"name": {"type": "String"}}},
+  "gitCompareWithBranch": "Branch or Tag…",
+  "gitCompareWithRevision": "Revision…",
+  "gitCompareWithBranchPlaceholder": "Select a branch or tag to compare the file with",
+  "gitCompareWithRevisionPlaceholder": "Select a revision of the file to compare it with",
+  "gitCompareLabel": "{name} ({other} \u2194 Working Tree)",
+  "@gitCompareLabel": {"placeholders": {"name": {"type": "String"}, "other": {"type": "String"}}},
+  "explorerSelectForCompare": "Select for Compare",
+  "explorerCompareWithSelected": "Compare with '{name}'",
+  "@explorerCompareWithSelected": {"placeholders": {"name": {"type": "String"}}},
+  "explorerCompareSelected": "Compare Selected",
+  "compareFilesLabel": "{original} \u2194 {modified}",
+  "@compareFilesLabel": {"placeholders": {"original": {"type": "String"}, "modified": {"type": "String"}}}
 }

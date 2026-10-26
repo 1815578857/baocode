@@ -523,6 +523,7 @@ class IdeExplorer extends StatefulWidget {
     this.onOpenInDefaultApp,
     this.onFindInFolder,
     this.onShowHistory,
+    this.onCompareFiles,
     this.onOpenInTerminal,
     this.isBound,
     this.local = true,
@@ -579,6 +580,10 @@ class IdeExplorer extends StatefulWidget {
 
   /// Shows the Git log of a file or folder: Show History.
   final ValueChanged<String>? onShowHistory;
+
+  /// Compares two files, the first's text against the second's (JetBrains'
+  /// Compare Files, VS Code's Compare with Selected).
+  final void Function(String original, String modified)? onCompareFiles;
 
   /// Open in Terminal: opens a terminal in the folder, or in the one
   /// holding the file; null where there are no terminals.
@@ -655,6 +660,9 @@ class IdeExplorerState extends State<IdeExplorer>
       }
     }
   }
+
+  /// The file Select for Compare chose, to compare another with.
+  String? _selectedForCompare;
 
   @override
   void dispose() {
@@ -1880,6 +1888,30 @@ class IdeExplorerState extends State<IdeExplorer>
                   (widget.git != null || widget.repositories.isNotEmpty))
             IdeMenuAction(l10n.gitShowHistory, onSelected: () => show(path)),
         ],
+        if (widget.onCompareFiles case final compare?)
+          [
+            if (targets.length == 2 &&
+                targets.every((target) => !target.isDirectory))
+              IdeMenuAction(
+                l10n.explorerCompareSelected,
+                onSelected: () =>
+                    compare(targets.first.path, targets.last.path),
+              )
+            else if (!isFolder && !multiple) ...[
+              if (_selectedForCompare case final selected?
+                  when selected != path)
+                IdeMenuAction(
+                  l10n.explorerCompareWithSelected(
+                    _controller.paths.basename(selected),
+                  ),
+                  onSelected: () => compare(selected, path),
+                ),
+              IdeMenuAction(
+                l10n.explorerSelectForCompare,
+                onSelected: () => _selectedForCompare = path,
+              ),
+            ],
+          ],
         [
           if (!isRoot) ...[
             IdeMenuAction(

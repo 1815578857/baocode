@@ -82,6 +82,9 @@ typedef IdeEditorPosition = ({
   int selectionLength,
 });
 
+/// What a file is compared with (JetBrains' Compare with…).
+enum IdeCompareWith { branch, revision, clipboard }
+
 /// The Fast IDE editor: the painted Monaco port by default, with the Flutter
 /// TextField kept as a fallback (`--dart-define=BAOCODE_NATIVE_EDITOR=false`).
 class IdeEditor extends StatefulWidget {
@@ -103,6 +106,7 @@ class IdeEditor extends StatefulWidget {
     this.gitBlame = true,
     this.onShowCommit,
     this.onShowHistory,
+    this.onCompare,
     this.keyResolver,
     this.onPaste,
     this.debug,
@@ -146,6 +150,10 @@ class IdeEditor extends StatefulWidget {
   /// Shows the Git log of a file, or of some of its lines (their numbers
   /// at HEAD): Show History, and Show History for Selection.
   final void Function(String path, IdeGitLogLines? lines)? onShowHistory;
+
+  /// Compares a file with a branch or tag, a revision of it or the
+  /// clipboard, in a diff tab (JetBrains' Compare with…).
+  final void Function(String path, IdeCompareWith what)? onCompare;
 
   /// The app's keybindings (the workbench resolves them with its context):
   /// which command a key runs, the editor's own included. Without it the
@@ -1979,6 +1987,30 @@ class IdeEditorState extends State<IdeEditor> {
               IdeMenuAction(
                 l10n.gitShowHistoryForSelection,
                 onSelected: () => showHistory(selection: true),
+              ),
+            if (widget.onCompare case final compare?
+                when widget.active.isFile && widget.active.diff == null)
+              IdeMenuAction(
+                l10n.compareWith,
+                submenu: [
+                  if (canShowHistory) ...[
+                    IdeMenuAction(
+                      l10n.gitCompareWithBranch,
+                      onSelected: () =>
+                          compare(widget.active.path, IdeCompareWith.branch),
+                    ),
+                    IdeMenuAction(
+                      l10n.gitCompareWithRevision,
+                      onSelected: () =>
+                          compare(widget.active.path, IdeCompareWith.revision),
+                    ),
+                  ],
+                  IdeMenuAction(
+                    l10n.compareWithClipboard,
+                    onSelected: () =>
+                        compare(widget.active.path, IdeCompareWith.clipboard),
+                  ),
+                ],
               ),
           ],
           [

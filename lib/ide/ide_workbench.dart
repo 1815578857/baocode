@@ -1733,6 +1733,64 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
 
   /// Show History: the Git log of [path], a file or folder, or of [lines]
   /// of a file; the other filters go, as from a fresh log.
+  /// JetBrains' Compare with Branch…, Compare with Revision… and Compare
+  /// with Clipboard: [path]'s file against what is picked, in a diff tab.
+  Future<void> _compareWith(String path, IdeCompareWith what) async {
+    final l10n = context.l10n;
+    final workspace = widget.workspace;
+    final name = p.basename(path);
+    final git = workspace.gitAt(path);
+    void show(IdeQuickInputModel model) {
+      if (mounted) _showQuickModel(model);
+    }
+
+    try {
+      switch (what) {
+        case IdeCompareWith.clipboard:
+          final text =
+              (await Clipboard.getData(Clipboard.kTextPlain))?.text ?? '';
+          await workspace.openDiff(
+            path,
+            label: l10n.compareWithClipboardLabel(name),
+            original: () async => text,
+          );
+        case IdeCompareWith.branch:
+          if (git == null) return;
+          final ref = await ideGitPickRef(
+            git,
+            show: show,
+            l10n: l10n,
+            placeholder: l10n.gitCompareWithBranchPlaceholder,
+          );
+          if (ref == null) return;
+          await workspace.openDiff(
+            path,
+            label: l10n.gitCompareLabel(name, ref.name),
+            original: () =>
+                git.service.show(ref.name, path).catchError((Object _) => ''),
+          );
+        case IdeCompareWith.revision:
+          if (git == null) return;
+          final commit = await ideGitPickRevision(
+            git,
+            path,
+            show: show,
+            l10n: l10n,
+            placeholder: l10n.gitCompareWithRevisionPlaceholder,
+          );
+          if (commit == null) return;
+          await workspace.openDiff(
+            path,
+            label: l10n.gitCompareLabel(name, commit.shortId),
+            original: () =>
+                git.service.show(commit.id, path).catchError((Object _) => ''),
+          );
+      }
+    } catch (error) {
+      _report(error);
+    }
+  }
+
   void _showHistory(String path, [IdeGitLogLines? lines]) {
     final git = widget.workspace.gitAt(path);
     if (git == null) return;
@@ -4104,6 +4162,17 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                                 ? null
                                 : _openInTerminal,
                             onShowHistory: _showHistory,
+                            onCompareFiles: (original, modified) => unawaited(
+                              widget.workspace.openDiff(
+                                modified,
+                                label: context.l10n.compareFilesLabel(
+                                  p.basename(original),
+                                  p.basename(modified),
+                                ),
+                                original: () =>
+                                    widget.workspace.files.read(original),
+                              ),
+                            ),
                           ),
                   ),
                 IdePane(
@@ -4331,6 +4400,8 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                                 gitBlame: _gitBlame,
                                 onShowCommit: _showCommitInLog,
                                 onShowHistory: _showHistory,
+                                onCompare: (path, what) =>
+                                    unawaited(_compareWith(path, what)),
                                 keyResolver: _resolveEditorKey,
                                 onPaste: _pasteInEditor,
                                 formatOnSave: _formatOnSave,

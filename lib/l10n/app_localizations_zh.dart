@@ -11438,4 +11438,48 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitLogFixup => '用勾选的改动修正 (Fixup)';
+
+  @override
+  String get compareWith => '比较';
+
+  @override
+  String get compareWithClipboard => '剪贴板';
+
+  @override
+  String compareWithClipboardLabel(String name) {
+    return '$name（剪贴板 ↔ 文件）';
+  }
+
+  @override
+  String get gitCompareWithBranch => '分支或标签…';
+
+  @override
+  String get gitCompareWithRevision => '某个版本…';
+
+  @override
+  String get gitCompareWithBranchPlaceholder => '选择要与文件比较的分支或标签';
+
+  @override
+  String get gitCompareWithRevisionPlaceholder => '选择要比较的文件版本';
+
+  @override
+  String gitCompareLabel(String name, String other) {
+    return '$name（$other ↔ 工作区）';
+  }
+
+  @override
+  String get explorerSelectForCompare => '选择以进行比较';
+
+  @override
+  String explorerCompareWithSelected(String name) {
+    return '与“$name”比较';
+  }
+
+  @override
+  String get explorerCompareSelected => '比较所选文件';
+
+  @override
+  String compareFilesLabel(String original, String modified) {
+    return '$original ↔ $modified';
+  }
 }

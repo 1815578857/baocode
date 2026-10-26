@@ -12083,4 +12083,50 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitLogFixup => 'Fixup with Checked Changes';
+
+  @override
+  String get compareWith => 'Compare With';
+
+  @override
+  String get compareWithClipboard => 'Clipboard';
+
+  @override
+  String compareWithClipboardLabel(String name) {
+    return '$name (Clipboard ↔ File)';
+  }
+
+  @override
+  String get gitCompareWithBranch => 'Branch or Tag…';
+
+  @override
+  String get gitCompareWithRevision => 'Revision…';
+
+  @override
+  String get gitCompareWithBranchPlaceholder =>
+      'Select a branch or tag to compare the file with';
+
+  @override
+  String get gitCompareWithRevisionPlaceholder =>
+      'Select a revision of the file to compare it with';
+
+  @override
+  String gitCompareLabel(String name, String other) {
+    return '$name ($other ↔ Working Tree)';
+  }
+
+  @override
+  String get explorerSelectForCompare => 'Select for Compare';
+
+  @override
+  String explorerCompareWithSelected(String name) {
+    return 'Compare with \'$name\'';
+  }
+
+  @override
+  String get explorerCompareSelected => 'Compare Selected';
+
+  @override
+  String compareFilesLabel(String original, String modified) {
+    return '$original ↔ $modified';
+  }
 }

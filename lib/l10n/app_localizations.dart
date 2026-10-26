@@ -19736,6 +19736,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Fixup with Checked Changes'**
   String get gitLogFixup;
+
+  /// No description provided for @compareWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare With'**
+  String get compareWith;
+
+  /// No description provided for @compareWithClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Clipboard'**
+  String get compareWithClipboard;
+
+  /// No description provided for @compareWithClipboardLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (Clipboard ↔ File)'**
+  String compareWithClipboardLabel(String name);
+
+  /// No description provided for @gitCompareWithBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch or Tag…'**
+  String get gitCompareWithBranch;
+
+  /// No description provided for @gitCompareWithRevision.
+  ///
+  /// In en, this message translates to:
+  /// **'Revision…'**
+  String get gitCompareWithRevision;
+
+  /// No description provided for @gitCompareWithBranchPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a branch or tag to compare the file with'**
+  String get gitCompareWithBranchPlaceholder;
+
+  /// No description provided for @gitCompareWithRevisionPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a revision of the file to compare it with'**
+  String get gitCompareWithRevisionPlaceholder;
+
+  /// No description provided for @gitCompareLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} ({other} ↔ Working Tree)'**
+  String gitCompareLabel(String name, String other);
+
+  /// No description provided for @explorerSelectForCompare.
+  ///
+  /// In en, this message translates to:
+  /// **'Select for Compare'**
+  String get explorerSelectForCompare;
+
+  /// No description provided for @explorerCompareWithSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare with \'{name}\''**
+  String explorerCompareWithSelected(String name);
+
+  /// No description provided for @explorerCompareSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare Selected'**
+  String get explorerCompareSelected;
+
+  /// No description provided for @compareFilesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{original} ↔ {modified}'**
+  String compareFilesLabel(String original, String modified);
 }
 
 class _AppLocalizationsDelegate

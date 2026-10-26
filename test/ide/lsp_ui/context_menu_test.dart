@@ -150,6 +150,7 @@ void main() {
       isNotEmpty,
       'Paste',
       isNotEmpty,
+      'Compare With',
       'Command Palette...',
       isNotEmpty,
     ]);
