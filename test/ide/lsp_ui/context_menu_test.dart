@@ -151,6 +151,8 @@ void main() {
       'Paste',
       isNotEmpty,
       'Compare With',
+      'Word Wrap',
+      isNotEmpty,
       'Command Palette...',
       isNotEmpty,
     ]);

@@ -1036,6 +1036,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cmdToggleFullScreen => '切换全屏';
 
   @override
+  String get cmdToggleWordWrap => '切换自动换行';
+
+  @override
+  String get menuWordWrap => '自动换行';
+
+  @override
   String get cmdTogglePanel => '切换面板可见性';
 
   @override
@@ -7094,6 +7100,13 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get appearanceSettingsLigaturesDescription =>
       '字体有对应字形时，把 => 、!= 等组合画成一个字形。终端不使用连字。';
+
+  @override
+  String get appearanceSettingsWordWrap => '自动换行';
+
+  @override
+  String get appearanceSettingsWordWrapDescription =>
+      '长行在编辑器宽度处折行，所有编辑器共用。编辑器右键菜单和命令面板（切换自动换行）也能切换。超过 5000 行的文件不折行。';
 
   @override
   String get appearanceSettingsUiScale => '界面大小';
