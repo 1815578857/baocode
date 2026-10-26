@@ -1083,7 +1083,7 @@ class _SidebarState extends State<Sidebar>
       ),
       for (final host in _workspace.sshHosts)
         SidebarMenuItem(
-          _workspace.hostLabel(host),
+          RemoteLocation.hostName(host),
           leading: _HostIcon(
             workspace: _workspace,
             host: host,
@@ -2511,9 +2511,14 @@ class _GroupHeader extends StatelessWidget {
           content: (context) => Text(
             [
               project.root,
-              context.l10n.remoteProjectTooltip(host),
+              context.l10n.remoteProjectTooltip(
+                RemoteLocation.reachedBy(host),
+                RemoteLocation.hostName(host),
+              ),
               if (failed) ...[
-                context.l10n.remoteStatusTooltipLost(host),
+                context.l10n.remoteStatusTooltipLost(
+                  RemoteLocation.hostName(host),
+                ),
                 ?message,
               ],
             ].join('\n'),

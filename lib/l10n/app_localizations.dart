@@ -12552,32 +12552,32 @@ abstract class AppLocalizations {
   /// No description provided for @remoteStatus.
   ///
   /// In en, this message translates to:
-  /// **'SSH: {host}'**
-  String remoteStatus(String host);
+  /// **'{kind}: {host}'**
+  String remoteStatus(String kind, String host);
 
   /// No description provided for @remoteStatusConnecting.
   ///
   /// In en, this message translates to:
-  /// **'SSH: {host} (connecting...)'**
-  String remoteStatusConnecting(String host);
+  /// **'{kind}: {host} (connecting...)'**
+  String remoteStatusConnecting(String kind, String host);
 
   /// No description provided for @remoteStatusReconnecting.
   ///
   /// In en, this message translates to:
-  /// **'SSH: {host} (reconnecting...)'**
-  String remoteStatusReconnecting(String host);
+  /// **'{kind}: {host} (reconnecting...)'**
+  String remoteStatusReconnecting(String kind, String host);
 
   /// No description provided for @remoteStatusFailed.
   ///
   /// In en, this message translates to:
-  /// **'SSH: {host} (disconnected)'**
-  String remoteStatusFailed(String host);
+  /// **'{kind}: {host} (disconnected)'**
+  String remoteStatusFailed(String kind, String host);
 
   /// No description provided for @remoteStatusInstalling.
   ///
   /// In en, this message translates to:
-  /// **'SSH: {host} (installing Claude Code {percent}%)'**
-  String remoteStatusInstalling(String host, int percent);
+  /// **'{kind}: {host} (installing Claude Code {percent}%)'**
+  String remoteStatusInstalling(String kind, String host, int percent);
 
   /// Shown while Claude Code is put on a remote host where it was not installed, before the agent starts.
   ///
@@ -12606,8 +12606,8 @@ abstract class AppLocalizations {
   /// No description provided for @remoteStatusTooltip.
   ///
   /// In en, this message translates to:
-  /// **'Connected to {host} over SSH'**
-  String remoteStatusTooltip(String host);
+  /// **'Connected to {host} over {kind}'**
+  String remoteStatusTooltip(String kind, String host);
 
   /// No description provided for @remoteStatusTooltipLost.
   ///
@@ -12630,8 +12630,8 @@ abstract class AppLocalizations {
   /// No description provided for @remoteProjectTooltip.
   ///
   /// In en, this message translates to:
-  /// **'On {host}, over SSH'**
-  String remoteProjectTooltip(String host);
+  /// **'On {host}, over {kind}'**
+  String remoteProjectTooltip(String kind, String host);
 
   /// No description provided for @quitConfirmRemote.
   ///
@@ -16724,6 +16724,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The server could not be reached: check the address, port and network.'**
   String get remoteFailUnreachable;
+
+  /// No description provided for @remoteFailWsl.
+  ///
+  /// In en, this message translates to:
+  /// **'WSL could not start this distribution: check that WSL is installed and that the distribution is listed by wsl --list.'**
+  String get remoteFailWsl;
 
   /// No description provided for @channelSetupTitle.
   ///

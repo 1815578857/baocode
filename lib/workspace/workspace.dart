@@ -1460,8 +1460,10 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
   /// Names the user gave SSH hosts, by host.
   final Map<String, String> _hostNames = {};
 
-  /// What the app calls [host]: the name the user gave it, else itself.
-  String hostLabel(String host) => _hostNames[host] ?? host;
+  /// What the app calls [host]: the name the user gave it, else itself (a
+  /// WSL distribution by its name).
+  String hostLabel(String host) =>
+      _hostNames[host] ?? RemoteLocation.hostName(host);
 
   /// Calls [host] [name]; by itself again when null or empty.
   void renameHost(String host, String? name) {

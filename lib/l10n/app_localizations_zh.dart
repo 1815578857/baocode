@@ -7283,28 +7283,28 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String remoteStatus(String host) {
-    return 'SSH: $host';
+  String remoteStatus(String kind, String host) {
+    return '$kind: $host';
   }
 
   @override
-  String remoteStatusConnecting(String host) {
-    return 'SSH: $host（正在连接...）';
+  String remoteStatusConnecting(String kind, String host) {
+    return '$kind: $host（正在连接...）';
   }
 
   @override
-  String remoteStatusReconnecting(String host) {
-    return 'SSH: $host（正在重连...）';
+  String remoteStatusReconnecting(String kind, String host) {
+    return '$kind: $host（正在重连...）';
   }
 
   @override
-  String remoteStatusFailed(String host) {
-    return 'SSH: $host（已断开）';
+  String remoteStatusFailed(String kind, String host) {
+    return '$kind: $host（已断开）';
   }
 
   @override
-  String remoteStatusInstalling(String host, int percent) {
-    return 'SSH: $host（正在安装 Claude Code $percent%）';
+  String remoteStatusInstalling(String kind, String host, int percent) {
+    return '$kind: $host（正在安装 Claude Code $percent%）';
   }
 
   @override
@@ -7328,8 +7328,8 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String remoteStatusTooltip(String host) {
-    return '已通过 SSH 连接到 $host';
+  String remoteStatusTooltip(String kind, String host) {
+    return '已通过 $kind 连接到 $host';
   }
 
   @override
@@ -7346,8 +7346,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get remoteReconnect => '重新连接';
 
   @override
-  String remoteProjectTooltip(String host) {
-    return '位于 $host（通过 SSH）';
+  String remoteProjectTooltip(String kind, String host) {
+    return '位于 $host（通过 $kind）';
   }
 
   @override
@@ -9674,6 +9674,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get remoteFailUnreachable => '连不上服务器：请检查地址、端口和网络。';
+
+  @override
+  String get remoteFailWsl => 'WSL 无法启动这个发行版：请确认已安装 WSL，并且 wsl --list 里有这个发行版。';
 
   @override
   String get channelSetupTitle => '欢迎使用 BaoCode';

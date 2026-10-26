@@ -5495,41 +5495,61 @@
       }
     }
   },
-  "remoteStatus": "SSH: {host}",
+  "remoteStatus": "{kind}: {host}",
   "@remoteStatus": {
     "placeholders": {
+      "kind": {
+        "type": "String",
+        "description": "How the host is reached: SSH, or WSL for a WSL distribution."
+      },
       "host": {
         "type": "String"
       }
     }
   },
-  "remoteStatusConnecting": "SSH: {host} (connecting...)",
+  "remoteStatusConnecting": "{kind}: {host} (connecting...)",
   "@remoteStatusConnecting": {
     "placeholders": {
+      "kind": {
+        "type": "String",
+        "description": "How the host is reached: SSH, or WSL for a WSL distribution."
+      },
       "host": {
         "type": "String"
       }
     }
   },
-  "remoteStatusReconnecting": "SSH: {host} (reconnecting...)",
+  "remoteStatusReconnecting": "{kind}: {host} (reconnecting...)",
   "@remoteStatusReconnecting": {
     "placeholders": {
+      "kind": {
+        "type": "String",
+        "description": "How the host is reached: SSH, or WSL for a WSL distribution."
+      },
       "host": {
         "type": "String"
       }
     }
   },
-  "remoteStatusFailed": "SSH: {host} (disconnected)",
+  "remoteStatusFailed": "{kind}: {host} (disconnected)",
   "@remoteStatusFailed": {
     "placeholders": {
+      "kind": {
+        "type": "String",
+        "description": "How the host is reached: SSH, or WSL for a WSL distribution."
+      },
       "host": {
         "type": "String"
       }
     }
   },
-  "remoteStatusInstalling": "SSH: {host} (installing Claude Code {percent}%)",
+  "remoteStatusInstalling": "{kind}: {host} (installing Claude Code {percent}%)",
   "@remoteStatusInstalling": {
     "placeholders": {
+      "kind": {
+        "type": "String",
+        "description": "How the host is reached: SSH, or WSL for a WSL distribution."
+      },
       "host": {
         "type": "String"
       },
@@ -5579,9 +5599,13 @@
       }
     }
   },
-  "remoteStatusTooltip": "Connected to {host} over SSH",
+  "remoteStatusTooltip": "Connected to {host} over {kind}",
   "@remoteStatusTooltip": {
     "placeholders": {
+      "kind": {
+        "type": "String",
+        "description": "How the host is reached: SSH, or WSL for a WSL distribution."
+      },
       "host": {
         "type": "String"
       }
@@ -5604,9 +5628,13 @@
     }
   },
   "remoteReconnect": "Reconnect",
-  "remoteProjectTooltip": "On {host}, over SSH",
+  "remoteProjectTooltip": "On {host}, over {kind}",
   "@remoteProjectTooltip": {
     "placeholders": {
+      "kind": {
+        "type": "String",
+        "description": "How the host is reached: SSH, or WSL for a WSL distribution."
+      },
       "host": {
         "type": "String"
       }
@@ -7148,6 +7176,7 @@
   "remoteFailHostKey": "The server's key is not known, and your ssh config says not to accept new ones (StrictHostKeyChecking).",
   "remoteFailHostKeyChanged": "The server's key changed since the last connection: it was reinstalled, or someone is in between.",
   "remoteFailUnreachable": "The server could not be reached: check the address, port and network.",
+  "remoteFailWsl": "WSL could not start this distribution: check that WSL is installed and that the distribution is listed by wsl --list.",
   "channelSetupTitle": "Welcome to BaoCode",
   "channelSetupLead": "Finish your first-time setup on baocode.dev. It takes about 10 seconds.",
   "channelSetupStepTitle": "Finish setup in your browser",
