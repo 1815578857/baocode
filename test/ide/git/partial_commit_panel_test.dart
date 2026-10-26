@@ -50,7 +50,7 @@ void main() {
     expect(find.byTooltip('Include This Change in the Commit'), findsOneWidget);
 
     await tester.enterText(inPanel(find.byType(TextField)), 'Part');
-    await tester.tap(inPanel(find.text('Commit')).first);
+    await tester.tap(inPanel(find.text('Commit')).last);
     await tester.pumpAndSettle();
     expect(git.callsTo('read-tree').single, ['read-tree', 'HEAD']);
     expect(git.callsTo('hash-object').single, [

@@ -117,7 +117,7 @@ void main() {
             .last,
         'Feature work',
       );
-      await tester.tap(inPanel(find.text('Commit')).first);
+      await tester.tap(inPanel(find.text('Commit')).last);
       await tester.pumpAndSettle();
       expect(git.callsTo('commit').single, [
         'commit',
