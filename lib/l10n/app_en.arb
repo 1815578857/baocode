@@ -7832,5 +7832,17 @@
   "gitMergeDiscard": "Discard the merge result?",
   "gitMergeDiscardButton": "Discard",
   "gitDiffExcludeChange": "Leave This Change Out of the Commit",
-  "gitDiffIncludeChange": "Include This Change in the Commit"
+  "gitDiffIncludeChange": "Include This Change in the Commit",
+  "gitChangelistActive": "active",
+  "gitChangelistMoveTo": "Move to Another Changelist",
+  "gitChangelistNew": "New Changelist…",
+  "gitChangelistCreate": "Create",
+  "gitChangelistName": "Changelist name",
+  "gitChangelistCommitOnly": "Commit Only This Changelist",
+  "gitChangelistSetActive": "Set Active Changelist",
+  "gitChangelistRename": "Rename Changelist…",
+  "gitChangelistRenameButton": "Rename",
+  "gitChangelistDelete": "Delete Changelist",
+  "gitChangelistTurn": "AI: {request}",
+  "@gitChangelistTurn": {"placeholders": {"request": {"type": "String"}}}
 }

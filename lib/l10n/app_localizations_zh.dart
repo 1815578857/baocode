@@ -11063,4 +11063,39 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitDiffIncludeChange => '提交这处改动';
+
+  @override
+  String get gitChangelistActive => '当前';
+
+  @override
+  String get gitChangelistMoveTo => '移到其他变更列表';
+
+  @override
+  String get gitChangelistNew => '新建变更列表…';
+
+  @override
+  String get gitChangelistCreate => '新建';
+
+  @override
+  String get gitChangelistName => '变更列表名称';
+
+  @override
+  String get gitChangelistCommitOnly => '只提交这个变更列表';
+
+  @override
+  String get gitChangelistSetActive => '设为当前变更列表';
+
+  @override
+  String get gitChangelistRename => '重命名变更列表…';
+
+  @override
+  String get gitChangelistRenameButton => '重命名';
+
+  @override
+  String get gitChangelistDelete => '删除变更列表';
+
+  @override
+  String gitChangelistTurn(String request) {
+    return 'AI：$request';
+  }
 }

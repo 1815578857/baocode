@@ -19064,6 +19064,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Include This Change in the Commit'**
   String get gitDiffIncludeChange;
+
+  /// No description provided for @gitChangelistActive.
+  ///
+  /// In en, this message translates to:
+  /// **'active'**
+  String get gitChangelistActive;
+
+  /// No description provided for @gitChangelistMoveTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to Another Changelist'**
+  String get gitChangelistMoveTo;
+
+  /// No description provided for @gitChangelistNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New Changelist…'**
+  String get gitChangelistNew;
+
+  /// No description provided for @gitChangelistCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get gitChangelistCreate;
+
+  /// No description provided for @gitChangelistName.
+  ///
+  /// In en, this message translates to:
+  /// **'Changelist name'**
+  String get gitChangelistName;
+
+  /// No description provided for @gitChangelistCommitOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit Only This Changelist'**
+  String get gitChangelistCommitOnly;
+
+  /// No description provided for @gitChangelistSetActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Active Changelist'**
+  String get gitChangelistSetActive;
+
+  /// No description provided for @gitChangelistRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename Changelist…'**
+  String get gitChangelistRename;
+
+  /// No description provided for @gitChangelistRenameButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get gitChangelistRenameButton;
+
+  /// No description provided for @gitChangelistDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Changelist'**
+  String get gitChangelistDelete;
+
+  /// No description provided for @gitChangelistTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'AI: {request}'**
+  String gitChangelistTurn(String request);
 }
 
 class _AppLocalizationsDelegate

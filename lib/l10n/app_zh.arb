@@ -3167,5 +3167,16 @@
   "gitMergeDiscard": "放弃这次合并的结果？",
   "gitMergeDiscardButton": "放弃",
   "gitDiffExcludeChange": "这处改动不提交",
-  "gitDiffIncludeChange": "提交这处改动"
+  "gitDiffIncludeChange": "提交这处改动",
+  "gitChangelistActive": "当前",
+  "gitChangelistMoveTo": "移到其他变更列表",
+  "gitChangelistNew": "新建变更列表…",
+  "gitChangelistCreate": "新建",
+  "gitChangelistName": "变更列表名称",
+  "gitChangelistCommitOnly": "只提交这个变更列表",
+  "gitChangelistSetActive": "设为当前变更列表",
+  "gitChangelistRename": "重命名变更列表…",
+  "gitChangelistRenameButton": "重命名",
+  "gitChangelistDelete": "删除变更列表",
+  "gitChangelistTurn": "AI：{request}"
 }

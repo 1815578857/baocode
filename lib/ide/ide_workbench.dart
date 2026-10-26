@@ -70,6 +70,7 @@ import 'git/git_branch_tree.dart' show IdeGitFavoriteBranches;
 import 'git/ide_git_branch_popup.dart';
 import 'git/git_change_editor.dart';
 import 'git/git_checkout.dart';
+import 'git/git_changelists.dart';
 import 'git/git_model.dart';
 import 'git/git_partial.dart' show IdeGitHunkSelection;
 import 'git/git_repository.dart';
@@ -469,6 +470,9 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   /// The changes left unchecked in the Commit panel's diffs.
   final IdeGitHunkSelection _hunks = IdeGitHunkSelection();
 
+  /// The changelists the Commit panel sorts the changes into.
+  final IdeGitChangelists _changelists = IdeGitChangelists();
+
   late IdeScmSession _scm = IdeScmSession(
     settings: widget.settings,
     favoriteBranches: _favoriteBranches,
@@ -716,6 +720,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     _sidebarWidth = size('sidebarWidth') ?? _sidebarWidth;
     _chatWidth = size('chatWidth') ?? _chatWidth;
     _panelHeight = size('panelHeight');
+    _changelists.restore(kept['gitChangelists']);
     if (kept['gitFavoriteBranches'] case final Object json) {
       final favorites = IdeGitFavoriteBranches.fromJson(json);
       _favoriteBranches.restore(favorites);
@@ -765,6 +770,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       if (_markdownSources.isNotEmpty) 'markdownSource': [..._markdownSources],
       if (!_favoriteBranches.isEmpty)
         'gitFavoriteBranches': _favoriteBranches.toJson(),
+      if (_changelists.several) 'gitChangelists': _changelists.toJson(),
       'editors': editors,
       if (editors.contains(active)) 'active': active,
     };
@@ -1114,6 +1120,8 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     }
     _restoreView();
     _favoriteBranches.addListener(_keepViewSoon);
+    _changelists.addListener(_keepViewSoon);
+    widget.agentEdits?.addListener(_assignTurns);
     _attach();
     _lifecycle = AppLifecycleListener(
       onResume: () => unawaited(_git?.refresh()),
@@ -1469,6 +1477,8 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         oldWidget.agentEdits?.open = null;
       }
       widget.agentEdits?.open = _openAgentChange;
+      oldWidget.agentEdits?.removeListener(_assignTurns);
+      widget.agentEdits?.addListener(_assignTurns);
     }
     if (!identical(oldWidget.commands, widget.commands)) {
       _registerCommandKeybindings();
@@ -1500,6 +1510,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     if (widget.agentEdits?.open == _openAgentChange) {
       widget.agentEdits?.open = null;
     }
+    widget.agentEdits?.removeListener(_assignTurns);
     FocusManager.instance.removeEarlyKeyEventHandler(_onChordKey);
     FocusManager.instance.removeLateKeyEventHandler(_onLateKey);
     KeybindingService.instance.removeListener(_keybindingsChanged);
@@ -1534,6 +1545,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     _chatFocus.dispose();
     _favoriteBranches.dispose();
     _hunks.dispose();
+    _changelists.dispose();
     super.dispose();
   }
 
@@ -1778,6 +1790,27 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       resources.indexOf(resource),
       focus: false,
     );
+  }
+
+  /// The agents' changes in a changelist of the turn that made them, named
+  /// after what it was asked (the start of its first line).
+  void _assignTurns() {
+    final edits = widget.agentEdits;
+    if (edits == null || !mounted) return;
+    final turns = <String, ({String request, List<String> paths})>{};
+    for (final edit in edits.turnEdits) {
+      turns
+          .putIfAbsent(edit.turn, () => (request: edit.request, paths: []))
+          .paths
+          .add(edit.path);
+    }
+    final l10n = context.l10n;
+    for (final MapEntry(key: turn, value: (:request, :paths))
+        in turns.entries) {
+      final line = request.trim().split('\n').first.trim();
+      final title = line.length > 40 ? '${line.substring(0, 40)}…' : line;
+      _changelists.assignTurn(turn, l10n.gitChangelistTurn(title), paths);
+    }
   }
 
   /// What was edited in a diff in the Git log's place: into the file's
@@ -3862,6 +3895,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
             : null,
         commitMessage: widget.commitMessage,
         hunks: _hunks,
+        changelists: _changelists,
       ),
     ),
     IdeSideView.debug => switch (_debug) {

@@ -33,6 +33,7 @@ import '../ide_list.dart';
 import '../ide_menu.dart';
 import '../ide_notifications.dart';
 import 'commit_message.dart';
+import 'git_changelists.dart';
 import 'git_model.dart';
 import 'git_partial.dart';
 import 'git_repository.dart';
@@ -58,6 +59,7 @@ class IdeGitCommitPanel extends StatefulWidget {
     this.commitMessage,
     this.onTreeViewChanged,
     this.hunks,
+    this.changelists,
   });
 
   /// The IDE's workspace, or the chat window's side panel's project.
@@ -105,6 +107,9 @@ class IdeGitCommitPanel extends StatefulWidget {
   /// some is committed in part. None offered when null.
   final IdeGitHunkSelection? hunks;
 
+  /// The changelists the changes are sorted into; one list when null.
+  final IdeGitChangelists? changelists;
+
   static const rowHeight = 22.0;
 
   @override
@@ -142,41 +147,59 @@ final class _RepoRow extends _Row {
 }
 
 final class _GroupRow extends _Row {
-  _GroupRow(super.git, this.kind, this.files, super.depth);
+  _GroupRow(super.git, this.kind, this.files, super.depth, {this.list});
 
   final _Kind kind;
+
+  /// The changelist it is, where there are several.
+  final String? list;
 
   @override
   final List<IdeGitResource> files;
 
   @override
-  String get key => 'g:${git.service.root}:${kind.name}';
+  String get key => 'g:${git.service.root}:${_section(kind, list)}';
 }
 
+/// Where in the tree a row is: its kind's group, or a changelist's.
+String _section(_Kind kind, String? list) =>
+    list == null ? kind.name : '${kind.name}:$list';
+
 final class _FolderRow extends _Row {
-  _FolderRow(super.git, this.kind, this.folder, this.files, super.depth);
+  _FolderRow(
+    super.git,
+    this.kind,
+    this.folder,
+    this.files,
+    super.depth, {
+    this.list,
+  });
 
   final _Kind kind;
+  final String? list;
   final IdeScmTreeFolder folder;
 
   @override
   final List<IdeGitResource> files;
 
   @override
-  String get key => 'f:${git.service.root}:${kind.name}:${folder.path}';
+  String get key =>
+      'f:${git.service.root}:${_section(kind, list)}:${folder.path}';
 }
 
 final class _FileRow extends _Row {
-  _FileRow(super.git, this.kind, this.resource, super.depth);
+  _FileRow(super.git, this.kind, this.resource, super.depth, {this.list});
 
   final _Kind kind;
+  final String? list;
   final IdeGitResource resource;
 
   @override
   List<IdeGitResource> get files => [resource];
 
   @override
-  String get key => 'x:${git.service.root}:${kind.name}:${resource.path}';
+  String get key =>
+      'x:${git.service.root}:${_section(kind, list)}:${resource.path}';
 }
 
 class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
@@ -216,6 +239,7 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
     _session.message.addListener(_messageChanged);
     _listFocus.addListener(_rebuild);
     widget.hunks?.addListener(_rebuild);
+    widget.changelists?.addListener(_rebuild);
   }
 
   @override
@@ -231,12 +255,17 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
       oldWidget.hunks?.removeListener(_rebuild);
       widget.hunks?.addListener(_rebuild);
     }
+    if (!identical(oldWidget.changelists, widget.changelists)) {
+      oldWidget.changelists?.removeListener(_rebuild);
+      widget.changelists?.addListener(_rebuild);
+    }
   }
 
   @override
   void dispose() {
     _session.message.removeListener(_messageChanged);
     widget.hunks?.removeListener(_rebuild);
+    widget.changelists?.removeListener(_rebuild);
     _listFocus.dispose();
     _inputFocus.dispose();
     _scroll.dispose();
@@ -342,9 +371,19 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
     };
   }
 
+  /// Checked as the user left it, else as JetBrains IDEs check a change: a
+  /// tracked one, unless it is in a changelist of the user's not active.
   bool _isChecked(IdeGitRepository git, IdeGitResource resource) =>
       _sessionOf(git).included[resource.path] ??
-      resource.status != IdeGitStatus.untracked;
+      (resource.status != IdeGitStatus.untracked &&
+          !_inListAside(resource.path));
+
+  bool _inListAside(String path) {
+    final lists = widget.changelists;
+    if (lists == null || !lists.several) return false;
+    final list = lists.byId(lists.listOf(path));
+    return list != null && list.id != lists.active && !list.turn;
+  }
 
   /// Whether [files] are checked: all (true), none (false), or some (null),
   /// as a file some of whose changes are left out is.
@@ -433,17 +472,19 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
         parent = row.key;
       }
       final byDirectory = _sessionOf(git).treeView;
-      for (final kind in _Kind.values) {
-        final files = changes[kind]!;
-        if (files.isEmpty) continue;
-        final group = _GroupRow(git, kind, files, depth)..parent = parent;
+      void addGroup(_Kind kind, List<IdeGitResource> files, {String? list}) {
+        final group = _GroupRow(git, kind, files, depth, list: list)
+          ..parent = parent;
         rows.add(group);
-        if (_collapsed(git, group.key)) continue;
+        if (_collapsed(git, group.key)) return;
         if (!byDirectory) {
           for (final file in files) {
-            rows.add(_FileRow(git, kind, file, depth + 1)..parent = group.key);
+            rows.add(
+              _FileRow(git, kind, file, depth + 1, list: list)
+                ..parent = group.key,
+            );
           }
-          continue;
+          return;
         }
         void add(List<IdeScmTreeNode> nodes, int depth, String parent) {
           for (final node in nodes) {
@@ -455,13 +496,17 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
                   node,
                   _filesUnder(node),
                   depth,
+                  list: list,
                 )..parent = parent;
                 rows.add(folder);
                 if (!_collapsed(git, folder.key)) {
                   add(node.children, depth + 1, folder.key);
                 }
               case IdeScmTreeFile(:final resource):
-                rows.add(_FileRow(git, kind, resource, depth)..parent = parent);
+                rows.add(
+                  _FileRow(git, kind, resource, depth, list: list)
+                    ..parent = parent,
+                );
             }
           }
         }
@@ -472,8 +517,46 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
           group.key,
         );
       }
+
+      final lists = widget.changelists;
+      for (final kind in _Kind.values) {
+        final files = changes[kind]!;
+        if (kind == _Kind.changes && lists != null && lists.several) {
+          // Each changelist, the user's even when empty.
+          for (final list in lists.lists) {
+            final inList = [
+              for (final file in files)
+                if (lists.listOf(file.path) == list.id) file,
+            ];
+            if (inList.isEmpty && list.turn) continue;
+            addGroup(kind, inList, list: list.id);
+          }
+          continue;
+        }
+        if (files.isEmpty) continue;
+        addGroup(kind, files);
+      }
     }
+    _pruneChangelists(repositories);
     return rows;
+  }
+
+  /// The changelists told which changes there are, once every repository's
+  /// are known: those gone leave their lists.
+  void _pruneChangelists(List<IdeGitRepository> known) {
+    final lists = widget.changelists;
+    if (lists == null || known.length != _repositories.length) return;
+    final changed = {
+      for (final git in known)
+        for (final files in _changesOf(git.state!).values)
+          for (final file in files) file.path,
+    };
+    // After the build: its listeners rebuild.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && identical(widget.changelists, lists)) {
+        lists.prune(changed);
+      }
+    });
   }
 
   static List<IdeGitResource> _filesUnder(IdeScmTreeFolder folder) => [
@@ -1184,12 +1267,20 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
           Text(l10n.gitLogFileCount(row.files.length), style: count),
         ],
       ),
-      _GroupRow(:final kind) => Row(
+      _GroupRow(:final kind, :final list) => Row(
         children: [
+          if (_changelist(list) case IdeGitChangelist(turn: true)) ...[
+            Icon(
+              Codicons.sparkle,
+              size: 14,
+              color: themeColors['textLink.foreground'],
+            ),
+            const SizedBox(width: 4),
+          ],
           Flexible(
             child: Text(
               switch (kind) {
-                _Kind.changes => l10n.gitCommitChanges,
+                _Kind.changes => _changelistName(list),
                 _Kind.unversioned => l10n.gitCommitUnversioned,
                 _Kind.conflicts => l10n.gitCommitConflicts,
               },
@@ -1206,6 +1297,10 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
           ),
           const SizedBox(width: 8),
           Text(l10n.gitLogFileCount(row.files.length), style: count),
+          if (list != null && list == widget.changelists?.active) ...[
+            const SizedBox(width: 6),
+            Text(l10n.gitChangelistActive, style: count),
+          ],
         ],
       ),
       _FolderRow(:final folder) => Row(
@@ -1306,6 +1401,148 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
     );
   }
 
+  IdeGitChangelist? _changelist(String? id) =>
+      id == null ? null : widget.changelists?.byId(id);
+
+  /// A changelist's name: the default list's, Changes, until renamed.
+  String _changelistName(String? id) => switch (_changelist(id)?.name) {
+    final name? when name.isNotEmpty => name,
+    _ => context.l10n.gitCommitChanges,
+  };
+
+  /// [row]'s changelist entries: a change's move to another list (a new one
+  /// too), a list's to make it active, rename or delete it, or commit it
+  /// alone.
+  List<IdeMenuEntry> _changelistMenu(_Row row) {
+    final lists = widget.changelists;
+    if (lists == null) return const [];
+    final l10n = context.l10n;
+    final paths = [
+      for (final file in _checkable(row))
+        if (file.status != IdeGitStatus.untracked) file.path,
+    ];
+    final list = switch (row) {
+      _GroupRow(kind: _Kind.changes, :final list) => list ?? lists.active,
+      _ => null,
+    };
+    final current = switch (row) {
+      _FileRow(:final list) || _FolderRow(:final list) => list,
+      _ => null,
+    };
+    return [
+      if (paths.isNotEmpty && row is! _GroupRow && row is! _RepoRow)
+        IdeMenuAction(
+          l10n.gitChangelistMoveTo,
+          submenu: [
+            for (final other in lists.lists)
+              if (other.id != (current ?? lists.active))
+                IdeMenuAction(
+                  _changelistName(other.id),
+                  onSelected: () => lists.move(paths, other.id),
+                ),
+            const IdeMenuSeparator(),
+            IdeMenuAction(
+              l10n.gitChangelistNew,
+              onSelected: () => unawaited(_newChangelist(paths)),
+            ),
+          ],
+        ),
+      if (list != null) ...[
+        if (lists.several && row.files.isNotEmpty)
+          IdeMenuAction(
+            l10n.gitChangelistCommitOnly,
+            onSelected: () => _commitOnly(row),
+          ),
+        if (lists.several && list != lists.active)
+          IdeMenuAction(
+            l10n.gitChangelistSetActive,
+            onSelected: () => lists.setActive(
+              list,
+              unassigned: [
+                for (final git in _repositories)
+                  for (final file in _toCommitOrNot(git)) file.path,
+              ],
+            ),
+          ),
+        IdeMenuAction(
+          l10n.gitChangelistNew,
+          onSelected: () => unawaited(_newChangelist(const [])),
+        ),
+        if (lists.several) ...[
+          IdeMenuAction(
+            l10n.gitChangelistRename,
+            onSelected: () => unawaited(_renameChangelist(list)),
+          ),
+          if (list != IdeGitChangelists.defaultId)
+            IdeMenuAction(
+              l10n.gitChangelistDelete,
+              onSelected: () => lists.remove(list),
+            ),
+        ],
+      ],
+    ];
+  }
+
+  /// Every tracked change of [git]'s, checked or not.
+  List<IdeGitResource> _toCommitOrNot(IdeGitRepository git) =>
+      switch (git.state) {
+        final state? => _changesOf(state)[_Kind.changes]!,
+        null => const [],
+      };
+
+  /// [row]'s files checked, every other change unchecked: the list's
+  /// commit (an agent's turn's, say).
+  void _commitOnly(_Row row) {
+    final mine = {for (final file in row.files) file.path};
+    setState(() {
+      for (final git in _repositories) {
+        final included = _sessionOf(git).included;
+        final state = git.state;
+        if (state == null) continue;
+        for (final files in _changesOf(state).values) {
+          for (final file in files) {
+            included[file.path] = mine.contains(file.path);
+          }
+        }
+      }
+      _validation = null;
+    });
+    _inputFocus.requestFocus();
+  }
+
+  Future<void> _newChangelist(List<String> paths) async {
+    final l10n = context.l10n;
+    final result = await showIdeInputDialog(
+      context,
+      message: l10n.gitChangelistNew,
+      buttons: [l10n.gitChangelistCreate],
+      inputs: [IdeDialogInput(placeholder: l10n.gitChangelistName)],
+      type: IdeDialogType.question,
+    );
+    final name = result?.values.first.trim() ?? '';
+    if (result?.button != 0 || name.isEmpty) return;
+    widget.changelists?.create(name, paths: paths);
+  }
+
+  Future<void> _renameChangelist(String id) async {
+    final l10n = context.l10n;
+    final result = await showIdeInputDialog(
+      context,
+      message: l10n.gitChangelistRename,
+      buttons: [l10n.gitChangelistRenameButton],
+      inputs: [
+        IdeDialogInput(
+          placeholder: l10n.gitChangelistName,
+          value: _changelistName(id),
+        ),
+      ],
+      type: IdeDialogType.question,
+    );
+    final name = result?.values.first.trim() ?? '';
+    if (result?.button != 0 || name.isEmpty) return;
+    widget.changelists?.rename(id, name);
+  }
+
   Future<void> _menu(BuildContext context, Offset position, _Row row) {
     final l10n = context.l10n;
     final git = row.git;
@@ -1365,6 +1602,7 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
               ),
           ],
         ],
+        _changelistMenu(row),
         [
           if (_checkable(row).isNotEmpty)
             IdeMenuAction(

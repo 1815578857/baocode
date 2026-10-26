@@ -11676,4 +11676,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitDiffIncludeChange => 'Include This Change in the Commit';
+
+  @override
+  String get gitChangelistActive => 'active';
+
+  @override
+  String get gitChangelistMoveTo => 'Move to Another Changelist';
+
+  @override
+  String get gitChangelistNew => 'New Changelist…';
+
+  @override
+  String get gitChangelistCreate => 'Create';
+
+  @override
+  String get gitChangelistName => 'Changelist name';
+
+  @override
+  String get gitChangelistCommitOnly => 'Commit Only This Changelist';
+
+  @override
+  String get gitChangelistSetActive => 'Set Active Changelist';
+
+  @override
+  String get gitChangelistRename => 'Rename Changelist…';
+
+  @override
+  String get gitChangelistRenameButton => 'Rename';
+
+  @override
+  String get gitChangelistDelete => 'Delete Changelist';
+
+  @override
+  String gitChangelistTurn(String request) {
+    return 'AI: $request';
+  }
 }
