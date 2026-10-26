@@ -552,26 +552,90 @@ class IdeGitService {
     return output.exitCode == 0 ? output.stdout.trim() : null;
   }
 
-  /// `git log` of [refs] in topological order, newest first.
+  /// `git log` of [refs] in topological order (by date with [dateOrder]),
+  /// newest first; [filter]'s commits only.
   Future<List<IdeGitCommit>> log({
     List<String> refs = const ['HEAD'],
     int limit = 50,
+    IdeGitLogFilter filter = const IdeGitLogFilter(),
+    bool dateOrder = false,
   }) async {
     await _requireRoot();
     final output = _check(
       await _git([
         'log',
-        '--topo-order',
+        dateOrder ? '--date-order' : '--topo-order',
         '--decorate=full',
         '--format=$ideGitLogFormat',
         '-n',
         '$limit',
+        ...filter.arguments,
         ...refs,
         '--',
       ]),
       'Cannot read the Git history.',
     );
     return parseGitLog(output.stdout);
+  }
+
+  /// The branches, local and remote, that have [commit]
+  /// (`git branch -a --contains`).
+  Future<List<String>> branchesContaining(String commit) async {
+    await _requireRoot();
+    final output = _check(
+      await _git([
+        'branch',
+        '-a',
+        '--contains',
+        commit,
+        '--format=%(refname)',
+      ]),
+      'Cannot read the branches.',
+    );
+    return [
+      for (final line in output.stdout.split('\n'))
+        if (line.trim() case final ref
+            when ref.isNotEmpty && ref != 'refs/remotes/origin/HEAD')
+          ref.startsWith('refs/heads/')
+              ? ref.substring('refs/heads/'.length)
+              : ref.startsWith('refs/remotes/')
+              ? ref.substring('refs/remotes/'.length)
+              : ref,
+    ];
+  }
+
+  /// The lines [commit] added and deleted in each file against its first
+  /// parent (`git show --numstat`), by absolute path; null counts for a
+  /// binary file.
+  Future<Map<String, ({int? added, int? deleted})>> commitStats(
+    String commit,
+  ) async {
+    final top = await _requireRoot();
+    final output = _check(
+      await _git([
+        'show',
+        '--format=',
+        '--numstat',
+        '-z',
+        '--first-parent',
+        '-m',
+        commit,
+      ]),
+      'Cannot read the commit.',
+    );
+    return parseGitNumstat(output.stdout, (relative) {
+      return pathContext.normalize(
+        pathContext.join(top, pathContext.joinAll(relative.split('/'))),
+      );
+    });
+  }
+
+  /// [key]'s value in Git's configuration (`git config --get`); null when
+  /// it has none.
+  Future<String?> config(String key) async {
+    final output = await _git(['config', '--get', key]);
+    final value = output.stdout.trim();
+    return output.exitCode == 0 && value.isNotEmpty ? value : null;
   }
 
   /// The commits that changed [path], following renames.

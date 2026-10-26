@@ -194,7 +194,14 @@ void main() {
       'Push', (tester) async {
     await pumpScm(tester);
     await hover(tester, find.text('Changes').first);
-    await tester.tap(find.byTooltip('More Actions...').first);
+    await tester.tap(
+      find
+          .descendant(
+            of: find.byType(IdeScmView),
+            matching: find.byTooltip('More Actions...'),
+          )
+          .first,
+    );
     await tester.pumpAndSettle();
     for (final item in ['Fetch From All Remotes', 'Pull', 'Push']) {
       expect(find.text(item), findsOneWidget, reason: item);

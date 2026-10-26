@@ -6,7 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:baocode/ide/git/git_model.dart';
 import 'package:baocode/ide/git/git_service.dart';
+import 'package:baocode/ide/git/ide_scm_view.dart';
+import 'package:baocode/ide/ide_code_diff.dart';
 import 'package:baocode/ide/ide_hover.dart';
+import 'package:baocode/ide/ide_input.dart';
 import 'package:baocode/ide/ide_explorer.dart';
 import 'package:baocode/ide/ide_list.dart';
 import 'package:baocode/ide/ide_modern_ui.dart';
@@ -56,6 +59,11 @@ void main() {
   Finder rowOf(String name) =>
       find.ancestor(of: text(name), matching: find.byType(IdeListRow));
 
+  /// The commit message's input, under the local changes' row.
+  final message = find
+      .descendant(of: find.byType(IdeScmView), matching: find.byType(TextField))
+      .first;
+
   Future<void> rightClick(WidgetTester tester, Finder finder) async {
     await tester.tapAt(
       tester.getCenter(finder),
@@ -100,15 +108,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(git.callsTo('init'), hasLength(1));
     expect(find.text('Changes'), findsWidgets);
-    expect(find.text('Graph'), findsOneWidget);
+    expect(find.text('Local Changes (3)'), findsOneWidget);
   });
 
   testWidgets('shows the groups, their counts, letters and the badge', (
     tester,
   ) async {
     await pumpScm(tester);
-    expect(find.text('Source Control'), findsOneWidget);
-    final input = tester.widget<TextField>(find.byType(TextField).first);
+    // The log's first row, the local changes, selected.
+    expect(find.text('Local Changes (3)'), findsOneWidget);
+    final input = tester.widget<TextField>(message);
     expect(input.decoration!.hintText, contains('to commit on "main")'));
 
     expect(find.text('Staged Changes'), findsOneWidget);
@@ -204,7 +213,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Please provide a commit message'), findsOneWidget);
     expect(git.callsTo('commit'), isEmpty);
-    await tester.enterText(find.byType(TextField).first, 'W');
+    await tester.enterText(message, 'W');
     await tester.pumpAndSettle();
     expect(find.text('Please provide a commit message'), findsNothing);
   });
@@ -213,7 +222,7 @@ void main() {
     tester,
   ) async {
     await pumpScm(tester);
-    await tester.enterText(find.byType(TextField).first, 'Fix a bug');
+    await tester.enterText(message, 'Fix a bug');
     git.onCommand = (arguments) {
       if (arguments.first == 'commit') git.status = '## main\x00';
     };
@@ -234,7 +243,7 @@ void main() {
   ) async {
     git.status = '## main\x00 M lib/a.dart\x00?? notes.md\x00';
     await pumpScm(tester);
-    await tester.enterText(find.byType(TextField).first, 'Everything');
+    await tester.enterText(message, 'Everything');
     await tester.tap(find.byTooltip('Commit Changes (Ctrl+Enter)'));
     await tester.pumpAndSettle();
     expect(
@@ -259,7 +268,7 @@ void main() {
   ) async {
     git.status = '## main\x00 M lib/a.dart\x00';
     await pumpScm(tester);
-    await tester.enterText(find.byType(TextField).first, 'Nope');
+    await tester.enterText(message, 'Nope');
     await tester.tap(find.byTooltip('Commit Changes (Ctrl+Enter)'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Never'));
@@ -267,7 +276,7 @@ void main() {
     // Nothing to commit now: the branch's own action takes the button.
     expect(find.byTooltip('Commit Changes (Ctrl+Enter)'), findsNothing);
     expect(find.text('Publish Branch'), findsOneWidget);
-    await tester.tap(find.byType(TextField).first);
+    await tester.tap(message);
     await chord(tester, LogicalKeyboardKey.enter, control: true);
     await tester.pumpAndSettle();
     expect(find.textContaining('no staged changes'), findsNothing);
@@ -369,8 +378,8 @@ void main() {
     ]);
   });
 
-  testWidgets('a resource opens its change; Reveal in Explorer View selects '
-      'it', (tester) async {
+  testWidgets('a resource shows its change in the log; Reveal in Explorer '
+      'View selects it', (tester) async {
     final workspace = await pumpWorkbench(tester, const {
       'lib/a.dart': 'a',
       'lib/staged.dart': 's',
@@ -380,8 +389,18 @@ void main() {
     await showScm(tester);
     await tester.tap(rowOf('a.dart'));
     await tester.pumpAndSettle();
-    expect(workspace.active?.path, inRoot('lib/a.dart'));
-    expect(workspace.active?.title, 'a.dart (Working Tree)');
+    // In the table's place, the editor left as it was.
+    expect(find.byType(IdeCodeDiff), findsOneWidget);
+    expect(workspace.active, isNull);
+    // A step to the next change, and back to the log.
+    expect(find.text('2 / 3'), findsOneWidget);
+    await tester.tap(find.byTooltip('Next File'));
+    await tester.pumpAndSettle();
+    expect(find.text('3 / 3'), findsOneWidget);
+    await tester.tap(find.byTooltip('Back to Log'));
+    await tester.pumpAndSettle();
+    expect(find.byType(IdeCodeDiff), findsNothing);
+    expect(find.text('Local Changes (3)'), findsOneWidget);
 
     await rightClick(tester, rowOf('notes.md'));
     await tester.tap(find.text('Reveal in Explorer View'));
@@ -391,7 +410,25 @@ void main() {
     expect(explorer.controller.selected, inRoot('notes.md'));
   });
 
-  testWidgets('the graph shows commits, references and a commit\'s files', (
+  testWidgets('Open Changes opens the change in the editor, the log left', (
+    tester,
+  ) async {
+    final workspace = await pumpWorkbench(tester, const {
+      'lib/a.dart': 'a',
+      'lib/staged.dart': 's',
+      'notes.md': 'n',
+    }, git: git.repository());
+    await tester.pumpAndSettle();
+    await showScm(tester);
+    await rightClick(tester, rowOf('a.dart'));
+    await tester.tap(find.text('Open Changes'));
+    await tester.pumpAndSettle();
+    expect(workspace.active?.title, 'a.dart (Working Tree)');
+    expect(find.text('Local Changes (3)'), findsNothing);
+    expect(find.text('Explorer'), findsOneWidget);
+  });
+
+  testWidgets('the log shows commits, references and a commit\'s files', (
     tester,
   ) async {
     git.status = '## main\x00';
@@ -401,8 +438,8 @@ void main() {
         '${gitLogRecord('c1', [], 'First', author: 'Grace', refs: 'refs/heads/topic, tag: refs/tags/v0')}';
     git.show['c2'] = 'M\x00lib/a.dart\x00A\x00lib/b.dart\x00';
     await pumpScm(tester, files: const {'lib/a.dart': 'a', 'lib/b.dart': 'b'});
-    expect(find.textContaining('Second', findRichText: true), findsOneWidget);
-    expect(find.textContaining('Grace', findRichText: true), findsOneWidget);
+    expect(find.text('Second'), findsOneWidget);
+    expect(find.text('Grace'), findsOneWidget);
     // Every reference's badge carries its name: HEAD's branch, the other
     // branches and the tags.
     expect(find.text('main'), findsWidgets);
@@ -410,9 +447,14 @@ void main() {
       expect(find.text(name), findsOneWidget, reason: name);
     }
 
-    await tester.tap(find.textContaining('Second', findRichText: true));
+    await tester.tap(find.text('Second'));
     await tester.pumpAndSettle();
-    expect(git.callsTo('show'), hasLength(1));
+    expect(
+      git.callsTo('show').map((call) => call.last),
+      everyElement('c2'),
+    );
+    expect(find.text('commit: c2'), findsOneWidget);
+    expect(find.text('2 files'), findsOneWidget);
     expect(text('b.dart'), findsOneWidget);
     final label = tester.widget<IdeResourceLabel>(
       find.descendant(
@@ -420,93 +462,114 @@ void main() {
         matching: find.byType(IdeResourceLabel),
       ),
     );
-    expect(label.letter, 'A');
+    expect((label.letter, label.description), ('A', 'lib'));
+
     // As a tree: the files under their folder, one level in; the folder
     // closes and opens.
+    await tester.tap(find.text('Tree'));
+    await tester.pumpAndSettle();
     expect(
       tester.getTopLeft(text('b.dart')).dx,
       greaterThan(tester.getTopLeft(text('lib')).dx),
     );
     await tester.tap(rowOf('lib'));
     await tester.pumpAndSettle();
-    expect(text('a.dart'), findsNothing);
     expect(text('b.dart'), findsNothing);
     await tester.tap(rowOf('lib'));
     await tester.pumpAndSettle();
     expect(text('b.dart'), findsOneWidget);
 
-    await tester.tap(find.textContaining('Second', findRichText: true));
+    // The filter keeps the files that match, wildcards or not.
+    await tester.enterText(
+      find.descendant(
+        of: find.ancestor(
+          of: find.text('Filter files (* and ? match any)'),
+          matching: find.byType(IdeInputBox),
+        ),
+        matching: find.byType(TextField),
+      ),
+      'b.*',
+    );
     await tester.pumpAndSettle();
-    expect(text('b.dart'), findsNothing);
-    expect(text('lib'), findsNothing);
+    expect(text('b.dart'), findsOneWidget);
+    expect(text('a.dart'), findsNothing);
+
+    // A file's changes, in the table's place.
+    await tester.tap(rowOf('b.dart'));
+    await tester.pumpAndSettle();
+    expect(find.byType(IdeCodeDiff), findsOneWidget);
   });
 
-  testWidgets('a commit\'s files grow in, and so does a refresh\'s new '
-      'commit', (tester) async {
+  testWidgets('a refresh shows a new commit', (tester) async {
     git.status = '## main\x00';
     git.refs['HEAD'] = 'c2';
     git.log =
         '${gitLogRecord('c2', ['c1'], 'Second', refs: 'HEAD -> refs/heads/main')}\n'
         '${gitLogRecord('c1', [], 'First')}';
-    git.show['c2'] = 'M\x00lib/a.dart\x00A\x00lib/b.dart\x00';
-    await pumpScm(tester, files: const {'lib/a.dart': 'a', 'lib/b.dart': 'b'});
-    double height(String key) =>
-        tester.getSize(find.byKey(ValueKey(key)).first).height;
-
-    await tester.tap(find.textContaining('Second', findRichText: true));
-    await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 60));
-    final file = 'file:c2:${inRoot('lib/b.dart')}';
-    expect(height(file), greaterThan(0));
-    expect(height(file), lessThan(IdeListColors.rowHeight));
-    await tester.pumpAndSettle();
-    expect(height(file), IdeListColors.rowHeight);
-
+    await pumpScm(tester);
+    expect(find.text('Third'), findsNothing);
     git.refs['HEAD'] = 'c3';
     git.log =
         '${gitLogRecord('c3', ['c2'], 'Third', refs: 'HEAD -> refs/heads/main')}\n'
         '${gitLogRecord('c2', ['c1'], 'Second')}\n'
         '${gitLogRecord('c1', [], 'First')}';
-    await hover(tester, find.text('Graph'));
-    await tester.tap(find.byTooltip('Refresh').last);
-    await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 60));
-    expect(height('commit:c3'), greaterThan(0));
-    expect(height('commit:c3'), lessThan(IdeListColors.rowHeight));
+    await tester.tap(find.byTooltip('More Actions...').first);
     await tester.pumpAndSettle();
-    expect(height('commit:c3'), IdeListColors.rowHeight);
+    await tester.tap(find.text('Refresh').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Third'), findsOneWidget);
   });
 
-  testWidgets('the graph shows all branches when asked, the current one '
-      'again after', (tester) async {
+  testWidgets('the log shows all branches, or the current one, or those '
+      'filtered', (tester) async {
     git.status = '## main\x00';
     git.refs['HEAD'] = 'c2';
-    git.log =
-        '${gitLogRecord('c2', ['c1'], 'On main', refs: 'HEAD -> refs/heads/main')}\n'
-        '${gitLogRecord('c1', [], 'First')}';
-    await pumpScm(tester);
-    List<String> lastLog() => git.callsTo('log').last;
-    expect(lastLog(), isNot(contains('--branches')));
-
+    git.forEachRef = gitRefRecord('refs/heads/feature', 'f' * 40);
     git.log =
         '${gitLogRecord('f1', ['c1'], 'On feature', refs: 'refs/heads/feature')}\n'
         '${gitLogRecord('c2', ['c1'], 'On main', refs: 'HEAD -> refs/heads/main')}\n'
         '${gitLogRecord('c1', [], 'First')}';
-    await hover(tester, find.text('Graph'));
-    await tester.tap(find.byTooltip('Branches Shown'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('All Branches'));
-    await tester.pumpAndSettle();
+    await pumpScm(tester);
+    List<String> lastLog() => git.callsTo('log').last;
     expect(lastLog(), containsAllInOrder(['HEAD', '--branches', '--remotes']));
-    expect(find.byKey(const ValueKey('commit:f1')), findsWidgets);
+    expect(find.text('On feature'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Branches Shown'));
+    await tester.tap(find.text('All Branches'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Current Branch'));
     await tester.pumpAndSettle();
     expect(lastLog(), isNot(contains('--branches')));
+
+    await tester.tap(find.text('Current Branch'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Local Branches'));
+    await tester.pumpAndSettle();
+    // The menu's, over the badge's.
+    await tester.tap(find.text('feature').last);
+    await tester.pumpAndSettle();
+    expect(lastLog(), containsAllInOrder(['refs/heads/feature', '--']));
+
+    // A message's terms, any of them; then the filters cleared.
+    await tester.enterText(
+      find.descendant(
+        of: find.ancestor(
+          of: find.text('Search messages; separate several with |'),
+          matching: find.byType(IdeInputBox),
+        ),
+        matching: find.byType(TextField),
+      ),
+      'fix | feat',
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(
+      lastLog(),
+      containsAll(['-i', '--fixed-strings', '--grep=fix', '--grep=feat']),
+    );
+    await tester.tap(find.byTooltip('Clear Filters'));
+    await tester.pumpAndSettle();
+    expect(lastLog(), isNot(contains('--grep=fix')));
+    expect(lastLog(), contains('--branches'));
   });
 
   testWidgets('Undo Last Commit restores its message to the input', (
@@ -517,14 +580,19 @@ void main() {
     git.log = gitLogRecord('c2', ['c1'], 'Oops\n\nDetails');
     await pumpScm(tester);
     await hover(tester, find.text('Changes').first);
-    await tester.tap(find.byTooltip('More Actions...').first);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(IdeScmView),
+        matching: find.byTooltip('More Actions...'),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Commit').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Undo Last Commit'));
     await tester.pumpAndSettle();
     expect(git.callsTo('reset').single, ['reset', '--soft', 'HEAD~']);
-    final input = tester.widget<TextField>(find.byType(TextField).first);
+    final input = tester.widget<TextField>(message);
     expect(input.controller!.text, 'Oops\n\nDetails');
   });
 

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:baocode/ide/git/repository_scan.dart';
 import 'package:baocode/ide/ide_list.dart';
+import 'package:baocode/ide/ide_status_bar.dart';
 import 'package:baocode/ide/ide_workspace.dart';
 
 import '../git/fake_git.dart';
@@ -145,9 +146,14 @@ void main() {
     );
 
     // The one clicked is the one shown (the status bar's branch).
-    expect(find.text('dev'), findsNothing);
+    expect(_statusBar('dev'), findsNothing);
     await tester.tap(appHeader);
     await tester.pumpAndSettle();
-    expect(find.text('dev'), findsOneWidget);
+    expect(_statusBar('dev'), findsOneWidget);
   });
 }
+
+/// [text] in the status bar (the branch of the repository shown), not the
+/// Git log's.
+Finder _statusBar(String text) =>
+    find.descendant(of: find.byType(IdeStatusBar), matching: find.text(text));

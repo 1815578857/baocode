@@ -12,6 +12,7 @@ import 'package:baocode/chat/side_panel/side_panel_controller.dart';
 import 'package:baocode/chat/side_panel/side_panel_view.dart';
 import 'package:baocode/ide/file_service.dart';
 import 'package:baocode/ide/git/git_repository.dart';
+import 'package:baocode/ide/git/ide_scm_view.dart';
 import 'package:baocode/ide/git/repository_scan.dart';
 import 'package:baocode/ide/ide_explorer.dart';
 import 'package:baocode/ide/ide_list.dart';
@@ -139,6 +140,11 @@ Finder get _list => find.byKey(const ValueKey('side-panel-list'));
 Finder _inList(String text) =>
     find.descendant(of: _list, matching: find.text(text));
 
+/// [text] in the changes page's local changes (the Source Control view's
+/// CHANGES, under the Git log's first row).
+Finder _inChanges(String text) =>
+    find.descendant(of: find.byType(IdeScmView), matching: find.text(text));
+
 void main() {
   testWidgets('the file tree preview responds to code size, not interface '
       'size', (tester) async {
@@ -236,14 +242,14 @@ void main() {
       section: SidePanelSection.changes,
       repositories: repositories,
     );
-    // Each under its header, with its branch, and all their changes (the
-    // graph's description names the one shown too).
-    expect(_inList('site'), findsNWidgets(2));
-    expect(_inList('api'), findsOneWidget);
-    expect(_inList('main*'), findsOneWidget);
-    expect(_inList('dev*'), findsOneWidget);
+    // Each under its header, with its branch, and all their changes, as
+    // the local changes' details of the Git log.
+    expect(_inChanges('site'), findsOneWidget);
+    expect(_inChanges('api'), findsOneWidget);
+    expect(_inChanges('main*'), findsOneWidget);
+    expect(_inChanges('dev*'), findsOneWidget);
     for (final name in ['index.html', 'main.go', 'new.go']) {
-      expect(_inList(name), findsOneWidget, reason: name);
+      expect(_inChanges(name), findsOneWidget, reason: name);
     }
     // The page's tab counts every repository's.
     expect(
@@ -255,8 +261,8 @@ void main() {
       ),
       findsOneWidget,
     );
-    // A header clicked: its repository the one shown (the graph's).
-    await tester.tap(_inList('api'));
+    // A header clicked: its repository the one shown (the log's).
+    await tester.tap(_inChanges('api'));
     await tester.pumpAndSettle();
     expect(panel.repositoryOf(session.root!), _api);
   });
@@ -291,7 +297,7 @@ void main() {
       ),
     );
     Future<void> menuOf(String name) async {
-      await tester.tap(_inList(name), buttons: kSecondaryButton);
+      await tester.tap(_inChanges(name), buttons: kSecondaryButton);
       await tester.pumpAndSettle();
     }
 
@@ -334,7 +340,7 @@ void main() {
         (_api, nestedGit),
       ]),
     );
-    expect(_inList('new.go'), findsOneWidget);
+    expect(_inChanges('new.go'), findsOneWidget);
     expect(find.textContaining('doesn\'t have a Git repository'), findsNothing);
   });
 

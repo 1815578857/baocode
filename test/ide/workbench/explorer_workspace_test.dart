@@ -10,6 +10,7 @@ import 'package:baocode/ide/file_service.dart' show IdeFileListing;
 import 'package:baocode/ide/ide_explorer.dart';
 import 'package:baocode/ide/ide_list.dart';
 import 'package:baocode/ide/ide_quick_open.dart';
+import 'package:baocode/ide/ide_status_bar.dart';
 import 'package:baocode/ide/ide_workbench.dart';
 import 'package:baocode/ide/search/text_search.dart';
 import 'package:baocode/theme/codicons.dart';
@@ -137,15 +138,15 @@ void main() {
     expect(find.text('Repositories'), findsNothing);
     expect(find.text('main*'), findsOneWidget);
     expect(find.text('dev*'), findsOneWidget);
-    expect(find.text('main'), findsOneWidget);
+    expect(_statusBar('main'), findsOneWidget);
     expect(find.text('index.html'), findsWidgets);
     expect(find.text('new.go'), findsOneWidget);
 
     // The one clicked is the one shown.
     await tester.tap(find.byKey(ValueKey('repo:${inRoot('api')}')).first);
     await tester.pumpAndSettle();
-    expect(find.text('dev'), findsOneWidget);
-    expect(find.text('main'), findsNothing);
+    expect(_statusBar('dev'), findsOneWidget);
+    expect(_statusBar('main'), findsNothing);
   });
 
   test('Search runs in each folder, as one search', () async {
@@ -187,3 +188,8 @@ void main() {
     expect(index.relativePaths, ['api/main.go', 'site/index.html']);
   });
 }
+
+/// [text] in the status bar (the branch of the repository shown), not the
+/// Git log's.
+Finder _statusBar(String text) =>
+    find.descendant(of: find.byType(IdeStatusBar), matching: find.text(text));

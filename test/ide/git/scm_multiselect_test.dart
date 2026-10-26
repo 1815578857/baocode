@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:baocode/ide/ide_code_diff.dart';
 import 'package:baocode/ide/ide_list.dart';
 import 'package:baocode/ide/ide_workspace.dart';
 
@@ -82,7 +83,10 @@ void main() {
     await click(tester, 'a.dart');
     await click(tester, 'notes.md', holding: LogicalKeyboardKey.controlLeft);
     expect(selectedOf(tester), {'a.dart', 'notes.md'});
-    expect(workspace.active?.path, inRoot('lib/a.dart'));
+    // The click showed a.dart's change in the log's place, not the
+    // editor's.
+    expect(find.byType(IdeCodeDiff), findsOneWidget);
+    expect(workspace.active, isNull);
 
     await rightClick(tester, 'notes.md');
     expect(find.text('Reveal in Explorer View'), findsNothing);

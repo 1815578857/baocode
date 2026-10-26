@@ -1598,12 +1598,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sidePanelChanges => '变更';
 
   @override
-  String get sidePanelNoChanges => '还没有变更';
-
-  @override
-  String get sidePanelNoChangesDetail => '项目 Git 工作区和暂存区的变更会显示在这里。';
-
-  @override
   String get sidePanelOpenFile => '在侧栏中打开';
 
   @override
@@ -1647,9 +1641,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sidePanelSelectFile => '选择一个文件以预览';
-
-  @override
-  String get sidePanelSelectChange => '选择一个变更的文件以查看差异';
 
   @override
   String get sidePanelSelectTerminal => '选择一个后台任务以查看输出';
@@ -10183,4 +10174,140 @@ class AppLocalizationsZh extends AppLocalizations {
   String stashDeleteAndCloseMany(int count) {
     return '删除并关闭 $count 个 issue…';
   }
+
+  @override
+  String get gitLogRepository => '仓库';
+
+  @override
+  String get gitLogSearch => '搜索提交信息，多个用 | 分隔';
+
+  @override
+  String get gitLogClearSearch => '清除搜索';
+
+  @override
+  String get gitLogUser => '用户';
+
+  @override
+  String get gitLogAllUsers => '所有用户';
+
+  @override
+  String get gitLogMe => '我';
+
+  @override
+  String get gitLogDate => '日期';
+
+  @override
+  String get gitLogAnyDate => '不限';
+
+  @override
+  String get gitLogLastDay => '最近 24 小时';
+
+  @override
+  String get gitLogLastWeek => '最近 7 天';
+
+  @override
+  String get gitLogLastMonth => '最近 30 天';
+
+  @override
+  String get gitLogLastYear => '最近一年';
+
+  @override
+  String get gitLogHighlight => '高亮提交';
+
+  @override
+  String get gitLogHighlightNone => '不高亮';
+
+  @override
+  String get gitLogHighlightMine => '我的提交';
+
+  @override
+  String get gitLogClearFilters => '清除筛选';
+
+  @override
+  String get gitLogCheckout => '签出到...';
+
+  @override
+  String get gitLogSortTopo => '按拓扑顺序';
+
+  @override
+  String get gitLogSortDate => '按日期顺序';
+
+  @override
+  String get gitLogLocalBranches => '本地分支';
+
+  @override
+  String get gitLogRemoteBranches => '远程分支';
+
+  @override
+  String get gitLogTags => '标签';
+
+  @override
+  String get gitLogBackToLog => '返回日志';
+
+  @override
+  String get gitLogNoCommits => '没有符合条件的提交。';
+
+  @override
+  String get gitLogLocalChanges => '本地更改';
+
+  @override
+  String gitLogLocalChangesCount(int count) {
+    return '本地更改（$count）';
+  }
+
+  @override
+  String get gitLogSelectCommit => '选择一个提交以查看详情。';
+
+  @override
+  String get gitLogAuthor => '作者';
+
+  @override
+  String get gitLogParents => '父提交：';
+
+  @override
+  String get gitLogShowBranches => '显示分支';
+
+  @override
+  String get gitLogHideBranches => '隐藏分支';
+
+  @override
+  String get gitLogShowSizes => '显示大小';
+
+  @override
+  String get gitLogHideSizes => '隐藏大小';
+
+  @override
+  String gitLogFileCount(int count) {
+    return '$count 个文件';
+  }
+
+  @override
+  String get gitLogInNoBranch => '没有分支包含此提交。';
+
+  @override
+  String get gitLogList => '列表';
+
+  @override
+  String get gitLogTree => '树形';
+
+  @override
+  String get gitLogFilterFiles => '筛选文件，支持 * 和 ? 通配符';
+
+  @override
+  String get gitLogCopyPath => '复制路径';
+
+  @override
+  String get gitLogCopyRelativePath => '复制相对路径';
+
+  @override
+  String get gitLogBinary => '二进制';
+
+  @override
+  String get gitLogPreviousFile => '上一个文件';
+
+  @override
+  String get gitLogNextFile => '下一个文件';
+
+  @override
+  String get gitLogOpenInEditor => '在编辑器中打开';
 }

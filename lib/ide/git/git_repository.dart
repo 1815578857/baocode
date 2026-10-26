@@ -20,6 +20,9 @@ import 'package:flutter/foundation.dart';
 import 'git_model.dart';
 import 'git_service.dart';
 
+/// [IdeGitRepository.graphBranch] for the current branch and its upstream.
+const ideGraphCurrentBranch = 'HEAD';
+
 class IdeGitRepository extends ChangeNotifier {
   IdeGitRepository(
     this.service, {
@@ -381,14 +384,38 @@ class IdeGitRepository extends ChangeNotifier {
   /// Whether older commits can be loaded ([loadMoreGraph]).
   bool get graphHasMore => _graphHasMore;
 
-  /// Whether the graph has every branch's commits, local and remote, not
-  /// only the current branch's and its upstream's.
-  bool get graphAllBranches => _graphAllBranches;
-  bool _graphAllBranches = false;
-  set graphAllBranches(bool value) {
-    if (value == _graphAllBranches) return;
-    _graphAllBranches = value;
-    // After a load that started with the other refs, another.
+  /// Whose commits the graph has: every branch's, local and remote (null);
+  /// the current branch's and its upstream's ([ideGraphCurrentBranch]);
+  /// or one branch's, by its ref (`refs/heads/main`).
+  String? get graphBranch => _graphBranch;
+  String? _graphBranch;
+  set graphBranch(String? value) {
+    if (value == _graphBranch) return;
+    _graphBranch = value;
+    _reloadGraphFor();
+  }
+
+  /// Which of their commits it has.
+  IdeGitLogFilter get graphFilter => _graphFilter;
+  IdeGitLogFilter _graphFilter = const IdeGitLogFilter();
+  set graphFilter(IdeGitLogFilter value) {
+    if (value == _graphFilter) return;
+    _graphFilter = value;
+    _reloadGraphFor();
+  }
+
+  /// Newest first by date rather than in topological order.
+  bool get graphDateOrder => _graphDateOrder;
+  bool _graphDateOrder = false;
+  set graphDateOrder(bool value) {
+    if (value == _graphDateOrder) return;
+    _graphDateOrder = value;
+    _reloadGraphFor();
+  }
+
+  /// Loads the graph again for what it now has: after a load that started
+  /// with the others, another.
+  void _reloadGraphFor() {
     _graphStale = true;
     unawaited(_graphLoad ?? _reloadGraph());
     _notify();
@@ -428,10 +455,14 @@ class IdeGitRepository extends ChangeNotifier {
           ? await service.mergeBase(headRevision, remoteRevision)
           : null;
       final commits = await service.log(
-        refs: _graphAllBranches
-            ? const ['HEAD', '--branches', '--remotes']
-            : ['HEAD', ?remoteRef],
+        refs: switch (_graphBranch) {
+          null => const ['HEAD', '--branches', '--remotes'],
+          ideGraphCurrentBranch => ['HEAD', ?remoteRef],
+          final ref => [ref],
+        },
         limit: _graphLimit + 1,
+        filter: _graphFilter,
+        dateOrder: _graphDateOrder,
       );
       if (_disposed) return;
       _graphHasMore = commits.length > _graphLimit;
@@ -461,6 +492,20 @@ class IdeGitRepository extends ChangeNotifier {
 
   Future<List<IdeGitCommitChange>> commitChanges(String commit) =>
       service.commitChanges(commit);
+
+  /// The lines [commit] added and deleted in each of its files.
+  Future<Map<String, ({int? added, int? deleted})>> commitStats(
+    String commit,
+  ) => service.commitStats(commit);
+
+  /// The branches that have [commit].
+  Future<List<String>> branchesContaining(String commit) =>
+      service.branchesContaining(commit);
+
+  /// The user's email as Git commits with it (`user.email`), read once.
+  Future<String?> get userEmail =>
+      _userEmail ??= service.config('user.email').catchError((Object _) => null);
+  Future<String?>? _userEmail;
 
   void _notify() {
     if (!_disposed) notifyListeners();

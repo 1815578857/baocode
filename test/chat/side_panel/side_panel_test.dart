@@ -1109,7 +1109,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('More Actions...').first);
+    await tester.tap(
+      find
+          .descendant(of: list, matching: find.byTooltip('More Actions...'))
+          .first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('View & Sort'));
     await tester.pumpAndSettle();
@@ -1237,10 +1241,8 @@ void main() {
     expect(find.text('Collapse All'), findsNothing);
   });
 
-  testWidgets('under the changes, the Source Control view\'s graph: a '
-      'commit\'s files show once it is tapped, and a file opens', (
-    tester,
-  ) async {
+  testWidgets('the changes page is the Git log: a commit tapped shows its '
+      'files, and a file its changes in the log\'s place', (tester) async {
     final fake = FakeGit('/p')
       ..status = '## main\x00 M lib/main.dart\x00'
       ..log =
@@ -1248,6 +1250,8 @@ void main() {
           '${gitLogRecord('c1', [], 'First')}';
     fake.refs['HEAD'] = 'c2';
     fake.show['c2'] = 'M\x00lib/main.dart\x00';
+    fake.show['c1:lib/main.dart'] = 'first\n';
+    fake.show['c2:lib/main.dart'] = 'second\n';
     final git = fake.repository();
     addTearDown(git.dispose);
     final (:panel, :session, files: _) = await _pumpChat(
@@ -1257,35 +1261,38 @@ void main() {
     );
     panel.showSection(session, SidePanelSection.changes);
     await tester.pumpAndSettle();
-    expect(find.text('Graph'), findsOneWidget);
-    final second = find.textContaining('Second', findRichText: true);
-    expect(second, findsOneWidget);
-    expect(find.textContaining('First', findRichText: true), findsOneWidget);
-    const file = ValueKey('file:c2:/p/lib/main.dart');
-    expect(find.byKey(file), findsNothing);
+    // The local changes first, selected: their commit box and groups.
+    expect(find.text('Local Changes (1)'), findsOneWidget);
+    expect(find.byType(IdeScmView), findsOneWidget);
+    expect(find.text('Second'), findsOneWidget);
+    expect(find.text('First'), findsOneWidget);
 
-    await tester.tap(second);
+    await tester.tap(find.text('Second'));
     await tester.pumpAndSettle();
-    // Under its folder, lib.
-    expect(find.byKey(const ValueKey('folder:c2:/p/lib')), findsOneWidget);
-    final changes = find.byKey(file).first;
-    expect(tester.getSize(changes).height, IdeListColors.rowHeight);
-    await tester.tap(
-      find
-          .descendant(
-            of: changes,
-            matching: find.byWidgetPredicate(
-              (widget) =>
-                  widget is IdeResourceLabel && widget.name == 'main.dart',
-            ),
-          )
-          .first,
+    expect(find.text('commit: c2'), findsOneWidget);
+    final file = find.byWidgetPredicate(
+      (widget) => widget is IdeResourceLabel && widget.name == 'main.dart',
     );
+    await tester.tap(file.last);
     await tester.pumpAndSettle();
-    expect(
-      [for (final tab in panel.tabsOf(session).files) tab.path],
-      ['/p/lib/main.dart'],
+    final tab = panel.tabsOf(session).activeDiff!;
+    expect(tab.path, '/p/lib/main.dart');
+    expect(tab.request.readOnly, isTrue);
+    final diff = tester.widget<IdeCodeDiff>(
+      find.descendant(
+        of: find.byType(FilePreview),
+        matching: find.byType(IdeCodeDiff),
+      ),
     );
+    expect((diff.original, diff.modified), ('first\n', 'second\n'));
+
+    // Back to the log, the change's tab kept.
+    await tester.tap(find.byTooltip('Back to Log'));
+    await tester.pumpAndSettle();
+    expect(panel.tabsOf(session).activeDiff, isNull);
+    expect(panel.tabsOf(session).diffs, hasLength(1));
+    // In the table, and as the message of the commit still selected.
+    expect(find.text('Second'), findsNWidgets(2));
   });
 
   testWidgets('the changes page is the Source Control view: a message '

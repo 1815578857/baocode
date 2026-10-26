@@ -528,6 +528,15 @@ class AgentSidePanel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The changes page's Git log for [conversation], its changes open kept
+  /// behind it.
+  void showLog(Object conversation) {
+    final tabs = tabsOf(conversation);
+    if (tabs.activeDiff == null) return;
+    tabs.activeDiff = null;
+    notifyListeners();
+  }
+
   /// Keeps [edit], its file's text as edited, with [tab] until it closes;
   /// its tab shows whether it has unsaved changes.
   void keepEdit(SidePanelTab tab, SidePanelFileEdit edit) {

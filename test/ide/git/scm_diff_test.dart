@@ -4,14 +4,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bao_editor/monaco/flutter/diff_editor.dart';
 import 'package:bao_editor/monaco/flutter/editor_surface.dart';
 import 'package:baocode/ide/git/git_repository.dart';
+import 'package:baocode/ide/git/ide_scm_view.dart';
 import 'package:baocode/ide/ide_list.dart';
 import 'package:baocode/ide/ide_workspace.dart';
 
 import '../workbench/fake_files.dart';
 import 'fake_git.dart';
 
-/// A Source Control change opens as VS Code's Git extension opens it: a
-/// diff editor of its two sides, or its one side, against a fake Git.
+/// A Source Control change opened in the editor (Open Changes) opens as VS
+/// Code's Git extension opens it: a diff editor of its two sides, or its
+/// one side, against a fake Git.
 void main() {
   late FakeGit git;
   late IdeGitRepository repository;
@@ -69,12 +71,17 @@ void main() {
     matching: find.byType(IdeListRow),
   );
 
-  Future<void> open(WidgetTester tester, String name) async {
-    await tester.tap(rowOf(name));
+  /// Source Control, shown again where an editor opened from it took its
+  /// place.
+  Future<void> showScm(WidgetTester tester) async {
+    if (find.byType(IdeScmView).evaluate().isNotEmpty) return;
+    await chord(tester, LogicalKeyboardKey.keyG, control: true, shift: true);
     await settle(tester);
   }
 
+
   Future<void> menu(WidgetTester tester, String name, String action) async {
+    await showScm(tester);
     await tester.tapAt(
       tester.getCenter(rowOf(name)),
       buttons: kSecondaryMouseButton,
@@ -84,6 +91,11 @@ void main() {
     await tester.tap(find.text(action));
     await settle(tester);
   }
+
+  /// Opens [name]'s change in the editor (Open Changes): a click shows it
+  /// in the Git log's place.
+  Future<void> open(WidgetTester tester, String name) =>
+      menu(tester, name, 'Open Changes');
 
   EditorSurface surface(WidgetTester tester, {required bool original}) => tester
       .widgetList<EditorSurface>(find.byType(EditorSurface))

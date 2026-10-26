@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:baocode/ide/git/commit_message.dart';
+import 'package:baocode/ide/git/ide_scm_view.dart';
 import 'package:baocode/ide/ide_input.dart';
 
 import '../workbench/fake_files.dart';
@@ -151,7 +152,14 @@ void main() {
     }
 
     String input(WidgetTester tester) => tester
-        .widget<IdeInputBox>(find.byType(IdeInputBox).first)
+        .widget<IdeInputBox>(
+          find
+              .descendant(
+                of: find.byType(IdeScmView),
+                matching: find.byType(IdeInputBox),
+              )
+              .first,
+        )
         .controller
         .text;
 
@@ -183,7 +191,15 @@ void main() {
     testWidgets('clicking again cancels, keeping the input', (tester) async {
       reply = Completer<String>();
       await pumpScm(tester);
-      await tester.enterText(find.byType(EditableText).first, 'draft');
+      await tester.enterText(
+        find
+            .descendant(
+              of: find.byType(IdeScmView),
+              matching: find.byType(EditableText),
+            )
+            .first,
+        'draft',
+      );
       await tester.tap(find.byTooltip('Generate Commit Message'));
       await tester.pump();
       await tester.tap(find.byTooltip('Cancel Generating Commit Message'));

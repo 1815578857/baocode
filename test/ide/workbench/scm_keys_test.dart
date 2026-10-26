@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:baocode/ide/git/ide_scm_view.dart';
 import 'package:baocode/ide/ide_list.dart';
 import 'package:baocode/ide/ide_workbench.dart';
 import 'package:baocode/ide/ide_workspace.dart';
@@ -48,8 +49,12 @@ void main() {
     matching: find.byType(IdeListRow),
   );
 
-  TextField input(WidgetTester tester) =>
-      tester.widget<TextField>(find.byType(TextField).first);
+  /// The commit message's input, under the Git log's local changes.
+  final message = find
+      .descendant(of: find.byType(IdeScmView), matching: find.byType(TextField))
+      .first;
+
+  TextField input(WidgetTester tester) => tester.widget<TextField>(message);
 
   Future<void> key(
     WidgetTester tester,
@@ -70,7 +75,7 @@ void main() {
       input(tester).decoration!.hintText,
       'Message (Ctrl+Enter to commit on "main")',
     );
-    await tester.tap(find.byType(TextField).first);
+    await tester.tap(message);
     await tester.pump();
     expect(state.keyContext('scmRepository'), isTrue);
 
@@ -83,7 +88,7 @@ void main() {
     expect(git.callsTo('commit'), isEmpty);
 
     // Escape clears the message, but not while some of it is selected.
-    await tester.enterText(find.byType(TextField).first, 'Draft');
+    await tester.enterText(message, 'Draft');
     await tester.pump();
     final controller = input(tester).controller!;
     controller.selection = const TextSelection(baseOffset: 0, extentOffset: 2);
@@ -93,7 +98,7 @@ void main() {
     await key(tester, LogicalKeyboardKey.escape);
     expect(controller.text, isEmpty);
 
-    await tester.enterText(find.byType(TextField).first, 'Fix a bug');
+    await tester.enterText(message, 'Fix a bug');
     await key(tester, LogicalKeyboardKey.enter, control: true);
     expect(git.callsTo('commit').single, [
       'commit',
@@ -158,8 +163,8 @@ void main() {
     expect(state.keyContext('treeElementHasParent'), isTrue);
   });
 
-  testWidgets('the graph\'s commits: Down, and Right / Left open and close '
-      'a commit\'s files', (tester) async {
+  testWidgets('the log\'s rows: a click selects, Down and Up walk, Home '
+      'the local changes', (tester) async {
     git.status = '## main\x00';
     git.refs['HEAD'] = 'c2';
     git.log =
@@ -168,20 +173,18 @@ void main() {
     git.show['c2'] = 'M\x00lib/staged.dart\x00';
     git.show['c1'] = 'A\x00lib/a.dart\x00';
     await pumpScm(tester);
-    final state = workbench(tester);
-    // A click selects Second and opens it; Left closes it.
-    await tester.tap(find.textContaining('Second', findRichText: true));
+    await tester.tap(find.text('Second'));
     await tester.pumpAndSettle();
+    expect(find.text('commit: c2'), findsOneWidget);
     expect(rowOf('staged.dart'), findsOneWidget);
-    expect(state.keyContext('treeElementCanCollapse'), isTrue);
-    await key(tester, LogicalKeyboardKey.arrowLeft);
-    expect(rowOf('staged.dart'), findsNothing);
     await key(tester, LogicalKeyboardKey.arrowDown);
-    expect(state.keyContext('treeElementCanExpand'), isTrue);
-    await key(tester, LogicalKeyboardKey.arrowRight);
+    expect(find.text('commit: c1'), findsOneWidget);
     expect(rowOf('a.dart'), findsOneWidget);
-    await key(tester, LogicalKeyboardKey.space);
-    expect(rowOf('a.dart'), findsNothing);
+    await key(tester, LogicalKeyboardKey.arrowUp);
+    expect(find.text('commit: c2'), findsOneWidget);
+    await key(tester, LogicalKeyboardKey.home);
+    expect(find.byType(IdeScmView), findsOneWidget);
+    expect(find.text('commit: c2'), findsNothing);
   });
 
   testWidgets('the Timeline\'s items: Down, Home and End', (tester) async {

@@ -833,6 +833,88 @@ List<IdeGitCommit> parseGitLog(String output) {
   return commits;
 }
 
+/// Which commits the log shows: [text] in their messages (terms split by
+/// `|`, any of them, case ignored), by [author], since [since].
+class IdeGitLogFilter {
+  const IdeGitLogFilter({this.text = '', this.author, this.since});
+
+  final String text;
+  final String? author;
+  final DateTime? since;
+
+  /// The message's terms.
+  List<String> get terms => [
+    for (final term in text.split('|'))
+      if (term.trim().isNotEmpty) term.trim(),
+  ];
+
+  /// Whether some commits are left out: the lanes then do not join up.
+  bool get narrowed => terms.isNotEmpty || author != null || since != null;
+
+  /// `git log`'s options for it.
+  List<String> get arguments {
+    if (!narrowed) return const [];
+    String two(int value) => value.toString().padLeft(2, '0');
+    return [
+      '-i',
+      '--fixed-strings',
+      for (final term in terms) '--grep=$term',
+      if (author case final author?) '--author=$author',
+      if (since case final since?)
+        '--since=${since.year}-${two(since.month)}-${two(since.day)} '
+            '${two(since.hour)}:${two(since.minute)}:${two(since.second)}',
+    ];
+  }
+
+  IdeGitLogFilter copyWith({
+    String? text,
+    String? Function()? author,
+    DateTime? Function()? since,
+  }) => IdeGitLogFilter(
+    text: text ?? this.text,
+    author: author == null ? this.author : author(),
+    since: since == null ? this.since : since(),
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is IdeGitLogFilter &&
+      other.text == text &&
+      other.author == author &&
+      other.since == since;
+
+  @override
+  int get hashCode => Object.hash(text, author, since);
+}
+
+/// Parses `git show --numstat -z`: each file's added and deleted lines, by
+/// its path (the new one of a rename) as [resolve] makes it of Git's; null
+/// counts for a binary file.
+Map<String, ({int? added, int? deleted})> parseGitNumstat(
+  String output,
+  String Function(String relative) resolve,
+) {
+  final stats = <String, ({int? added, int? deleted})>{};
+  final fields = output.split('\x00');
+  for (var i = 0; i < fields.length; i++) {
+    final field = fields[i].replaceFirst(RegExp(r'^\s+'), '');
+    final parts = field.split('\t');
+    if (parts.length < 3) continue;
+    final counts = (
+      added: int.tryParse(parts[0]),
+      deleted: int.tryParse(parts[1]),
+    );
+    if (parts[2].isNotEmpty) {
+      stats[resolve(parts[2])] = counts;
+    } else if (i + 2 < fields.length) {
+      // A rename or copy: its old path, then its new one.
+      stats[resolve(fields[i + 2])] = counts;
+      i += 2;
+    }
+  }
+  return stats;
+}
+
 /// `_resolveHistoryItemRefs`: HEAD's branch first, then the rest in
 /// VS Code's order (branches, remotes, tags).
 List<IdeGitRef> _parseRefs(String decorations) {
