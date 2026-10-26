@@ -451,6 +451,7 @@ class IdeGitService {
     String message,
     Iterable<String> paths, {
     bool amend = false,
+    IdeGitCommitOptions options = const IdeGitCommitOptions(),
   }) async {
     final top = await _requireRoot();
     final relative = _relative(top, paths);
@@ -458,6 +459,7 @@ class IdeGitService {
       await _git([
         'commit',
         '--quiet',
+        ...options.arguments,
         if (amend) '--amend',
         if (message.isEmpty && amend) '--no-edit' else ...['-m', message],
         if (relative.isNotEmpty) ...['--only', '--', ...relative],
@@ -476,6 +478,7 @@ class IdeGitService {
     Iterable<String> paths,
     Map<String, String> partial, {
     bool amend = false,
+    IdeGitCommitOptions options = const IdeGitCommitOptions(),
   }) async {
     final top = await _requireRoot();
     final indexPath = _check(
@@ -520,6 +523,7 @@ class IdeGitService {
     await git([
       'commit',
       '--quiet',
+      ...options.arguments,
       if (amend) '--amend',
       if (message.isEmpty && amend) '--no-edit' else ...['-m', message],
     ]);
@@ -912,6 +916,55 @@ class IdeGitService {
     final output = await _git(['config', '--get', key]);
     final value = output.stdout.trim();
     return output.exitCode == 0 && value.isNotEmpty ? value : null;
+  }
+
+  /// The messages of the last [limit] commits of the user's (by
+  /// `user.email`, else anyone's) from HEAD, the newest first, each once:
+  /// JetBrains' commit message history.
+  Future<List<String>> recentMessages({int limit = 20}) async {
+    await _requireRoot();
+    final email = await config('user.email');
+    final output = await _git([
+      'log',
+      '-n',
+      '$limit',
+      '--format=%B%x1e',
+      if (email != null) '--author=<${_escapeRegExp(email)}>',
+      'HEAD',
+      '--',
+    ]);
+    if (output.exitCode != 0) return const [];
+    return {
+      for (final message in output.stdout.split('\x1e'))
+        if (message.trim() case final text when text.isNotEmpty) text,
+    }.toList();
+  }
+
+  static String _escapeRegExp(String text) =>
+      text.replaceAllMapped(RegExp(r'[.*+?^${}()|[\]\\]'), (m) => '\\${m[0]}');
+
+  /// The files and folders Git ignores (a folder ignored whole once, its
+  /// path ending in a separator), by absolute path: JetBrains' Ignored
+  /// Files.
+  Future<List<String>> ignoredFiles() async {
+    final top = await _requireRoot();
+    final output = _check(
+      await _git([
+        'ls-files',
+        '--others',
+        '--ignored',
+        '--exclude-standard',
+        '--directory',
+        '-z',
+      ]),
+      'Cannot read the ignored files.',
+    );
+    return [
+      for (final relative in output.stdout.split('\x00'))
+        if (relative.isNotEmpty)
+          pathContext.join(top, pathContext.joinAll(relative.split('/'))) +
+              (relative.endsWith('/') ? pathContext.separator : ''),
+    ]..sort();
   }
 
   /// The commits that changed [path], following renames.

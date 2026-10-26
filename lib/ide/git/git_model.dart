@@ -235,6 +235,45 @@ class IdeGitHead {
   final bool unborn;
 }
 
+/// How a commit is made, as JetBrains IDEs' commit options set it: by
+/// [author] (`Name <email>`) rather than the one configured, signed off
+/// (a `Signed-off-by` line), without running the repository's hooks.
+class IdeGitCommitOptions {
+  const IdeGitCommitOptions({
+    this.author,
+    this.signOff = false,
+    this.runHooks = true,
+  });
+
+  final String? author;
+  final bool signOff;
+  final bool runHooks;
+
+  List<String> get arguments => [
+    if (author case final author? when author.trim().isNotEmpty)
+      '--author=${author.trim()}',
+    if (signOff) '--signoff',
+    if (!runHooks) '--no-verify',
+  ];
+}
+
+/// What may be wrong with a commit message, as JetBrains IDEs' commit
+/// message inspections find it: a subject longer than [subjectLimit], a
+/// body not set apart from it by a blank line.
+enum IdeGitMessageProblem { longSubject, noBlankLine }
+
+const ideGitSubjectLimit = 72;
+
+List<IdeGitMessageProblem> ideGitMessageProblems(String message) {
+  final lines = message.trimRight().split('\n');
+  return [
+    if (lines.first.trimRight().length > ideGitSubjectLimit)
+      IdeGitMessageProblem.longSubject,
+    if (lines.length > 1 && lines[1].trim().isNotEmpty)
+      IdeGitMessageProblem.noBlankLine,
+  ];
+}
+
 /// A stash (`git stash list`): [ref] (`stash@{0}`), its commit [id], when
 /// it was made, the branch it was made on and what it says.
 class IdeGitStash {

@@ -14,6 +14,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -123,8 +124,8 @@ class IdeGitCommitPanel extends StatefulWidget {
   State<IdeGitCommitPanel> createState() => IdeGitCommitPanelState();
 }
 
-/// Where a change is listed.
-enum _Kind { conflicts, changes, unversioned }
+/// Where a change is listed; the ignored files, where they are shown.
+enum _Kind { conflicts, changes, unversioned, ignored }
 
 /// A row of the tree: a repository's (where there are several), a group's,
 /// a folder's or a file's.
@@ -249,6 +250,7 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
     _messageText = _session.message.text;
     _session.message.addListener(_messageChanged);
     _listFocus.addListener(_rebuild);
+    _inputFocus.addListener(_rebuild);
     widget.hunks?.addListener(_rebuild);
     widget.changelists?.addListener(_rebuild);
   }
@@ -295,7 +297,131 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
     final text = _session.message.text;
     if (text == _messageText) return;
     _messageText = text;
-    if (_validation != null) setState(() => _validation = null);
+    final problems = ideGitMessageProblems(text);
+    if (_validation != null || !listEquals(problems, _problems)) {
+      setState(() {
+        _validation = null;
+        _problems = problems;
+      });
+    }
+  }
+
+  /// What the commit message inspections find in the message.
+  List<IdeGitMessageProblem> _problems = const [];
+
+  /// The validation shown: the commit's, else (as the message is written)
+  /// what the inspections find.
+  IdeInputValidation? get _shownValidation {
+    if (_validation case final validation?) return validation;
+    if (_problems.isEmpty || !_inputFocus.hasFocus) return null;
+    final l10n = context.l10n;
+    return IdeInputValidation(
+      [
+        for (final problem in _problems)
+          switch (problem) {
+            IdeGitMessageProblem.longSubject => l10n.gitCommitLongSubject(
+              ideGitSubjectLimit,
+            ),
+            IdeGitMessageProblem.noBlankLine => l10n.gitCommitNoBlankLine,
+          },
+      ].join('\n'),
+      IdeValidationSeverity.warning,
+    );
+  }
+
+  final GlobalKey _messageKey = GlobalKey();
+
+  /// JetBrains' commit message history (Ctrl+M): the messages committed
+  /// with here, then the user's last commits', one put in the input.
+  Future<void> _messageHistory() async {
+    final git = _git;
+    final box = _messageKey.currentContext?.findRenderObject() as RenderBox?;
+    if (git == null || box == null) return;
+    final l10n = context.l10n;
+    final logged = await git.service.recentMessages().catchError(
+      (Object _) => const <String>[],
+    );
+    if (!mounted) return;
+    final messages = {..._session.recentMessages, ...logged}.toList();
+    String label(String message) {
+      final subject = message.split('\n').first.trim();
+      return subject.length > 80 ? '${subject.substring(0, 79)}…' : subject;
+    }
+
+    await showIdeMenu(
+      context,
+      position: box.localToGlobal(Offset.zero),
+      entries: [
+        if (messages.isEmpty)
+          IdeMenuAction(l10n.gitCommitNoMessageHistory, enabled: false),
+        for (final message in messages.take(20))
+          IdeMenuAction(
+            label(message),
+            onSelected: () {
+              _session.message.value = TextEditingValue(
+                text: message,
+                selection: TextSelection.collapsed(offset: message.length),
+              );
+              _inputFocus.requestFocus();
+            },
+          ),
+      ],
+    );
+  }
+
+  /// JetBrains' commit options: the author, Sign-off, Run Git Hooks.
+  Future<void> _commitOptions(Offset position) {
+    final l10n = context.l10n;
+    return showIdeMenu(
+      context,
+      position: position,
+      entries: [
+        IdeMenuAction(
+          _session.author == null
+              ? l10n.gitCommitAuthor
+              : l10n.gitCommitAuthorIs(_session.author!),
+          onSelected: () => unawaited(_setAuthor()),
+        ),
+        if (_session.author != null)
+          IdeMenuAction(
+            l10n.gitCommitAuthorReset,
+            onSelected: () => setState(() => _session.author = null),
+          ),
+        const IdeMenuSeparator(),
+        IdeMenuAction(
+          l10n.gitCommitSignOff,
+          checked: _session.signOff,
+          onSelected: () =>
+              setState(() => _session.signOff = !_session.signOff),
+        ),
+        IdeMenuAction(
+          l10n.gitCommitRunHooks,
+          checked: _session.runHooks,
+          onSelected: () =>
+              setState(() => _session.runHooks = !_session.runHooks),
+        ),
+      ],
+    );
+  }
+
+  /// The next commit's author, as `Name <email>`.
+  Future<void> _setAuthor() async {
+    final l10n = context.l10n;
+    final result = await showIdeInputDialog(
+      context,
+      message: l10n.gitCommitAuthor,
+      buttons: [l10n.commonOk],
+      inputs: [
+        IdeDialogInput(
+          placeholder: l10n.gitCommitAuthorPlaceholder,
+          value: _session.author ?? '',
+        ),
+      ],
+      type: IdeDialogType.question,
+    );
+    if (result == null || result.button != 0 || !mounted) return;
+    final author = result.values.first.trim();
+    setState(() => _session.author = author.isEmpty ? null : author);
   }
 
   // --- What the workbench asks of it ---------------------------------------
@@ -472,6 +598,9 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
       final state = git.state!;
       final changes = _changesOf(state);
       final all = [for (final files in changes.values) ...files];
+      final ignored = _sessionOf(git).showIgnored
+          ? _ignoredOf(git)
+          : const <IdeGitResource>[];
       if (all.isEmpty && several) continue;
       var depth = 0;
       String? parent;
@@ -531,7 +660,7 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
 
       final lists = widget.changelists;
       for (final kind in _Kind.values) {
-        final files = changes[kind]!;
+        final files = kind == _Kind.ignored ? ignored : changes[kind]!;
         if (kind == _Kind.changes && lists != null && lists.several) {
           // Each changelist, the user's even when empty.
           for (final list in lists.lists) {
@@ -606,11 +735,87 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
     _setChecked(row.git, files, _checkedOf(row.git, files) != true);
   }
 
-  /// The files under [row] that a check mark is for: not the conflicts.
+  /// The files under [row] that a check mark is for: not the conflicts,
+  /// nor the ignored files.
   List<IdeGitResource> _checkable(_Row row) => [
     for (final file in row.files)
-      if (file.group != IdeGitGroup.merge) file,
+      if (file.group != IdeGitGroup.merge &&
+          file.status != IdeGitStatus.ignored)
+        file,
   ];
+
+  // --- The ignored files ---------------------------------------------------
+
+  /// Each repository's ignored files, for the state they were read in;
+  /// read again (shown as they were meanwhile) once it changes.
+  final Map<IdeGitRepository, (IdeGitState?, List<IdeGitResource>)> _ignored =
+      {};
+
+  /// The ignored folders, ignored whole.
+  final Set<String> _ignoredFolders = {};
+
+  List<IdeGitResource> _ignoredOf(IdeGitRepository git) {
+    final known = _ignored[git];
+    final state = git.state;
+    if (known == null || !identical(known.$1, state)) {
+      _ignored[git] = (state, known?.$2 ?? const []);
+      unawaited(
+        git.service.ignoredFiles().then((paths) {
+          if (!mounted || !identical(_ignored[git]?.$1, state)) return;
+          final separator = git.service.pathContext.separator;
+          final files = [
+            for (final path in paths)
+              IdeGitResource(
+                path: path.endsWith(separator)
+                    ? path.substring(0, path.length - 1)
+                    : path,
+                status: IdeGitStatus.ignored,
+                group: IdeGitGroup.workingTree,
+              ),
+          ];
+          setState(() {
+            _ignored[git] = (state, files);
+            for (final path in paths) {
+              if (path.endsWith(separator)) {
+                _ignoredFolders.add(path.substring(0, path.length - 1));
+              }
+            }
+          });
+        }, onError: (Object _) {}),
+      );
+    }
+    return _ignored[git]!.$2;
+  }
+
+  /// [paths] (folders among them) added to [git]'s `.gitignore`, from its
+  /// top, as JetBrains IDEs add them: `/path`, a folder's ending in `/`.
+  Future<void> _ignore(
+    IdeGitRepository git,
+    List<String> paths, {
+    Set<String> folders = const {},
+  }) async {
+    final pathContext = git.service.pathContext;
+    final root = git.service.root;
+    // Git's separators, a bracket taken as itself.
+    String pattern(String path) => pathContext
+        .relative(path, from: root)
+        .replaceAllMapped(
+          RegExp(r'\\|\['),
+          (match) => match[0] == r'\' ? '/' : r'\[',
+        );
+    final lines = [
+      for (final path in paths)
+        '/${pattern(path)}${folders.contains(path) ? '/' : ''}',
+    ].join('\n');
+    await _run(() async {
+      await ideAppendLinesToFile(
+        widget.host.files,
+        pathContext.join(root, '.gitignore'),
+        lines,
+      );
+      await git.refresh(force: true);
+    });
+  }
 
   // --- The workbench's list.* commands (IdeKeyboardList) -----------------
 
@@ -774,19 +979,28 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
       return;
     }
     setState(() => _committing = true);
+    // In the history, whether the commit is made or not (a hook says no).
+    if (message.isNotEmpty) _session.rememberMessage(message);
+    final options = _session.commitOptions;
     try {
       if (work.isEmpty) {
         // Amend alone: the last commit's message.
-        await _git?.commitResources(message, const [], amend: true);
+        await _git?.commitResources(
+          message,
+          const [],
+          amend: true,
+          options: options,
+        );
       }
       for (final (git, files) in work) {
-        await _commitIn(git, message, files, amend: amend);
+        await _commitIn(git, message, files, amend: amend, options: options);
         _sessionOf(git).included.clear();
         widget.hunks?.clear([for (final file in files) file.path]);
       }
       _session
         ..message.clear()
-        ..amend = false;
+        ..amend = false
+        ..author = null;
       if (push) {
         for (final git in {
           for (final (git, _) in work) git,
@@ -809,6 +1023,7 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
     String message,
     List<IdeGitResource> files, {
     required bool amend,
+    required IdeGitCommitOptions options,
   }) async {
     final hunks = widget.hunks;
     final nothing = context.l10n.gitCommitNothingSelected;
@@ -840,9 +1055,15 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
       throw IdeGitException(nothing);
     }
     if (partial.isEmpty) {
-      await git.commitResources(message, whole, amend: amend);
+      await git.commitResources(message, whole, amend: amend, options: options);
     } else {
-      await git.commitPartial(message, whole, partial, amend: amend);
+      await git.commitPartial(
+        message,
+        whole,
+        partial,
+        amend: amend,
+        options: options,
+      );
     }
   }
 
@@ -1322,6 +1543,17 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
               tooltip: l10n.gitCommitCollapseAll,
               onPressed: _collapseAll,
             ),
+            IdeActionButton(
+              icon: Codicons.eyeClosed,
+              tooltip: l10n.gitCommitShowIgnored,
+              checked: _session.showIgnored,
+              onPressed: () => setState(() {
+                final show = !_session.showIgnored;
+                for (final git in _repositories) {
+                  _sessionOf(git).showIgnored = show;
+                }
+              }),
+            ),
             const Spacer(),
             if (_repositories.any((git) => git.busy))
               Padding(
@@ -1414,6 +1646,7 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
                 _Kind.changes => _changelistName(list),
                 _Kind.unversioned => l10n.gitCommitUnversioned,
                 _Kind.conflicts => l10n.gitCommitConflicts,
+                _Kind.ignored => l10n.gitCommitIgnored,
               },
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -1517,7 +1750,11 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
     final status = resource.status;
     return Row(
       children: [
-        FileIcon(resource.path),
+        if (status == IdeGitStatus.ignored &&
+            _ignoredFolders.contains(resource.path))
+          FolderIcon(resource.path, expanded: false)
+        else
+          FileIcon(resource.path),
         const SizedBox(width: 6),
         Expanded(
           child: IdeResourceLabel(
@@ -1755,6 +1992,19 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
               l10n.gitCommitAddToVcs,
               onSelected: () => unawaited(_run(() => git.stage(untracked))),
             ),
+          if (untracked.isNotEmpty && row is! _RepoRow)
+            IdeMenuAction(
+              l10n.scmAddToGitignore,
+              // An unversioned folder: itself, whatever comes in it later.
+              onSelected: () => unawaited(switch (row) {
+                _FolderRow(kind: _Kind.unversioned, :final folder) => _ignore(
+                  git,
+                  [folder.path],
+                  folders: {folder.path},
+                ),
+                _ => _ignore(git, [for (final file in untracked) file.path]),
+              }),
+            ),
           if (conflicts.isNotEmpty) ...[
             if (resource != null && ideGitMergeable(resource))
               IdeMenuAction(
@@ -1862,6 +2112,46 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
                   ),
                 ),
               ),
+              const SizedBox(width: 2),
+              Builder(
+                builder: (context) => IdeActionButton(
+                  icon: Codicons.settingsGear,
+                  tooltip: l10n.gitCommitOptions,
+                  size: 20,
+                  iconSize: 14,
+                  onPressed: () {
+                    final box = context.findRenderObject() as RenderBox;
+                    unawaited(
+                      _commitOptions(
+                        box.localToGlobal(box.size.bottomLeft(Offset.zero)),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              // What the options change, as a reminder.
+              if ([
+                    if (_session.author case final author?)
+                      l10n.gitCommitAuthorIs(author),
+                    if (_session.signOff) l10n.gitCommitSignedOff,
+                    if (!_session.runHooks) l10n.gitCommitNoHooks,
+                  ].join(' · ')
+                  case final options when options.isNotEmpty)
+                Flexible(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Text(
+                      options,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: IdeListColors.description,
+                      ),
+                    ),
+                  ),
+                ),
               const Spacer(),
               if (branch != null)
                 Flexible(
@@ -1894,6 +2184,7 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) => IdeInputBox(
+                key: _messageKey,
                 controller: _session.message,
                 focusNode: _inputFocus,
                 semanticsLabel: l10n.gitCommitMessage,
@@ -1902,9 +2193,14 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
                 minLines: lines(constraints.maxHeight),
                 maxLines: lines(constraints.maxHeight),
                 lineHeight: 20,
-                validation: _validation,
+                validation: _shownValidation,
                 floatingValidation: true,
                 shortcuts: {
+                  const SingleActivator(
+                    LogicalKeyboardKey.keyM,
+                    control: true,
+                  ): () =>
+                      unawaited(_messageHistory()),
                   const SingleActivator(
                     LogicalKeyboardKey.enter,
                     control: true,
@@ -1917,6 +2213,12 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
                       unawaited(_commit()),
                 },
                 toggles: [
+                  IdeActionButton(
+                    icon: Codicons.history,
+                    tooltip: l10n.gitCommitMessageHistory,
+                    size: 20,
+                    onPressed: () => unawaited(_messageHistory()),
+                  ),
                   if (widget.commitMessage != null)
                     IdeActionButton(
                       icon: _session.generating == null

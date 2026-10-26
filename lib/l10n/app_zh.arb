@@ -3198,5 +3198,20 @@
   "gitStashNone": "没有 Stash",
   "gitStashTab": "Stash",
   "gitCommitTab": "提交",
-  "gitStashSelected": "暂存选中的文件…"
+  "gitStashSelected": "暂存选中的文件…",
+  "gitCommitIgnored": "已忽略的文件",
+  "gitCommitShowIgnored": "显示已忽略的文件",
+  "gitCommitLongSubject": "标题超过 {limit} 个字符",
+  "gitCommitNoBlankLine": "标题和正文之间要空一行",
+  "gitCommitMessageHistory": "提交信息历史 (Ctrl+M)",
+  "gitCommitNoMessageHistory": "还没有提交信息",
+  "gitCommitOptions": "提交选项",
+  "gitCommitAuthor": "作者…",
+  "gitCommitAuthorIs": "作者：{author}",
+  "gitCommitAuthorReset": "使用配置的作者",
+  "gitCommitAuthorPlaceholder": "姓名 <邮箱>",
+  "gitCommitSignOff": "签名提交 (Sign-off)",
+  "gitCommitRunHooks": "运行 Git 钩子",
+  "gitCommitSignedOff": "已签名",
+  "gitCommitNoHooks": "跳过钩子"
 }

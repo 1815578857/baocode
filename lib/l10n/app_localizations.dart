@@ -19250,6 +19250,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stash Selected Files…'**
   String get gitStashSelected;
+
+  /// No description provided for @gitCommitIgnored.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignored Files'**
+  String get gitCommitIgnored;
+
+  /// No description provided for @gitCommitShowIgnored.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Ignored Files'**
+  String get gitCommitShowIgnored;
+
+  /// No description provided for @gitCommitLongSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'The subject is longer than {limit} characters'**
+  String gitCommitLongSubject(int limit);
+
+  /// No description provided for @gitCommitNoBlankLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Separate the subject from the body with a blank line'**
+  String get gitCommitNoBlankLine;
+
+  /// No description provided for @gitCommitMessageHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit Message History (Ctrl+M)'**
+  String get gitCommitMessageHistory;
+
+  /// No description provided for @gitCommitNoMessageHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet'**
+  String get gitCommitNoMessageHistory;
+
+  /// No description provided for @gitCommitOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit Options'**
+  String get gitCommitOptions;
+
+  /// No description provided for @gitCommitAuthor.
+  ///
+  /// In en, this message translates to:
+  /// **'Author…'**
+  String get gitCommitAuthor;
+
+  /// No description provided for @gitCommitAuthorIs.
+  ///
+  /// In en, this message translates to:
+  /// **'Author: {author}'**
+  String gitCommitAuthorIs(String author);
+
+  /// No description provided for @gitCommitAuthorReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the Configured Author'**
+  String get gitCommitAuthorReset;
+
+  /// No description provided for @gitCommitAuthorPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Name <email>'**
+  String get gitCommitAuthorPlaceholder;
+
+  /// No description provided for @gitCommitSignOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-off Commit'**
+  String get gitCommitSignOff;
+
+  /// No description provided for @gitCommitRunHooks.
+  ///
+  /// In en, this message translates to:
+  /// **'Run Git Hooks'**
+  String get gitCommitRunHooks;
+
+  /// No description provided for @gitCommitSignedOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed off'**
+  String get gitCommitSignedOff;
+
+  /// No description provided for @gitCommitNoHooks.
+  ///
+  /// In en, this message translates to:
+  /// **'Hooks skipped'**
+  String get gitCommitNoHooks;
 }
 
 class _AppLocalizationsDelegate

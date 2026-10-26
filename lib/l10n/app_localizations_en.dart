@@ -11781,4 +11781,54 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitStashSelected => 'Stash Selected Files…';
+
+  @override
+  String get gitCommitIgnored => 'Ignored Files';
+
+  @override
+  String get gitCommitShowIgnored => 'Show Ignored Files';
+
+  @override
+  String gitCommitLongSubject(int limit) {
+    return 'The subject is longer than $limit characters';
+  }
+
+  @override
+  String get gitCommitNoBlankLine =>
+      'Separate the subject from the body with a blank line';
+
+  @override
+  String get gitCommitMessageHistory => 'Commit Message History (Ctrl+M)';
+
+  @override
+  String get gitCommitNoMessageHistory => 'No messages yet';
+
+  @override
+  String get gitCommitOptions => 'Commit Options';
+
+  @override
+  String get gitCommitAuthor => 'Author…';
+
+  @override
+  String gitCommitAuthorIs(String author) {
+    return 'Author: $author';
+  }
+
+  @override
+  String get gitCommitAuthorReset => 'Use the Configured Author';
+
+  @override
+  String get gitCommitAuthorPlaceholder => 'Name <email>';
+
+  @override
+  String get gitCommitSignOff => 'Sign-off Commit';
+
+  @override
+  String get gitCommitRunHooks => 'Run Git Hooks';
+
+  @override
+  String get gitCommitSignedOff => 'Signed off';
+
+  @override
+  String get gitCommitNoHooks => 'Hooks skipped';
 }

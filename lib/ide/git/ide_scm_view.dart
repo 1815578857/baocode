@@ -128,6 +128,35 @@ class IdeScmSession {
   /// The commit panel's Amend.
   bool amend = false;
 
+  /// The commit options' author (`Name <email>`), for the next commit
+  /// only; null for the one configured.
+  String? author;
+
+  /// `git.alwaysSignOff`: a Signed-off-by line in each commit.
+  bool get signOff => _choice('git.alwaysSignOff', false);
+  set signOff(bool value) => _choose('git.alwaysSignOff', value);
+
+  /// Whether a commit runs the repository's hooks (else `--no-verify`).
+  bool get runHooks => _choice('baocode.git.runHooks', true);
+  set runHooks(bool value) => _choose('baocode.git.runHooks', value);
+
+  IdeGitCommitOptions get commitOptions =>
+      IdeGitCommitOptions(author: author, signOff: signOff, runHooks: runHooks);
+
+  /// The messages committed with, or tried, the newest first: what the
+  /// commit message history has before those of the log.
+  final List<String> recentMessages = [];
+
+  void rememberMessage(String message) {
+    recentMessages
+      ..remove(message)
+      ..insert(0, message);
+    if (recentMessages.length > 20) recentMessages.removeLast();
+  }
+
+  /// Whether the commit panel lists the ignored files.
+  bool showIgnored = false;
+
   /// The list's focused row, selection and anchor, kept while the view is
   /// away (the Git log left for the editor) to be where they were.
   String? listSelected;

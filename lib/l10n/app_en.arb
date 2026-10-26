@@ -7866,5 +7866,22 @@
   "gitStashNone": "No stashes",
   "gitStashTab": "Stash",
   "gitCommitTab": "Commit",
-  "gitStashSelected": "Stash Selected Files…"
+  "gitStashSelected": "Stash Selected Files…",
+  "gitCommitIgnored": "Ignored Files",
+  "gitCommitShowIgnored": "Show Ignored Files",
+  "gitCommitLongSubject": "The subject is longer than {limit} characters",
+  "@gitCommitLongSubject": {"placeholders": {"limit": {"type": "int"}}},
+  "gitCommitNoBlankLine": "Separate the subject from the body with a blank line",
+  "gitCommitMessageHistory": "Commit Message History (Ctrl+M)",
+  "gitCommitNoMessageHistory": "No messages yet",
+  "gitCommitOptions": "Commit Options",
+  "gitCommitAuthor": "Author…",
+  "gitCommitAuthorIs": "Author: {author}",
+  "@gitCommitAuthorIs": {"placeholders": {"author": {"type": "String"}}},
+  "gitCommitAuthorReset": "Use the Configured Author",
+  "gitCommitAuthorPlaceholder": "Name <email>",
+  "gitCommitSignOff": "Sign-off Commit",
+  "gitCommitRunHooks": "Run Git Hooks",
+  "gitCommitSignedOff": "Signed off",
+  "gitCommitNoHooks": "Hooks skipped"
 }

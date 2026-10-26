@@ -279,18 +279,24 @@ class IdeGitRepository extends ChangeNotifier {
     String message,
     Iterable<IdeGitResource> resources, {
     bool amend = false,
+    IdeGitCommitOptions options = const IdeGitCommitOptions(),
   }) => _operate(() async {
     final untracked = [
       for (final resource in resources)
         if (resource.status == IdeGitStatus.untracked) resource.path,
     ];
     if (untracked.isNotEmpty) await service.stage(untracked);
-    await service.commitPaths(message, {
-      for (final resource in resources) ...[
-        resource.path,
-        ?resource.originalPath,
-      ],
-    }, amend: amend);
+    await service.commitPaths(
+      message,
+      {
+        for (final resource in resources) ...[
+          resource.path,
+          ?resource.originalPath,
+        ],
+      },
+      amend: amend,
+      options: options,
+    );
   });
 
   /// Commits [resources] as [commitResources] does, and each of [partial]'s
@@ -301,6 +307,7 @@ class IdeGitRepository extends ChangeNotifier {
     Iterable<IdeGitResource> resources,
     Map<String, String> partial, {
     bool amend = false,
+    IdeGitCommitOptions options = const IdeGitCommitOptions(),
   }) => _operate(
     () => service.commitPartial(
       message,
@@ -312,6 +319,7 @@ class IdeGitRepository extends ChangeNotifier {
       },
       partial,
       amend: amend,
+      options: options,
     ),
   );
 

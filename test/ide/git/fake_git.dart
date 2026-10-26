@@ -18,6 +18,12 @@ class FakeGit {
   /// `git log` output ([ideGitLogFormat] records).
   String log = '';
 
+  /// The commit messages `git log --format=%B%x1e` gives, the newest first.
+  List<String> messages = [];
+
+  /// `git ls-files --others --ignored --directory -z` output's paths.
+  List<String> ignored = [];
+
   /// `git show` output: by commit for `--name-status -z`, by `ref:path`
   /// for a file's text (which, not there, fails as a missing path does).
   final Map<String, String> show = {};
@@ -117,8 +123,15 @@ class FakeGit {
         );
       case ['for-each-ref', ...]:
         return IdeGitOutput(0, forEachRef);
+      case ['log', '-n', _, '--format=%B%x1e', ...]:
+        return IdeGitOutput(0, [for (final m in messages) '$m\n\x1e'].join());
       case ['log', ...]:
         return IdeGitOutput(0, log);
+      case ['ls-files', '--others', '--ignored', ...]:
+        return IdeGitOutput(
+          0,
+          [for (final path in ignored) '$path\x00'].join(),
+        );
       case ['diff', ..., '--no-index', '--', '/dev/null', final path]:
         final added = newFileDiffs[path];
         return IdeGitOutput(added == null ? 0 : 1, added ?? '');

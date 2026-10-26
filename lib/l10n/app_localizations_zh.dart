@@ -11162,4 +11162,53 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitStashSelected => '暂存选中的文件…';
+
+  @override
+  String get gitCommitIgnored => '已忽略的文件';
+
+  @override
+  String get gitCommitShowIgnored => '显示已忽略的文件';
+
+  @override
+  String gitCommitLongSubject(int limit) {
+    return '标题超过 $limit 个字符';
+  }
+
+  @override
+  String get gitCommitNoBlankLine => '标题和正文之间要空一行';
+
+  @override
+  String get gitCommitMessageHistory => '提交信息历史 (Ctrl+M)';
+
+  @override
+  String get gitCommitNoMessageHistory => '还没有提交信息';
+
+  @override
+  String get gitCommitOptions => '提交选项';
+
+  @override
+  String get gitCommitAuthor => '作者…';
+
+  @override
+  String gitCommitAuthorIs(String author) {
+    return '作者：$author';
+  }
+
+  @override
+  String get gitCommitAuthorReset => '使用配置的作者';
+
+  @override
+  String get gitCommitAuthorPlaceholder => '姓名 <邮箱>';
+
+  @override
+  String get gitCommitSignOff => '签名提交 (Sign-off)';
+
+  @override
+  String get gitCommitRunHooks => '运行 Git 钩子';
+
+  @override
+  String get gitCommitSignedOff => '已签名';
+
+  @override
+  String get gitCommitNoHooks => '跳过钩子';
 }
