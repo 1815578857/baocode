@@ -1067,6 +1067,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cmdToggleFullScreen => 'Toggle Full Screen';
 
   @override
+  String get cmdZoomIn => 'Zoom In';
+
+  @override
+  String get cmdZoomOut => 'Zoom Out';
+
+  @override
+  String get cmdZoomReset => 'Reset Zoom';
+
+  @override
   String get cmdToggleWordWrap => 'Toggle Word Wrap';
 
   @override
@@ -7590,7 +7599,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appearanceSettingsCodeSizeDescription =>
-      'The size of code in the IDE editor and the side panel\'s file and changes views. Code in the chat follows the interface size; the terminal has its own size.';
+      'The size of code in the IDE editor and the side panel\'s file and changes views at 100% interface size; zooming the interface scales it in proportion. Code in the chat follows the interface size; the terminal has its own size.';
 
   @override
   String appearanceSettingsCodeSizeLabel(String size) {
@@ -7616,7 +7625,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appearanceSettingsUiScaleDescription =>
-      'Zooms the whole interface (its text, icons and spacing), code in the chat, and terminal text while the terminal size follows it. Code in the IDE editor and side panel files and changes keeps its own size.';
+      'Zooms the whole interface (its text, icons and spacing) and the code in it, and terminal text while the terminal size follows it. Code in the editor zooms from its code size.';
 
   @override
   String appearanceSettingsUiScaleLabel(String percent) {

@@ -863,7 +863,7 @@ class _BaoCodeAppState extends State<BaoCodeApp> {
             : scaler;
         final system = media.textScaler;
         return SystemTextScale(
-          // Code at its own size: the zoom taken back off.
+          // A terminal at a size of its own: the zoom taken back off.
           scaler: snapped(
             zoom == 1 ? system : TextScaler.linear(system.scale(1) / zoom),
           ),
