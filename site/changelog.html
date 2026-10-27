@@ -83,6 +83,7 @@
     </li>
     <li>Git and checkpoints run in the background and no longer hold up the interface. A check when nothing changed runs 3 Git commands instead of 13.</li>
     <li>Changes in ignored folders such as build and node_modules no longer refresh the Git status. The model lists are worked out once.</li>
+    <li>A stretch of sustained jank is sampled into the logs, to help track it down: on Windows and Linux now, as on macOS.</li>
     </ul>
     <p>Other new features</p>
     <ul>
@@ -100,6 +101,11 @@
     <li>Set up a language server of your own from Open Language Server Settings. It takes effect when saved, with no restart.</li>
     <li>Background tasks that ended can be cleared, one at a time or all at once.</li>
     <li>When the built-in core's agent ends its work with to-do items still open, the model is reminded to update its list.</li>
+    <li>The message box's Polish button is now Enhance prompt: the auxiliary model rewrites what you wrote into a clearer, more specific prompt. It reads the AI's last reply, so &quot;do option 2&quot; is understood. Undo takes it back.</li>
+    <li>With ChatGPT accounts for Codex, the quota left on the conversation's account shows below the message box. A click lists every account, with its quota and reset times. &quot;Continue after limit reset&quot; now covers ChatGPT accounts too, when every one is out of quota.</li>
+    <li>The agent knows the chat shows math, Mermaid diagrams, local images and folding sections, and uses them where they help. The file links it writes are tidier, and open.</li>
+    <li>Mermaid diagrams: while a reply streams in, a placeholder shows instead of the diagram's code. Small flowcharts have square lines, and a tall top-down one is drawn across where it fits. Sequence diagrams take the flowchart's colors. A diagram enlarges and has a right-click menu as a picture does, copying it among them.</li>
+    <li>Task list boxes are squares in the links' color. Folding sections lose the rule down their side.</li>
     </ul>
     <p>Fixed</p>
     <ul>
@@ -117,6 +123,9 @@
     <li>On Windows, the title bar over Settings shows only the window's buttons.</li>
     <li>On macOS, the app launched from the Dock or Finder can hold more than 256 open files. With many agents, terminals and language servers open, Claude Code failed to start with &quot;Too many open files&quot;.</li>
     <li>A remote folder that failed to load on the first connection loads again once a retry connects.</li>
+    <li>A drag selecting text in a conversation holds when the focus is taken (a question's panel coming up) or earlier history loads; selections no longer stop halfway.</li>
+    <li>Text below an open diff with a long line can be selected again.</li>
+    <li>On Windows, the image preview's close button no longer sits under the window's buttons.</li>
     </ul>
   </section>
 
