@@ -293,8 +293,8 @@ class OpenRemoteFileFlow {
     List<String> files = const [];
     String? failure;
 
-    /// Whether the entries are being read: the refresh button is dimmed
-    /// meanwhile, and the pick reads them again once they are.
+    /// Whether the entries are being read: the pick's rows are read again
+    /// as it changes (its `refresh`).
     final reading = ValueNotifier(false);
 
     /// Reads the entries again, e.g. one made in a terminal since.
