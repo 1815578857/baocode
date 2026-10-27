@@ -7760,6 +7760,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String remoteStatusInstallingUnsized(String kind, String host) {
+    return '$kind: $host (installing Claude Code...)';
+  }
+
+  @override
   String remoteInstallingClaude(String host) {
     return 'Installing Claude Code on $host…';
   }

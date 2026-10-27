@@ -12579,6 +12579,12 @@ abstract class AppLocalizations {
   /// **'{kind}: {host} (installing Claude Code {percent}%)'**
   String remoteStatusInstalling(String kind, String host, int percent);
 
+  /// The status bar while Claude Code is installed on a host, its size not known yet (no percentage).
+  ///
+  /// In en, this message translates to:
+  /// **'{kind}: {host} (installing Claude Code...)'**
+  String remoteStatusInstallingUnsized(String kind, String host);
+
   /// Shown while Claude Code is put on a remote host where it was not installed, before the agent starts.
   ///
   /// In en, this message translates to:

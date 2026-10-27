@@ -7308,6 +7308,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String remoteStatusInstallingUnsized(String kind, String host) {
+    return '$kind: $host（正在安装 Claude Code...）';
+  }
+
+  @override
   String remoteInstallingClaude(String host) {
     return '正在 $host 上安装 Claude Code…';
   }

@@ -5558,6 +5558,19 @@
       }
     }
   },
+  "remoteStatusInstallingUnsized": "{kind}: {host} (installing Claude Code...)",
+  "@remoteStatusInstallingUnsized": {
+    "description": "The status bar while Claude Code is installed on a host, its size not known yet (no percentage).",
+    "placeholders": {
+      "kind": {
+        "type": "String",
+        "description": "How the host is reached: SSH, or WSL for a WSL distribution."
+      },
+      "host": {
+        "type": "String"
+      }
+    }
+  },
   "remoteInstallingClaude": "Installing Claude Code on {host}…",
   "@remoteInstallingClaude": {
     "description": "Shown while Claude Code is put on a remote host where it was not installed, before the agent starts.",
