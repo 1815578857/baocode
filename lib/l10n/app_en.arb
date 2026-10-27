@@ -453,6 +453,9 @@
   "cmdToggleSidebar": "Toggle Primary Side Bar Visibility",
   "cmdToggleChat": "Toggle Chat",
   "cmdToggleFullScreen": "Toggle Full Screen",
+  "cmdZoomIn": "Zoom In",
+  "cmdZoomOut": "Zoom Out",
+  "cmdZoomReset": "Reset Zoom",
   "cmdToggleWordWrap": "Toggle Word Wrap",
   "menuWordWrap": "Word Wrap",
   "cmdTogglePanel": "Toggle Panel Visibility",
@@ -5386,7 +5389,7 @@
     }
   },
   "appearanceSettingsCodeSize": "Code Size",
-  "appearanceSettingsCodeSizeDescription": "The size of code in the IDE editor and the side panel's file and changes views. Code in the chat follows the interface size; the terminal has its own size.",
+  "appearanceSettingsCodeSizeDescription": "The size of code in the IDE editor and the side panel's file and changes views at 100% interface size; zooming the interface scales it in proportion. Code in the chat follows the interface size; the terminal has its own size.",
   "appearanceSettingsCodeSizeLabel": "Code size: {size}",
   "@appearanceSettingsCodeSizeLabel": {
     "placeholders": {
@@ -5400,7 +5403,7 @@
   "appearanceSettingsWordWrap": "Word Wrap",
   "appearanceSettingsWordWrapDescription": "Wraps long lines at the editor's width, in every editor. An editor's context menu and the Command Palette (Toggle Word Wrap) switch it too. Files of more than 5,000 lines are not wrapped.",
   "appearanceSettingsUiScale": "Interface Size",
-  "appearanceSettingsUiScaleDescription": "Zooms the whole interface (its text, icons and spacing), code in the chat, and terminal text while the terminal size follows it. Code in the IDE editor and side panel files and changes keeps its own size.",
+  "appearanceSettingsUiScaleDescription": "Zooms the whole interface (its text, icons and spacing) and the code in it, and terminal text while the terminal size follows it. Code in the editor zooms from its code size.",
   "appearanceSettingsUiScaleLabel": "Interface size: {percent}%",
   "@appearanceSettingsUiScaleLabel": {
     "placeholders": {

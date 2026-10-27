@@ -2108,6 +2108,24 @@ abstract class AppLocalizations {
   /// **'Toggle Full Screen'**
   String get cmdToggleFullScreen;
 
+  /// No description provided for @cmdZoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom In'**
+  String get cmdZoomIn;
+
+  /// No description provided for @cmdZoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom Out'**
+  String get cmdZoomOut;
+
+  /// No description provided for @cmdZoomReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Zoom'**
+  String get cmdZoomReset;
+
   /// No description provided for @cmdToggleWordWrap.
   ///
   /// In en, this message translates to:
@@ -12324,7 +12342,7 @@ abstract class AppLocalizations {
   /// No description provided for @appearanceSettingsCodeSizeDescription.
   ///
   /// In en, this message translates to:
-  /// **'The size of code in the IDE editor and the side panel\'s file and changes views. Code in the chat follows the interface size; the terminal has its own size.'**
+  /// **'The size of code in the IDE editor and the side panel\'s file and changes views at 100% interface size; zooming the interface scales it in proportion. Code in the chat follows the interface size; the terminal has its own size.'**
   String get appearanceSettingsCodeSizeDescription;
 
   /// No description provided for @appearanceSettingsCodeSizeLabel.
@@ -12366,7 +12384,7 @@ abstract class AppLocalizations {
   /// No description provided for @appearanceSettingsUiScaleDescription.
   ///
   /// In en, this message translates to:
-  /// **'Zooms the whole interface (its text, icons and spacing), code in the chat, and terminal text while the terminal size follows it. Code in the IDE editor and side panel files and changes keeps its own size.'**
+  /// **'Zooms the whole interface (its text, icons and spacing) and the code in it, and terminal text while the terminal size follows it. Code in the editor zooms from its code size.'**
   String get appearanceSettingsUiScaleDescription;
 
   /// No description provided for @appearanceSettingsUiScaleLabel.
