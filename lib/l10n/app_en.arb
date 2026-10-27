@@ -4625,7 +4625,6 @@
   },
   "modelsAccountDisabled": "Disabled",
   "modelsAccountLimited": "Out of quota",
-  "modelsAccountError": "Account error",
   "modelsAccountQuotaUnknown": "Quota not known yet",
   "modelsQuotaShortWindow": "Short window",
   "modelsQuotaLongWindow": "Long window",
@@ -4670,6 +4669,47 @@
       }
     }
   },
+  "quotaBarWindowLeft": "{window} {percent}% left",
+  "@quotaBarWindowLeft": {
+    "placeholders": {
+      "window": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "quotaBarAvailable": "{count}/{total} available",
+  "@quotaBarAvailable": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "quotaBarAllOut": "All accounts out of quota · back {time}",
+  "@quotaBarAllOut": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "quotaBarBackAt": "Out of quota · back {time}",
+  "@quotaBarBackAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "quotaBarNone": "No account can be used",
+  "quotaBarThisChat": "This chat",
+  "quotaBarRefresh": "Refresh Quota",
   "modelsQuotaResetsIn": "resets in {time}",
   "@modelsQuotaResetsIn": {
     "placeholders": {

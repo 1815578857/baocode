@@ -10539,12 +10539,6 @@ abstract class AppLocalizations {
   /// **'Out of quota'**
   String get modelsAccountLimited;
 
-  /// No description provided for @modelsAccountError.
-  ///
-  /// In en, this message translates to:
-  /// **'Account error'**
-  String get modelsAccountError;
-
   /// No description provided for @modelsAccountQuotaUnknown.
   ///
   /// In en, this message translates to:
@@ -10598,6 +10592,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{percent}% left'**
   String modelsQuotaRemaining(int percent);
+
+  /// No description provided for @quotaBarWindowLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{window} {percent}% left'**
+  String quotaBarWindowLeft(String window, int percent);
+
+  /// No description provided for @quotaBarAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}/{total} available'**
+  String quotaBarAvailable(int count, int total);
+
+  /// No description provided for @quotaBarAllOut.
+  ///
+  /// In en, this message translates to:
+  /// **'All accounts out of quota · back {time}'**
+  String quotaBarAllOut(String time);
+
+  /// No description provided for @quotaBarBackAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Out of quota · back {time}'**
+  String quotaBarBackAt(String time);
+
+  /// No description provided for @quotaBarNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No account can be used'**
+  String get quotaBarNone;
+
+  /// No description provided for @quotaBarThisChat.
+  ///
+  /// In en, this message translates to:
+  /// **'This chat'**
+  String get quotaBarThisChat;
+
+  /// No description provided for @quotaBarRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh Quota'**
+  String get quotaBarRefresh;
 
   /// No description provided for @modelsQuotaResetsIn.
   ///

@@ -6502,9 +6502,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get modelsAccountLimited => 'Out of quota';
 
   @override
-  String get modelsAccountError => 'Account error';
-
-  @override
   String get modelsAccountQuotaUnknown => 'Quota not known yet';
 
   @override
@@ -6540,6 +6537,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String modelsQuotaRemaining(int percent) {
     return '$percent% left';
   }
+
+  @override
+  String quotaBarWindowLeft(String window, int percent) {
+    return '$window $percent% left';
+  }
+
+  @override
+  String quotaBarAvailable(int count, int total) {
+    return '$count/$total available';
+  }
+
+  @override
+  String quotaBarAllOut(String time) {
+    return 'All accounts out of quota · back $time';
+  }
+
+  @override
+  String quotaBarBackAt(String time) {
+    return 'Out of quota · back $time';
+  }
+
+  @override
+  String get quotaBarNone => 'No account can be used';
+
+  @override
+  String get quotaBarThisChat => 'This chat';
+
+  @override
+  String get quotaBarRefresh => 'Refresh Quota';
 
   @override
   String modelsQuotaResetsIn(String time) {

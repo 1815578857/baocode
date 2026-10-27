@@ -68,8 +68,10 @@ void main() {
   test('footer labels are localized without changing settings used text', () {
     expect(en.modelsAccountDisabled, 'Disabled');
     expect(zh.modelsAccountDisabled, '已禁用');
-    expect(en.modelsAccountError, 'Account error');
-    expect(zh.modelsAccountError, '账号异常');
+    expect(en.quotaBarWindowLeft('5h', 75), '5h 75% left');
+    expect(zh.quotaBarWindowLeft('5 小时', 75), '5 小时剩 75%');
+    expect(en.quotaBarAvailable(3, 4), '3/4 available');
+    expect(zh.quotaBarAvailable(3, 4), '3/4 可用');
     expect(en.modelsQuotaRemaining(75), '75% left');
     expect(zh.modelsQuotaRemaining(75), '剩余 75%');
     expect(en.modelsQuotaShortWindow, 'Short window');

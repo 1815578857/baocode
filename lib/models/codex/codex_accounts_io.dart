@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../model_provider.dart';
 import '../model_providers.dart';
 import '../model_runtime.dart' show UpstreamException;
+import '../proxy/prompt_cache_key.dart';
 import '../secret_store.dart';
 import '../upstream.dart';
 import 'codex_api.dart';
@@ -85,7 +86,7 @@ class CodexAccounts extends CodexService {
     return until;
   }
 
-  /// Whether account [accountId] is signed out: to be signed in again.
+  @override
   bool signedOut(String providerId, String accountId) =>
       _signedOut.contains(_key(providerId, accountId));
 
@@ -117,6 +118,28 @@ class CodexAccounts extends CodexService {
     session: session,
     used: (account) => usage(provider.id, account.id)?.mostUsed,
   );
+
+  @override
+  ProviderAccount? accountFor(ModelProvider provider, {String? session}) =>
+      _balancer.peek(
+        provider.id,
+        available(provider),
+        provider.balance,
+        session: session == null ? null : promptCacheKeyOf(session),
+        used: (account) => usage(provider.id, account.id)?.mostUsed,
+      );
+
+  @override
+  DateTime? backAt(ModelProvider provider) {
+    DateTime? first;
+    for (final account in provider.accounts) {
+      if (!account.enabled || signedOut(provider.id, account.id)) continue;
+      final until = limitedUntil(provider.id, account.id);
+      if (until == null) return null;
+      if (first == null || until.isBefore(first)) first = until;
+    }
+    return first;
+  }
 
   /// Account [account] out of quota until [until].
   void markLimited(
@@ -422,12 +445,7 @@ class CodexAccounts extends CodexService {
     final requests = _requests.putIfAbsent(key, _AccountRequests.new);
     if (requests.usage case final running?) return running;
     final previous = _usage[key];
-    final freshSince = _now().subtract(const Duration(minutes: 5));
-    if (!force &&
-        ([
-          ?previous?.at,
-          ?requests.usageAttemptedAt,
-        ].any((at) => at.isAfter(freshSince)))) {
+    if (!force && !_stale(previous, requests.usageAttemptedAt)) {
       return Future.value();
     }
     requests.usageAttemptedAt = _now();
@@ -437,6 +455,30 @@ class CodexAccounts extends CodexService {
         });
     requests.usage = fetch;
     return fetch;
+  }
+
+  /// Whether [usage] is to be asked again: not known, learned (or [tried])
+  /// [CodexService.usageMaxAge] ago, or a window of it started over since
+  /// (and not tried since).
+  bool _stale(CodexUsage? usage, DateTime? tried) {
+    final now = _now();
+    if (usage != null &&
+        usage.windows.any(
+          (window) => switch (window.resetsAt) {
+            final at? =>
+              at.isAfter(usage.at) &&
+                  !at.isAfter(now) &&
+                  (tried == null || tried.isBefore(at)),
+            null => false,
+          },
+        )) {
+      return true;
+    }
+    final last = [?usage?.at, ?tried].fold<DateTime?>(
+      null,
+      (latest, at) => latest == null || at.isAfter(latest) ? at : latest,
+    );
+    return last == null || now.difference(last) >= CodexService.usageMaxAge;
   }
 
   Future<void> _queryUsage(

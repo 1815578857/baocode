@@ -71,6 +71,16 @@ class _FakeCodex extends CodexService {
   DateTime? limitedUntil(String providerId, String accountId) => null;
 
   @override
+  bool signedOut(String providerId, String accountId) => accountId == 'b';
+
+  @override
+  ProviderAccount? accountFor(ModelProvider provider, {String? session}) =>
+      null;
+
+  @override
+  DateTime? backAt(ModelProvider provider) => null;
+
+  @override
   Future<void> removeAccount(String providerId, String accountId) async {
     removed.add(accountId);
     final provider = providers.provider(providerId)!;

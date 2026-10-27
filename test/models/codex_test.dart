@@ -12,6 +12,7 @@ import 'package:baocode/models/codex/codex_usage.dart';
 import 'package:baocode/models/model_provider.dart';
 import 'package:baocode/models/model_providers.dart';
 import 'package:baocode/models/proxy/model_proxy.dart';
+import 'package:baocode/models/proxy/prompt_cache_key.dart';
 import 'package:baocode/models/secret_store.dart';
 import 'package:baocode/models/upstream.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -753,6 +754,78 @@ void main() {
         expect(accounts.usage('cx', 'a')!.mostUsed, 40);
       });
 
+      test('a window started over is asked again, once', () async {
+        openai.reply = (path, _, _) => path == '/oauth/token'
+            ? tokens('access')
+            : (
+                200,
+                const {},
+                [
+                  jsonEncode({
+                    'rate_limit': {
+                      'primary_window': {
+                        'used_percent': 100,
+                        'reset_after_seconds': 60,
+                      },
+                    },
+                  }),
+                ],
+              );
+        await accounts.refreshUsage(provider(), force: false);
+        expect(openai.to(usagePath), hasLength(2));
+        clock = clock.add(const Duration(seconds: 59));
+        await accounts.refreshUsage(provider(), force: false);
+        expect(openai.to(usagePath), hasLength(2));
+        // Before five minutes are up: it has started over.
+        clock = clock.add(const Duration(seconds: 2));
+        openai.reply = (_, _, _) => quota(0);
+        await accounts.refreshUsage(provider(), force: false);
+        expect(openai.to(usagePath), hasLength(4));
+        expect(accounts.usage('cx', 'a')!.mostUsed, 0);
+        await accounts.refreshUsage(provider(), force: false);
+        expect(openai.to(usagePath), hasLength(4));
+      });
+
+      test('back as the first account in use is', () async {
+        expect(accounts.backAt(provider()), isNull);
+        final soon = clock.add(const Duration(hours: 1));
+        final later = clock.add(const Duration(hours: 3));
+        accounts.markLimited(provider(), a, later);
+        // One can still take a request.
+        expect(accounts.backAt(provider()), isNull);
+        accounts.markLimited(provider(), b, soon);
+        expect(accounts.backAt(provider()), soon);
+        // One not in use is not waited for.
+        await providers.save(
+          provider().copyWith(accounts: [a, b.copyWith(enabled: false)]),
+        );
+        expect(accounts.backAt(provider()), later);
+        clock = later;
+        expect(accounts.backAt(provider()), isNull);
+      });
+
+      test('a conversation is shown the account it is kept on', () async {
+        await providers.save(
+          provider().copyWith(balance: AccountBalance.roundRobin),
+        );
+        // Asking does not take a turn: the next is still the first.
+        expect(accounts.accountFor(provider()), a);
+        expect(accounts.accountFor(provider()), a);
+        accounts.pick(provider());
+        expect(
+          accounts.pick(provider(), session: promptCacheKeyOf('s'))?.id,
+          'b',
+        );
+        expect(accounts.accountFor(provider(), session: 's'), b);
+        expect(accounts.accountFor(provider(), session: 't'), a);
+        accounts.markLimited(
+          provider(),
+          b,
+          clock.add(const Duration(hours: 1)),
+        );
+        expect(accounts.accountFor(provider(), session: 's'), a);
+      });
+
       test(
         'providers with the same account ids do not share refreshes',
         () async {
@@ -1122,7 +1195,7 @@ void main() {
 
       tearDown(() => proxy.close());
 
-      Future<({int status, String text})> ask({
+      Future<({int status, String text, HttpHeaders headers})> ask({
         String model = 'gpt-5(high)',
         String? serviceTier,
       }) async {
@@ -1151,6 +1224,7 @@ void main() {
           return (
             status: response.statusCode,
             text: await utf8.decodeStream(response),
+            headers: response.headers,
           );
         } finally {
           client.close(force: true);
@@ -1325,6 +1399,10 @@ void main() {
         final answer = await ask();
         expect(answer.status, 429);
         expect(answer.text, contains('limit'));
+        // Each out of quota: when the first is back, and Claude Code not to
+        // ask again and again till then.
+        expect(answer.text, contains('out of quota until'));
+        expect(answer.headers.value('x-should-retry'), 'false');
         expect(openai.to('/backend-api/codex/responses'), hasLength(2));
         expect(errors.last, isNotNull);
       });

@@ -6098,9 +6098,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get modelsAccountLimited => '额度已用尽';
 
   @override
-  String get modelsAccountError => '账号异常';
-
-  @override
   String get modelsAccountQuotaUnknown => '额度尚未获取';
 
   @override
@@ -6136,6 +6133,35 @@ class AppLocalizationsZh extends AppLocalizations {
   String modelsQuotaRemaining(int percent) {
     return '剩余 $percent%';
   }
+
+  @override
+  String quotaBarWindowLeft(String window, int percent) {
+    return '$window剩 $percent%';
+  }
+
+  @override
+  String quotaBarAvailable(int count, int total) {
+    return '$count/$total 可用';
+  }
+
+  @override
+  String quotaBarAllOut(String time) {
+    return '账号额度全部用尽 · $time 恢复';
+  }
+
+  @override
+  String quotaBarBackAt(String time) {
+    return '额度已用尽 · $time 恢复';
+  }
+
+  @override
+  String get quotaBarNone => '没有可用的账号';
+
+  @override
+  String get quotaBarThisChat => '当前对话';
+
+  @override
+  String get quotaBarRefresh => '刷新额度';
 
   @override
   String modelsQuotaResetsIn(String time) {
