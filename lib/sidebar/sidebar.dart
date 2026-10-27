@@ -2216,7 +2216,8 @@ class _NavRow extends StatelessWidget {
                           style: TextStyle(color: foreground, fontSize: 12.5),
                         ),
                       ),
-                      if (badge > 0) _badge(),
+                      // As the side panel rail's badges, in its colors.
+                      if (badge > 0) IdeTitleBadge(badge),
                     ],
                   ),
                 ),
@@ -2236,28 +2237,6 @@ class _NavRow extends StatelessWidget {
       null => row,
     };
   }
-}
-
-extension on _NavRow {
-  Widget _badge() => Container(
-    constraints: const BoxConstraints(minWidth: 16),
-    height: 16,
-    padding: const EdgeInsets.symmetric(horizontal: 5),
-    alignment: Alignment.center,
-    decoration: BoxDecoration(
-      color: AppColors.accent,
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Text(
-      badge > 99 ? '99+' : '$badge',
-      style: TextStyle(
-        color: themeColors.get('badge.foreground') ?? Colors.white,
-        fontSize: 10.5,
-        fontWeight: FontWeight.w600,
-        height: 1,
-      ),
-    ),
-  );
 }
 
 class _GroupHeader extends StatelessWidget {
