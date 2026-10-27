@@ -7743,6 +7743,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get remoteFolderRefresh => 'Read the folders again';
+
+  @override
   String get remoteOpenThisFolder => 'Open This Folder';
 
   @override

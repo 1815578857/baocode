@@ -7291,6 +7291,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get remoteFolderRefresh => '重新读取文件夹';
+
+  @override
   String get remoteOpenThisFolder => '打开此文件夹';
 
   @override
