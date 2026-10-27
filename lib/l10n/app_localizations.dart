@@ -10527,17 +10527,47 @@ abstract class AppLocalizations {
   /// **'Use {name}'**
   String modelsAccountEnable(String name);
 
+  /// No description provided for @modelsAccountDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get modelsAccountDisabled;
+
   /// No description provided for @modelsAccountLimited.
   ///
   /// In en, this message translates to:
   /// **'Out of quota'**
   String get modelsAccountLimited;
 
+  /// No description provided for @modelsAccountError.
+  ///
+  /// In en, this message translates to:
+  /// **'Account error'**
+  String get modelsAccountError;
+
   /// No description provided for @modelsAccountQuotaUnknown.
   ///
   /// In en, this message translates to:
   /// **'Quota not known yet'**
   String get modelsAccountQuotaUnknown;
+
+  /// No description provided for @modelsQuotaShortWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Short window'**
+  String get modelsQuotaShortWindow;
+
+  /// No description provided for @modelsQuotaLongWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Long window'**
+  String get modelsQuotaLongWindow;
+
+  /// No description provided for @modelsQuotaLastUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Last updated {time}'**
+  String modelsQuotaLastUpdated(String time);
 
   /// No description provided for @modelsQuotaWeek.
   ///
@@ -10562,6 +10592,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{percent}% used'**
   String modelsQuotaUsed(int percent);
+
+  /// No description provided for @modelsQuotaRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% left'**
+  String modelsQuotaRemaining(int percent);
 
   /// No description provided for @modelsQuotaResetsIn.
   ///

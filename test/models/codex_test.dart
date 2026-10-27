@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -73,6 +74,13 @@ class FakeOpenAI {
   Answer Function(String path, Map<String, String> headers, String body) reply =
       (_, _, _) => (404, const {}, const []);
 
+  FutureOr<Answer> Function(
+    String path,
+    Map<String, String> headers,
+    String body,
+  )?
+  delayedReply;
+
   String get base => 'http://127.0.0.1:${_server.port}';
 
   CodexEndpoints endpoints({int callbackPort = 1455}) => CodexEndpoints(
@@ -101,11 +109,10 @@ class FakeOpenAI {
       headers: headers,
       body: body,
     ));
-    final (status, answerHeaders, lines) = reply(
-      request.uri.path,
-      headers,
-      body,
-    );
+    final Answer answer =
+        await (delayedReply?.call(request.uri.path, headers, body) ??
+            reply(request.uri.path, headers, body));
+    final (status, answerHeaders, lines) = answer;
     request.response.statusCode = status;
     answerHeaders.forEach(request.response.headers.set);
     for (final line in lines) {
@@ -622,6 +629,326 @@ void main() {
       final newer = openai.to('/backend-api/codex/models').last;
       expect(newer.query['client_version'], '0.170.0');
       expect(newer.headers['user-agent'], codexUserAgent('0.170.0'));
+    });
+
+    group('usage refresh', () {
+      const usagePath = '/backend-api/wham/usage';
+      late DateTime clock;
+
+      Answer quota(num percent) => (
+        200,
+        const {},
+        [
+          jsonEncode({
+            'rate_limit': {
+              'primary_window': {'used_percent': percent},
+            },
+          }),
+        ],
+      );
+
+      setUp(() {
+        clock = now;
+        accounts = CodexAccounts(
+          providers: () => providers,
+          endpoints: openai.endpoints(),
+          now: () => clock,
+        );
+        openai.reply = (path, _, _) =>
+            path == '/oauth/token' ? tokens('access') : quota(30);
+      });
+
+      test(
+        'concurrent forced and automatic refreshes share each account',
+        () async {
+          final received = Completer<void>();
+          final answer = Completer<Answer>();
+          var asked = 0;
+          openai.delayedReply = (path, _, _) {
+            if (path == '/oauth/token') return tokens('access');
+            if (++asked == 2) received.complete();
+            return answer.future;
+          };
+          final first = accounts.refreshUsage(provider());
+          await received.future;
+          final second = accounts.refreshUsage(provider());
+          final automatic = accounts.refreshUsage(provider(), force: false);
+          answer.complete(quota(30));
+          await Future.wait([first, second, automatic]);
+          expect(openai.to(usagePath), hasLength(2));
+          expect(accounts.usage('cx', 'a')!.mostUsed, 30);
+          expect(accounts.usage('cx', 'b')!.mostUsed, 30);
+        },
+      );
+
+      test(
+        'automatic refreshes wait five minutes; default stays forced',
+        () async {
+          await accounts.refreshUsage(provider(), force: false);
+          await accounts.refreshUsage(provider(), force: false);
+          expect(openai.to(usagePath), hasLength(2));
+          clock = clock.add(const Duration(minutes: 4, seconds: 59));
+          await accounts.refreshUsage(provider(), force: false);
+          expect(openai.to(usagePath), hasLength(2));
+          clock = clock.add(const Duration(seconds: 1));
+          await accounts.refreshUsage(provider(), force: false);
+          expect(openai.to(usagePath), hasLength(4));
+          await accounts.refreshUsage(provider());
+          expect(openai.to(usagePath), hasLength(6));
+          await accounts.refreshUsage(provider(), force: false);
+          expect(openai.to(usagePath), hasLength(6));
+        },
+      );
+
+      test(
+        'header snapshots are fresh independently for each account',
+        () async {
+          accounts.record(
+            provider(),
+            a,
+            (name) => name == 'x-codex-primary-used-percent' ? '55' : null,
+          );
+          await accounts.refreshUsage(provider(), force: false);
+          expect(openai.to(usagePath), hasLength(1));
+          expect(
+            openai.to(usagePath).single.headers['chatgpt-account-id'],
+            'ws-b',
+          );
+          expect(accounts.usage('cx', 'a')!.mostUsed, 55);
+          clock = clock.add(const Duration(minutes: 4));
+          accounts.record(
+            provider(),
+            b,
+            (name) => name == 'x-codex-primary-used-percent' ? '20' : null,
+          );
+          clock = clock.add(const Duration(minutes: 1));
+          await accounts.refreshUsage(provider(), force: false);
+          expect(openai.to(usagePath), hasLength(2));
+          expect(
+            openai.to(usagePath).last.headers['chatgpt-account-id'],
+            'ws-a',
+          );
+          expect(accounts.usage('cx', 'b')!.mostUsed, 20);
+        },
+      );
+
+      test('failed attempts cool down, but forced refreshes retry', () async {
+        openai.reply = (path, _, _) => path == '/oauth/token'
+            ? tokens('access')
+            : (503, const {}, ['{"error":{"message":"unavailable"}}']);
+        await accounts.refreshUsage(provider(), force: false);
+        expect(accounts.error('cx', 'a'), contains('unavailable'));
+        await accounts.refreshUsage(provider(), force: false);
+        expect(openai.to(usagePath), hasLength(2));
+        clock = clock.add(const Duration(minutes: 4, seconds: 59));
+        await accounts.refreshUsage(provider(), force: false);
+        expect(openai.to(usagePath), hasLength(2));
+        await accounts.refreshUsage(provider());
+        expect(openai.to(usagePath), hasLength(4));
+        clock = clock.add(const Duration(minutes: 5));
+        openai.reply = (_, _, _) => quota(40);
+        await accounts.refreshUsage(provider(), force: false);
+        expect(openai.to(usagePath), hasLength(6));
+        expect(accounts.error('cx', 'a'), isNull);
+        expect(accounts.usage('cx', 'a')!.mostUsed, 40);
+      });
+
+      test(
+        'providers with the same account ids do not share refreshes',
+        () async {
+          await providers.save(
+            const ModelProvider(
+              id: 'other',
+              name: 'Other ChatGPT',
+              protocol: ProviderProtocol.codex,
+              accounts: [a, b],
+            ),
+          );
+          await secrets.write(
+            ModelProvider.accountRefFor('other', 'a'),
+            'other-a',
+          );
+          await secrets.write(
+            ModelProvider.accountRefFor('other', 'b'),
+            'other-b',
+          );
+          await Future.wait([
+            accounts.refreshUsage(provider(), force: false),
+            accounts.refreshUsage(providers.provider('other')!, force: false),
+          ]);
+          expect(openai.to(usagePath), hasLength(4));
+          expect(accounts.usage('other', 'a')!.mostUsed, 30);
+          expect(accounts.usage('cx', 'a')!.mostUsed, 30);
+        },
+      );
+
+      for (final succeeds in [true, false]) {
+        test(
+          'a late ${succeeds ? 'answer' : 'error'} keeps newer headers',
+          () async {
+            final received = Completer<void>();
+            final answer = Completer<Answer>();
+            openai.delayedReply = (path, _, _) {
+              if (path == '/oauth/token') return tokens('access');
+              received.complete();
+              return answer.future;
+            };
+            final running = accounts.refreshUsage(
+              provider().copyWith(accounts: [a]),
+            );
+            await received.future;
+            // The clock deliberately has not advanced: arrival order matters.
+            accounts.record(
+              provider(),
+              a,
+              (name) => name == 'x-codex-primary-used-percent' ? '75' : null,
+            );
+            final snapshot = accounts.usage('cx', 'a');
+            accounts.markError(provider(), a, 'newer error');
+            final until = clock.add(const Duration(hours: 1));
+            accounts.markLimited(provider(), a, until);
+            answer.complete(
+              succeeds
+                  ? quota(10)
+                  : (503, const <String, String>{}, ['failed']),
+            );
+            await running;
+            expect(accounts.usage('cx', 'a'), same(snapshot));
+            expect(accounts.error('cx', 'a'), 'newer error');
+            expect(accounts.limitedUntil('cx', 'a'), until);
+          },
+        );
+      }
+
+      for (final stage in ['usage', 'token']) {
+        for (final succeeds in [true, false]) {
+          test(
+            'removal invalidates a pending $stage ${succeeds ? 'answer' : 'error'}',
+            () async {
+              final received = Completer<void>();
+              final answer = Completer<Answer>();
+              openai.delayedReply = (path, _, _) {
+                if (stage == 'usage' && path == '/oauth/token') {
+                  return tokens('access');
+                }
+                received.complete();
+                return answer.future;
+              };
+              final stale = provider().copyWith(accounts: [a]);
+              final running = accounts.refreshUsage(stale, force: false);
+              await received.future;
+              await accounts.removeAccount('cx', 'a');
+              answer.complete(
+                succeeds
+                    ? stage == 'token'
+                          ? tokens('old-access', refresh: 'old-refresh')
+                          : quota(10)
+                    : (403, const <String, String>{}, ['refused']),
+              );
+              await running;
+              await accounts.refreshUsage(stale, force: false);
+              expect(accounts.usage('cx', 'a'), isNull);
+              expect(accounts.error('cx', 'a'), isNull);
+              expect(accounts.signedOut('cx', 'a'), isFalse);
+              expect(
+                await secrets.read(ModelProvider.accountRefFor('cx', 'a')),
+                isNull,
+              );
+              expect(openai.to(usagePath), hasLength(stage == 'usage' ? 1 : 0));
+            },
+          );
+        }
+      }
+
+      for (final stage in ['usage', 'token']) {
+        for (final succeeds in [true, false]) {
+          test(
+            'relogin invalidates a pending $stage ${succeeds ? 'answer' : 'error'}',
+            () async {
+              final account = ProviderAccount(
+                id: CodexIdentity.fromIdToken(idToken()).key,
+                accountId: 'ws-a',
+              );
+              await providers.save(provider().copyWith(accounts: [account]));
+              await secrets.write(
+                ModelProvider.accountRefFor('cx', account.id),
+                'refresh-old',
+              );
+              final taken = await ServerSocket.bind(
+                InternetAddress.loopbackIPv4,
+                0,
+              );
+              addTearDown(taken.close);
+              accounts = CodexAccounts(
+                providers: () => providers,
+                endpoints: openai.endpoints(callbackPort: taken.port),
+                now: () => clock,
+              );
+              final receivedOld = Completer<void>();
+              final receivedNew = Completer<void>();
+              final oldAnswer = Completer<Answer>();
+              final newAnswer = Completer<Answer>();
+              openai.delayedReply = (path, headers, body) {
+                if (path == '/oauth/token') {
+                  if (form(body)['grant_type'] == 'authorization_code') {
+                    return tokens(
+                      'access-new',
+                      refresh: 'refresh-new',
+                      id: idToken(),
+                    );
+                  }
+                  if (stage == 'token') {
+                    receivedOld.complete();
+                    return oldAnswer.future;
+                  }
+                  return tokens('access-old');
+                }
+                if (headers['authorization'] == 'Bearer access-old') {
+                  receivedOld.complete();
+                  return oldAnswer.future;
+                }
+                receivedNew.complete();
+                return newAnswer.future;
+              };
+              final old = accounts.refreshUsage(provider(), force: false);
+              await receivedOld.future;
+              final login = await accounts.login('cx');
+              login.submit(
+                'http://localhost:${taken.port}/auth/callback'
+                '?code=new&state=${login.url.queryParameters['state']}',
+              );
+              expect((await login.result).id, account.id);
+              // Login's automatic fetch must not join the old account's query.
+              await receivedNew.future;
+              oldAnswer.complete(
+                succeeds
+                    ? stage == 'token'
+                          ? tokens('access-old', refresh: 'rotated-old')
+                          : quota(10)
+                    : (403, const <String, String>{}, ['refused']),
+              );
+              await old;
+              final joined = accounts.refreshUsage(provider(), force: false);
+              newAnswer.complete(quota(80));
+              await joined;
+              expect(openai.to(usagePath), hasLength(stage == 'usage' ? 2 : 1));
+              expect(accounts.usage('cx', account.id)!.mostUsed, 80);
+              expect(accounts.error('cx', account.id), isNull);
+              expect(accounts.signedOut('cx', account.id), isFalse);
+              expect(
+                await accounts.accessToken(provider(), account),
+                'access-new',
+              );
+              expect(
+                await secrets.read(
+                  ModelProvider.accountRefFor('cx', account.id),
+                ),
+                'refresh-new',
+              );
+            },
+          );
+        }
+      }
     });
 
     test('signing in: the browser comes back, the account is added', () async {

@@ -13,7 +13,8 @@ abstract class CodexService extends ChangeNotifier {
   Future<CodexLogin> login(String providerId);
 
   /// Asks how much of each of [provider]'s accounts' quota is used.
-  Future<void> refreshUsage(ModelProvider provider);
+  /// With [force] false, recent quota or attempts need not be asked again.
+  Future<void> refreshUsage(ModelProvider provider, {bool force = true});
 
   /// Account [accountId]'s quota, as last known.
   CodexUsage? usage(String providerId, String accountId);
@@ -69,7 +70,10 @@ class CodexUnavailable extends CodexService {
       throw const CodexException('Not available on the web.');
 
   @override
-  Future<void> refreshUsage(ModelProvider provider) async {}
+  Future<void> refreshUsage(
+    ModelProvider provider, {
+    bool force = true,
+  }) async {}
 
   @override
   CodexUsage? usage(String providerId, String accountId) => null;

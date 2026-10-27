@@ -4623,8 +4623,20 @@
       }
     }
   },
+  "modelsAccountDisabled": "Disabled",
   "modelsAccountLimited": "Out of quota",
+  "modelsAccountError": "Account error",
   "modelsAccountQuotaUnknown": "Quota not known yet",
+  "modelsQuotaShortWindow": "Short window",
+  "modelsQuotaLongWindow": "Long window",
+  "modelsQuotaLastUpdated": "Last updated {time}",
+  "@modelsQuotaLastUpdated": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "modelsQuotaWeek": "Weekly",
   "modelsQuotaHours": "{count}h",
   "@modelsQuotaHours": {
@@ -4644,6 +4656,14 @@
   },
   "modelsQuotaUsed": "{percent}% used",
   "@modelsQuotaUsed": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "modelsQuotaRemaining": "{percent}% left",
+  "@modelsQuotaRemaining": {
     "placeholders": {
       "percent": {
         "type": "int"

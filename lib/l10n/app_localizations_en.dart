@@ -6496,10 +6496,27 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get modelsAccountDisabled => 'Disabled';
+
+  @override
   String get modelsAccountLimited => 'Out of quota';
 
   @override
+  String get modelsAccountError => 'Account error';
+
+  @override
   String get modelsAccountQuotaUnknown => 'Quota not known yet';
+
+  @override
+  String get modelsQuotaShortWindow => 'Short window';
+
+  @override
+  String get modelsQuotaLongWindow => 'Long window';
+
+  @override
+  String modelsQuotaLastUpdated(String time) {
+    return 'Last updated $time';
+  }
 
   @override
   String get modelsQuotaWeek => 'Weekly';
@@ -6517,6 +6534,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String modelsQuotaUsed(int percent) {
     return '$percent% used';
+  }
+
+  @override
+  String modelsQuotaRemaining(int percent) {
+    return '$percent% left';
   }
 
   @override

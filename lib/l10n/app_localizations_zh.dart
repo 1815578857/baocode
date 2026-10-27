@@ -6092,10 +6092,27 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get modelsAccountDisabled => '已禁用';
+
+  @override
   String get modelsAccountLimited => '额度已用尽';
 
   @override
+  String get modelsAccountError => '账号异常';
+
+  @override
   String get modelsAccountQuotaUnknown => '额度尚未获取';
+
+  @override
+  String get modelsQuotaShortWindow => '短周期';
+
+  @override
+  String get modelsQuotaLongWindow => '长周期';
+
+  @override
+  String modelsQuotaLastUpdated(String time) {
+    return '上次更新 $time';
+  }
 
   @override
   String get modelsQuotaWeek => '每周';
@@ -6113,6 +6130,11 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String modelsQuotaUsed(int percent) {
     return '已用 $percent%';
+  }
+
+  @override
+  String modelsQuotaRemaining(int percent) {
+    return '剩余 $percent%';
   }
 
   @override

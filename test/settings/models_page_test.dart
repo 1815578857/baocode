@@ -55,7 +55,10 @@ class _FakeCodex extends CodexService {
   }
 
   @override
-  Future<void> refreshUsage(ModelProvider provider) async => refreshed++;
+  Future<void> refreshUsage(
+    ModelProvider provider, {
+    bool force = true,
+  }) async => refreshed++;
 
   @override
   CodexUsage? usage(String providerId, String accountId) => usages[accountId];
