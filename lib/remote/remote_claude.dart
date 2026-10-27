@@ -390,7 +390,8 @@ class RemoteClaudeTransport implements ClaudeCodeTransport {
       return RemoteClaudeTransport._(process);
     } on ClaudeDownloadFailed catch (error) {
       throw ClaudeUnavailable(
-        'Claude Code could not be installed on ${host.host}',
+        'Claude Code could not be installed on '
+        '${RemoteLocation.hostName(host.host)}',
         detail:
             '${error.message}${error.detail == null ? '' : ': ${error.detail}'}'
             '\n\nInstall it there, in a terminal of the project:\n'

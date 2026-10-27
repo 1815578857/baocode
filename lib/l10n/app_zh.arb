@@ -2079,6 +2079,7 @@
   "remoteStatusReconnecting": "{kind}: {host}（正在重连...）",
   "remoteStatusFailed": "{kind}: {host}（已断开）",
   "remoteStatusInstalling": "{kind}: {host}（正在安装 Claude Code {percent}%）",
+  "remoteStatusInstallingUnsized": "{kind}: {host}（正在安装 Claude Code...）",
   "remoteInstallingClaude": "正在 {host} 上安装 Claude Code…",
   "remoteInstallingClaudeProgress": "正在 {host} 上安装 Claude Code… {percent}%",
   "localDownloadingClaude": "正在下载 Claude Code… {percent}%",

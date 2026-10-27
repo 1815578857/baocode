@@ -3417,13 +3417,13 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
           ),
         const IdeMenuSeparator(),
         IdeMenuAction(
-          l10n.sidebarOpenFolderOn(host),
+          l10n.sidebarOpenFolderOn(RemoteLocation.hostName(host)),
           icon: const Icon(Codicons.folderOpened),
           onSelected: () =>
               _openRemoteProject(host: host, switchTo: true, inIde: true),
         ),
         IdeMenuAction(
-          l10n.remoteOpenFileOn(host),
+          l10n.remoteOpenFileOn(RemoteLocation.hostName(host)),
           icon: const Icon(Codicons.file),
           onSelected: () => _openRemoteFile(),
         ),
