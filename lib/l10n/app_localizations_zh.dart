@@ -8406,26 +8406,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get stashPolishHint => '让 AI 把选中的文字理顺，保持你的原意，不加结构';
 
   @override
-  String get composerPolish => '润色';
+  String get composerPolish => '提示词增强';
 
   @override
-  String get composerPolishing => '润色中…';
+  String get composerPolishing => '增强中…';
 
   @override
   String get composerPolishHint =>
-      '润色：用辅助模型把消息改得更清楚，保留你的意思和口吻；图片、文件、代码和链接原样不动，可撤销';
+      '提示词增强：用辅助模型把消息改写成更清楚、更具体的提示词，没说清的地方由它补全；图片、文件、代码和链接原样不动，可撤销';
 
   @override
   String composerPolishFailed(String error) {
-    return '润色失败：$error';
+    return '提示词增强失败：$error';
   }
 
   @override
-  String get generalSettingsComposerPolish => '润色按钮';
+  String get generalSettingsComposerPolish => '提示词增强按钮';
 
   @override
   String get generalSettingsComposerPolishDescription =>
-      '在输入框里显示润色按钮，发送前用辅助模型把写的内容改得更清楚';
+      '在输入框里显示提示词增强按钮，发送前用辅助模型把写的内容改写成更清楚、更具体的提示词';
 
   @override
   String get generalSettingsLiveTurnStats => '运行时实时显示详细速率和时间';

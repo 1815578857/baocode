@@ -14490,37 +14490,37 @@ abstract class AppLocalizations {
   /// No description provided for @composerPolish.
   ///
   /// In en, this message translates to:
-  /// **'Polish'**
+  /// **'Enhance prompt'**
   String get composerPolish;
 
   /// No description provided for @composerPolishing.
   ///
   /// In en, this message translates to:
-  /// **'Polishing…'**
+  /// **'Enhancing…'**
   String get composerPolishing;
 
   /// No description provided for @composerPolishHint.
   ///
   /// In en, this message translates to:
-  /// **'Polish: the auxiliary model makes the message clearer, in your words; pictures, files, code and links stay as they are; Undo takes it back'**
+  /// **'Enhance prompt: the auxiliary model makes the message a clearer, more specific prompt for the agent, filling in what you left vague; pictures, files, code and links stay as they are; Undo takes it back'**
   String get composerPolishHint;
 
   /// No description provided for @composerPolishFailed.
   ///
   /// In en, this message translates to:
-  /// **'Could not polish: {error}'**
+  /// **'Could not enhance the prompt: {error}'**
   String composerPolishFailed(String error);
 
   /// No description provided for @generalSettingsComposerPolish.
   ///
   /// In en, this message translates to:
-  /// **'Polish button'**
+  /// **'Enhance Prompt button'**
   String get generalSettingsComposerPolish;
 
   /// No description provided for @generalSettingsComposerPolishDescription.
   ///
   /// In en, this message translates to:
-  /// **'A button in the message box that has the auxiliary model make what you wrote clearer before you send it'**
+  /// **'A button in the message box that has the auxiliary model make what you wrote a clearer, more specific prompt before you send it'**
   String get generalSettingsComposerPolishDescription;
 
   /// No description provided for @generalSettingsLiveTurnStats.
