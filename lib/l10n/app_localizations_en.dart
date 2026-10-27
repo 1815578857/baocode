@@ -8896,26 +8896,26 @@ class AppLocalizationsEn extends AppLocalizations {
       'Has AI make the selection clearer, in your words, without adding structure';
 
   @override
-  String get composerPolish => 'Polish';
+  String get composerPolish => 'Enhance prompt';
 
   @override
-  String get composerPolishing => 'Polishing…';
+  String get composerPolishing => 'Enhancing…';
 
   @override
   String get composerPolishHint =>
-      'Polish: the auxiliary model makes the message clearer, in your words; pictures, files, code and links stay as they are; Undo takes it back';
+      'Enhance prompt: the auxiliary model makes the message a clearer, more specific prompt for the agent, filling in what you left vague; pictures, files, code and links stay as they are; Undo takes it back';
 
   @override
   String composerPolishFailed(String error) {
-    return 'Could not polish: $error';
+    return 'Could not enhance the prompt: $error';
   }
 
   @override
-  String get generalSettingsComposerPolish => 'Polish button';
+  String get generalSettingsComposerPolish => 'Enhance Prompt button';
 
   @override
   String get generalSettingsComposerPolishDescription =>
-      'A button in the message box that has the auxiliary model make what you wrote clearer before you send it';
+      'A button in the message box that has the auxiliary model make what you wrote a clearer, more specific prompt before you send it';
 
   @override
   String get generalSettingsLiveTurnStats => 'Live Speed and Time';

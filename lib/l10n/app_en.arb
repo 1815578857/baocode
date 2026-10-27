@@ -6409,10 +6409,10 @@
   "stashPolish": "Polish",
   "stashPolishing": "Polishing…",
   "stashPolishHint": "Has AI make the selection clearer, in your words, without adding structure",
-  "composerPolish": "Polish",
-  "composerPolishing": "Polishing…",
-  "composerPolishHint": "Polish: the auxiliary model makes the message clearer, in your words; pictures, files, code and links stay as they are; Undo takes it back",
-  "composerPolishFailed": "Could not polish: {error}",
+  "composerPolish": "Enhance prompt",
+  "composerPolishing": "Enhancing…",
+  "composerPolishHint": "Enhance prompt: the auxiliary model makes the message a clearer, more specific prompt for the agent, filling in what you left vague; pictures, files, code and links stay as they are; Undo takes it back",
+  "composerPolishFailed": "Could not enhance the prompt: {error}",
   "@composerPolishFailed": {
     "placeholders": {
       "error": {
@@ -6420,8 +6420,8 @@
       }
     }
   },
-  "generalSettingsComposerPolish": "Polish button",
-  "generalSettingsComposerPolishDescription": "A button in the message box that has the auxiliary model make what you wrote clearer before you send it",
+  "generalSettingsComposerPolish": "Enhance Prompt button",
+  "generalSettingsComposerPolishDescription": "A button in the message box that has the auxiliary model make what you wrote a clearer, more specific prompt before you send it",
   "generalSettingsLiveTurnStats": "Live Speed and Time",
   "generalSettingsLiveTurnStatsDescription": "While the agent works, a line under the reply with how long the turn has taken, how fast the model writes and the tokens so far, changing as it goes. The figures under a finished turn always show.",
   "usageLimitScheduled": "Usage limit reached · continues automatically after it resets at {time}",
