@@ -1064,8 +1064,7 @@ class ChatComposerState extends State<ChatComposer>
 
   bool get _caretAtEnd {
     final selection = _controller.selection;
-    return selection.isCollapsed &&
-        selection.baseOffset >= _controller.length;
+    return selection.isCollapsed && selection.baseOffset >= _controller.length;
   }
 
   @override
@@ -1629,10 +1628,7 @@ class ChatComposerState extends State<ChatComposer>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ComposerImages(
-              images: _pool,
-              child: _editor!,
-            ),
+            ComposerImages(images: _pool, child: _editor!),
             _buildToolbar(),
           ],
         ),
@@ -1860,6 +1856,8 @@ class ChatComposerState extends State<ChatComposer>
         }.replaceAll(RegExp(r'[\x00-\x1f]+'), ' '),
         onKey: _handleKey,
         onPaste: _paste,
+        onPasteCopy: (markdown) =>
+            renumberPastes(markdown, from: _nextPastedNumber()),
         style: MarkdownEditorStyle(
           text: base,
           selection: AppColors.textSelection,
