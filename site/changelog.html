@@ -30,6 +30,24 @@
   <h1>Changelog</h1>
   <p class="subtitle">What changed in each version of BaoCode.</p>
 
+  <section class="release" id="v1.7.1">
+    <h2 class="plain"><a href="#v1.7.1">1.7.1</a></h2>
+    <p>This release helps us track down the app becoming unresponsive while an agent works: on macOS, a hang is now written down as it happens, and sent with the diagnostics. It also fixes the chat's terminal and split panes.</p>
+    <p>Diagnostics</p>
+    <ul>
+    <li>On macOS, when the interface stops responding for 4 seconds, what each thread was doing and how long it lasted go into the logs, and are sent with the diagnostics. It costs next to nothing until then, and samples at most 3 times a run.</li>
+    <li>The logs say how each run ended (quit, update, ended by the system, crashed); a run that ended without a word is noted as the next one starts.</li>
+    <li>The diagnostics include the reports the system kept of the app: macOS' crashes, hangs it was force quit at, and long stretches of high CPU, and Windows Error Reporting's. The computer's name is left out of their names.</li>
+    </ul>
+    <p>Fixed</p>
+    <ul>
+    <li>The chat's terminal is each conversation's own: each split pane shows its project's terminals, as wide as the conversation. A pane's title bar buttons for the terminal, the side panel and the editor act on that pane's agent.</li>
+    <li>Dragging a line to resize a terminal tells it the size once you stop, rather than filling the scrollback with the prompt redrawn at every width.</li>
+    <li>Opening a remote project or file, a folder that is slow to read shows &quot;Reading…&quot; rather than the pick going away.</li>
+    <li>Source control: Generate Commit Message sits beside the commit buttons; the divider above the message stays under the pointer as you drag it, and a double click resets it.</li>
+    </ul>
+  </section>
+
   <section class="release" id="v1.7.0">
     <h2 class="plain"><a href="#v1.7.0">1.7.0</a></h2>
     <p>New Git View</p>
