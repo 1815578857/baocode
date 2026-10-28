@@ -77,6 +77,29 @@ enum ProjectRelocation {
   failed,
 }
 
+/// How the agents of a folder the app keeps for itself (a bot's) are set
+/// up: what they are told and the tools they have, and the settings they
+/// start with, over the user's. Such a folder is no project of the
+/// sidebar's.
+class AgentSetup {
+  const AgentSetup({
+    required this.workspace,
+    this.settings = const {},
+    this.kernel,
+  });
+
+  /// What its agents are told, and the tools they have: as it is when
+  /// one starts.
+  final KernelWorkspace Function() workspace;
+
+  /// The kernel its new agents run on ([KernelDescriptor.id]), over the
+  /// one the user picked last.
+  final String? kernel;
+
+  /// By [KernelChoiceKind]'s name.
+  final Map<String, String> settings;
+}
+
 /// What an agent needs from the user, most urgent first.
 enum ThreadStatus {
   /// Stopped on a question only the user can answer.
@@ -553,7 +576,10 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
             cwd: session.cwd,
             resume: session,
             // As it was left, or as a new agent starts.
-            settings: {..._preferredSettings, ...?_agentSettings[session.id]},
+            settings: _setUp(session.cwd, {
+              ..._preferredSettings,
+              ...?_agentSettings[session.id],
+            }),
             workspace: () => _kernelWorkspace(session.cwd),
           ),
           historyCount: 0,
@@ -1164,6 +1190,7 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
   /// folder's, until it is sent something).
   bool listsInSidebar(AgentThread thread) =>
       _projects.contains(thread.project) &&
+      !isAppFolder(thread.project.path) &&
       (!_isUntouched(thread) || _grid.contains(thread));
 
   /// The sidebar's key for the group of [path]'s project.
@@ -1295,7 +1322,22 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
   /// again once opened, or asked something since (see [_unhide]).
   final Map<String, DateTime> _hiddenProjects = {};
 
-  bool isHidden(Project project) => _hiddenProjects.containsKey(project.path);
+  bool isHidden(Project project) =>
+      _hiddenProjects.containsKey(project.path) || isAppFolder(project.path);
+
+  /// The setup of agents in a folder the app keeps for itself, by its path;
+  /// null for a project's (see [AgentSetup]).
+  AgentSetup? Function(String path)? agentSetup;
+
+  /// Whether [path] is a folder the app keeps for itself: never listed.
+  bool isAppFolder(String path) => agentSetup?.call(path) != null;
+
+  /// [settings] with those of the app's folder [cwd] over them.
+  Map<String, String> _setUp(String? cwd, Map<String, String> settings) =>
+      switch (cwd == null ? null : agentSetup?.call(cwd)) {
+        final setup? => {...settings, ...setup.settings},
+        null => settings,
+      };
 
   /// Takes [project] off the sidebar; nothing of it is deleted.
   void hideProject(Project project) {
@@ -1624,6 +1666,7 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
       folders: workspace.folders,
       instructions: workspace.systemPrompt,
     ),
+    null when cwd != null => agentSetup?.call(cwd)?.workspace(),
     null => null,
   };
 
@@ -2847,12 +2890,17 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
 
   /// A new, empty agent in [project], listed here but not shown.
   AgentThread _newThread(Project project) {
-    final kernel = _preferredKernel;
-    final settings = {
+    final kernel =
+        switch (agentSetup?.call(project.path)?.kernel) {
+          final id? => kernels.where((k) => k.id == id).firstOrNull,
+          null => null,
+        } ??
+        _preferredKernel;
+    final settings = _setUp(project.path, {
       ..._preferredSettings,
       // Settings → Models' pick, if any, over the last one.
       KernelChoiceKind.model.name: ?ModelProviders.current.defaultModel,
-    };
+    });
     final cwd = project.path;
     final thread = AgentThread._(
       project: project,
@@ -2905,7 +2953,10 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
         kernelContext: KernelContext(
           cwd: record.cwd,
           resume: record,
-          settings: {..._preferredSettings, ...?_agentSettings[record.id]},
+          settings: _setUp(record.cwd, {
+            ..._preferredSettings,
+            ...?_agentSettings[record.id],
+          }),
           workspace: () => _kernelWorkspace(record.cwd),
         ),
         historyCount: 0,
