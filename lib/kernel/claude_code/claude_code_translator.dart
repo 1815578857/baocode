@@ -6,6 +6,7 @@ import '../kernel_event.dart';
 import '../kernel_types.dart';
 import '../output_meter.dart';
 import 'claude_goal.dart';
+import 'claude_numbers.dart';
 import 'claude_sdk_tools.dart';
 import 'turn_stats.dart';
 
@@ -472,17 +473,19 @@ class ClaudeTranslator {
       case 'message_delta':
         final usage = _map(event['usage']);
         for (final MapEntry(:key, :value) in usage.entries) {
-          if (value is num) _messageUsage[key] = value;
+          if (claudeNumber(value) != null) _messageUsage[key] = value;
         }
-        if (usage['output_tokens'] is num) _messageCounted = true;
-        if (_map(usage['output_tokens_details'])['thinking_tokens']
-            case final num tokens) {
-          _messageThinking = tokens.toInt();
+        if (claudeNumber(usage['output_tokens']) != null) {
+          _messageCounted = true;
+        }
+        if (claudeInt(_map(usage['output_tokens_details'])['thinking_tokens'])
+            case final tokens?) {
+          _messageThinking = tokens;
         }
       case 'message_stop':
         _endMessage();
       case 'content_block_start':
-        final index = event['index'] as int;
+        final index = claudeInt(event['index']) ?? 0;
         final block = _map(event['content_block']);
         final id = '$_messageId:$index';
         switch (block['type']) {
@@ -526,7 +529,7 @@ class ClaudeTranslator {
       case 'content_block_delta':
         final delta = _map(event['delta']);
         _meterDelta(delta);
-        final id = _streamed[event['index']];
+        final id = _streamed[claudeInt(event['index']) ?? 0];
         if (id == null) return;
         switch (delta['type']) {
           case 'thinking_delta':
@@ -553,7 +556,7 @@ class ClaudeTranslator {
         }
       case 'content_block_stop':
         _blockSince = DateTime.now();
-        final id = _streamed.remove(event['index']);
+        final id = _streamed.remove(claudeInt(event['index']) ?? 0);
         if (id == null) return;
         if (_thoughts.containsKey(id)) {
           _completeThought(id, null);
@@ -591,7 +594,7 @@ class ClaudeTranslator {
 
   /// Adds the message ended to the turn's usage.
   void _endMessage() {
-    int count(String key) => (_messageUsage[key] as num?)?.toInt() ?? 0;
+    int count(String key) => claudeInt(_messageUsage[key]) ?? 0;
     final output = count('output_tokens');
     _turnInput +=
         count('input_tokens') +
@@ -1209,10 +1212,10 @@ class ClaudeTranslator {
               : CommandStatus.failed,
           result: _agentReport(structured, text),
           prompt: _string(structured?['prompt']),
-          tokens: structured?['totalTokens'] as int?,
-          toolUses: structured?['totalToolUseCount'] as int?,
-          duration: switch (structured?['totalDurationMs']) {
-            final int ms => Duration(milliseconds: ms),
+          tokens: claudeInt(structured?['totalTokens']),
+          toolUses: claudeInt(structured?['totalToolUseCount']),
+          duration: switch (claudeInt(structured?['totalDurationMs'])) {
+            final ms? => Duration(milliseconds: ms),
             _ => null,
           },
           model: _string(structured?['resolvedModel']),
@@ -1407,8 +1410,8 @@ class ClaudeTranslator {
     } else {
       for (final raw in hunks) {
         final hunk = _map(raw);
-        var oldLine = hunk['oldStart'] as int? ?? 1;
-        var newLine = hunk['newStart'] as int? ?? 1;
+        var oldLine = claudeInt(hunk['oldStart']) ?? 1;
+        var newLine = claudeInt(hunk['newStart']) ?? 1;
         for (final line in _list(hunk['lines']).whereType<String>()) {
           if (line.isEmpty) continue;
           final text = line.substring(1);
@@ -1550,8 +1553,8 @@ class ClaudeTranslator {
       case 'compact_boundary':
         if (_activity?.kind == KernelActivityKind.compacting) _report(null);
         final meta = _map(message['compact_metadata']);
-        final before = meta['pre_tokens'] as int?;
-        final after = meta['post_tokens'] as int?;
+        final before = claudeInt(meta['pre_tokens']);
+        final after = claudeInt(meta['post_tokens']);
         _put(
           uuid,
           NoticeItem(
@@ -1568,7 +1571,8 @@ class ClaudeTranslator {
       case 'api_retry' when !replaying:
         final attempt = message['attempt'];
         final max = message['max_retries'];
-        final delay = ((message['retry_delay_ms'] as int? ?? 0) / 1000).ceil();
+        final delay = ((claudeInt(message['retry_delay_ms']) ?? 0) / 1000)
+            .ceil();
         final status = message['error_status'];
         _put(
           'retry:$turnId',
@@ -1610,7 +1614,7 @@ class ClaudeTranslator {
         if (_planCalls.containsKey(id)) return;
         _put(id, _toolItem(tool, _Outcome.denied), parent: tool.parent);
       case 'thinking_tokens':
-        final estimate = message['estimated_tokens'] as int?;
+        final estimate = claudeInt(message['estimated_tokens']);
         final id = _thoughts.keys.lastOrNull;
         if (estimate == null || id == null) return;
         _thinkingTokens[id] = estimate;
@@ -1671,8 +1675,8 @@ class ClaudeTranslator {
         final agent = toolUseId == null ? null : _agents[toolUseId];
         if (agent != null) {
           agent.item = agent.item.copyWith(
-            tokens: usage['total_tokens'] as int?,
-            toolUses: usage['tool_uses'] as int?,
+            tokens: claudeInt(usage['total_tokens']),
+            toolUses: claudeInt(usage['tool_uses']),
             lastTool: _string(message['last_tool_name']),
             activity: _string(message['description']),
           );
@@ -1776,10 +1780,10 @@ class ClaudeTranslator {
     if (_agents[card] case final agent?) {
       agent.item = agent.item.copyWith(
         status: status,
-        tokens: usage['total_tokens'] as int?,
-        toolUses: usage['tool_uses'] as int?,
-        duration: switch (usage['duration_ms']) {
-          final int ms => Duration(milliseconds: ms),
+        tokens: claudeInt(usage['total_tokens']),
+        toolUses: claudeInt(usage['tool_uses']),
+        duration: switch (claudeInt(usage['duration_ms'])) {
+          final ms? => Duration(milliseconds: ms),
           _ => null,
         },
       );
