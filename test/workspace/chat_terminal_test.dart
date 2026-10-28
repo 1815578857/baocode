@@ -74,6 +74,14 @@ Finder _areaOf(String root) => find.byWidgetPredicate(
   (widget) => widget is ChatTerminalArea && widget.root == root,
 );
 
+/// The terminal button in the title bar of the pane titled [title].
+Finder _toggleIn(String title) => find.descendant(
+  of: find.byWidgetPredicate(
+    (widget) => widget is ChatScreen && widget.title == title,
+  ),
+  matching: _toggle,
+);
+
 void main() {
   testWidgets('the title bar\'s button shows the panel under the chat, a '
       'terminal started in the agent\'s project, and hides it again with '
@@ -219,7 +227,7 @@ void main() {
   }, variant: _mac);
 
   testWidgets('each pane has its project\'s terminal under it, in its '
-      'width, both showing at once', (tester) async {
+      'width, its own button its own: both showing at once', (tester) async {
     final ptys = <FakePty>[];
     final workspace = await _pumpApp(
       tester,
@@ -231,19 +239,21 @@ void main() {
     );
     workspace.openBeside(other, first, PaneSide.right);
     await _settle(tester);
+    // Focused, the right pane.
+    expect(workspace.current, same(other));
 
-    // The focused pane's, the one on the right.
-    await tester.tap(_toggle);
+    // The left pane's button is the left pane's project's, though another
+    // pane has the focus, which stays where it is.
+    await tester.tap(_toggleIn(first.title));
     await _settle(tester);
-    expect(ptys.single.launch!.workingDirectory, other.project.path);
+    expect(ptys.single.launch!.workingDirectory, first.project.path);
+    expect(workspace.current, same(other));
 
-    // The other pane's too: both show, each under its own conversation.
-    workspace.select(first);
-    await _settle(tester);
-    await tester.tap(_toggle);
+    // The right pane's, its own: both show, each under its conversation.
+    await tester.tap(_toggleIn(other.title));
     await _settle(tester);
     expect(ptys, hasLength(2));
-    expect(ptys.last.launch!.workingDirectory, first.project.path);
+    expect(ptys.last.launch!.workingDirectory, other.project.path);
 
     final left = tester.getRect(_areaOf(first.project.path));
     final right = tester.getRect(_areaOf(other.project.path));
@@ -265,7 +275,7 @@ void main() {
   }, variant: _mac);
 
   testWidgets('two panes of one project show its terminals once, under the '
-      'first of them', (tester) async {
+      'first of them, whose button alone is there', (tester) async {
     final ptys = <FakePty>[];
     final workspace = await _pumpApp(
       tester,
@@ -278,6 +288,7 @@ void main() {
     workspace.openBeside(same, first, PaneSide.right);
     await _settle(tester);
     expect(_areaOf(first.project.path), findsOneWidget);
+    expect(_toggle, findsOneWidget);
 
     // Asked for from the right pane, the project's panel shows in the left
     // one, where its terminals are.
