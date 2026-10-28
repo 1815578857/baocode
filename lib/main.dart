@@ -7,6 +7,7 @@ import 'package:flutter/services.dart' show ServicesBinding;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:path/path.dart' as p;
 import 'package:bao_editor/textmate/textmate_syntax.dart';
+import 'package:bao_markdown/bao_markdown.dart' show MdClipboard;
 
 import 'package:bao_editor/monaco/flutter/language_assets.dart';
 
@@ -70,6 +71,7 @@ import 'network/network_proxy.dart';
 import 'notifications/attention_host.dart';
 import 'notifications/attention_settings.dart';
 import 'platform/memory_budget.dart';
+import 'platform/native_md_clipboard.dart';
 import 'platform/app_platform.dart';
 import 'platform/data_dir.dart';
 import 'platform/error_log.dart';
@@ -433,6 +435,9 @@ Future<void> main(List<String> arguments) async {
         .layoutAtLaunch(workspace.layout);
   }
   WindowControls.trackActiveView();
+  // What an editor copies, its tags and all, on the clipboard itself.
+  if (WindowControls.isDesktop)
+    MdClipboard.instance = const NativeMdClipboard();
   // An older `code` script opened windows for `code --version`.
   unawaited(ShellCommand.refresh());
   final ColorThemeStorage colorTheme = files == null
