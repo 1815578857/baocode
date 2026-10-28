@@ -5522,6 +5522,14 @@
       }
     }
   },
+  "remoteReadingFolder": "Reading {path}…",
+  "@remoteReadingFolder": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "remoteFileHostPlaceholder": "Select a host, to browse its files",
   "remoteFilePlaceholder": "A file on {host}: pick one, or type a path",
   "@remoteFilePlaceholder": {

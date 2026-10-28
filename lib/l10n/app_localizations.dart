@@ -12615,6 +12615,12 @@ abstract class AppLocalizations {
   /// **'Could not list {path}'**
   String remoteListFailed(String path);
 
+  /// No description provided for @remoteReadingFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading {path}…'**
+  String remoteReadingFolder(String path);
+
   /// No description provided for @remoteFileHostPlaceholder.
   ///
   /// In en, this message translates to:

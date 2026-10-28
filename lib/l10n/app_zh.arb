@@ -2085,6 +2085,7 @@
   "remoteParentFolder": "上级文件夹",
   "remoteGoTo": "前往 {path}",
   "remoteListFailed": "无法列出 {path}",
+  "remoteReadingFolder": "正在读取 {path}…",
   "remoteFileHostPlaceholder": "选择主机，浏览它的文件",
   "remoteFilePlaceholder": "{host} 上的文件：选择一个，或输入路径",
   "remoteOpenFile": "打开 {path}",

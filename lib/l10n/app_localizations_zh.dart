@@ -7319,6 +7319,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String remoteReadingFolder(String path) {
+    return '正在读取 $path…';
+  }
+
+  @override
   String get remoteFileHostPlaceholder => '选择主机，浏览它的文件';
 
   @override
