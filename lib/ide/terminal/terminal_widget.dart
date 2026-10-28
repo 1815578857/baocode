@@ -558,18 +558,18 @@ class _TerminalWidgetState extends State<TerminalWidget>
     if (!_sizing) {
       _sizing = true;
       SchedulerBinding.instance.addPostFrameCallback((_) => _flushFit());
-      return;
     }
+    // The run ends once the size has stayed the same for [_fitDelay], a
+    // single change too: the next is the first of another, told at once.
     _fitTimer?.cancel();
     _fitTimer = Timer(_fitDelay, () {
-      _flushFit();
+      _fitTimer = null;
       _sizing = false;
+      _flushFit();
     });
   }
 
   void _flushFit() {
-    _fitTimer?.cancel();
-    _fitTimer = null;
     final fit = _pendingFit;
     if (fit == null || !mounted) return;
     _pendingFit = null;
