@@ -2632,7 +2632,10 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       // header's on Windows, else by the traffic lights while it is hidden.
       final showToggle = narrow || !_sidebarDocked;
       final chat = _withSidePanel(
-        _withTerminal(_buildChat(showToggle: showToggle, pane: thread)),
+        _withTerminal(
+          _buildChat(showToggle: showToggle, pane: thread),
+          thread.project.path,
+        ),
         showToggle: showToggle,
       );
       return narrow ? _buildNarrow(body: chat) : _buildWide(body: chat);
@@ -3466,10 +3469,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     if (mounted) _watchFirstTurn(thread);
   }
 
-  /// The open agents side by side (see [ChatGridView]), the terminal panel
-  /// under them, the side panel at their right.
+  /// The open agents side by side (see [ChatGridView]), each with its
+  /// project's terminal panel under it (see [_withTerminal]), the side
+  /// panel at their right.
   Widget _buildPanes({required bool showToggle}) => _withSidePanel(
-    _withTerminal(_buildGrid(showToggle: showToggle)),
+    _buildGrid(showToggle: showToggle),
     showToggle: showToggle,
   );
 
@@ -4028,10 +4032,25 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     _inIdeOf(thread, (ide) => ide.open(request.path));
   }
 
-  /// [child] with the terminal panel under it (see [ChatTerminalArea]).
-  Widget _withTerminal(Widget child) => switch (_terminals) {
+  /// Whether [thread]'s pane is the one showing its project's terminals:
+  /// the first of its project's panes, so two panes of one project show
+  /// them once (a terminal shows in one place at a time).
+  bool _showsTerminals(AgentThread thread) {
+    final panes = _workspace.grid.panes;
+    return panes.isEmpty ||
+        panes.firstWhere(
+              (pane) => pane.project.path == thread.project.path,
+              orElse: () => thread,
+            ) ==
+            thread;
+  }
+
+  /// [child] with [root]'s terminal panel under it (see
+  /// [ChatTerminalArea]): in a pane, its own project's, at its width.
+  Widget _withTerminal(Widget child, String root) => switch (_terminals) {
     final terminals? => ChatTerminalArea(
       terminals: terminals,
+      root: root,
       onOpenLink: _openTerminalLink,
       child: child,
     ),
@@ -4057,8 +4076,18 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       onFocus: (thread) {
         if (!identical(thread, _workspace.current)) _workspace.select(thread);
       },
-      paneBuilder: (context, thread, place) =>
-          _buildChat(showToggle: showToggle, pane: thread, place: place),
+      paneBuilder: (context, thread, place) {
+        final chat = _buildChat(
+          showToggle: showToggle,
+          pane: thread,
+          place: place,
+        );
+        // A project's terminals under the first of its panes: the panes of
+        // one project show them once.
+        return _showsTerminals(thread)
+            ? _withTerminal(chat, thread.project.path)
+            : chat;
+      },
       // Those not focused in the sidebar's color, set apart.
       paneBackground: (thread) => identical(thread, _workspace.current)
           ? null

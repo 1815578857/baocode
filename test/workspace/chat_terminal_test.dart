@@ -10,6 +10,8 @@ import 'package:baocode/ide/ide_hover.dart';
 import 'package:baocode/ide/terminal/terminal_instance.dart';
 import 'package:baocode/keybindings/keybinding_service.dart';
 import 'package:baocode/main.dart';
+import 'package:baocode/workspace/chat_grid.dart';
+import 'package:baocode/workspace/chat_grid_view.dart';
 import 'package:baocode/workspace/chat_terminal.dart';
 import 'package:baocode/workspace/window_header/window_header.dart';
 import 'package:baocode/workspace/workspace.dart';
@@ -66,6 +68,11 @@ bool _toggleShown(WidgetTester tester) =>
 ChatTerminals _terminals(WidgetTester tester) => tester
     .widget<ChatTerminalArea>(find.byType(ChatTerminalArea).first)
     .terminals;
+
+/// The pane showing [root]'s terminals.
+Finder _areaOf(String root) => find.byWidgetPredicate(
+  (widget) => widget is ChatTerminalArea && widget.root == root,
+);
 
 void main() {
   testWidgets('the title bar\'s button shows the panel under the chat, a '
@@ -209,6 +216,79 @@ void main() {
     expect(_panel, findsOneWidget);
     expect(_terminals(tester).current!.instances, hasLength(1));
     expect(ptys, hasLength(2));
+  }, variant: _mac);
+
+  testWidgets('each pane has its project\'s terminal under it, in its '
+      'width, both showing at once', (tester) async {
+    final ptys = <FakePty>[];
+    final workspace = await _pumpApp(
+      tester,
+      terminalBackend: fakeTerminalBackend(ptys),
+    );
+    final first = workspace.current!;
+    final other = workspace.threads.firstWhere(
+      (thread) => thread.project != first.project,
+    );
+    workspace.openBeside(other, first, PaneSide.right);
+    await _settle(tester);
+
+    // The focused pane's, the one on the right.
+    await tester.tap(_toggle);
+    await _settle(tester);
+    expect(ptys.single.launch!.workingDirectory, other.project.path);
+
+    // The other pane's too: both show, each under its own conversation.
+    workspace.select(first);
+    await _settle(tester);
+    await tester.tap(_toggle);
+    await _settle(tester);
+    expect(ptys, hasLength(2));
+    expect(ptys.last.launch!.workingDirectory, first.project.path);
+
+    final left = tester.getRect(_areaOf(first.project.path));
+    final right = tester.getRect(_areaOf(other.project.path));
+    expect(left.right, lessThanOrEqualTo(right.left));
+    expect(
+      left.width,
+      lessThan(tester.getRect(find.byType(ChatGridView)).width),
+    );
+    for (final (root, pane) in [
+      (first.project.path, left),
+      (other.project.path, right),
+    ]) {
+      final panel = tester.getRect(
+        find.descendant(of: _areaOf(root), matching: _panel),
+      );
+      expect(panel.left, greaterThanOrEqualTo(pane.left));
+      expect(panel.right, lessThanOrEqualTo(pane.right));
+    }
+  }, variant: _mac);
+
+  testWidgets('two panes of one project show its terminals once, under the '
+      'first of them', (tester) async {
+    final ptys = <FakePty>[];
+    final workspace = await _pumpApp(
+      tester,
+      terminalBackend: fakeTerminalBackend(ptys),
+    );
+    final first = workspace.current!;
+    final same = workspace.threads.firstWhere(
+      (thread) => thread.project == first.project && !identical(thread, first),
+    );
+    workspace.openBeside(same, first, PaneSide.right);
+    await _settle(tester);
+    expect(_areaOf(first.project.path), findsOneWidget);
+
+    // Asked for from the right pane, the project's panel shows in the left
+    // one, where its terminals are.
+    await tester.tap(_toggle);
+    await _settle(tester);
+    expect(ptys, hasLength(1));
+    expect(_panel, findsOneWidget);
+    expect(
+      find.descendant(of: _areaOf(first.project.path), matching: _panel),
+      findsOneWidget,
+    );
   }, variant: _mac);
 
   testWidgets('its last terminal exited, the panel hides', (tester) async {
