@@ -2793,6 +2793,12 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
     select(thread);
   }
 
+  /// Rearranges an existing pane: beside [target] on [side], or swapping
+  /// their places. The agents keep running; the moved one stays focused.
+  void rearrangePane(AgentThread thread, AgentThread target, {PaneSide? side}) {
+    if (_grid.rearrange(thread, target, side: side)) select(thread);
+  }
+
   /// Closes [thread]'s pane, the one beside it taking its place; the last
   /// one stays. The agent goes on, in the sidebar.
   void closePane(AgentThread thread) {

@@ -4223,7 +4223,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     );
   }
 
-  /// An agent dragged from the sidebar, released over the conversations.
+  /// An agent from the sidebar, or a pane's title bar, released over the
+  /// conversations.
   void _drop(ChatDrop drop) {
     final growth = drop.growth;
     if (growth != Size.zero) {
@@ -4234,7 +4235,9 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       }
       unawaited(WindowControls.grow(growth));
     }
-    if (drop.side case final side?) {
+    if (drop.rearrange) {
+      _workspace.rearrangePane(drop.thread, drop.target, side: drop.side);
+    } else if (drop.side case final side?) {
       _workspace.openBeside(drop.thread, drop.target, side);
     } else {
       _workspace.openInPlaceOf(drop.target, drop.thread);
@@ -4354,6 +4357,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         ),
       ],
     ];
+    final draggable = !embedded && !place.alone && _agentThread == null;
     // The layout's context keys, for the chat's keybindings (see ChatKeys).
     final chat = ChatKeyScope(
       lookup: embedded ? _ideChatKeyContext : _chatKeyContext,
@@ -4364,6 +4368,25 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         title: thread.localizedTitle(context.l10n),
         autofocus: thread.session.itemCount == 0,
         onRename: (title) => _workspace.rename(thread, title),
+        titleDragBuilder: draggable
+            ? (title) => MouseRegion(
+                cursor: SystemMouseCursors.grab,
+                child: ChatDragSource(
+                  drag: _drag,
+                  thread: thread,
+                  rearrange: true,
+                  child: title,
+                ),
+              )
+            : null,
+        onTitleDragStart: draggable
+            ? (event) => _drag.start(
+                thread,
+                event.pointer,
+                event.position,
+                rearrange: true,
+              )
+            : null,
         // Beside the sidebar, the traffic lights are over it, not here.
         titleBarInset: titleBarInset,
         leading: leading,
