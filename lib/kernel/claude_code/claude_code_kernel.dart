@@ -557,7 +557,7 @@ class ClaudeCodeKernel
       _launchedModel = custom != null ? _model : null;
       _launchedWindow = _autocompact;
       _launchedSuggestions = PromptSuggestions.current();
-      final sdkServers = ClaudeSdkTools.servers;
+      final sdkServers = ClaudeSdkTools.serversFor(_cwd);
       final transport = await _start(
         ClaudeLaunch(
           cwd: _cwd,
@@ -582,6 +582,7 @@ class ClaudeCodeKernel
               ? RemoteDrops.folders
               : [?PasteStore.directory],
           instructions: workspace?.instructions,
+          tools: workspace?.tools,
           models: switch (custom) {
             (final provider, _) => _requestedModels(provider),
             null => const [],
