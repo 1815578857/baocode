@@ -7771,6 +7771,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String remoteReadingFolder(String path) {
+    return 'Reading $path…';
+  }
+
+  @override
   String get remoteFileHostPlaceholder => 'Select a host, to browse its files';
 
   @override
