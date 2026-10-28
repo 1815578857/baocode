@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -27,6 +28,35 @@ const _gateway = ModelProvider(
   ],
   roles: ProviderRoles(haiku: 'mini'),
 );
+
+/// A [SecretStore] that answers what it is told to and counts the reads:
+/// one process each on the platforms whose keychain is a command.
+class _CountingSecretStore implements SecretStore {
+  _CountingSecretStore({this.value, this.failing = false, this.gate});
+
+  String? value;
+  bool failing;
+
+  /// Held open, when given, to have the reads that arrive overlap.
+  Completer<void>? gate;
+
+  int reads = 0;
+
+  @override
+  Future<String?> read(String id) async {
+    reads++;
+    final gate = this.gate;
+    if (gate != null) await gate.future;
+    if (failing) throw const SecretStoreException('no keychain here');
+    return value;
+  }
+
+  @override
+  Future<void> write(String id, String value) async => this.value = value;
+
+  @override
+  Future<void> delete(String id) async => value = null;
+}
 
 void main() {
   group('ModelProvider', () {
@@ -391,6 +421,56 @@ void main() {
       expect(providers.providers, isEmpty);
       expect(providers.defaultModel, isNull);
       expect(await secrets.read('provider.gw'), isNull);
+    });
+
+    test('a key read once: the requests that arrive while the keychain is '
+        'answering it wait on that read, not on one of their own', () async {
+      final gate = Completer<void>();
+      final secrets = _CountingSecretStore(value: 'sk-1', gate: gate);
+      final providers = ModelProviders.memory(
+        providers: [_gateway],
+        secrets: secrets,
+      );
+
+      final reads = <Future<String?>>[
+        providers.key('gw'),
+        providers.key('gw'),
+        providers.key('gw'),
+      ];
+      expect(secrets.reads, 1, reason: 'one read for all of them');
+      gate.complete();
+      expect(await Future.wait(reads), ['sk-1', 'sk-1', 'sk-1']);
+      expect(secrets.reads, 1);
+
+      expect(await providers.key('gw'), 'sk-1');
+      expect(secrets.reads, 1, reason: 'kept: not read again');
+    });
+
+    test('a key read that fails is answered, and read again the next time: '
+        'one process, never one for each request', () async {
+      final gate = Completer<void>();
+      final secrets = _CountingSecretStore(failing: true, gate: gate);
+      final providers = ModelProviders.memory(
+        providers: [_gateway],
+        secrets: secrets,
+      );
+
+      final failed = <Future<String?>>[
+        providers.key('gw'),
+        providers.key('gw'),
+      ];
+      expect(secrets.reads, 1, reason: 'one read for all of them');
+      gate.complete();
+      expect(await Future.wait(failed), [null, null]);
+      expect(secrets.reads, 1);
+
+      // Not poisonous: a key the keychain has meanwhile is read again.
+      secrets.failing = false;
+      secrets.value = 'sk-2';
+      expect(await providers.key('gw'), 'sk-2');
+      expect(secrets.reads, 2, reason: 'the failure was not kept');
+      expect(await providers.key('gw'), 'sk-2');
+      expect(secrets.reads, 2);
     });
 
     test('an upstream removed, or its models, takes the other upstreams\' '

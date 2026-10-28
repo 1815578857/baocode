@@ -332,15 +332,21 @@ class ModelProviders extends ChangeNotifier {
 
   // --- Keys -------------------------------------------------------------------------
 
-  final Map<String, String?> _keys = {};
+  final Map<String, Future<String?>> _keys = {};
 
-  /// Provider [id]'s key, from the keychain (read once).
-  Future<String?> key(String id) async {
-    if (_keys.containsKey(id)) return _keys[id];
+  /// Provider [id]'s key, from the keychain (read once: the requests that
+  /// arrive while the read is under way wait for that same read).
+  Future<String?> key(String id) => _keys[id] ??= _readKey(id);
+
+  Future<String?> _readKey(String id) async {
     try {
-      return _keys[id] = await secrets.read(ModelProvider.keyRefFor(id));
+      return await secrets.read(ModelProvider.keyRefFor(id));
     } on SecretStoreException catch (error) {
       debugPrint('Key of $id not read: $error');
+      // Answered, not kept: the keychain may read it the next time. Until
+      // that read answers them all, none of the requests that arrive
+      // starts one of its own (one PowerShell for each was the hang).
+      _keys.remove(id);
       return null;
     }
   }
@@ -350,10 +356,10 @@ class ModelProviders extends ChangeNotifier {
     final trimmed = key.trim();
     if (trimmed.isEmpty) {
       await secrets.delete(ModelProvider.keyRefFor(id));
-      _keys[id] = null;
+      _keys[id] = Future.value();
     } else {
       await secrets.write(ModelProvider.keyRefFor(id), trimmed);
-      _keys[id] = trimmed;
+      _keys[id] = Future.value(trimmed);
     }
     notifyListeners();
   }
