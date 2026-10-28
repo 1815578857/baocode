@@ -843,8 +843,10 @@ class _Follow {
     final earlier = window == null
         ? null
         : _from > 0 || session.hasEarlierHistory || session.loadingEarlier;
+    final goal = _goal(session.goal);
     final restText = jsonEncode([
       earlier,
+      goal,
       session.isStreaming,
       interaction,
       [for (final choice in choices) choice.toJson()],
@@ -878,8 +880,23 @@ class _Follow {
       changes: changes,
       tasks: tasks,
       earlier: earlier,
+      goal: goal,
     );
   }
+
+  /// [goal] as the phone reads it (see [LinkSessionUpdate.goal]).
+  static Map<String, Object?>? _goal(KernelGoal? goal) => switch (goal) {
+    null => null,
+    final goal => {
+      'condition': goal.condition,
+      'state': goal.state.name,
+      if (goal.checks > 0) 'checks': goal.checks,
+      'reason': ?goal.lastReason,
+      'setAt': ?goal.setAt?.millisecondsSinceEpoch,
+      'duration': ?goal.duration?.inMilliseconds,
+      'tokens': ?goal.tokens,
+    },
+  };
 
   /// Moves [_from] along with the items put before the session's first
   /// (the phone's own first is still the same one).
