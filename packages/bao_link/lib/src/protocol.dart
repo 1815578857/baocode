@@ -539,6 +539,7 @@ class LinkSessionUpdate {
     this.changes = const [],
     this.tasks = const [],
     this.earlier,
+    this.goal,
   });
 
   factory LinkSessionUpdate.fromJson(Map<String, Object?> json) =>
@@ -565,6 +566,10 @@ class LinkSessionUpdate {
             LinkTask.fromJson(_map(task)),
         ],
         earlier: json['earlier'] as bool?,
+        goal: switch (json['goal']) {
+          final Map<String, Object?> map => map,
+          _ => null,
+        },
       );
 
   final String session;
@@ -595,6 +600,11 @@ class LinkSessionUpdate {
   /// asked to).
   final bool? earlier;
 
+  /// The goal the agent works toward (Claude Code's `/goal`), as JSON,
+  /// if any: `{"condition", "state", "checks", "reason", "setAt",
+  /// "duration", "tokens"}`, its times in milliseconds.
+  final Map<String, Object?>? goal;
+
   Map<String, Object?> toJson() => {
     'session': session,
     'start': start,
@@ -606,6 +616,7 @@ class LinkSessionUpdate {
     'changes': changes,
     if (tasks.isNotEmpty) 'tasks': [for (final task in tasks) task.toJson()],
     'earlier': ?earlier,
+    'goal': ?goal,
   };
 }
 
