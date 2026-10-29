@@ -199,6 +199,8 @@ class IdeEditorPlaceholder extends StatelessWidget {
       showIdeMenu(
         context,
         anchor: anchor,
+        // None is checked: the icons take the check's column.
+        iconsInCheckColumn: true,
         entries: [
           IdeMenuAction(
             Editor.terminal.localizedPlatformLabel(l10n),
