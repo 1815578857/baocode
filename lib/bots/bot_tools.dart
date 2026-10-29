@@ -148,16 +148,17 @@ abstract final class BotTools {
       (
         tool(
           'bot_later',
-          'Comes back to the user on your own, later: in so many minutes '
+          'Comes back to the user on your own, later: in so many seconds '
               'you are woken with your note, to write to them if it still '
               'makes sense. Use it to follow something up (how a talk went, '
               'whether a fix worked, a reminder they asked for) instead of '
               'promising to. At most ${Bots.maxLaters} waiting. Woken, it is '
               'yours to judge whether it still needs a word.',
           {
-            'minutes': {
+            'seconds': {
               'type': 'integer',
-              'description': 'From now: 1 to 10080 (a week).',
+              'description':
+                  'From now: 10 to 604800 (a week); 300 is five minutes.',
             },
             'note': {
               'type': 'string',
@@ -167,18 +168,18 @@ abstract final class BotTools {
           },
           (input, call) async {
             final bot = botOf(call);
-            final minutes = (input['minutes'] as num?)?.toInt() ?? 0;
-            if (minutes < 1 || minutes > 10080) {
-              throw ArgumentError('minutes is 1 to 10080');
+            final seconds = (input['seconds'] as num?)?.toInt() ?? 0;
+            if (seconds < 10 || seconds > 604800) {
+              throw ArgumentError('seconds is 10 to 604800');
             }
             final at = bots.later(
               bot,
-              Duration(minutes: minutes),
+              Duration(seconds: seconds),
               text(input, 'note'),
             );
-            return 'You will be woken ${botTime(at)}.';
+            return 'You will be woken ${botTime(at, seconds: true)}.';
           },
-          required: ['minutes', 'note'],
+          required: ['seconds', 'note'],
           summary: (input, _) => clip(input, 'note'),
         ),
         const BotToolAccess(),
@@ -204,7 +205,7 @@ abstract final class BotTools {
             final waiting = bots.laters(bot);
             return waiting.isEmpty
                 ? 'Nothing was waiting.'
-                : 'None matched. Waiting: ${[for (final later in waiting) '${botTime(later.at)} ${later.note}'].join('; ')}.';
+                : 'None matched. Waiting: ${[for (final later in waiting) '${botTime(later.at, seconds: true)} ${later.note}'].join('; ')}.';
           },
           required: ['note'],
           summary: (input, _) => clip(input, 'note'),

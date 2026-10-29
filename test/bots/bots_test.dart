@@ -614,7 +614,7 @@ void main() {
     test('it comes back later on its own, when it said', () async {
       final bot = bots.save(name: 'Mia', identity: '', abilities: {});
       final set = await call(bot, 'bot_later', {
-        'minutes': 90,
+        'seconds': 90 * 60,
         'note': 'Ask how the interview went',
       });
       expect(set['isError'], isNot(isTrue));
@@ -639,13 +639,32 @@ void main() {
 
       // At night too: the hour is its to mind, as it is told.
       now = DateTime(2026, 10, 29, 22, 30);
-      await call(bot, 'bot_later', {'minutes': 60, 'note': 'Remind of x'});
+      await call(bot, 'bot_later', {'seconds': 3600, 'note': 'Remind of x'});
       expect(bots.laters(bot).single.at, DateTime(2026, 10, 29, 23, 30));
       expect(botEvents, contains('Mind the time'));
       expect(
-        (await call(bot, 'bot_later', {'minutes': 0, 'note': 'x'}))['isError'],
+        (await call(bot, 'bot_later', {'seconds': 9, 'note': 'x'}))['isError'],
         isTrue,
       );
+      // Ten seconds at the least, to the second.
+      final soon = bots.save(name: 'Ping', identity: '', abilities: {});
+      now = DateTime(2026, 10, 29, 23);
+      final set10 = await call(soon, 'bot_later', {
+        'seconds': 10,
+        'note': 'Ping',
+      });
+      expect('${set10['content']}', contains('23:00:10'));
+      expect(bots.laters(soon).single.at, DateTime(2026, 10, 29, 23, 0, 10));
+      expect(
+        utf8.decode(folders.files['${soon.folder}/LATER.md']!),
+        '- 2026-10-29 23:00:10 Ping\n',
+      );
+      now = DateTime(2026, 10, 29, 23, 0, 9);
+      bots.deliver();
+      expect(bots.laters(soon), hasLength(1));
+      now = DateTime(2026, 10, 29, 23, 0, 10);
+      bots.deliver();
+      expect(bots.laters(soon), isEmpty);
       // Every bot may: none is set up for it.
       expect(await offered(bot.folder), contains('bot_later'));
     });
@@ -840,8 +859,8 @@ void main() {
 
     test('it drops what it meant to come back to', () async {
       final bot = bots.save(name: 'Mia', identity: '', abilities: {});
-      await call(bot, 'bot_later', {'minutes': 3, 'note': 'Remind of tea'});
-      await call(bot, 'bot_later', {'minutes': 60, 'note': 'Ask about x'});
+      await call(bot, 'bot_later', {'seconds': 180, 'note': 'Remind of tea'});
+      await call(bot, 'bot_later', {'seconds': 3600, 'note': 'Ask about x'});
       final dropped = await call(bot, 'bot_cancel_later', {'note': 'TEA'});
       expect('${dropped['content']}', contains('Remind of tea'));
       expect([for (final l in bots.laters(bot)) l.note], ['Ask about x']);
