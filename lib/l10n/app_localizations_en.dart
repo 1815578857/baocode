@@ -2323,6 +2323,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toolUpdatedTodos => 'Updated todos';
 
   @override
+  String todoCount(int done, int total) {
+    return 'Todos $done/$total';
+  }
+
+  @override
+  String get todoAllDone => 'All done';
+
+  @override
+  String get todoNone => 'List empty';
+
+  @override
+  String get todoAdded => 'Added todo';
+
+  @override
+  String get todoStarted => 'Started todo';
+
+  @override
+  String get todoCompleted => 'Completed todo';
+
+  @override
+  String get todoRemoved => 'Removed todo';
+
+  @override
+  String get todoUpdated => 'Updated todo';
+
+  @override
+  String get todoChecked => 'Checked todos';
+
+  @override
   String get toolSending => 'Saying';
 
   @override
@@ -3117,11 +3146,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get mcpProbeNote =>
       'Started and greeted with MCP\'s initialize, as `claude mcp list` checks it.';
-
-  @override
-  String todoCount(int done, int total) {
-    return 'Todos $done/$total';
-  }
 
   @override
   String queuedMessages(int count) {

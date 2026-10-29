@@ -12,7 +12,7 @@ import 'turn_stats.dart';
 
 /// Translates Claude Code's conversation messages (stream-json output, or
 /// the lines of a kept session) into [KernelEvent]s: text, thoughts, tool
-/// calls and their results, subagents, tasks, todos and runtime notices.
+/// calls and their results, subagents, tasks and runtime notices.
 ///
 /// Turns, settings and control requests are the kernel's; this only knows
 /// the conversation. Items are addressed by the CLI's own ids (message id
@@ -118,7 +118,9 @@ class ClaudeTranslator {
 
   final Map<String, KernelTask> _tasks = {};
   final Map<String, String> _taskOutputs = {};
-  final Map<String, TodoEntry> _todos = {};
+
+  /// The subjects of the todos created (TaskCreate), by their ids.
+  final Map<String, String> _taskSubjects = {};
 
   /// The session's goal (`/goal`), as last reported.
   KernelGoal? _goal;
@@ -895,38 +897,6 @@ class ClaudeTranslator {
         }
         _putAgent(id);
         return;
-      case 'TodoWrite':
-        if (input['todos'] case final List<Object?> todos) {
-          _todos
-            ..clear()
-            ..addEntries([
-              for (final (i, raw) in todos.indexed)
-                MapEntry('$i', _todo(_map(raw))),
-            ]);
-          _reportTodos();
-        }
-      case 'TaskCreate' when input['subject'] != null:
-        _todos[id] = TodoEntry(
-          input['subject'] as String,
-          TodoStatus.pending,
-          activeForm: _string(input['activeForm']),
-        );
-        _reportTodos();
-      case 'TaskUpdate':
-        final key = _string(input['taskId']);
-        final entry = key == null ? null : _todos[key];
-        if (key != null && entry != null) {
-          if (input['status'] == 'deleted') {
-            _todos.remove(key);
-          } else {
-            _todos[key] = TodoEntry(
-              _string(input['subject']) ?? entry.content,
-              _todoStatus(input['status']) ?? entry.status,
-              activeForm: _string(input['activeForm']) ?? entry.activeForm,
-            );
-          }
-          _reportTodos();
-        }
       // Not written to a file (see [_planCall]): the plan is said.
       case 'ExitPlanMode':
         if (_string(input['plan']) case final plan?) {
@@ -1094,15 +1064,39 @@ class ClaudeTranslator {
         target: _string(input['query']) ?? '',
         status: status,
       ),
-      'TodoWrite' ||
-      'TaskCreate' ||
-      'TaskUpdate' ||
-      'TaskList' ||
-      'TaskGet' => ToolCallItem(
+      // The list written, as text: not kept anywhere else. Its line says
+      // what is in progress; what it does, by [tool] and [input] (see
+      // todoStep).
+      'TodoWrite' => ToolCallItem(
         kind: ToolKind.todo,
-        label: tense('Updated todos', 'Updating todos'),
-        target: _string(input['subject']) ?? '',
+        tool: name,
+        input: input,
+        target:
+            [
+              for (final raw in _list(input['todos']))
+                if (_map(raw)['status'] == 'in_progress')
+                  _string(_map(raw)['content']) ?? '',
+            ].firstOrNull ??
+            '',
         status: status,
+        output: status == ToolStatus.failed
+            ? output
+            : _todoList(input['todos']),
+      ),
+      // One item a call: named by its subject, the one it was created
+      // with when the call gives only its id.
+      'TaskCreate' || 'TaskUpdate' || 'TaskList' || 'TaskGet' => ToolCallItem(
+        kind: ToolKind.todo,
+        tool: name,
+        input: input,
+        target:
+            _string(input['subject']) ??
+            switch (_string(input['taskId'])) {
+              final id? => _taskSubjects[id] ?? '#$id',
+              null => '',
+            },
+        status: status,
+        output: output,
       ),
       'AskUserQuestion' => ToolCallItem(
         kind: ToolKind.question,
@@ -1304,9 +1298,11 @@ class ClaudeTranslator {
       case 'ExitPlanMode':
         if (_string(tool.input['plan']) != null) return;
       case 'TaskCreate':
-        if (structured?['task'] case final Map<Object?, Object?> task) {
-          final entry = _todos.remove(id);
-          if (entry != null) _todos['${task['id']}'] = entry;
+        if ((structured?['task'], _string(tool.input['subject'])) case (
+          final Map<Object?, Object?> task,
+          final subject?,
+        )) {
+          _taskSubjects['${task['id']}'] = subject;
         }
     }
     _put(
@@ -1807,8 +1803,6 @@ class ClaudeTranslator {
 
   void _reportTasks() => emit(TasksReported(nextSeq(), [..._tasks.values]));
 
-  void _reportTodos() => emit(TodosReported(nextSeq(), [..._todos.values]));
-
   // --- Helpers ------------------------------------------------------------------------
 
   static Map<String, Object?> _map(Object? value) =>
@@ -1974,18 +1968,15 @@ class ClaudeTranslator {
     return report.isEmpty ? null : report;
   }
 
-  static TodoEntry _todo(Map<String, Object?> raw) => TodoEntry(
-    _string(raw['content']) ?? '',
-    _todoStatus(raw['status']) ?? TodoStatus.pending,
-    activeForm: _string(raw['activeForm']),
-  );
-
-  static TodoStatus? _todoStatus(Object? status) => switch (status) {
-    'pending' => TodoStatus.pending,
-    'in_progress' => TodoStatus.inProgress,
-    'completed' => TodoStatus.completed,
-    _ => null,
-  };
+  /// A todo list written, one line an item marked by its status.
+  static String _todoList(Object? todos) => [
+    for (final raw in _list(todos))
+      '${switch (_map(raw)['status']) {
+        'completed' => '☒',
+        'in_progress' => '◐',
+        _ => '☐',
+      }} ${_string(_map(raw)['content']) ?? ''}',
+  ].join('\n');
 
   static CommandStatus? _taskStatus(Object? status) => switch (status) {
     'running' || 'pending' => CommandStatus.running,

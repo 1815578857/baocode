@@ -1297,6 +1297,25 @@
   "toolAgent": "Agent",
   "toolUpdatingTodos": "Updating todos",
   "toolUpdatedTodos": "Updated todos",
+  "todoCount": "Todos {done}/{total}",
+  "@todoCount": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "todoAllDone": "All done",
+  "todoNone": "List empty",
+  "todoAdded": "Added todo",
+  "todoStarted": "Started todo",
+  "todoCompleted": "Completed todo",
+  "todoRemoved": "Removed todo",
+  "todoUpdated": "Updated todo",
+  "todoChecked": "Checked todos",
   "toolSending": "Saying",
   "toolSent": "Said",
   "toolAsking": "Asking",
@@ -2009,17 +2028,6 @@
   "mcpNoLog": "It wrote nothing.",
   "mcpSignInHint": "Sign in from a chat's MCP servers panel, or with /mcp.",
   "mcpProbeNote": "Started and greeted with MCP's initialize, as `claude mcp list` checks it.",
-  "todoCount": "Todos {done}/{total}",
-  "@todoCount": {
-    "placeholders": {
-      "done": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
   "queuedMessages": "{count, plural, =1{1 queued} other{{count} queued}} · sent when the agent is done",
   "@queuedMessages": {
     "placeholders": {

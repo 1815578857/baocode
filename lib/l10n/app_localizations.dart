@@ -4190,6 +4190,60 @@ abstract class AppLocalizations {
   /// **'Updated todos'**
   String get toolUpdatedTodos;
 
+  /// No description provided for @todoCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Todos {done}/{total}'**
+  String todoCount(int done, int total);
+
+  /// No description provided for @todoAllDone.
+  ///
+  /// In en, this message translates to:
+  /// **'All done'**
+  String get todoAllDone;
+
+  /// No description provided for @todoNone.
+  ///
+  /// In en, this message translates to:
+  /// **'List empty'**
+  String get todoNone;
+
+  /// No description provided for @todoAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Added todo'**
+  String get todoAdded;
+
+  /// No description provided for @todoStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Started todo'**
+  String get todoStarted;
+
+  /// No description provided for @todoCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed todo'**
+  String get todoCompleted;
+
+  /// No description provided for @todoRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed todo'**
+  String get todoRemoved;
+
+  /// No description provided for @todoUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated todo'**
+  String get todoUpdated;
+
+  /// No description provided for @todoChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked todos'**
+  String get todoChecked;
+
   /// No description provided for @toolSending.
   ///
   /// In en, this message translates to:
@@ -5365,12 +5419,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Started and greeted with MCP\'s initialize, as `claude mcp list` checks it.'**
   String get mcpProbeNote;
-
-  /// No description provided for @todoCount.
-  ///
-  /// In en, this message translates to:
-  /// **'Todos {done}/{total}'**
-  String todoCount(int done, int total);
 
   /// No description provided for @queuedMessages.
   ///

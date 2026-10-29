@@ -2251,6 +2251,35 @@ class AppLocalizationsZh extends AppLocalizations {
   String get toolUpdatedTodos => '已更新待办';
 
   @override
+  String todoCount(int done, int total) {
+    return '待办 $done/$total';
+  }
+
+  @override
+  String get todoAllDone => '全部完成';
+
+  @override
+  String get todoNone => '列表为空';
+
+  @override
+  String get todoAdded => '添加待办';
+
+  @override
+  String get todoStarted => '开始待办';
+
+  @override
+  String get todoCompleted => '完成待办';
+
+  @override
+  String get todoRemoved => '删除待办';
+
+  @override
+  String get todoUpdated => '更新待办';
+
+  @override
+  String get todoChecked => '查看待办';
+
+  @override
   String get toolSending => '正在说';
 
   @override
@@ -3016,11 +3045,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get mcpProbeNote =>
       '启动后用 MCP 的 initialize 握手检测，与 `claude mcp list` 的检测方式相同。';
-
-  @override
-  String todoCount(int done, int total) {
-    return '待办 $done/$total';
-  }
 
   @override
   String queuedMessages(int count) {
