@@ -132,18 +132,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     _me = _readMe();
     _bots = _readBots();
     if (!_bots.any((bot) => bot.assistant)) {
-      final defaults = assistantDefaults(chinese: chinese);
-      final assistant = Bot(
-        id: 'assistant',
-        name: defaults.name,
-        folder: p.join(root, 'assistant'),
-        identity: defaults.identity,
-        abilities: BotFiles.shownAbilities.toSet(),
-        assistant: true,
-        created: _clock(),
-      );
-      _writeBot(assistant);
-      _bots.insert(0, assistant);
+      _bots.insert(0, _newAssistant(root));
     }
     for (final bot in _bots) {
       folders.make(bot.folder);
@@ -251,7 +240,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
   /// itself ([by]), with Claude Code's tools, or the user by hand. A bot
   /// changed starts again on it, told (but by itself); one made is added;
   /// one whose folder is gone is gone, its conversation too (the
-  /// assistant's files are written again). What a bot may do is the
+  /// assistant, as new). What a bot may do is the
   /// user's to set: as it was, a bot changing it. A picture file its card
   /// names (anywhere) is taken as its picture, cut square ([_takePicture]).
   void reload({Bot? by}) {
@@ -308,12 +297,11 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     }
     for (final had in [..._bots]) {
       if (next.any((bot) => bot.id == had.id)) continue;
-      if (had.assistant) {
-        _writeBot(had);
-        next.insert(0, had);
-      } else {
-        _forget(had);
-        changed = true;
+      _forget(had);
+      changed = true;
+      // The assistant's gone: as new, its conversation with it.
+      if (had.assistant && !next.any((bot) => bot.assistant)) {
+        next.insert(0, _newAssistant(root));
       }
     }
     final added = [
@@ -399,6 +387,22 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     thread.session.send(
       ComposerMessage(text: botEventMessage(text), images: images),
     );
+  }
+
+  /// The assistant as the app starts it, in [root]: its files written.
+  Bot _newAssistant(String root) {
+    final defaults = assistantDefaults(chinese: chinese);
+    final assistant = Bot(
+      id: 'assistant',
+      name: defaults.name,
+      folder: p.join(root, 'assistant'),
+      identity: defaults.identity,
+      abilities: BotFiles.shownAbilities.toSet(),
+      assistant: true,
+      created: _clock(),
+    );
+    _writeBot(assistant);
+    return assistant;
   }
 
   /// The time, as the bots have it.

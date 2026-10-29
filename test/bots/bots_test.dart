@@ -1170,6 +1170,33 @@ void main() {
       expect(bots.byId(self.id)!.signature, '在线');
     });
 
+    test('the assistant\'s folder removed: it starts again, as new', () async {
+      final first = bots.bots.first;
+      final renamed = bots.save(
+        id: first.id,
+        name: '包包',
+        identity: '另一个设定',
+        abilities: first.abilities,
+      );
+      bots.setMemory(renamed, '- 喜欢乌龙茶');
+      final old = bots.threadFor(renamed);
+      expect(old.session.itemCount, greaterThan(0));
+      folders.delete(renamed.folder);
+      bots.reload();
+      final fresh = bots.bots.first;
+      expect(fresh.assistant, isTrue);
+      expect(fresh.name, '小宝');
+      expect(fresh.identity, isNot('另一个设定'));
+      expect(bots.memory(fresh), isEmpty);
+      expect(
+        utf8.decode(folders.files['${fresh.folder}/BOT.md']!),
+        contains('name: 小宝'),
+      );
+      final thread = bots.threadFor(fresh);
+      expect(thread, isNot(same(old)));
+      expect(thread.session.itemCount, 0);
+    });
+
     test('a card, read back as written', () {
       final bot = Bot(
         id: 'b1',
