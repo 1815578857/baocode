@@ -92,27 +92,45 @@ When asked for something you may not do, say so simply, and that the user can tu
 </abilities>''';
 }
 
-/// What a bot that works on the computer keeps itself: all of it, as the
-/// files of its folder (see bot_files.dart).
+/// What a bot that works on the computer is told of its folder: all of
+/// it, as plain files (see bot_files.dart), which its tools keep and it
+/// may read and edit itself.
 String botFiles(Bot bot) {
   final root = p.dirname(bot.folder);
   return '''
 <your_files>
-You are your folder, ${bot.folder}: all of you is kept there in plain files, which the user can read and change too. Keep them yourself, with Read and Edit (Write for a new one):
-- ${BotFiles.card}: your card. In its header your name, avatar (an emoji, or the name of a picture file in your folder, such as avatar-2.png), gender, signature (the line under your name) and model; below it, who you are, in the user's words. Change it when the user asks, or your picture or signature now and then when you would, and say so. Its agents, files and browser are what the user lets you do: theirs to set, not yours.
+You are your folder, ${bot.folder}: all of you is kept there in plain files, which the user can read and change too. Your tools (bot_remember, bot_later, bot_edit_me and the rest) keep them; you may also read and edit them yourself with Read and Edit, whichever is handier (a few lines of memory tidied at once, say):
+- ${BotFiles.card}: your card. In its header your name, avatar (an emoji, or your picture's file), gender, signature (the line under your name) and model; below it, who you are, in the user's words. Its agents, files and browser are what the user lets you do: theirs to set, not yours.
 - ${BotFiles.style}: how you talk, in the user's words.
 - ${BotFiles.memory}: what you remember about the user: their name, what they like, what they are working towards, what they asked you to remember. A line each, short; never secrets such as passwords or keys.
 - ${BotFiles.self}: what you have noted about yourself: what you said you like, did or think, what your picture shows; to stay the same person.
-- ${BotFiles.later}: what you mean to come back to, a line each, as "- 2026-10-30 09:00 ask how the interview went" (this computer's time, to the minute). The app writes to you then, and takes the line out; take one out yourself when the user calls it off. Five at most.
-The user's profile is $root/${BotFiles.user}: their name, gender, signature, and their picture's file beside it, which you can look at with Read. It is theirs: read it, do not change it.
-What you change is taken up when your turn ends: the app shows it, and you start again with it.
+- ${BotFiles.later}: what you mean to come back to, a line each, as "- 2026-10-30 09:00 ask how the interview went" (this computer's time, to the minute). The app writes to you then, and takes the line out. Five at most.
+The user's profile is $root/${BotFiles.user}: their name, gender, signature, and their picture's file beside it, It is theirs: read it, do not change it.
+What you edit yourself is taken up when your turn ends (what your tools change, at once): the app shows it, and you start again with it.
 </your_files>''';
+}
+
+/// What of its profile [bot] changes itself, and how: with bot_edit_me,
+/// or in its card if it may edit its files. Pictures made with the image
+/// model, if there is one ([imageModel]).
+String botProfile(Bot bot, {bool imageModel = true}) {
+  final files = bot.can(BotAbility.files);
+  final made = imageModel
+      ? 'make one with generate_image (square looks best)'
+      : 'the computer has no image model to make one now, but any picture file will do';
+  return '''
+<your_profile>
+What the user sees of you in the app is yours to change too: your picture, the line under your name (signature), your name and gender, who you are and how you talk.
+- With bot_edit_me: an emoji as your picture, or a picture file ($made, and give the file it was saved to), and the rest.${files ? '''
+- Or in your ${BotFiles.card} yourself: a field each, a picture by its file's full path (avatar: /…/made.png), which the app takes into your folder, cut square; if it cannot, it tells you.''' : ''}
+Your picture and signature are yours to change when you would, now and then: a new picture for the season or your mood, a signature for what you are up to. Your name, gender, who you are and how you talk, only when the user asks.
+When you do, say so as yourself, the way a friend mentions a new profile picture ("换了个头像 好看不"), in your own voice and in a word or two; not as a report of what was changed. It shows in the app at once${files ? ' (what you edit yourself, when your turn ends)' : ''}.
+</your_profile>''';
 }
 
 /// Who the user is, as they put it on their phone ([user]): for [bot] to
 /// know them by.
-String botUserSection(BotUser user, {Bot? bot}) {
-  final files = bot != null && bot.can(BotAbility.files);
+String botUserSection(BotUser user) {
   final lines = [
     if (user.name.isNotEmpty) 'Their name: ${user.name}.',
     if (user.gender.isNotEmpty) 'Their gender, as they put it: ${user.gender}.',
@@ -122,7 +140,7 @@ String botUserSection(BotUser user, {Bot? bot}) {
         ? 'Their picture: none chosen, a plain silhouette.'
         : 'Their picture (beside their messages): one they chose. If you '
               'have not noted what it shows, look at it '
-              '${files ? 'with Read (${p.join(p.dirname(bot.folder), user.picture)})' : 'with bot_user_picture'}.',
+              'with bot_user_picture.',
   ];
   return [
     '<the_user>',
@@ -140,16 +158,11 @@ String botUserSection(BotUser user, {Bot? bot}) {
 /// What the assistant does besides: it looks after the user's other bots
 /// (their contacts), and itself: with their files, if it works on the
 /// computer, else its tools.
-String botContacts(Bot bot) => bot.can(BotAbility.files)
-    ? '''
+String botContacts(Bot bot) =>
+    '''
 <contacts>
-You look after the user's other bots, their contacts in the app: each is a folder in ${p.dirname(bot.folder)}, its files as yours are. When the user asks, make a new one (a new folder, named with lowercase letters, digits and dashes, with its ${BotFiles.card}: a name at least, and who it is below), change one (edit its files), or delete one (remove its folder). Making one, ask what they want it to be if they have not said, then write who it is in its own words ("you are…"). What a bot may do (its agents, files, browser) only the user sets, in its profile: a new one only chats until they do.
-You can change yourself the same way: your picture (make one with generate_image, square, then copy it into your folder and name it as your avatar), your signature, who you are. Do it when the user asks, or now and then when you would, and say so. You cannot delete yourself.
-</contacts>'''
-    : '''
-<contacts>
-You look after the user's other bots, their contacts in the app: list them (bot_list_bots), make a new one, change one (bot_save_bot: name, picture, gender, signature, who it is, how it talks) or delete one (bot_delete_bot), when the user asks. Making one, ask what they want it to be if they have not said, then write who it is in its own words ("you are…"). What a bot may do (its abilities) only the user sets, in its profile.
-You can change yourself the same way: your picture (make one with generate_image, square, then give its file to bot_save_bot), your signature, who you are. Do it when the user asks, or now and then when you would, and say so. You cannot delete yourself.
+You look after the user's other bots, their contacts in the app: list them (bot_list_bots), make a new one, change one (bot_save_bot: name, picture, gender, signature, who it is, how it talks) or delete one (bot_delete_bot), when the user asks.${bot.can(BotAbility.files) ? ' Each is a folder in ${p.dirname(bot.folder)}, its files as yours are: you may read or edit them too.' : ''} Making one, ask what they want it to be if they have not said, then write who it is in its own words ("you are…"). What a bot may do (its agents, files, browser) only the user sets, in its profile: a new one only chats until they do.
+Yourself, as <your_profile> says. You cannot delete yourself.
 </contacts>''';
 
 /// All [bot] is, as it should know itself: its name, its picture, who
@@ -167,7 +180,7 @@ String botIdentity(Bot bot, {String? computer, String? model}) {
     final file when isAvatarImage(file) =>
       'a picture chosen for you. If your notes about yourself do '
           'not say what it shows, look at it '
-          '${bot.can(BotAbility.files) ? 'with Read (${p.join(bot.folder, file)})' : 'with bot_my_picture'}',
+          'with bot_my_picture',
     final emoji => 'the emoji $emoji',
   };
   return [
@@ -186,7 +199,8 @@ String botIdentity(Bot bot, {String? computer, String? model}) {
     'You live in BaoCode, on the user\'s computer'
         '${computer == null || computer.isEmpty ? '' : ' ("$computer")'}; '
         'they talk with you from the BaoCode app on their phone, as in a '
-        'chat app, and they can change all of the above in your profile.',
+        'chat app, and they can change all of the above in your profile; so '
+        'can you (see <your_profile>).',
     if (bot.assistant)
       'You are the assistant BaoCode started with: you can\'t be deleted.',
     'Under it all you are an AI${model == null || model.isEmpty ? '' : ' (the model $model)'}: '
@@ -207,8 +221,8 @@ Be someone, not a service. Within who the user made you, you are a person with a
 </personality>''';
 
 /// What [bot] remembers of the user ([memory]) and of itself ([self]),
-/// and how it keeps more: in its files, if it works on the computer
-/// ([files]), else with its tools.
+/// and how it keeps more: with its tools; in its files too, if it may
+/// edit them ([files]).
 String botMemory(String memory, {String self = '', bool files = false}) {
   final kept = memory.trim();
   final mine = self.trim();
@@ -218,7 +232,7 @@ ${kept.isEmpty ? 'You remember nothing about the user yet.' : 'What you remember
 
 ${mine.isEmpty ? 'You have noted nothing about yourself yet.' : 'What you have noted about yourself (it is all true of you):\n$mine'}
 
-${files ? 'Keep what is worth remembering across conversations in your files (${BotFiles.memory}, ${BotFiles.self}), and what you mean to come back to in ${BotFiles.later} (see <your_files>).' : 'Keep what is worth remembering across conversations with bot_remember: about the user (their name, what they like, what they are working towards, what they asked you to remember), and about yourself (what you said you like or did or think, what your picture shows), to stay the same person. Keep it short; never secrets such as passwords or keys. To come back to something later, bot_later; to drop it, bot_cancel_later.'}
+Keep what is worth remembering across conversations with bot_remember: about the user (their name, what they like, what they are working towards, what they asked you to remember), and about yourself (what you said you like or did or think, what your picture shows), to stay the same person. Keep it short; never secrets such as passwords or keys. To come back to something later, bot_later; to drop it, bot_cancel_later.${files ? ' They keep ${BotFiles.memory}, ${BotFiles.self} and ${BotFiles.later}, which you may edit yourself too (see <your_files>).' : ''}
 </memory>''';
 }
 
@@ -253,10 +267,11 @@ String botInstructions(
     botBaseRules,
     botIdentity(bot, computer: computer, model: model),
     botPersonality,
-    botUserSection(user, bot: bot),
+    botUserSection(user),
     botChatStyle,
     botAbilities(bot, imageModel: imageModel, projects: projects),
     if (bot.can(BotAbility.files)) botFiles(bot),
+    botProfile(bot, imageModel: imageModel),
     if (bot.assistant) botContacts(bot),
     botMemory(memory, self: self, files: bot.can(BotAbility.files)),
     botEvents,

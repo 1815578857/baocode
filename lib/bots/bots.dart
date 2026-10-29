@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
@@ -158,8 +159,11 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     notifyListeners();
   }
 
+  bool _disposed = false;
+
   @override
   void dispose() {
+    _disposed = true;
     if (_started) {
       workspace.removeListener(_watch);
       if (identical(ClaudeSdkTools.gate, this)) ClaudeSdkTools.gate = null;
@@ -247,14 +251,15 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
   /// itself ([by]), with Claude Code's tools, or the user by hand. A bot
   /// changed starts again on it, told (but by itself); one made is added;
   /// one whose folder is gone is gone, its conversation too (the
-  /// assistant's files are written again). How far a bot is trusted and
-  /// what it may use are the user's to set: as they were, a bot changing
-  /// them.
+  /// assistant's files are written again). What a bot may do is the
+  /// user's to set: as it was, a bot changing it. A picture file its card
+  /// names (anywhere) is taken as its picture, cut square ([_takePicture]).
   void reload({Bot? by}) {
     final root = folders.root;
     if (root == null || !_started) return;
     var changed = false;
     final next = <Bot>[];
+    final taking = <(String, String)>[];
     for (var bot in _readBots()) {
       final had = byId(bot.id);
       if (by != null) {
@@ -274,6 +279,15 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         );
         if (!_same(kept, bot)) _writeBot(kept);
         bot = kept;
+      }
+      if (_pictureToTake(bot) case final path?) {
+        // As it was, till the picture is taken.
+        bot = bot.copyWith(
+          avatar: had?.avatar,
+          clearAvatar: had?.avatar == null,
+        );
+        _writeBot(bot);
+        taking.add((bot.id, path));
       }
       next.add(bot);
       if (had == null) {
@@ -308,6 +322,9 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     ];
     _bots = next;
     added.forEach(threadFor);
+    for (final (id, path) in taking) {
+      unawaited(_takePicture(id, path, by: by));
+    }
     final me = _readMe();
     if (me != _me) {
       _me = me;
@@ -316,6 +333,72 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     }
     _schedule();
     if (changed) notifyListeners();
+  }
+
+  /// The picture file [bot]'s card names, to be taken as its picture: one
+  /// not taken yet (not named as [_avatar] names them), in its folder or
+  /// by its full path.
+  static String? _pictureToTake(Bot bot) {
+    final avatar = bot.avatar;
+    if (avatar == null || !_pictureFile.hasMatch(avatar)) return null;
+    if (_takenPicture.hasMatch(avatar)) return null;
+    return p.isAbsolute(avatar) ? avatar : p.join(bot.folder, avatar);
+  }
+
+  static final _pictureFile = RegExp(
+    r'\.(png|jpe?g|webp|gif)$',
+    caseSensitive: false,
+  );
+  static final _takenPicture = RegExp(
+    r'^avatar-[0-9a-f]{12}\.(png|jpg|webp|gif)$',
+  );
+
+  /// The picture at [path] as bot [id]'s, cut square and kept in its
+  /// folder, by its name; the file it was gone, if one of its folder's. If
+  /// it cannot be, the bot is told so.
+  Future<void> _takePicture(String id, String path, {Bot? by}) async {
+    BotAvatarImage? picture;
+    Object? failed;
+    try {
+      final bytes =
+          folders.readFile(path) ??
+          (await File(path).exists() ? await File(path).readAsBytes() : null);
+      if (bytes == null) throw StateError('there is no such file');
+      picture = await BotTools.squarePicture(bytes);
+    } on Object catch (error) {
+      failed = error;
+    }
+    final bot = byId(id);
+    if (bot == null || _disposed) return;
+    if (picture == null) {
+      _note(
+        bot,
+        'Your picture: $path could not be used ($failed). It is as it was.',
+      );
+      return;
+    }
+    save(
+      id: bot.id,
+      name: bot.name,
+      gender: bot.gender,
+      signature: bot.signature,
+      identity: bot.identity,
+      style: bot.style,
+      abilities: bot.abilities,
+      proactive: bot.proactive,
+      avatarImage: picture,
+      by: by,
+    );
+    if (p.isWithin(bot.folder, path)) folders.deleteFile(path);
+  }
+
+  /// A note of the app's to [bot], in its conversation.
+  void _note(Bot bot, String text, {List<ImageAttachment> images = const []}) {
+    final thread = threadOf(bot);
+    if (thread == null || !thread.isOpen) return;
+    thread.session.send(
+      ComposerMessage(text: botEventMessage(text), images: images),
+    );
   }
 
   /// The time, as the bots have it.
@@ -599,8 +682,8 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
       if (had.name != bot.name) '- Your name: now ${quoted(bot.name)}.',
       if (picture != null)
         '- Your picture: a new one chosen for you, here. Look at '
-            'it, and keep in a line what it shows (bot_remember, about '
-            'self).'
+            'it, and keep in a line what it shows '
+            '(bot_remember, about self).'
       else if (had.avatar != bot.avatar)
         switch (bot.avatar) {
           null => "- Your picture: none now, your name's first letter.",
@@ -880,7 +963,8 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         }
         streaming = session.isStreaming;
         if (!session.isStreaming && _restartWhenIdle.remove(bot.id)) {
-          _restart(bot);
+          // Not while its session tells of the turn's end.
+          scheduleMicrotask(() => _restart(byId(bot.id) ?? bot));
         }
         final last = session.itemCount - 1;
         final now = (
