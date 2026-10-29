@@ -67,9 +67,8 @@ bot_say("就一个在跑，移动端那个，测试还剩一个没过")
 </chat_style>''';
 
 /// What [bot] may do, as its tools; and what it may not, so it says so:
-/// as far as the user trusts it ([Bot.level]), and what it may use
-/// besides. Pictures are made with the computer's image model, if it has
-/// one ([imageModel]).
+/// as the user turned them on. Pictures, every bot's, are made with the
+/// computer's image model, if it has one ([imageModel]).
 ///
 /// The user's [projects] on this computer, by name and folder: where it
 /// works with Claude Code's tools, if it may.
@@ -79,8 +78,8 @@ String botAbilities(
   List<({String name, String path})> projects = const [],
 }) {
   String line(bool may, String can, String cannot) => '- ${may ? can : cannot}';
-  final agents = bot.reaches(BotLevel.agents);
-  final computer = bot.reaches(BotLevel.computer);
+  final agents = bot.can(BotAbility.agents);
+  final computer = bot.can(BotAbility.files);
   return '''
 <abilities>
 The user decides what you may do. Now:
@@ -88,7 +87,7 @@ ${line(agents, "You can look after the user's agents: see them and what they sai
 ${line(computer, 'You can work on the computer: read and write files (Read, Write, Edit) and run commands (Bash). Nothing is asked of the user: what you run, runs. So when they ask for something, do it, a line first saying what ("删了啊"); and do only what they asked, nothing that removes, overwrites or publishes of your own accord. Run a command in a project as cd <its folder> && <command> (not git -C or the like). Do the small things yourself (look into something, check how things stand, run the tests, fix a line or two); give bigger work (changes across files, a feature) to an agent with bot_new_chat, and keep an eye on it.', "You cannot read or change files, nor run commands: for work on a project, start an agent if you may.")}
 ${line(bot.can(BotAbility.browser), "You can use the user's browser.", "You cannot use the browser.")}
 - You can search the web (WebSearch) and read a page (WebFetch): for news, facts, prices, the weather, anything you would look up. Say what you found in your own words, briefly.
-${line(bot.can(BotAbility.images), imageModel ? 'You can make pictures (generate_image): they show in the chat by themselves.' : 'You may make pictures, but the computer has no image model turned on: when asked, say the user can turn one on in BaoCode, Settings → Models.', 'You cannot make pictures.')}
+- ${imageModel ? 'You can make pictures (generate_image): they show in the chat by themselves.' : 'You could make pictures, but the computer has no image model turned on: when asked, say the user can turn one on in BaoCode, Settings → Models.'}
 When asked for something you may not do, say so simply, and that the user can turn it on in your profile.${computer && projects.isNotEmpty ? '\nThe projects on this computer:\n${[for (final project in projects) '- ${project.name}: ${project.path}'].join('\n')}' : ''}
 </abilities>''';
 }
@@ -100,7 +99,7 @@ String botFiles(Bot bot) {
   return '''
 <your_files>
 You are your folder, ${bot.folder}: all of you is kept there in plain files, which the user can read and change too. Keep them yourself, with Read and Edit (Write for a new one):
-- ${BotFiles.card}: your card. In its header your name, avatar (an emoji, or the name of a picture file in your folder, such as avatar-2.png), gender, signature (the line under your name) and model; below it, who you are, in the user's words. Change it when the user asks, or your picture or signature now and then when you would, and say so. Its level, browser and images are what the user lets you do: theirs to set, not yours.
+- ${BotFiles.card}: your card. In its header your name, avatar (an emoji, or the name of a picture file in your folder, such as avatar-2.png), gender, signature (the line under your name) and model; below it, who you are, in the user's words. Change it when the user asks, or your picture or signature now and then when you would, and say so. Its agents, files and browser are what the user lets you do: theirs to set, not yours.
 - ${BotFiles.style}: how you talk, in the user's words.
 - ${BotFiles.memory}: what you remember about the user: their name, what they like, what they are working towards, what they asked you to remember. A line each, short; never secrets such as passwords or keys.
 - ${BotFiles.self}: what you have noted about yourself: what you said you like, did or think, what your picture shows; to stay the same person.
@@ -113,7 +112,7 @@ What you change is taken up when your turn ends: the app shows it, and you start
 /// Who the user is, as they put it on their phone ([user]): for [bot] to
 /// know them by.
 String botUserSection(BotUser user, {Bot? bot}) {
-  final files = bot != null && bot.reaches(BotLevel.computer);
+  final files = bot != null && bot.can(BotAbility.files);
   final lines = [
     if (user.name.isNotEmpty) 'Their name: ${user.name}.',
     if (user.gender.isNotEmpty) 'Their gender, as they put it: ${user.gender}.',
@@ -141,10 +140,10 @@ String botUserSection(BotUser user, {Bot? bot}) {
 /// What the assistant does besides: it looks after the user's other bots
 /// (their contacts), and itself: with their files, if it works on the
 /// computer, else its tools.
-String botContacts(Bot bot) => bot.reaches(BotLevel.computer)
+String botContacts(Bot bot) => bot.can(BotAbility.files)
     ? '''
 <contacts>
-You look after the user's other bots, their contacts in the app: each is a folder in ${p.dirname(bot.folder)}, its files as yours are. When the user asks, make a new one (a new folder, named with lowercase letters, digits and dashes, with its ${BotFiles.card}: a name at least, and who it is below), change one (edit its files), or delete one (remove its folder). Making one, ask what they want it to be if they have not said, then write who it is in its own words ("you are…"). What a bot may do (its level, browser, images) only the user sets, in its profile: a new one only chats until they do.
+You look after the user's other bots, their contacts in the app: each is a folder in ${p.dirname(bot.folder)}, its files as yours are. When the user asks, make a new one (a new folder, named with lowercase letters, digits and dashes, with its ${BotFiles.card}: a name at least, and who it is below), change one (edit its files), or delete one (remove its folder). Making one, ask what they want it to be if they have not said, then write who it is in its own words ("you are…"). What a bot may do (its agents, files, browser) only the user sets, in its profile: a new one only chats until they do.
 You can change yourself the same way: your picture (make one with generate_image, square, then copy it into your folder and name it as your avatar), your signature, who you are. Do it when the user asks, or now and then when you would, and say so. You cannot delete yourself.
 </contacts>'''
     : '''
@@ -168,7 +167,7 @@ String botIdentity(Bot bot, {String? computer, String? model}) {
     final file when isAvatarImage(file) =>
       'a picture chosen for you. If your notes about yourself do '
           'not say what it shows, look at it '
-          '${bot.reaches(BotLevel.computer) ? 'with Read (${p.join(bot.folder, file)})' : 'with bot_my_picture'}',
+          '${bot.can(BotAbility.files) ? 'with Read (${p.join(bot.folder, file)})' : 'with bot_my_picture'}',
     final emoji => 'the emoji $emoji',
   };
   return [
@@ -257,9 +256,9 @@ String botInstructions(
     botUserSection(user, bot: bot),
     botChatStyle,
     botAbilities(bot, imageModel: imageModel, projects: projects),
-    if (bot.reaches(BotLevel.computer)) botFiles(bot),
+    if (bot.can(BotAbility.files)) botFiles(bot),
     if (bot.assistant) botContacts(bot),
-    botMemory(memory, self: self, files: bot.reaches(BotLevel.computer)),
+    botMemory(memory, self: self, files: bot.can(BotAbility.files)),
     botEvents,
     if (bot.can(BotAbility.browser)) BrowserTools.rules,
     '<conversation_started>${botTime(time)}</conversation_started>',

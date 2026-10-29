@@ -14,12 +14,12 @@ abstract final class BotPermissions {
   /// (deferred), if it may use it.
   static List<String> tools(Bot bot) => [
     ...webTools,
-    if (bot.reaches(BotLevel.computer)) ...handTools,
+    if (bot.can(BotAbility.files)) ...handTools,
     if (bot.can(BotAbility.browser)) 'ToolSearch',
   ];
 
   /// The [projects] it works in as Claude Code's working directories, if
   /// it may work on them.
   static List<String> reaches(Bot bot, {required List<String> projects}) =>
-      bot.reaches(BotLevel.computer) ? projects : const [];
+      bot.can(BotAbility.files) ? projects : const [];
 }

@@ -1,13 +1,12 @@
 import 'package:bao_link/bao_link.dart'
-    show BotAbility, BotLevel, BotProactive, isAvatarImage;
+    show BotAbility, BotProactive, isAvatarImage;
 import 'package:path/path.dart' as p;
 
 export 'package:bao_link/bao_link.dart'
-    show BotAbility, BotLevel, BotProactive, isAvatarImage;
+    show BotAbility, BotProactive, isAvatarImage;
 
 /// A bot as the user made it: who it is ([identity], [gender], [style],
-/// their words), how far it is trusted ([level]) and what it may use
-/// besides ([abilities]). It is a folder of its own ([folder]): its
+/// their words) and what it may do ([abilities]). It is a folder of its own ([folder]): its
 /// conversation runs there, and all of it is kept there in files (see
 /// bot_files.dart). [proactive] is the phone's: unused, it judges for
 /// itself.
@@ -21,7 +20,6 @@ class Bot {
     this.signature = '',
     this.identity = '',
     this.style = '',
-    this.level = BotLevel.chat,
     this.abilities = const {},
     this.proactive = const BotProactive(),
     this.model,
@@ -54,7 +52,6 @@ class Bot {
 
   /// How it talks, as the user wrote it.
   final String style;
-  final BotLevel level;
   final Set<BotAbility> abilities;
   final BotProactive proactive;
 
@@ -69,9 +66,6 @@ class Bot {
 
   bool can(BotAbility ability) => abilities.contains(ability);
 
-  /// Whether it is trusted with all [level] has.
-  bool reaches(BotLevel level) => this.level.reaches(level);
-
   Bot copyWith({
     String? name,
     String? avatar,
@@ -80,7 +74,6 @@ class Bot {
     String? signature,
     String? identity,
     String? style,
-    BotLevel? level,
     Set<BotAbility>? abilities,
     BotProactive? proactive,
     String? model,
@@ -93,7 +86,6 @@ class Bot {
     signature: signature ?? this.signature,
     identity: identity ?? this.identity,
     style: style ?? this.style,
-    level: level ?? this.level,
     abilities: abilities ?? this.abilities,
     proactive: proactive ?? this.proactive,
     model: model ?? this.model,

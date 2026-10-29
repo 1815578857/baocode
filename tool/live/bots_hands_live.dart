@@ -45,7 +45,6 @@ void main() {
       id: bot.id,
       name: bot.name,
       identity: bot.identity,
-      level: BotLevel.computer,
       abilities: BotAbility.values.toSet(),
     );
     final session = bots.threadFor(bot).session;
@@ -119,7 +118,7 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 200));
     for (final b in bots.bots) {
       stdout.writeln(
-        'bot: ${b.name} ${b.avatar} ${b.level.name} ${b.abilities} '
+        'bot: ${b.name} ${b.avatar} ${b.abilities} '
         '${b.identity.replaceAll('\n', ' / ')}',
       );
     }

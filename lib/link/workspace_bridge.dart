@@ -201,7 +201,6 @@ class WorkspaceBridge {
       signature: bot.signature,
       identity: bot.identity,
       style: bot.style,
-      level: bot.level,
       abilities: bot.abilities,
       proactive: bot.proactive,
       model: bots.modelOf(bot),
@@ -468,8 +467,6 @@ class WorkspaceBridge {
           signature: params['signature'] as String? ?? '',
           identity: params['identity'] as String? ?? '',
           style: params['style'] as String? ?? '',
-          level:
-              BotLevel.values.asNameMap()[params['level']] ?? BotLevel.chat,
           abilities: {
             for (final name in (params['abilities'] as List?) ?? const [])
               ?BotAbility.values.asNameMap()[name],

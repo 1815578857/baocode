@@ -38,7 +38,6 @@ abstract final class BotFiles {
     ('avatar', bot.avatar),
     ('gender', bot.gender),
     ('signature', bot.signature),
-    ('level', bot.level.name),
     for (final ability in shownAbilities) (ability.name, '${bot.can(ability)}'),
     ('model', bot.model),
     if (bot.assistant) ('assistant', 'true'),
@@ -52,7 +51,11 @@ abstract final class BotFiles {
   ], bot.identity);
 
   /// The abilities a card says yes or no to: those the user turns on.
-  static const shownAbilities = [BotAbility.browser, BotAbility.images];
+  static const shownAbilities = [
+    BotAbility.agents,
+    BotAbility.files,
+    BotAbility.browser,
+  ];
 
   /// The bot whose card is [card] and style [style], in [folder]; null
   /// for a card without a name.
@@ -71,9 +74,6 @@ abstract final class BotFiles {
       signature: text('signature'),
       identity: body.trim(),
       style: style.trim(),
-      level:
-          BotLevel.values.asNameMap()[text('level')] ??
-          (assistant ? BotLevel.computer : BotLevel.chat),
       abilities: {
         for (final ability in shownAbilities)
           // Not said: the assistant's on, another's off.
