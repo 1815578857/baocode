@@ -191,12 +191,6 @@ abstract final class BotTools {
           },
           (input, call) async {
             final bot = botOf(call);
-            if (bot.proactive.perDay <= 0) {
-              throw StateError(
-                'The user turned off your writing first: you cannot come '
-                'back on your own.',
-              );
-            }
             final minutes = (input['minutes'] as num?)?.toInt() ?? 0;
             if (minutes < 1 || minutes > 10080) {
               throw ArgumentError('minutes is 1 to 10080');
@@ -211,7 +205,7 @@ abstract final class BotTools {
           required: ['minutes', 'note'],
           summary: (input, _) => clip(input, 'note'),
         ),
-        const BotToolAccess({BotAbility.proactive}),
+        const BotToolAccess({}),
       ),
       (
         tool(

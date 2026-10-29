@@ -40,7 +40,6 @@ void main() {
       name: bot.name,
       identity: bot.identity,
       abilities: BotAbility.values.toSet(),
-      proactive: const BotProactive(perDay: 6, quietFrom: 0, quietTo: 0),
     );
     final session = bots.threadFor(bots.bots.single).session;
     final started = DateTime.now();
