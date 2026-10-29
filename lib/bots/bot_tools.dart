@@ -524,9 +524,16 @@ abstract final class BotTools {
       (
         tool(
           'bot_remember',
-          'Keeps what you remember about the user, across conversations: '
-              '"add" a line, or "replace" all of it with what you give.',
+          'Keeps what you remember across conversations: about the user, or '
+              'about yourself (what you said you like, did or think; what '
+              'your picture shows), to stay the same person. "add" a line, '
+              'or "replace" all of it with what you give.',
           {
+            'about': {
+              'type': 'string',
+              'enum': ['user', 'self'],
+              'description': 'Whose: the user\'s (if none) or yours.',
+            },
             'action': {
               'type': 'string',
               'enum': ['add', 'replace'],
@@ -535,18 +542,46 @@ abstract final class BotTools {
           },
           (input, call) async {
             final bot = botOf(call);
+            final self = input['about'] == 'self';
             final given = (input['text'] as String? ?? '').trim();
-            final kept = bots.memory(bot).trim();
+            final kept = (self ? bots.selfNotes(bot) : bots.memory(bot)).trim();
             final memory = input['action'] == 'replace'
                 ? given
                 : [
                     if (kept.isNotEmpty) kept,
                     if (given.isNotEmpty) '- $given',
                   ].join('\n');
-            bots.folders.writeMemory(bot.folder, memory);
+            if (self) {
+              bots.setSelfNotes(bot, memory);
+            } else {
+              bots.folders.writeMemory(bot.folder, memory);
+            }
             return 'Remembered.';
           },
           required: ['text'],
+        ),
+        const BotToolAccess({}),
+      ),
+      (
+        tool(
+          'bot_my_picture',
+          'Shows you your own picture, as the user sees it beside your '
+              'messages.',
+          const {},
+          (input, call) async {
+            final bot = botOf(call);
+            if (bots.avatarImage(bot) case final picture?) {
+              final preview = await imagePreview(picture.bytes, picture.type);
+              return [
+                claudeSdkText('Your picture:'),
+                claudeSdkImage(preview.base64, preview.type),
+              ];
+            }
+            return switch (bot.avatar) {
+              null => "You have none: your name's first letter shows.",
+              final emoji => 'Your picture is the emoji $emoji.',
+            };
+          },
         ),
         const BotToolAccess({}),
       ),

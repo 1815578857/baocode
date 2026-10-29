@@ -7,9 +7,9 @@ export 'package:bao_link/bao_link.dart'
 
 /// A bot as the user made it: who it is ([identity], [gender], [style],
 /// their words), what it
-/// may do ([abilities]), when it may write first ([proactive]). Its
-/// conversation runs in a folder of its own ([folder]), where its memory
-/// is kept too (see bot_store.dart).
+/// may do ([abilities]). Its conversation runs in a folder of its own
+/// ([folder]), where what it remembers is kept too (see bot_folders.dart).
+/// [proactive] is as older phones set it: unused, it judges for itself.
 class Bot {
   const Bot({
     required this.id,
@@ -24,6 +24,7 @@ class Bot {
     this.proactive = const BotProactive(),
     this.model,
     this.assistant = false,
+    this.created,
   });
 
   /// [json] as kept, its folder in [root].
@@ -58,9 +59,21 @@ class Bot {
       },
       model: json['model'] as String?,
       assistant: json['assistant'] == true,
+      created: switch (json['created']) {
+        final int ms => DateTime.fromMillisecondsSinceEpoch(ms),
+        _ => _createdIn(id),
+      },
     ),
     _ => null,
   };
+
+  /// When a bot named [id] was made, as its id says (`b` and the time,
+  /// see Bots); null for one whose does not.
+  static DateTime? _createdIn(String id) {
+    final match = RegExp(r'^b([0-9a-z]+)(?:-\d+)?$').firstMatch(id);
+    final micros = match == null ? null : int.tryParse(match[1]!, radix: 36);
+    return micros == null ? null : DateTime.fromMicrosecondsSinceEpoch(micros);
+  }
 
   final String id;
   final String name;
@@ -107,6 +120,9 @@ class Bot {
   /// The one the app starts with, which is not deleted.
   final bool assistant;
 
+  /// When the user made it, where known.
+  final DateTime? created;
+
   bool can(BotAbility ability) => abilities.contains(ability);
 
   Bot copyWith({
@@ -133,6 +149,7 @@ class Bot {
     proactive: proactive ?? this.proactive,
     model: model ?? this.model,
     assistant: assistant,
+    created: created,
   );
 
   Map<String, Object?> toJson() => {
@@ -152,5 +169,6 @@ class Bot {
     'proactive': proactive.toJson(),
     'model': ?model,
     if (assistant) 'assistant': true,
+    'created': ?created?.millisecondsSinceEpoch,
   };
 }

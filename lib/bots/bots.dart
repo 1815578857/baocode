@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:bao_link/bao_link.dart' show builtInSticker;
 import 'package:crypto/crypto.dart';
@@ -13,6 +14,7 @@ import '../kernel/claude_code/claude_sdk_tools.dart';
 import '../kernel/kernel_registry.dart';
 import '../kernel/queued_messages.dart';
 import '../link/chat_codec.dart';
+import '../link/link_platform.dart';
 import '../workspace/preference_store.dart';
 import '../workspace/workspace.dart';
 import 'bot.dart';
@@ -37,8 +39,10 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     DateTime Function()? clock,
     this.chinese = false,
     this.longRun = const Duration(minutes: 30),
+    Future<String?> Function()? computer,
   }) : folders = folders ?? BotFolders.data(),
-       _clock = clock ?? DateTime.now;
+       _clock = clock ?? DateTime.now,
+       _computerName = computer ?? _thisComputer;
 
   final Workspace workspace;
   final BotFolders folders;
@@ -52,6 +56,14 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
 
   /// How long an agent runs before the bots are told it does.
   final Duration longRun;
+
+  final Future<String?> Function() _computerName;
+
+  /// The computer the bots live on, as the user named it: for them to know.
+  String? computer;
+
+  static Future<String?> _thisComputer() async =>
+      (await LinkPlatform.current()?.device())?.name;
 
   /// The settings its agent runs with: it asks nothing (its tools are
   /// allowed, all else refused), and works as an agent, not in Plan.
@@ -90,6 +102,11 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     final root = folders.root;
     if (root == null || _started) return;
     _started = true;
+    try {
+      computer = await _computerName();
+    } on Object catch (error) {
+      debugPrint('bots: no computer name: $error');
+    }
     final kept = await store?.read() ?? const {};
     _bots = [
       for (final json in (kept['bots'] as List?) ?? const [])
@@ -114,6 +131,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
           identity: defaults.identity,
           abilities: BotAbility.values.toSet(),
           assistant: true,
+          created: _clock(),
         ),
       );
       _save();
@@ -175,6 +193,9 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         instructions: botInstructions(
           bot,
           memory: folders.readMemory(bot.folder),
+          self: selfNotes(bot),
+          computer: computer,
+          model: modelOf(bot),
           now: _clock(),
           imageModel:
               ClaudeSdkTools.called(
@@ -369,6 +390,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         style: style.trim(),
         abilities: abilities,
         proactive: proactive,
+        created: _clock(),
       );
       final made = Bot.fromJson(bot.toJson(), root: root)!;
       folders.make(made.folder);
@@ -399,9 +421,72 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     if (!bot.can(BotAbility.viewChats)) _pacers.remove(bot.id);
     _save();
     _restart(bot);
+    _tellChanged(had, bot, avatarImage);
     notifyListeners();
     return bot;
   }
+
+  /// Tells [bot] what the user changed of it ([had] before): who it is
+  /// now, its new picture with it to see. Its to react to, or not.
+  void _tellChanged(Bot had, Bot bot, BotAvatarImage? picture) {
+    String quoted(String text) => text.isEmpty ? '(none)' : '"$text"';
+    final lines = [
+      if (had.name != bot.name) '- Your name: now ${quoted(bot.name)}.',
+      if (picture != null)
+        '- Your picture: a new one the user chose for you, here. Look at '
+            'it, and keep in a line what it shows (bot_remember, about '
+            'self).'
+      else if (had.avatar != bot.avatar)
+        switch (bot.avatar) {
+          null => "- Your picture: none now, your name's first letter.",
+          final emoji => '- Your picture: now the emoji $emoji.',
+        },
+      if (had.gender != bot.gender) '- Your gender: now ${quoted(bot.gender)}.',
+      if (had.signature != bot.signature)
+        '- The line under your name: now ${quoted(bot.signature)}.',
+      if (had.identity != bot.identity)
+        '- Who you are, in their words, now:\n${bot.identity}',
+      if (had.style != bot.style)
+        '- How you talk, in their words, now:\n${bot.style}',
+      for (final ability in BotAbility.values)
+        if (bot.can(ability) != had.can(ability))
+          '- ${bot.can(ability) ? 'You may now' : 'You may no longer'}: '
+              '${ability.name}.',
+    ];
+    if (lines.isEmpty) return;
+    final thread = threadOf(bot);
+    if (thread == null || !thread.isOpen) return;
+    thread.session.send(
+      ComposerMessage(
+        text: botEventMessage(
+          [
+            'The user changed your profile:',
+            ...lines,
+            'Now: ${botTime(_clock())}.',
+          ].join('\n'),
+        ),
+        images: [
+          if (picture != null)
+            ImageAttachment(bytes: picture.bytes, mediaType: picture.type),
+        ],
+      ),
+    );
+  }
+
+  /// What [bot] keeps of itself: what it said it likes, has done, thinks;
+  /// to be the same one each time. Empty for nothing.
+  String selfNotes(Bot bot) {
+    final bytes = folders.readFile(p.join(bot.folder, selfFile));
+    return bytes == null ? '' : utf8.decode(bytes, allowMalformed: true);
+  }
+
+  void setSelfNotes(Bot bot, String text) => folders.writeFile(
+    p.join(bot.folder, selfFile),
+    Uint8List.fromList(utf8.encode(text)),
+  );
+
+  /// The file in its folder [selfNotes] are kept in.
+  static const selfFile = 'SELF.md';
 
   /// The avatar a bot in [folder] is saved with: [image], kept there as
   /// a file named after what it shows; else [asked], an emoji, or the

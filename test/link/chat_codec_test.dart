@@ -269,6 +269,22 @@ void main() {
         '</${ChatCodec.botEventTag}>',
       );
       expect(ChatCodec.botEvent(note), '- failed: "Build" in monad');
+      // With a picture, referred to after it.
+      expect(
+        ChatCodec.botEvent(
+          user(
+            '<${ChatCodec.botEventTag}>\nnew picture\n</${ChatCodec.botEventTag}>\n[Image #2]',
+          ),
+        ),
+        'new picture',
+      );
+      // Taken up with the user's: theirs, without it.
+      expect(
+        ChatCodec.withoutBotEvents(
+          '<${ChatCodec.botEventTag}>\nx\n</${ChatCodec.botEventTag}>\n你好',
+        ),
+        '你好',
+      );
       expect(ChatCodec.botEvent(user('hi <${ChatCodec.botEventTag}>')), isNull);
     });
   });

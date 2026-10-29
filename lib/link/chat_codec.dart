@@ -35,11 +35,22 @@ abstract final class ChatCodec {
 
   /// What the app told a bot in [item], if it is such a note.
   static String? botEvent(UserMessageItem item) {
-    final text = item.text.trim();
+    // The pictures that came with it referred to after it, if they are.
+    final text = item.text.replaceAll(imageReferencePattern, '').trim();
     const open = '<$botEventTag>', close = '</$botEventTag>';
     if (!text.startsWith(open) || !text.endsWith(close)) return null;
     return text.substring(open.length, text.length - close.length).trim();
   }
+
+  /// [text] (a message of the user's to a bot) without the app's notes
+  /// in it: taken up with one, the two are one message.
+  static String withoutBotEvents(String text) =>
+      text.replaceAll(_botEvents, '').trim();
+
+  static final _botEvents = RegExp(
+    '<$botEventTag>.*?</$botEventTag>',
+    dotAll: true,
+  );
 
   /// The agent [item] shows as a card, if it is the bot's tool that does.
   static String? botCard(ToolCallItem item) =>

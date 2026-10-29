@@ -106,6 +106,55 @@ void main() {
       expect(told, contains('Likes tea.'));
     });
 
+    test('all it is: its picture, when and where, what runs it', () {
+      final made = DateTime(2026, 10, 1, 9);
+      final told = botInstructions(
+        Bot(
+          id: 'b',
+          name: 'Mia',
+          folder: '/bots/b',
+          avatar: '🌸',
+          created: made,
+        ),
+        memory: '',
+        self: '- Grew up by the sea',
+        computer: 'Leo 的 MacBook',
+        model: 'Opus 5.5',
+      );
+      expect(
+        told,
+        contains(
+          'Your picture (what the user sees beside your '
+          'messages): the emoji 🌸.',
+        ),
+      );
+      expect(told, contains('The user made you on Thursday 2026-10-01.'));
+      expect(told, contains('("Leo 的 MacBook")'));
+      expect(told, contains('the model Opus 5.5'));
+      // A person of its own, the same each time.
+      expect(told, contains('<personality>'));
+      expect(told, contains('Grew up by the sea'));
+      // A picture of the user's choosing: looked at, if not noted.
+      final pictured = botIdentity(
+        const Bot(id: 'b', name: 'Mia', folder: '/b', avatar: 'avatar-1.png'),
+      );
+      expect(pictured, contains('bot_my_picture'));
+      expect(
+        botIdentity(const Bot(id: 'b', name: 'Mia', folder: '/b')),
+        contains("your name's first letter"),
+      );
+    });
+
+    test('when a bot was made, from its id if not kept', () {
+      final at = DateTime(2026, 10, 29, 14);
+      final id = 'b${at.microsecondsSinceEpoch.toRadixString(36)}';
+      expect(Bot.fromJson({'id': id, 'name': 'x'}, root: '/b')!.created, at);
+      expect(
+        Bot.fromJson({'id': 'assistant', 'name': 'x'}, root: '/b')!.created,
+        isNull,
+      );
+    });
+
     test('what it may do, and may not', () {
       final told = botAbilities(bot);
       expect(told, contains('bot_list_chats'));
@@ -171,6 +220,7 @@ void main() {
         store: store,
         chinese: true,
         clock: () => now,
+        computer: () async => 'Leo 的 MacBook',
       );
       await bots.start();
     });
@@ -277,6 +327,7 @@ void main() {
           'bot_later',
           'bot_send_image',
           'bot_remember',
+          'bot_my_picture',
         ]);
         // Nor called, though named.
         final refused = await ClaudeSdkTools.handle({
@@ -580,6 +631,79 @@ void main() {
       // Every bot may: none is set up for it.
       final mia = bots.save(name: 'Mia', identity: '', abilities: {});
       expect(await offered(mia.folder), contains('bot_later'));
+    });
+
+    test('it keeps notes of itself, and sees its own picture', () async {
+      final bot = bots.bots.single;
+      await call(bot, 'bot_remember', {
+        'about': 'self',
+        'action': 'add',
+        'text': 'Loves rainy days',
+      });
+      expect(bots.selfNotes(bot), '- Loves rainy days');
+      expect(bots.memory(bot), isEmpty);
+      expect(
+        '${(await call(bot, 'bot_my_picture', {}))['content']}',
+        contains("name's first letter"),
+      );
+      final png = base64.decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk'
+        '+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      );
+      final pictured = bots.save(
+        id: bot.id,
+        name: bot.name,
+        identity: bot.identity,
+        abilities: bot.abilities,
+        avatarImage: (bytes: png, type: 'image/png'),
+      );
+      final seen = await call(pictured, 'bot_my_picture', {});
+      expect(
+        (seen['content'] as List).map((c) => (c as Map)['type']),
+        contains('image'),
+      );
+    });
+
+    test('told what the user changed of it, its new picture to see', () async {
+      final bot = bots.bots.single;
+      final session = bots.threadFor(bot).session;
+      final png = base64.decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk'
+        '+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      );
+      bots.save(
+        id: bot.id,
+        name: '包包',
+        signature: '今天也要开心',
+        identity: bot.identity,
+        abilities: bot.abilities.difference({BotAbility.browser}),
+        avatarImage: (bytes: png, type: 'image/png'),
+      );
+      final note = [
+        for (var i = 0; i < session.itemCount; i++) session.itemAt(i),
+      ].whereType<UserMessageItem>().last;
+      final told = ChatCodec.botEvent(note)!;
+      expect(told, contains('Your name: now "包包".'));
+      expect(told, contains('Your picture: a new one'));
+      expect(told, contains('今天也要开心'));
+      expect(told, contains('You may no longer: browser.'));
+      expect(note.images, hasLength(1));
+      // Nothing changed: nothing told.
+      int notes() =>
+          [for (var i = 0; i < session.itemCount; i++) session.itemAt(i)]
+              .whereType<UserMessageItem>()
+              .length;
+      final count = notes();
+      final now = bots.bots.single;
+      bots.save(
+        id: now.id,
+        name: now.name,
+        avatar: now.avatar,
+        signature: now.signature,
+        identity: now.identity,
+        abilities: now.abilities,
+      );
+      expect(notes(), count);
     });
 
     test('what it remembers: kept by it, seen, changed and cleared', () async {
