@@ -86,6 +86,8 @@ class KernelWorkspace {
     this.ownPrompt = false,
     this.tools,
     this.allowedTools = const [],
+    this.askedTools = const [],
+    this.reaches = const [],
     this.queuedMessages,
     this.queuedInPlace = false,
   });
@@ -111,6 +113,15 @@ class KernelWorkspace {
   /// Built-in tools it uses without asking, whatever its permission mode
   /// (permission rules: `WebFetch`, say).
   final List<String> allowedTools;
+
+  /// What it always asks the user about, whatever else allows it
+  /// (permission rules: `Bash(rm:*)`).
+  final List<String> askedTools;
+
+  /// Folders it works in besides, not of a workspace of its own: working
+  /// directories (`--add-dir`), their `CLAUDE.md` not read, nor their
+  /// changes reviewed. A bot's reach into the user's projects.
+  final List<String> reaches;
 
   /// Whether what the user writes while it works shows where they wrote
   /// it, as a chat app's messages do, from the moment it is sent: not

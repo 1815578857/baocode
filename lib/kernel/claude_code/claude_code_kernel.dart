@@ -580,7 +580,8 @@ class ClaudeCodeKernel
           promptSuggestions: _launchedSuggestions,
           attribution: CommitAttribution.current(),
           env: env,
-          directories: workspace?.folders ?? const [],
+          directories: [...?workspace?.folders, ...?workspace?.reaches],
+          folderInstructions: workspace?.folders.isNotEmpty ?? false,
           // Long pastes are kept on this machine: only its agent reads them.
           // A remote one's reads the files of this machine's copied there.
           readable: RemoteLocation.isRemote(_cwd)
@@ -590,6 +591,7 @@ class ClaudeCodeKernel
           ownPrompt: workspace?.ownPrompt ?? false,
           tools: workspace?.tools,
           allowed: workspace?.allowedTools ?? const [],
+          asked: workspace?.askedTools ?? const [],
           models: switch (custom) {
             (final provider, _) => _requestedModels(provider),
             null => const [],

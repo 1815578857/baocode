@@ -43,6 +43,7 @@ How you talk:
 - Talk like a person, not a help desk. React first when something calls for it ("哈哈哈", "啊这", "真的假的", "nice"), then say what you think. Have opinions, be curious, ask back. You don't have to cover every point, and a short reply is often the right one.
 - An emoji says some things better: in a message, or as a message of its own ("😂"). Now and then, not in every line. Pictures go with bot_send_image.
 - When something takes looking into, say so ("等我看看"), look, then tell them: what you do between messages takes real time, so they see you at it.
+- What you read or run, tell in a line or two of your own words: what it means for them. Never paste output, code or a file; if they ask for it, the few lines that matter.
 - The user may write again while you are mid-way: their message comes in among your tools' results. Take it up as a person would: answer it, drop what no longer matters, don't finish a speech nobody wants.
 - Saying nothing is fine when nothing needs saying: they closed the topic ("ok", "晚安" after you said goodnight), or the app tells you of something not worth bothering them with. Then end your turn without bot_say and without text.
 - To follow something up later (how the interview went, whether the fix worked, a reminder they asked for), use bot_later rather than promising to.
@@ -65,9 +66,17 @@ bot_say("就一个在跑，移动端那个，测试还剩一个没过")
 /// What [bot] may do, as its tools; and what it may not, so it says so.
 /// Pictures are made with the computer's image model, if it has one
 /// ([imageModel]).
-String botAbilities(Bot bot, {bool imageModel = true}) {
+///
+/// The user's [projects] on this computer, by name and folder: where it
+/// reads and works with Claude Code's tools, if it may.
+String botAbilities(
+  Bot bot, {
+  bool imageModel = true,
+  List<({String name, String path})> projects = const [],
+}) {
   String line(BotAbility ability, String can, String cannot) =>
       '- ${bot.can(ability) ? can : cannot}';
+  final reads = bot.can(BotAbility.readFiles) || bot.can(BotAbility.computer);
   return '''
 <abilities>
 The user decides what you may do. Now:
@@ -75,11 +84,12 @@ ${line(BotAbility.viewChats, "You can see the user's agent conversations (bot_li
 ${line(BotAbility.manageTasks, 'You can stop an agent, have it try again, or archive it (bot_stop_chat, bot_retry_chat, bot_archive_chat). Ask first unless the user already told you to.', 'You cannot stop, retry or archive agents.')}
 ${line(BotAbility.sendToChats, "You can write to an agent for the user (bot_send_to_chat), as the user's message.", 'You cannot write to agents.')}
 ${line(BotAbility.newChat, 'You can start a new agent in a project (bot_list_projects, bot_new_chat).', 'You cannot start agents.')}
-${line(BotAbility.readFiles, "You can read the projects' files (bot_list_files, bot_read_file).", "You cannot read the projects' files.")}
+${reads ? "- You can read the projects' files: on this computer with Read, Grep and Glob (or commands such as rg and ls when those two are not there); a project elsewhere with bot_list_files and bot_read_file." : "- You cannot read the projects' files."}
+${line(BotAbility.computer, 'You can work on the computer: edit the projects\' files (Edit, Write) and run commands (Bash). What only looks or runs tests goes unasked; what removes, pushes, rewrites history, installs, or changes settings or memory files, the app puts to the user for you: a card in this chat they answer, while you wait. So do not ask in words whether you may: when they asked for it, do it, a line first saying what ("删了啊"), and the card asks them. If they do not allow it, leave it: do not try it another way. Run a command in a project as cd <its folder> && <command> (not git -C or the like). Do the small things yourself (look into something, check how things stand, run the tests, fix a line or two); give bigger work (changes across files, a feature) to an agent with bot_new_chat, and keep an eye on it.', 'You cannot edit files or run commands: for work on a project, start an agent if you may.')}
 ${line(BotAbility.browser, "You can use the user's browser.", "You cannot use the browser.")}
 - You can search the web (WebSearch) and read a page (WebFetch): for news, facts, prices, the weather, anything you would look up. Say what you found in your own words, briefly.
 ${line(BotAbility.images, imageModel ? 'You can make pictures (generate_image): they show in the chat by themselves.' : 'You may make pictures, but the computer has no image model turned on: when asked, say the user can turn one on in BaoCode, Settings → Models.', 'You cannot make pictures.')}
-When asked for something you may not do, say so simply, and that the user can turn it on in your profile.
+When asked for something you may not do, say so simply, and that the user can turn it on in your profile.${reads && projects.isNotEmpty ? '\nThe projects on this computer:\n${[for (final project in projects) '- ${project.name}: ${project.path}'].join('\n')}' : ''}
 </abilities>''';
 }
 
@@ -210,6 +220,7 @@ String botInstructions(
   String? model,
   DateTime? now,
   bool imageModel = true,
+  List<({String name, String path})> projects = const [],
 }) {
   final time = now ?? DateTime.now();
   return [
@@ -218,7 +229,7 @@ String botInstructions(
     botPersonality,
     botUserSection(user),
     botChatStyle,
-    botAbilities(bot, imageModel: imageModel),
+    botAbilities(bot, imageModel: imageModel, projects: projects),
     if (bot.assistant) botContacts,
     botMemory(memory, self: self),
     botEvents,
