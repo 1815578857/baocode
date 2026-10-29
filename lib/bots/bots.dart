@@ -10,16 +10,19 @@ import '../chat/chat_models.dart';
 import '../chat/chat_session.dart';
 import '../images/image_tools.dart' show ImageTools;
 import '../kernel/agent_kernel.dart';
+import '../kernel/kernel_types.dart';
 import '../kernel/claude_code/claude_sdk_tools.dart';
 import '../kernel/kernel_registry.dart';
 import '../kernel/queued_messages.dart';
 import '../link/chat_codec.dart';
 import '../link/link_platform.dart';
+import '../remote/remote_location.dart';
 import '../workspace/preference_store.dart';
 import '../workspace/workspace.dart';
 import 'bot.dart';
 import 'bot_folders.dart';
 import 'bot_pacer.dart';
+import 'bot_permissions.dart';
 import 'bot_prompt.dart';
 import 'bot_tools.dart';
 
@@ -65,9 +68,10 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
   static Future<String?> _thisComputer() async =>
       (await LinkPlatform.current()?.device())?.name;
 
-  /// The settings its agent runs with: it asks nothing (its tools are
-  /// allowed, all else refused), and works as an agent, not in Plan.
-  static const settings = {'mode': 'agent', 'permission': 'dontAsk'};
+  /// The settings its agent runs with: it asks the user, in its chat, for
+  /// what it is not let do unasked (see [BotPermissions]); and works as
+  /// an agent, not in Plan.
+  static const settings = {'mode': 'agent', 'permission': 'default'};
 
   List<Bot> _bots = [];
   List<Bot> get bots => List.unmodifiable(_bots);
@@ -224,6 +228,10 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
           computer: computer,
           model: modelOf(bot),
           now: _clock(),
+          projects: [
+            for (final project in _localProjects)
+              (name: project.name, path: project.path),
+          ],
           imageModel:
               ClaudeSdkTools.called(
                 'mcp__${ClaudeSdkTools.server}__${ImageTools.name}',
@@ -232,10 +240,28 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         ),
         // Told only who it is and how it talks: no coding agent's prompt.
         ownPrompt: true,
-        // Its own tools, and the web's, its own to use; the tool search,
-        // for the browser's, which are deferred.
-        tools: [...webTools, if (bot.can(BotAbility.browser)) 'ToolSearch'],
-        allowedTools: webTools,
+        // Its own tools; the web's, its own to use; reading and working in
+        // the projects, if it may (what could not be undone asked first,
+        // in its chat); the tool search, for the browser's, which are
+        // deferred.
+        tools: BotPermissions.tools(bot),
+        allowedTools: BotPermissions.allowed(
+          bot,
+          folder: bot.folder,
+          projects: [for (final project in _localProjects) project.path],
+        ),
+        // The projects as its working directories: what it does there
+        // judged as in its own folder (going into one with cd, say), the
+        // coding agents' CLAUDE.md not read.
+        reaches: BotPermissions.reaches(
+          bot,
+          projects: [for (final project in _localProjects) project.path],
+        ),
+        askedTools: BotPermissions.asked(
+          bot,
+          folder: bot.folder,
+          projects: [for (final project in _localProjects) project.path],
+        ),
         // What the user writes while it talks, taken up as it does: as a
         // person hears what is said meanwhile; and shown where they wrote
         // it.
@@ -248,9 +274,12 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     null => null,
   };
 
-  /// Claude Code's own tools of the web every bot has: searching it,
-  /// reading a page.
-  static const webTools = ['WebSearch', 'WebFetch'];
+  /// The user's projects on this computer: those a bot reads and works
+  /// in with Claude Code's tools (a remote one's, with its own).
+  List<Project> get _localProjects => [
+    for (final project in workspace.sidebarProjects)
+      if (!RemoteLocation.isRemote(project.path)) project,
+  ];
 
   // --- What a bot is offered -------------------------------------------------
 
@@ -356,6 +385,86 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     return last < 0 ||
         session.itemAt(last) is! AssistantTextItem ||
         !ChatCodec.botQuiet(session.itemCount, session.itemAt).contains(last);
+  }
+
+  /// Whether [bot] waits for the user to allow what it would do: asked in
+  /// its chat.
+  bool waiting(Bot bot) {
+    final thread = threadOf(bot);
+    return thread != null &&
+        thread.isOpen &&
+        thread.session.pendingInteraction is ApprovalRequest;
+  }
+
+  /// The user writes to [bot] while it waits on them to allow something:
+  /// not allowed, their message the answer, as a person takes it.
+  void declineAsked(Bot bot) {
+    final thread = threadOf(bot);
+    if (thread == null || !thread.isOpen) return;
+    if (thread.session.pendingInteraction is ApprovalRequest) {
+      thread.session.answer(
+        const ApprovalAnswer(ApprovalDecision.deny, message: wroteInstead),
+      );
+    }
+  }
+
+  /// What a bot is told of what it asked, the user writing instead.
+  static const wroteInstead =
+      'The user did not allow this: they wrote to you instead, in the '
+      'message that follows. Take that up; do not try it another way.';
+
+  /// What the user let [bot] do unasked from now on, answering it in its
+  /// chat ("always allow"): Claude Code's permission rules, kept in its
+  /// folder (`.claude/settings.local.json`).
+  List<String> allowedAlways(Bot bot) {
+    final settings = _localSettings(bot);
+    return switch (settings['permissions']) {
+      {'allow': final List rules} => [
+        for (final rule in rules)
+          if (rule is String) rule,
+      ],
+      _ => const [],
+    };
+  }
+
+  /// [bot] lets only [rules] of what it was let do unasked: told from its
+  /// next message.
+  void setAllowedAlways(Bot bot, List<String> rules) {
+    final settings = _localSettings(bot);
+    final permissions = switch (settings['permissions']) {
+      final Map<String, Object?> kept => {...kept},
+      _ => <String, Object?>{},
+    };
+    if (rules.isEmpty) {
+      permissions.remove('allow');
+    } else {
+      permissions['allow'] = rules;
+    }
+    settings['permissions'] = permissions;
+    folders.writeFile(
+      p.join(bot.folder, localSettingsFile),
+      Uint8List.fromList(
+        utf8.encode(const JsonEncoder.withIndent('  ').convert(settings)),
+      ),
+    );
+    _restart(bot);
+    notifyListeners();
+  }
+
+  /// Claude Code's settings of a bot's own, in its folder.
+  static final localSettingsFile = p.join('.claude', 'settings.local.json');
+
+  Map<String, Object?> _localSettings(Bot bot) {
+    final bytes = folders.readFile(p.join(bot.folder, localSettingsFile));
+    if (bytes == null) return {};
+    try {
+      return switch (jsonDecode(utf8.decode(bytes, allowMalformed: true))) {
+        final Map<String, Object?> json => json,
+        _ => {},
+      };
+    } on FormatException {
+      return {};
+    }
   }
 
   /// The last [bot] said: its first line; a picture or a sticker, as a

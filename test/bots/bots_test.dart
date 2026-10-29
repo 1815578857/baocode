@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:baocode/bots/bot.dart';
 import 'package:baocode/bots/bot_folders.dart';
 import 'package:baocode/bots/bot_pacer.dart';
+import 'package:baocode/bots/bot_permissions.dart';
 import 'package:baocode/bots/bot_prompt.dart';
 import 'package:baocode/bots/bot_tools.dart';
 import 'package:baocode/bots/bots.dart';
@@ -164,6 +165,46 @@ void main() {
       expect(told, contains('You cannot make pictures.'));
     });
 
+    test('what of Claude Code\'s it has, unasked or asked, by what it may', () {
+      Bot bot(Set<BotAbility> abilities) =>
+          Bot(id: 'b1', name: 'Mia', folder: '/bots/b1', abilities: abilities);
+      List<String> allowed(Bot b) =>
+          BotPermissions.allowed(b, folder: '/bots/b1', projects: ['/p']);
+      // Only the web's.
+      final none = bot({});
+      expect(BotPermissions.tools(none), ['WebSearch', 'WebFetch']);
+      expect(allowed(none), ['WebSearch', 'WebFetch']);
+      expect(
+        BotPermissions.asked(none, folder: '/bots/b1', projects: ['/p']),
+        isEmpty,
+      );
+      // Reading, not working.
+      final reader = bot({BotAbility.readFiles});
+      expect(BotPermissions.tools(reader), isNot(contains('Bash')));
+      expect(allowed(reader), contains('Read(//p/**)'));
+      expect(allowed(reader), isNot(contains('Edit(//p/**)')));
+      // Working: its hands, and what is asked first.
+      final hands = bot({BotAbility.computer});
+      expect(
+        BotPermissions.tools(hands),
+        containsAll(['Read', 'Edit', 'Write', 'Bash']),
+      );
+      expect(allowed(hands), containsAll(['Edit(//p/**)', 'Bash(ls:*)']));
+      expect(allowed(hands), isNot(contains('Bash(rm:*)')));
+      expect(
+        BotPermissions.asked(hands, folder: '/bots/b1', projects: ['/p']),
+        containsAll([
+          'Bash(rm:*)',
+          'Edit(//p/**/.env*)',
+          'Edit(//bots/b1/SELF.md)',
+        ]),
+      );
+      final told = botAbilities(hands, projects: [(name: 'app', path: '/p')]);
+      expect(told, contains('You can work on the computer'));
+      expect(told, contains('- app: /p'));
+      expect(botAbilities(none), contains('You cannot edit files'));
+    });
+
     test('pictures: made with the image model, or said there is none', () {
       final painter = Bot(
         id: 'p',
@@ -292,18 +333,62 @@ void main() {
         workspace.agentSetup!(bot.folder)!.workspace().queuedMessages,
         QueuedMessages.duringTurn,
       );
-      expect(launch.permissionMode, 'dontAsk');
+      // What it is not let do unasked, put to the user in its chat.
+      expect(launch.permissionMode, 'default');
       expect(launch.sdkServers, [ClaudeSdkTools.server]);
-      // The web's, its own to use, unasked; the browser's tool search, as
-      // it may use it; no other.
-      expect(launch.tools, ['WebSearch', 'WebFetch', 'ToolSearch']);
+      // The web's, its own to use, unasked; the projects read and worked
+      // in, as it may (the assistant may all); the browser's tool search;
+      // no other.
+      expect(launch.tools, [
+        'WebSearch',
+        'WebFetch',
+        'Read',
+        'Grep',
+        'Glob',
+        'Edit',
+        'Write',
+        'Bash',
+        'ToolSearch',
+      ]);
       expect(
         launch.arguments,
-        containsAllInOrder(['--tools', 'WebSearch,WebFetch,ToolSearch']),
+        containsAllInOrder([
+          '--tools',
+          'WebSearch,WebFetch,Read,Grep,Glob,Edit,Write,Bash,ToolSearch',
+        ]),
+      );
+      final permissions = launch.settings['permissions'] as Map;
+      expect(
+        permissions['allow'],
+        containsAll([
+          'WebSearch',
+          'WebFetch',
+          'Read(/$app/**)',
+          'Edit(/$app/**)',
+          'Edit(/${bot.folder}/**)',
+          'Bash(git status:*)',
+          'Bash(flutter test:*)',
+        ]),
       );
       expect(
-        (launch.settings['permissions'] as Map)['allow'],
-        containsAll(['WebSearch', 'WebFetch']),
+        permissions['ask'],
+        containsAll([
+          'Bash(rm:*)',
+          'Bash(git push:*)',
+          'Bash(npm install:*)',
+          'Edit(/$app/**/CLAUDE.md)',
+          'Edit(~/.claude/**)',
+          'Edit(/${bot.folder}/MEMORY.md)',
+        ]),
+      );
+      expect(launch.instructions, contains('- app: $app'));
+      // The projects its working directories, their CLAUDE.md not read.
+      expect(launch.directories, [app]);
+      expect(
+        (launch.settings['env'] as Map).containsKey(
+          'CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD',
+        ),
+        isFalse,
       );
       // None of the user's MCP servers: their notices are not its to tell.
       expect(launch.arguments, contains('--strict-mcp-config'));
@@ -818,6 +903,18 @@ void main() {
       expect(store.preferences['watching'], {
         mia.id: [BotTools.idOf(second)],
       });
+    });
+
+    test('what the user let it do unasked: kept in its folder, changed', () {
+      final bot = bots.bots.single;
+      expect(bots.allowedAlways(bot), isEmpty);
+      expect(bots.waiting(bot), isFalse);
+      bots.setAllowedAlways(bot, ['Bash(make:*)', 'Bash(open:*)']);
+      expect(bots.allowedAlways(bot), ['Bash(make:*)', 'Bash(open:*)']);
+      final file = p.join(bot.folder, Bots.localSettingsFile);
+      expect(utf8.decode(folders.files[file]!), contains('Bash(make:*)'));
+      bots.setAllowedAlways(bot, ['Bash(open:*)']);
+      expect(bots.allowedAlways(bot), ['Bash(open:*)']);
     });
 
     test('it drops what it meant to come back to', () async {

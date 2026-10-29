@@ -25,6 +25,11 @@ enum BotAbility {
   /// Makes pictures, with the image model the desktop has set up.
   images,
 
+  /// Works on the computer itself: edits the projects' files and runs
+  /// commands, those that remove, publish or install asked first (the
+  /// user answers in its chat).
+  computer,
+
   /// Writes first, of what happened (an agent waits, fails).
   proactive,
 }
@@ -196,8 +201,9 @@ class LinkBot {
   };
 }
 
-/// Whether a bot is writing.
-enum BotStatus { idle, typing }
+/// Whether a bot is writing; or waits for the user to allow what it would
+/// do (asked in its chat).
+enum BotStatus { idle, typing, waiting }
 
 /// Whether [avatar] (a bot's) is a picture, by its file's name, rather
 /// than an emoji. Its name changes with what it shows.
