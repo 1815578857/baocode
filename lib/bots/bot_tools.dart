@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:bao_link/bao_link.dart' show LinkLimits;
@@ -23,24 +24,14 @@ import 'bots.dart';
 /// ([files]) is not for a bot that works on the computer: it keeps its
 /// files itself, with Claude Code's tools.
 class BotToolAccess {
-  const BotToolAccess({
-    this.ability,
-    this.assistant = false,
-    this.ownFiles = false,
-  });
+  const BotToolAccess({this.ability, this.assistant = false});
 
   /// What a bot needs on for it; none for any bot.
   final BotAbility? ability;
   final bool assistant;
 
-  /// Of the bot's own files: not for one that works with the computer's
-  /// files, which keeps its own itself.
-  final bool ownFiles;
-
   bool allows(Bot bot) =>
-      (!assistant || bot.assistant) &&
-      (ability == null || bot.can(ability!)) &&
-      !(ownFiles && bot.can(BotAbility.files));
+      (!assistant || bot.assistant) && (ability == null || bot.can(ability!));
 }
 
 /// The bots' tools (`mcp__baocode__bot_*`): the user's agents seen,
@@ -83,13 +74,19 @@ abstract final class BotTools {
   }
 
   static const _agents = BotToolAccess(ability: BotAbility.agents);
-  static const _files = BotToolAccess(ownFiles: true);
 
   static List<(ClaudeSdkTool, BotToolAccess)> _tools(Bots bots) {
     final workspace = bots.workspace;
 
     Bot botOf(ClaudeSdkCall call) =>
         bots.botAt(call.cwd) ?? (throw StateError('Not a bot'));
+
+    // The bots as their files say now, before a tool of theirs changes
+    // them: what one edited in them this turn, kept.
+    Bot freshOf(ClaudeSdkCall call) {
+      bots.reload(by: botOf(call));
+      return botOf(call);
+    }
 
     List<AgentThread> chats() => [
       for (final thread in workspace.threads)
@@ -218,7 +215,7 @@ abstract final class BotTools {
           required: ['minutes', 'note'],
           summary: (input, _) => clip(input, 'note'),
         ),
-        _files,
+        const BotToolAccess(),
       ),
       (
         tool(
@@ -246,7 +243,7 @@ abstract final class BotTools {
           required: ['note'],
           summary: (input, _) => clip(input, 'note'),
         ),
-        _files,
+        const BotToolAccess(),
       ),
       (
         tool(
@@ -548,7 +545,7 @@ abstract final class BotTools {
           },
           required: ['text'],
         ),
-        _files,
+        const BotToolAccess(),
       ),
       (
         tool(
@@ -571,7 +568,7 @@ abstract final class BotTools {
             };
           },
         ),
-        _files,
+        const BotToolAccess(),
       ),
       (
         tool(
@@ -588,7 +585,75 @@ abstract final class BotTools {
             ];
           },
         ),
-        _files,
+        const BotToolAccess(),
+      ),
+      (
+        tool(
+          'bot_edit_me',
+          'Changes your own profile, as the user sees it in the app: what you '
+              'give changes, the rest stays. Your picture is an emoji, or a '
+              'picture file (one generate_image saved, say), cut square.',
+          {
+            'emoji': {
+              'type': 'string',
+              'description': 'An emoji as your picture.',
+            },
+            'picture': {
+              'type': 'string',
+              'description': 'A picture file, by its absolute path.',
+            },
+            'signature': {
+              'type': 'string',
+              'description': 'The line under your name.',
+            },
+            'name': {
+              'type': 'string',
+              'description': 'Only when the user asks.',
+            },
+            'gender': {'type': 'string'},
+            'identity': {
+              'type': 'string',
+              'description':
+                  'Who you are, to you: "you are…"; only when the user asks.',
+            },
+            'style': {
+              'type': 'string',
+              'description': 'How you talk; only when the user asks.',
+            },
+          },
+          (input, call) async {
+            final me = freshOf(call);
+            String? given(String key) => switch (input[key]) {
+              final String value => value.trim(),
+              _ => null,
+            };
+            BotAvatarImage? picture;
+            if (given('picture') case final path? when path.isNotEmpty) {
+              picture = await _avatarFrom(path);
+            }
+            final name = given('name');
+            bots.save(
+              id: me.id,
+              name: name == null || name.isEmpty ? me.name : name,
+              avatar: given('emoji') ?? me.avatar,
+              avatarImage: picture,
+              gender: given('gender') ?? me.gender,
+              signature: given('signature') ?? me.signature,
+              identity: given('identity') ?? me.identity,
+              style: given('style') ?? me.style,
+              abilities: me.abilities,
+              proactive: me.proactive,
+              by: me,
+            );
+            return 'Saved: the user sees it now.';
+          },
+          summary: (input, _) => [
+            for (final key in ['emoji', 'signature', 'name'])
+              if (input[key] case final String value) value,
+            if (input['picture'] != null) 'picture',
+          ].join(' '),
+        ),
+        const BotToolAccess(),
       ),
       (
         tool(
@@ -597,7 +662,7 @@ abstract final class BotTools {
               'signature, what they may do; and who each is.',
           const {},
           (input, call) async {
-            final me = botOf(call);
+            final me = freshOf(call);
             return [
               for (final bot in bots.bots)
                 [
@@ -617,15 +682,15 @@ abstract final class BotTools {
             ].join('\n');
           },
         ),
-        const BotToolAccess(assistant: true, ownFiles: true),
+        const BotToolAccess(assistant: true),
       ),
       (
         tool(
           'bot_save_bot',
-          "Makes a new bot for the user (no bot), or changes one, yourself "
-              'among them: what you give changes, the rest stays. Its picture '
-              'is an emoji, or a picture file (one generate_image saved, '
-              'say), cut square.',
+          "Makes a new bot for the user (no bot), or changes one of the "
+              "others: what you give changes, the rest stays. Its picture is "
+              'an emoji, or a picture file (one generate_image saved, say), '
+              'cut square. Yourself, with bot_edit_me.',
           {
             'bot': {
               'type': 'string',
@@ -652,7 +717,7 @@ abstract final class BotTools {
             'style': {'type': 'string', 'description': 'How it talks.'},
           },
           (input, call) async {
-            final me = botOf(call);
+            final me = freshOf(call);
             String? given(String key) => switch (input[key]) {
               final String value => value.trim(),
               _ => null,
@@ -692,7 +757,7 @@ abstract final class BotTools {
           },
           summary: (input, _) => '${input['name'] ?? input['bot'] ?? ''}',
         ),
-        const BotToolAccess(assistant: true, ownFiles: true),
+        const BotToolAccess(assistant: true),
       ),
       (
         tool(
@@ -703,7 +768,7 @@ abstract final class BotTools {
             'bot': {'type': 'string', 'description': 'Its id (bot_list_bots).'},
           },
           (input, call) async {
-            final me = botOf(call);
+            final me = freshOf(call);
             final bot =
                 bots.byId(text(input, 'bot')) ??
                 (throw StateError(
@@ -718,17 +783,21 @@ abstract final class BotTools {
           required: ['bot'],
           summary: (input, _) => '${input['bot'] ?? ''}',
         ),
-        const BotToolAccess(assistant: true, ownFiles: true),
+        const BotToolAccess(assistant: true),
       ),
     ];
   }
 
-  /// The picture file at [path] as a bot's: its middle, square, no larger
-  /// than [avatarSide], as PNG.
+  /// The picture file at [path] as a bot's (see [squarePicture]).
   static Future<BotAvatarImage> _avatarFrom(String path) async {
     final file = File(path);
     if (!file.existsSync()) throw StateError('No file $path');
-    final bytes = await file.readAsBytes();
+    return squarePicture(await file.readAsBytes());
+  }
+
+  /// The picture [bytes] as a bot's: its middle, square, no larger than
+  /// [avatarSide], as PNG.
+  static Future<BotAvatarImage> squarePicture(Uint8List bytes) async {
     if (imageMediaType(bytes) == null) {
       throw StateError('Not a PNG, JPEG, WebP or GIF picture.');
     }

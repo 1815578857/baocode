@@ -219,11 +219,12 @@ void main() {
       expect(told, contains('<your_files>'));
       expect(told, contains('/bots/b1/BOT.md'.substring('/bots/b1/'.length)));
       expect(told, contains('/bots/USER.md'));
-      expect(told, contains('Read (/bots/b1/avatar-1.png)'));
-      expect(told, contains('Read (/bots/me-1.png)'));
-      expect(told, isNot(contains('bot_remember')));
-      expect(told, isNot(contains('bot_later')));
+      // Its tools all the same: the files are theirs too.
+      expect(told, contains('bot_remember'));
+      expect(told, contains('bot_edit_me'));
+      expect(told, contains('avatar: /'));
       expect(botInstructions(bot, memory: ''), contains('bot_remember'));
+      expect(botInstructions(bot, memory: ''), isNot(contains('avatar: /')));
       expect(botInstructions(bot, memory: ''), isNot(contains('<your_files>')));
     });
 
@@ -405,7 +406,7 @@ void main() {
         final assistant = bots.bots.single;
         final its = await offered(assistant.folder);
         expect(its, containsAll(['bot_list_chats', 'bot_stop_chat']));
-        // What it keeps in its files, kept there: not by tools.
+        // Its tools as well as its files: they keep the same.
         for (final tool in [
           'bot_remember',
           'bot_later',
@@ -415,8 +416,9 @@ void main() {
           'bot_list_bots',
           'bot_save_bot',
           'bot_delete_bot',
+          'bot_edit_me',
         ]) {
-          expect(its, isNot(contains(tool)));
+          expect(its, contains(tool));
         }
         expect(await offered(app), isNot(contains('bot_list_chats')));
         expect(ClaudeSdkTools.serversFor(app), isEmpty);
@@ -442,19 +444,9 @@ void main() {
           'bot_remember',
           'bot_my_picture',
           'bot_user_picture',
+          'bot_edit_me',
         ]);
-        // The assistant's alone: its contacts looked after, with tools
-        // when it does not work on the computer.
-        final chatting = bots.save(
-          id: assistant.id,
-          name: assistant.name,
-          identity: assistant.identity,
-          abilities: assistant.abilities.difference({BotAbility.files}),
-        );
-        expect(
-          await offered(chatting.folder),
-          containsAll(['bot_list_bots', 'bot_save_bot', 'bot_delete_bot']),
-        );
+        // The assistant's alone: its contacts looked after.
         expect(await offered(mia.folder), isNot(contains('bot_list_bots')));
         // Nor called, though named.
         final refused = await ClaudeSdkTools.handle({
@@ -727,13 +719,8 @@ void main() {
         (await call(bot, 'bot_later', {'minutes': 0, 'note': 'x'}))['isError'],
         isTrue,
       );
-      // Every bot may: none is set up for it. One on the computer writes
-      // its LATER.md itself.
+      // Every bot may: none is set up for it.
       expect(await offered(bot.folder), contains('bot_later'));
-      expect(
-        await offered(bots.bots.first.folder),
-        isNot(contains('bot_later')),
-      );
     });
 
     test('it keeps notes of itself, and sees its own picture', () async {
@@ -929,15 +916,7 @@ void main() {
     });
 
     test('the assistant looks after the other bots, and itself', () async {
-      // Not on the computer: with its tools (on it, by their files).
-      final first = bots.bots.single;
-      expect(await offered(first.folder), isNot(contains('bot_save_bot')));
-      final assistant = bots.save(
-        id: first.id,
-        name: first.name,
-        identity: first.identity,
-        abilities: first.abilities.difference({BotAbility.files}),
-      );
+      final assistant = bots.bots.single;
       int told(Bot bot) {
         final session = bots.threadFor(bot).session;
         return [for (var i = 0; i < session.itemCount; i++) session.itemAt(i)]
@@ -1100,6 +1079,95 @@ void main() {
       );
       bots.reload();
       expect(bots.bots.first.can(BotAbility.files), isFalse);
+    });
+
+    test('every bot changes its own profile: with bot_edit_me, or in its '
+        'files, a picture by its path, cut square', () async {
+      final wide = base64.decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAYAAAB/qH1jAAAAEklEQVR4nGP4z8Dw'
+        'HxkzoAsAAA8hD/EEN8afAAAAAElFTkSuQmCC',
+      );
+      final made = File('$app/made.png')..writeAsBytesSync(wide);
+      Future<Bot> changed(String id, bool Function(Bot) done) async {
+        for (var i = 0; i < 300 && !done(bots.byId(id)!); i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+        return bots.byId(id)!;
+      }
+
+      // Without the files: its tool, and told how.
+      final mia = bots.save(name: 'Mia', identity: '', abilities: {});
+      final told = workspace.agentSetup!(mia.folder)!.workspace().instructions;
+      expect(told, contains('<your_profile>'));
+      expect(told, contains('bot_edit_me'));
+      await call(mia, 'bot_edit_me', {'emoji': '🐱', 'signature': '困'});
+      expect(
+        (bots.byId(mia.id)!.avatar, bots.byId(mia.id)!.signature),
+        ('🐱', '困'),
+      );
+      await call(mia, 'bot_edit_me', {'picture': made.path});
+      final pictured = bots.byId(mia.id)!;
+      expect(isAvatarImage(pictured.avatar), isTrue);
+      expect(pictured.name, 'Mia');
+      // Not told what it did itself.
+      final miaSession = bots.threadFor(mia).session;
+      expect(
+        [for (var i = 0; i < miaSession.itemCount; i++) miaSession.itemAt(i)]
+            .whereType<UserMessageItem>(),
+        isEmpty,
+      );
+
+      // With them: its card, the picture's path in it.
+      final self = bots.bots.first;
+      final card = '${self.folder}/BOT.md';
+      final mine = workspace.agentSetup!(self.folder)!.workspace().instructions;
+      expect(mine, contains('avatar: /'));
+      void write(String text) =>
+          folders.writeFile(card, Uint8List.fromList(utf8.encode(text)));
+      String read() => utf8.decode(folders.files[card]!);
+      write(
+        read().replaceFirst(
+          'name: 小宝\n',
+          'name: 小宝\navatar: ${made.path}\nsignature: 摸鱼中\n',
+        ),
+      );
+      bots.reload(by: self);
+      expect(bots.byId(self.id)!.signature, '摸鱼中');
+      expect(bots.byId(self.id)!.avatar, isNull);
+      final taken = await changed(self.id, (b) => b.avatar != null);
+      expect(taken.avatar, matches(RegExp(r'^avatar-[0-9a-f]{12}\.png$')));
+      expect(read(), contains('avatar: ${taken.avatar}'));
+      final square = await decodeImageFromList(
+        folders.files[taken.avatarFile]!,
+      );
+      expect((square.width, square.height), (2, 2));
+      expect(made.existsSync(), isTrue);
+      // One copied into its folder: taken, the copy gone.
+      folders.writeFile('${self.folder}/cat.png', wide);
+      write(read().replaceFirst('avatar: ${taken.avatar}', 'avatar: cat.png'));
+      bots.reload(by: self);
+      final again = await changed(self.id, (b) => b.avatar != taken.avatar);
+      expect(again.avatar, matches(RegExp(r'^avatar-[0-9a-f]{12}\.png$')));
+      expect(folders.files, isNot(contains('${self.folder}/cat.png')));
+      // None there: as it was, and told.
+      write(
+        read().replaceFirst('avatar: ${again.avatar}', 'avatar: /no/x.png'),
+      );
+      bots.reload(by: self);
+      final session = bots.threadFor(self).session;
+      for (var i = 0; i < 300 && session.itemCount == 0; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      final note = session.itemAt(0) as UserMessageItem;
+      expect(ChatCodec.botEvent(note), contains('/no/x.png could not be used'));
+      expect(bots.byId(self.id)!.avatar, again.avatar);
+      expect(read(), contains('avatar: ${again.avatar}'));
+      // Edited by hand, then a tool, in one turn: neither lost.
+      write(read().replaceFirst('signature: 摸鱼中', 'signature: 在线'));
+      await call(self, 'bot_edit_me', {'emoji': '🐼'});
+      expect(read(), contains('signature: 在线'));
+      expect(read(), contains('avatar: 🐼'));
+      expect(bots.byId(self.id)!.signature, '在线');
     });
 
     test('a card, read back as written', () {

@@ -1,4 +1,4 @@
-// A bot knowing itself, with the real Claude Code, without a phone: asked
+// A bot knowing itself, with the real Claude Code (on OpenCode's model, see live_model.dart), without a phone: asked
 // who it is and what it looks like, what it likes; then its profile
 // changed (a new name and picture), for it to see; and what it noted of
 // itself printed.
@@ -17,11 +17,14 @@ import 'package:baocode/link/chat_codec.dart';
 import 'package:baocode/workspace/workspace.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'live_model.dart';
+
 void main() {
   test('live persona', () async {
     final root = await Directory.systemTemp.createTemp('bots-persona');
     final demo = Directory('${root.path}/demo')..createSync();
     ClaudeCore.current = () => ClaudeCore.cli;
+    final model = await useOpenCode();
     KernelRegistry.use([KernelRegistry.claudeCode]);
     final workspace = Workspace(
       projects: [Project('demo', demo.path)],
@@ -33,6 +36,7 @@ void main() {
       chinese: true,
     );
     await bots.start();
+    onModel(bots, model);
     var bot = bots.save(
       id: bots.bots.single.id,
       name: '小宝',

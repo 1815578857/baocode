@@ -1,4 +1,4 @@
-// A bot's chat with the real Claude Code, without a phone: how much it
+// A bot's chat with the real Claude Code (on OpenCode's model, see live_model.dart), without a phone: how much it
 // says to a line; a reminder called off (dropped, or let pass in
 // silence); the web looked up; what the user writes while it talks, where
 // they wrote it; and the assistant making a contact.
@@ -17,11 +17,14 @@ import 'package:baocode/link/chat_codec.dart';
 import 'package:baocode/workspace/workspace.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'live_model.dart';
+
 void main() {
   test('live manage', () async {
     final root = await Directory.systemTemp.createTemp('bots-manage');
     final demo = Directory('${root.path}/demo')..createSync();
     ClaudeCore.current = () => ClaudeCore.cli;
+    final model = await useOpenCode();
     KernelRegistry.use([KernelRegistry.claudeCode]);
     final workspace = Workspace(
       projects: [Project('demo', demo.path)],
@@ -33,6 +36,7 @@ void main() {
       chinese: true,
     );
     await bots.start();
+    onModel(bots, model);
     bots.setMe(const BotUser(name: 'Leo', signature: '写代码的'), null);
     final bot = bots.bots.single;
     bots.save(

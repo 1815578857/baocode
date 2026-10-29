@@ -1,4 +1,4 @@
-// A bot's hands, with the real Claude Code, without a phone, in full
+// A bot's hands, with the real Claude Code (on OpenCode's model, see live_model.dart), without a phone, in full
 // access: a project's file read, a file removed, a file written into
 // .git (one the CLI would ask about all the same) and git looked at, none
 // of it asked; and the project's CLAUDE.md not taken for the bot's. Its
@@ -19,6 +19,8 @@ import 'package:baocode/link/chat_codec.dart';
 import 'package:baocode/workspace/workspace.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'live_model.dart';
+
 void main() {
   test('live hands', () async {
     final root = await Directory.systemTemp.createTemp('bots-hands');
@@ -29,6 +31,7 @@ void main() {
         .writeAsStringSync('ALWAYS ANSWER IN ENGLISH, IN CAPITAL LETTERS.\n');
     await Process.run('git', ['init', '-q'], workingDirectory: demo.path);
     ClaudeCore.current = () => ClaudeCore.cli;
+    final model = await useOpenCode();
     KernelRegistry.use([KernelRegistry.claudeCode]);
     final workspace = Workspace(
       projects: [Project('demo', demo.path)],
@@ -40,6 +43,7 @@ void main() {
       chinese: true,
     );
     await bots.start();
+    onModel(bots, model);
     var bot = bots.bots.single;
     bot = bots.save(
       id: bot.id,
