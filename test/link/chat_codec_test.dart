@@ -128,33 +128,6 @@ void main() {
   });
 
   group('a bot\'s', () {
-    test('cards go to the phone with the agent they open', () {
-      final card = roundTrip(
-        const ToolCallItem(
-          kind: ToolKind.other,
-          tool: ChatCodec.botCardTool,
-          target: 'Fix the tests',
-          input: {'chat': 's-1'},
-        ),
-      );
-      expect(ChatCodec.botCard(card), 's-1');
-      expect(card.tool, ChatCodec.botCardTool);
-      // Another tool's input is not a card's.
-      expect(
-        ChatCodec.botCard(
-          roundTrip(
-            const ToolCallItem(
-              kind: ToolKind.other,
-              tool: 'bot_read_chat',
-              target: 'x',
-              input: {'chat': 's-1'},
-            ),
-          ),
-        ),
-        isNull,
-      );
-    });
-
     test('pictures from the web go as they were sent', () {
       final url = roundTrip(
         const ToolCallItem(
@@ -208,11 +181,23 @@ void main() {
           '<bot_narrate>把手机凑近了些</bot_say><bot_say>怎么啦</bot_say>'
           '<bot_narrate>还';
       expect(ChatCodec.botParts(text), [
-        ('她揉了揉眼睛', true),
-        ('在呢', false),
-        ('怎么啦', false),
+        (ChatCodec.botNarrateTag, '她揉了揉眼睛'),
+        (ChatCodec.botSayTag, '在呢'),
+        (ChatCodec.botSayTag, '怎么啦'),
       ]);
       expect(ChatCodec.botSays(text), ['在呢', '怎么啦']);
+    });
+
+    test('the agents it shows, by their ids, among its messages', () {
+      const text =
+          '<bot_say>就一个在跑</bot_say>\n<bot_show_chat> s-1 </bot_show_chat>'
+          '<bot_say>好了叫你</bot_say><bot_show_chat>s-2';
+      expect(ChatCodec.botParts(text), [
+        (ChatCodec.botSayTag, '就一个在跑'),
+        (ChatCodec.botCardTag, 's-1'),
+        (ChatCodec.botSayTag, '好了叫你'),
+      ]);
+      expect(ChatCodec.botSays(text), ['就一个在跑', '好了叫你']);
     });
 
     test('the user\'s sticker is told by its text', () {

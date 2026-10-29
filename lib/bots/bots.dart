@@ -570,9 +570,13 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
   }
 
   /// How many of a bot's messages [item] shows as in its chat: those of its
-  /// reply (see [ChatCodec.botSays]); what it sent with its tools.
+  /// reply and the agents it shows there (see [ChatCodec.botParts]); what
+  /// it sent with its tools.
   static int _shown(ChatItem item) => switch (item) {
-    AssistantTextItem(:final text) => ChatCodec.botSays(text).length,
+    AssistantTextItem(:final text) => [
+      for (final (tag, _) in ChatCodec.botParts(text))
+        if (tag != ChatCodec.botNarrateTag) tag,
+    ].length,
     _ => ChatCodec.botSent(item) ? 1 : 0,
   };
 
@@ -1027,7 +1031,8 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         final now = (
           session.itemCount,
           session.isStreaming,
-          // Each of its messages and narration, as its reply's tags close.
+          // Each of its messages, narration and cards, as its reply's tags
+          // close.
           last >= 0 && session.itemAt(last) is AssistantTextItem
               ? ChatCodec.botParts(
                   (session.itemAt(last) as AssistantTextItem).text,
