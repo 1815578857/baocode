@@ -40,7 +40,11 @@ class Bot {
       style: json['style'] as String? ?? '',
       abilities: {
         for (final name in (json['abilities'] as List?) ?? const [])
-          ?BotAbility.values.asNameMap()[name],
+          // Working on the computer was an ability of its own: now
+          // reading the files is.
+          ?BotAbility.values.asNameMap()[name == 'computer'
+              ? 'readFiles'
+              : name],
         // Those come since it was kept: on for the assistant, as all of
         // its are; off for the user's own, as a new bot's are.
         if (json['assistant'] == true)

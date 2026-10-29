@@ -591,7 +591,6 @@ class ClaudeCodeKernel
           ownPrompt: workspace?.ownPrompt ?? false,
           tools: workspace?.tools,
           allowed: workspace?.allowedTools ?? const [],
-          asked: workspace?.askedTools ?? const [],
           models: switch (custom) {
             (final provider, _) => _requestedModels(provider),
             null => const [],
@@ -1502,14 +1501,15 @@ class ClaudeCodeKernel
       return;
     }
     // Full access is approved here (see _cliApproval), but for what the
-    // CLI's own would ask all the same. In Plan it leaves to the
+    // CLI's own would ask all the same: that too where no one is there to
+    // ask (a bot's, KernelWorkspace.approvesAll). In Plan it leaves to the
     // classifier what the CLI cannot tell is read-only; with no
     // classifier (another provider's model), that is approved here too,
     // as it would be by the classifier.
     if (_approval == 'bypassPermissions' &&
         (_work != 'plan' || !_classifies) &&
         tool != 'AskUserQuestion' &&
-        !_askedInFullAccess(request)) {
+        ((_workspace?.approvesAll ?? false) || !_askedInFullAccess(request))) {
       _control!.respond(requestId, {
         'behavior': 'allow',
         'updatedInput': input,
