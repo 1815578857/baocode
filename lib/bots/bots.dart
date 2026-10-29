@@ -396,9 +396,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
       abilities: abilities,
       proactive: proactive,
     );
-    if (proactive.perDay <= 0 || !bot.can(BotAbility.proactive)) {
-      _pacers.remove(bot.id);
-    }
+    if (!bot.can(BotAbility.viewChats)) _pacers.remove(bot.id);
     _save();
     _restart(bot);
     notifyListeners();
@@ -594,9 +592,8 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
   void _tell(List<BotEvent> events) {
     if (events.isEmpty) return;
     for (final bot in _bots) {
-      if (!bot.can(BotAbility.proactive) || bot.proactive.perDay <= 0) {
-        continue;
-      }
+      // Those that see the agents: told what became of them.
+      if (!bot.can(BotAbility.viewChats)) continue;
       final pacer = _pacers[bot.id] ??= BotPacer();
       events.forEach(pacer.add);
     }
@@ -656,10 +653,9 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     return null;
   }
 
-  /// [bot] comes back, on its own, to [note] [after] from now (out of
-  /// its quiet hours): when.
+  /// [bot] comes back, on its own, to [note] [after] from now: when.
   DateTime later(Bot bot, Duration after, String note) {
-    final at = BotPacer.outOfQuiet(bot.proactive, _clock().add(after));
+    final at = _clock().add(after);
     final laters = _laters[bot.id] ??= [];
     laters
       ..add(BotLater(at: at, note: note.trim()))
@@ -674,20 +670,15 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
   /// What [bot] meant to come back to, soonest first.
   List<BotLater> laters(Bot bot) => List.unmodifiable(_laters[bot.id] ?? []);
 
-  /// Whether [bot] writes first: of the agents, and of what it meant to.
-  static bool _writesFirst(Bot bot) =>
-      bot.can(BotAbility.proactive) && bot.proactive.perDay > 0;
-
   void _schedule() {
     _timer?.cancel();
     final now = _clock();
     DateTime? next;
     for (final bot in _bots) {
-      var due = _pacers[bot.id]?.dueAt(bot.proactive, now);
-      if (_laters[bot.id]?.firstOrNull case final later?
-          when _writesFirst(bot)) {
-        final at = BotPacer.outOfQuiet(bot.proactive, later.at);
-        if (due == null || at.isBefore(due)) due = at.isBefore(now) ? now : at;
+      var due = _pacers[bot.id]?.dueAt(now);
+      if (_laters[bot.id]?.firstOrNull case final later?) {
+        final at = later.at.isBefore(now) ? now : later.at;
+        if (due == null || at.isBefore(due)) due = at;
       }
       if (due != null && (next == null || due.isBefore(next))) next = due;
     }
@@ -711,14 +702,11 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         busy = true;
         continue;
       }
-      final events = pacer?.take(bot.proactive, now) ?? const <BotEvent>[];
-      final due = _writesFirst(bot)
-          ? [
-              for (final later in waiting)
-                if (!BotPacer.outOfQuiet(bot.proactive, later.at).isAfter(now))
-                  later,
-            ]
-          : const <BotLater>[];
+      final events = pacer?.take(now) ?? const <BotEvent>[];
+      final due = [
+        for (final later in waiting)
+          if (!later.at.isAfter(now)) later,
+      ];
       if (events.isEmpty && due.isEmpty) continue;
       if (due.isNotEmpty) {
         waiting.removeWhere(due.contains);

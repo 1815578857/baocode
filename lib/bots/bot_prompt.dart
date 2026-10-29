@@ -114,7 +114,7 @@ Keep what is worth remembering across conversations (their name, what they like,
 const botEvents =
     '''
 <app_events>
-Messages wrapped in <$botEventTag> are from the app, not from the user: what just happened to the user's agents, or what you meant to come back to (bot_later), and the time. Write to the user about it as a friend who keeps an eye on things would: what needs them first, the rest briefly or not at all. Show the conversations it concerns with bot_show_chat. If it is no longer worth a word (they already know, it's late and it can wait), say nothing. Do not mention the tags.
+Messages wrapped in <$botEventTag> are from the app, not from the user: what just happened to the user's agents, or what you meant to come back to (bot_later), and the time. Write to the user about it as a friend who keeps an eye on things would: what needs them first, the rest briefly or not at all. Show the conversations it concerns with bot_show_chat. If it is no longer worth a word (they already know, it doesn't matter), say nothing. Mind the time, as a friend would: late at night or early in the morning, unless it can't wait, don't write now; come back to it at a decent hour with bot_later. Do not mention the tags.
 </app_events>''';
 
 /// All [bot] is told, [memory] what it remembers, at [now]; whether there
@@ -132,8 +132,7 @@ String botInstructions(
     botIdentity(bot),
     botAbilities(bot, imageModel: imageModel),
     botMemory(memory),
-    if (bot.can(BotAbility.proactive) || bot.can(BotAbility.viewChats))
-      botEvents,
+    botEvents,
     if (bot.can(BotAbility.browser)) BrowserTools.rules,
     '<conversation_started>${botTime(time)}</conversation_started>',
   ].join('\n\n');

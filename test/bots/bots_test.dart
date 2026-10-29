@@ -33,7 +33,6 @@ void main() {
       kind: kind,
       at: at,
     );
-    const often = BotProactive(perDay: 3, quietFrom: 0, quietTo: 0);
 
     test('what comes close together is told at once, what needs the user '
         'first', () {
@@ -42,8 +41,8 @@ void main() {
         ..add(event('a', BotEventKind.done, start))
         ..add(event('b', BotEventKind.failed, start.add(seconds(20))))
         ..add(event('c', BotEventKind.waiting, start.add(seconds(40))));
-      expect(pacer.take(often, start.add(seconds(60))), isNull);
-      final told = pacer.take(often, start.add(seconds(90)))!;
+      expect(pacer.take(start.add(seconds(60))), isNull);
+      final told = pacer.take(start.add(seconds(90)))!;
       expect(told.map((e) => e.chat), ['c', 'b', 'a']);
       expect(pacer.hasPending, isFalse);
     });
@@ -52,47 +51,26 @@ void main() {
       final pacer = BotPacer()
         ..add(event('a', BotEventKind.waiting, start))
         ..add(event('a', BotEventKind.done, start.add(seconds(10))));
-      final told = pacer.take(often, start.add(const Duration(minutes: 5)))!;
+      final told = pacer.take(start.add(const Duration(minutes: 5)))!;
       expect(told.single.kind, BotEventKind.done);
     });
 
-    test('apart, and only so many a day', () {
-      final pacer = BotPacer();
-      var now = start;
-      final sent = <DateTime>[];
-      for (var i = 0; i < 6; i++) {
-        pacer.add(event('$i', BotEventKind.failed, now));
-        final due = pacer.dueAt(often, now)!;
-        expect(pacer.take(often, due), isNotNull);
-        sent.add(due);
-        now = due;
-      }
-      expect(sent[1].difference(sent[0]), greaterThanOrEqualTo(minutes(20)));
-      // The fourth, a day after the first.
-      expect(
-        sent[3].difference(sent[0]),
-        greaterThanOrEqualTo(const Duration(days: 1)),
-      );
-    });
-
-    test('never in the quiet hours, nor at all when set to none', () {
-      const quiet = BotProactive(
-        perDay: 5,
-        quietFrom: 23 * 60,
-        quietTo: 8 * 60,
-      );
+    test('told as soon as gathered, whatever the hour: the bot judges', () {
       final night = DateTime(2026, 10, 29, 23, 30);
       final pacer = BotPacer()..add(event('a', BotEventKind.failed, night));
-      expect(pacer.dueAt(quiet, night), DateTime(2026, 10, 30, 8));
-      expect(pacer.dueAt(const BotProactive(perDay: 0), night), isNull);
-      expect(pacer.take(const BotProactive(perDay: 0), night), isNull);
+      expect(pacer.dueAt(night), night.add(seconds(90)));
+      expect(pacer.take(night.add(seconds(90))), isNotNull);
+      // And again at once, of what came since.
+      final later = night.add(minutes(2));
+      pacer.add(event('b', BotEventKind.failed, later));
+      expect(pacer.take(later.add(seconds(90))), isNotNull);
     });
 
     test('what was done long ago is not worth telling', () {
       final pacer = BotPacer()
         ..add(event('a', BotEventKind.done, start))
         ..add(event('b', BotEventKind.waiting, start));
-      final told = pacer.take(often, start.add(const Duration(hours: 7)))!;
+      final told = pacer.take(start.add(const Duration(hours: 7)))!;
       expect(told.map((e) => e.chat), ['b']);
     });
   });
@@ -296,6 +274,7 @@ void main() {
         final none = bots.save(name: 'Quiet', identity: '', abilities: {});
         expect(await offered(none.folder), [
           'bot_say',
+          'bot_later',
           'bot_send_image',
           'bot_remember',
         ]);
@@ -560,7 +539,7 @@ void main() {
       );
     });
 
-    test('it comes back later on its own, out of the quiet hours', () async {
+    test('it comes back later on its own, when it said', () async {
       final bot = bots.bots.single;
       final set = await call(bot, 'bot_later', {
         'minutes': 90,
@@ -589,17 +568,18 @@ void main() {
       expect(ChatCodec.botEvent(note), contains('Now: Thursday'));
       expect(bots.laters(bot), isEmpty);
 
-      // At night, put off to the morning (quiet 23:00–08:00 by default).
+      // At night too: the hour is its to mind, as it is told.
       now = DateTime(2026, 10, 29, 22, 30);
       await call(bot, 'bot_later', {'minutes': 60, 'note': 'Remind of x'});
-      expect(bots.laters(bot).single.at, DateTime(2026, 10, 30, 8));
-      // Bad minutes; and none for one that may not write first.
+      expect(bots.laters(bot).single.at, DateTime(2026, 10, 29, 23, 30));
+      expect(botEvents, contains('Mind the time'));
       expect(
         (await call(bot, 'bot_later', {'minutes': 0, 'note': 'x'}))['isError'],
         isTrue,
       );
+      // Every bot may: none is set up for it.
       final mia = bots.save(name: 'Mia', identity: '', abilities: {});
-      expect(await offered(mia.folder), isNot(contains('bot_later')));
+      expect(await offered(mia.folder), contains('bot_later'));
     });
 
     test('what it remembers: kept by it, seen, changed and cleared', () async {

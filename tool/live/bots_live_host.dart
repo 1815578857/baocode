@@ -65,8 +65,6 @@ void main() {
       name: assistant.name,
       identity: assistantDefaults(chinese: true).identity,
       abilities: BotAbility.values.toSet(),
-      // Any hour: not to wait for the morning.
-      proactive: const BotProactive(perDay: 6, quietFrom: 0, quietTo: 0),
     );
 
     final host = LinkHost(
