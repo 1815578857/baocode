@@ -87,7 +87,7 @@ void main() {
       signature: 'Tea first.',
       identity: 'An old friend, playful and kind.',
       style: 'Lowercase, lots of emoji.',
-      level: BotLevel.agents,
+      abilities: {BotAbility.agents},
     );
 
     test('the rules first, then who the user made it', () {
@@ -168,24 +168,24 @@ void main() {
         contains("You cannot see the user's agents"),
       );
       expect(told, contains('You cannot use the browser.'));
-      expect(told, contains('You cannot make pictures.'));
+      // Pictures, every bot's.
+      expect(told, contains('generate_image'));
     });
 
     test('what of Claude Code\'s it has, by what it may', () {
-      Bot bot(BotLevel level, [Set<BotAbility> abilities = const {}]) => Bot(
-        id: 'b1',
-        name: 'Mia',
-        folder: '/bots/b1',
-        level: level,
-        abilities: abilities,
-      );
+      Bot bot(Set<BotAbility> abilities) =>
+          Bot(id: 'b1', name: 'Mia', folder: '/bots/b1', abilities: abilities);
       // Only the web's, chatting or looking after the agents.
-      for (final level in [BotLevel.chat, BotLevel.agents]) {
-        expect(BotPermissions.tools(bot(level)), ['WebSearch', 'WebFetch']);
-        expect(BotPermissions.reaches(bot(level), projects: ['/p']), isEmpty);
+      for (final abilities in [
+        <BotAbility>{},
+        {BotAbility.agents},
+      ]) {
+        final it = bot(abilities);
+        expect(BotPermissions.tools(it), ['WebSearch', 'WebFetch']);
+        expect(BotPermissions.reaches(it, projects: ['/p']), isEmpty);
       }
-      // Working on the computer: its hands, the projects its folders.
-      final hands = bot(BotLevel.computer);
+      // With the computer's files: its hands, the projects its folders.
+      final hands = bot({BotAbility.files});
       expect(BotPermissions.tools(hands), [
         'WebSearch',
         'WebFetch',
@@ -196,7 +196,7 @@ void main() {
       ]);
       expect(BotPermissions.reaches(hands, projects: ['/p']), ['/p']);
       // The browser's, by the tool search.
-      expect(BotPermissions.tools(bot(BotLevel.chat, {BotAbility.browser})), [
+      expect(BotPermissions.tools(bot({BotAbility.browser})), [
         'WebSearch',
         'WebFetch',
         'ToolSearch',
@@ -209,7 +209,7 @@ void main() {
         name: 'Mia',
         folder: '/bots/b1',
         avatar: 'avatar-1.png',
-        level: BotLevel.computer,
+        abilities: {BotAbility.files},
       );
       final told = botInstructions(
         hands,
@@ -228,12 +228,7 @@ void main() {
     });
 
     test('pictures: made with the image model, or said there is none', () {
-      final painter = Bot(
-        id: 'p',
-        name: 'Pia',
-        folder: '/bots/p',
-        abilities: {BotAbility.images},
-      );
+      const painter = Bot(id: 'p', name: 'Pia', folder: '/bots/p');
       expect(botAbilities(painter), contains('generate_image'));
       expect(
         botAbilities(painter, imageModel: false),
@@ -311,12 +306,16 @@ void main() {
       final assistant = bots.bots.single;
       expect(assistant.assistant, isTrue);
       expect(assistant.name, '小宝');
-      expect(assistant.level, BotLevel.computer);
-      expect(assistant.abilities, {BotAbility.browser, BotAbility.images});
+      expect(assistant.abilities, {
+        BotAbility.agents,
+        BotAbility.files,
+        BotAbility.browser,
+      });
       // Its card, a file of its folder.
       final card = utf8.decode(folders.files['${assistant.folder}/BOT.md']!);
       expect(card, contains('name: 小宝'));
-      expect(card, contains('level: computer'));
+      expect(card, contains('agents: true'));
+      expect(card, contains('files: true'));
       expect(card, contains('assistant: true'));
       expect(store.preferences, isNot(contains('bots')));
     });
@@ -426,8 +425,7 @@ void main() {
         final mia = bots.save(
           name: 'Mia',
           identity: '',
-          level: BotLevel.agents,
-          abilities: {},
+          abilities: {BotAbility.agents},
         );
         final hers = await offered(mia.folder);
         expect(
@@ -451,8 +449,7 @@ void main() {
           id: assistant.id,
           name: assistant.name,
           identity: assistant.identity,
-          level: BotLevel.agents,
-          abilities: assistant.abilities,
+          abilities: assistant.abilities.difference({BotAbility.files}),
         );
         expect(
           await offered(chatting.folder),
@@ -593,7 +590,7 @@ void main() {
       final assistant = bots.bots.single;
       expect(await offered(assistant.folder), contains(ImageTools.name));
       final mia = bots.save(name: 'Mia', identity: '', abilities: {});
-      expect(await offered(mia.folder), isNot(contains(ImageTools.name)));
+      expect(await offered(mia.folder), contains(ImageTools.name));
       // No one at the computer to pick the model for it.
       expect(ClaudeSdkTools.asksUser(assistant.folder), isFalse);
       expect(ClaudeSdkTools.asksUser(app), isTrue);
@@ -872,8 +869,7 @@ void main() {
       final mia = bots.save(
         name: 'Mia',
         identity: '',
-        level: BotLevel.agents,
-        abilities: {},
+        abilities: {BotAbility.agents},
       );
       Future<AgentThread> run() async {
         final agent = workspace.startAgent(workspace.projectAt(app));
@@ -940,8 +936,7 @@ void main() {
         id: first.id,
         name: first.name,
         identity: first.identity,
-        level: BotLevel.agents,
-        abilities: first.abilities,
+        abilities: first.abilities.difference({BotAbility.files}),
       );
       int told(Bot bot) {
         final session = bots.threadFor(bot).session;
@@ -1047,19 +1042,19 @@ void main() {
           folders.writeFile(path, Uint8List.fromList(utf8.encode(text)));
       String read(String path) => utf8.decode(folders.files[path]!);
       final cardPath = '${assistant.folder}/BOT.md';
-      // Its own card: its name, its to change; its level and abilities not.
+      // Its own card: its name, its to change; its abilities not.
       write(
         cardPath,
         read(cardPath)
             .replaceFirst('name: 小宝', 'name: 宝宝')
-            .replaceFirst('level: computer', 'level: chat')
+            .replaceFirst('files: true', 'files: false')
             .replaceFirst('browser: true', 'browser: false'),
       );
       // A bot it made, saying it is the assistant, on the computer.
       folders.make('/bots/cat');
       write(
         '/bots/cat/BOT.md',
-        '---\nname: 阿猫\navatar: 🐱\nlevel: computer\nassistant: true\n'
+        '---\nname: 阿猫\navatar: 🐱\nfiles: true\nassistant: true\n'
             '---\n\n你是一只懒猫\n',
       );
       write('/bots/cat/LATER.md', '- 2026-10-29 16:00 喊用户喝水\nmine\n');
@@ -1076,18 +1071,17 @@ void main() {
       }
       final self = bots.bots.first;
       expect(self.name, '宝宝');
-      expect(self.level, BotLevel.computer);
+      expect(self.can(BotAbility.files), isTrue);
       expect(self.can(BotAbility.browser), isTrue);
-      expect(read(cardPath), contains('level: computer'));
+      expect(read(cardPath), contains('files: true'));
       expect(read(cardPath), contains('browser: true'));
       final cat = bots.byId('cat')!;
       expect(cat.avatar, '🐱');
       expect(cat.identity, '你是一只懒猫');
-      expect(cat.level, BotLevel.chat);
       expect(cat.assistant, isFalse);
       expect(cat.abilities, isEmpty);
       expect(cat.created, now);
-      expect(read('/bots/cat/BOT.md'), contains('level: chat'));
+      expect(read('/bots/cat/BOT.md'), contains('files: false'));
       expect(bots.threadOf(cat), isNotNull);
       expect(bots.laters(cat).single.at, DateTime(2026, 10, 29, 16));
       expect(bots.me.name, 'Leo');
@@ -1102,10 +1096,10 @@ void main() {
       // The user, by hand: as they wrote it.
       write(
         cardPath,
-        read(cardPath).replaceFirst('level: computer', 'level: agents'),
+        read(cardPath).replaceFirst('files: true', 'files: false'),
       );
       bots.reload();
-      expect(bots.bots.first.level, BotLevel.agents);
+      expect(bots.bots.first.can(BotAbility.files), isFalse);
     });
 
     test('a card, read back as written', () {
@@ -1118,8 +1112,7 @@ void main() {
         signature: '#1 lazy',
         identity: '你是一只懒猫\n\n爱睡觉',
         style: '短句',
-        level: BotLevel.agents,
-        abilities: {BotAbility.images},
+        abilities: {BotAbility.agents},
         model: 'opus',
         created: DateTime(2026, 10, 29, 9, 5),
       );
@@ -1131,15 +1124,13 @@ void main() {
       final back = BotFiles.read('/bots/b1', card, style: '短句\n')!;
       expect(BotFiles.cardText(back), card);
       expect(back.style, '短句');
-      expect(back.level, BotLevel.agents);
-      expect(back.abilities, {BotAbility.images});
+      expect(back.abilities, {BotAbility.agents});
       // As a person writes one: little said.
       final little = BotFiles.read(
         '/bots/b2',
         '---\nname: Ann # mine\n---\nHi',
       )!;
       expect(little.name, 'Ann');
-      expect(little.level, BotLevel.chat);
       expect(little.abilities, isEmpty);
       expect(little.identity, 'Hi');
       expect(BotFiles.read('/bots/b3', 'no card'), isNull);

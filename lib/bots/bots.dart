@@ -137,7 +137,6 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         name: defaults.name,
         folder: p.join(root, 'assistant'),
         identity: defaults.identity,
-        level: BotLevel.computer,
         abilities: BotFiles.shownAbilities.toSet(),
         assistant: true,
         created: _clock(),
@@ -268,7 +267,6 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
           signature: bot.signature,
           identity: bot.identity,
           style: bot.style,
-          level: had?.level ?? BotLevel.chat,
           abilities: had?.abilities ?? const {},
           model: bot.model,
           assistant: had?.assistant ?? false,
@@ -394,7 +392,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     if (ability != null) return ability.allows(bot);
     // The app's other tools: pictures made, if it may make them; the
     // browser's, if it may use it.
-    if (tool == ImageTools.name) return bot.can(BotAbility.images);
+    if (tool == ImageTools.name) return true;
     return bot.can(BotAbility.browser) &&
         ClaudeSdkTools.called('mcp__${ClaudeSdkTools.server}__$tool')?.kind ==
             ToolKind.browser;
@@ -533,7 +531,6 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     String signature = '',
     required String identity,
     String style = '',
-    BotLevel level = BotLevel.chat,
     required Set<BotAbility> abilities,
     BotProactive proactive = const BotProactive(),
     BotAvatarImage? avatarImage,
@@ -556,7 +553,6 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         signature: signature.trim(),
         identity: identity.trim(),
         style: style.trim(),
-        level: level,
         abilities: abilities,
         proactive: proactive,
         created: _clock(),
@@ -582,11 +578,10 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
       signature: signature.trim(),
       identity: identity.trim(),
       style: style.trim(),
-      level: level,
       abilities: abilities,
       proactive: proactive,
     );
-    if (!bot.reaches(BotLevel.agents)) _pacers.remove(bot.id);
+    if (!bot.can(BotAbility.agents)) _pacers.remove(bot.id);
     _writeBot(bot);
     _restart(bot);
     // Changed by itself, it knows.
@@ -618,9 +613,6 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         '- Who you are, in their words, now:\n${bot.identity}',
       if (had.style != bot.style)
         '- How you talk, in their words, now:\n${bot.style}',
-      if (bot.level != had.level)
-        '- How far the user trusts you: now ${bot.level.name} (see your '
-            'abilities).',
       for (final ability in BotAbility.values)
         if (bot.can(ability) != had.can(ability))
           '- ${bot.can(ability) ? 'You may now' : 'You may no longer'}: '
@@ -917,7 +909,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
       final told = [
         for (final event in events)
           if (bot.assistant
-              ? bot.reaches(BotLevel.agents)
+              ? bot.can(BotAbility.agents)
               : watching.contains(event.chat))
             event,
       ];

@@ -1,34 +1,21 @@
 // The desktop's bots, as the phone lists and edits them (see
 // LinkMethods.saveBot and the others of theirs).
 
-/// How far the user trusts a bot: each level has all the one before it
-/// has, and more. A new bot only talks; the assistant the desktop starts
-/// with works on the computer.
-enum BotLevel {
-  /// Talks: messages, pictures, the web, what it remembers.
-  chat,
-
-  /// Looks after the user's agents besides: sees them and what they said,
-  /// stops, retries and archives them, writes to them, starts new ones.
+/// What a bot may do besides talking (messages, pictures, the web, what
+/// it remembers), each turned on by the user: none for a new bot, all for
+/// the assistant the desktop starts with.
+enum BotAbility {
+  /// Looks after the user's agents: sees them and what they said, stops,
+  /// retries and archives them, writes to them, starts new ones.
   agents,
 
-  /// Works on the computer besides, in full access, nothing asked: reads
-  /// and writes files and runs commands (Claude Code's Read, Write, Edit
-  /// and Bash); keeps itself in the files of its folder.
-  computer;
+  /// Works with the computer's files, nothing asked: reads and writes them
+  /// and runs commands (Claude Code's Read, Write, Edit and Bash); keeps
+  /// itself in the files of its folder.
+  files,
 
-  /// Whether this level has all [level] has.
-  bool reaches(BotLevel level) => index >= level.index;
-}
-
-/// What a bot may use besides its [BotLevel], each turned on by the user:
-/// none for a new bot, all for the assistant.
-enum BotAbility {
   /// Uses the user's browser, as the agents may.
   browser,
-
-  /// Makes pictures, with the image model the desktop has set up.
-  images,
 
   /// Writes first, of what happened (an agent waits, fails).
   proactive,
@@ -82,8 +69,7 @@ class BotProactive {
 
 /// A bot: an agent of the user's own making that talks as a person does,
 /// who it is ([gender], [signature], [identity], [style]) all the user's
-/// words; how far it is trusted ([level]) and what it may use besides
-/// ([abilities]). Its conversation is [session] (none until the first
+/// words; what it may do, its [abilities]. Its conversation is [session] (none until the first
 /// message), on the desktop, its memory there too.
 class LinkBot {
   const LinkBot({
@@ -94,7 +80,6 @@ class LinkBot {
     this.signature = '',
     this.identity = '',
     this.style = '',
-    this.level = BotLevel.chat,
     this.abilities = const {},
     this.proactive = const BotProactive(),
     this.model,
@@ -114,7 +99,6 @@ class LinkBot {
     signature: json['signature'] as String? ?? '',
     identity: json['identity'] as String? ?? '',
     style: json['style'] as String? ?? '',
-    level: BotLevel.values.asNameMap()[json['level']] ?? BotLevel.chat,
     abilities: {
       for (final name in (json['abilities'] as List?) ?? const [])
         ?BotAbility.values.asNameMap()[name],
@@ -157,7 +141,6 @@ class LinkBot {
 
   /// How it talks, as the user wrote it.
   final String style;
-  final BotLevel level;
   final Set<BotAbility> abilities;
   final BotProactive proactive;
 
@@ -181,9 +164,6 @@ class LinkBot {
 
   bool can(BotAbility ability) => abilities.contains(ability);
 
-  /// Whether it is trusted with all [level] has.
-  bool reaches(BotLevel level) => this.level.reaches(level);
-
   Map<String, Object?> toJson() => {
     'id': id,
     'name': name,
@@ -192,7 +172,6 @@ class LinkBot {
     if (signature.isNotEmpty) 'signature': signature,
     'identity': identity,
     if (style.isNotEmpty) 'style': style,
-    'level': level.name,
     'abilities': [
       for (final ability in BotAbility.values)
         if (abilities.contains(ability)) ability.name,
