@@ -323,9 +323,26 @@ void main() {
           (widget.decoration as BoxDecoration).border ==
               Border.all(color: ChatGridView.frameColor),
     );
-    // One frame, inside the pane and off its edges.
-    bool framed(String title) =>
-        tester.getRect(frame) == tester.getRect(pane(title)).deflate(4);
+    // One frame, round the whole pane: on the line between the two (over
+    // it, one line, not two), at the view's edges elsewhere.
+    bool framed(String title) {
+      final shown = tester.getRect(frame);
+      final rect = tester.getRect(pane(title));
+      final grid = gridRect(tester);
+      const out = ChatGridView.gap / 2 + .5;
+      bool near(double a, double b) => (a - b).abs() < .5;
+      return near(
+            shown.left,
+            rect.left > grid.left ? rect.left - out : grid.left,
+          ) &&
+          near(
+            shown.right,
+            rect.right < grid.right ? rect.right + out : grid.right,
+          ) &&
+          near(shown.top, grid.top) &&
+          near(shown.bottom, grid.bottom);
+    }
+
     expect(framed(second), isTrue);
     expect(framed(first), isFalse);
 
@@ -724,8 +741,10 @@ void main() {
         find.byType(AgentSidePanelView),
       );
       expect(view.session, same(workspace.current!.session));
-      // The panel shown, the rails give way to it.
-      expect(find.byType(SidePanelRail), findsNothing);
+      // Its own shown, its rail gives way to it; the other pane's, hidden
+      // there, is still there.
+      expect(find.byType(SidePanelRail), findsOneWidget);
+      expect(railOf(second), isNotNull);
     },
     variant: TargetPlatformVariant(const {
       TargetPlatform.macOS,
@@ -737,7 +756,8 @@ void main() {
     'a pane\'s side panel button is its own agent\'s: it focuses '
     'the pane and shows its panel',
     (tester) async {
-      final workspace = await pumpApp(tester);
+      // Room for a panel beside each pane.
+      final workspace = await pumpApp(tester, width: 1800);
       await dropAgent(tester, second, near(gridRect(tester), PaneSide.right));
       await tester.tapAt(tester.getRect(pane(first)).center);
       await tester.pumpAndSettle();
@@ -766,8 +786,8 @@ void main() {
       expect(shownIn(second), isTrue);
       expect(shownIn(first), isFalse);
 
-      // The left pane's again: its agent's panel, not hidden for being
-      // another's.
+      // The left pane's again: its agent's panel too, the right one's still
+      // shown beside its own pane, each its agent's.
       await tester.tap(
         find.descendant(
           of: pane(first),
@@ -777,10 +797,38 @@ void main() {
       await tester.pumpAndSettle();
       expect(workspace.current!.title, first);
       expect(shownIn(first), isTrue);
-      final view = tester.widget<AgentSidePanelView>(
-        find.byType(AgentSidePanelView),
+      expect(shownIn(second), isTrue);
+      final views = tester
+          .widgetList<AgentSidePanelView>(find.byType(AgentSidePanelView))
+          .toList();
+      expect(views, hasLength(2));
+      for (final title in [first, second]) {
+        final view = tester.widget<AgentSidePanelView>(
+          find.descendant(
+            of: find.ancestor(
+              of: pane(title),
+              matching: find.byType(AgentSidePanelArea),
+            ),
+            matching: find.byType(AgentSidePanelView),
+          ),
+        );
+        expect(
+          view.session,
+          same(tester.widget<ChatScreen>(pane(title)).session),
+        );
+      }
+
+      // Hidden in the left one, the right one's stays.
+      await tester.tap(
+        find.descendant(
+          of: pane(first),
+          matching: find.byType(SidePanelToggle),
+        ),
       );
-      expect(view.session, same(workspace.current!.session));
+      await tester.pumpAndSettle();
+      expect(shownIn(first), isFalse);
+      expect(shownIn(second), isTrue);
+      expect(find.byType(AgentSidePanelView), findsOneWidget);
     },
     variant: TargetPlatformVariant(const {
       TargetPlatform.macOS,
