@@ -17,6 +17,7 @@ class Transcript {
     this.history,
     List<FileChange> changes = const [],
     this.usage,
+    this.queuedInPlace = false,
   }) : _historyCount = history == null ? 0 : historyCount,
        edits = [
          for (final change in changes) (seq: 0, change: change, turnId: null),
@@ -34,7 +35,13 @@ class Transcript {
 
   /// Messages sent while the agent works, waiting their turn: not in the
   /// conversation until taken up, where they go after all before them.
+  /// Unless [queuedInPlace].
   final Map<String, UserMessageItem> _queued = {};
+
+  /// Whether a message sent while the agent works is in the conversation
+  /// at once, where it was sent (as a chat app has it), and stays there
+  /// when taken up: not apart until then.
+  final bool queuedInPlace;
 
   /// Highest event sequence applied.
   int lastSeq = 0;
@@ -88,7 +95,6 @@ class Transcript {
   ContextUsage? usage;
   UsageStats? stats;
   List<KernelTask> tasks = const [];
-  List<TodoEntry> todos = const [];
 
   /// The session's goal, if it has one (or just met one).
   KernelGoal? goal;
@@ -186,8 +192,6 @@ class Transcript {
         usage = reported;
       case TasksReported(tasks: final reported):
         tasks = reported;
-      case TodosReported(todos: final reported):
-        todos = reported;
       case GoalReported(goal: final reported):
         goal = reported;
       case StatsReported(stats: final reported):
@@ -203,10 +207,25 @@ class Transcript {
   void _put(String id, ChatItem item) {
     final index = _indexOf[id];
     if (index != null) {
-      _items[index] = item;
+      _items[index] = switch ((_items[index], item)) {
+        // Taken up where it was sent: when it was.
+        (
+          UserMessageItem(queued: true, sentAt: final sent?),
+          final UserMessageItem taken,
+        )
+            when !taken.queued =>
+          UserMessageItem(
+            text: taken.text,
+            images: taken.images,
+            worked: taken.worked,
+            usage: taken.usage,
+            sentAt: sent,
+          ),
+        _ => item,
+      };
       return;
     }
-    if (item case UserMessageItem(queued: true)) {
+    if (item case UserMessageItem(queued: true) when !queuedInPlace) {
       _queued[id] = item;
       return;
     }

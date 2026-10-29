@@ -1,3 +1,5 @@
+import 'bots.dart';
+
 /// What a phone asks a desktop ([LinkPeer.call]).
 abstract final class LinkMethods {
   /// The first request: `{"name", "system", "token"?, "request"?}`;
@@ -37,8 +39,10 @@ abstract final class LinkMethods {
   /// `{"session"}`: no longer followed.
   static const close = 'close';
 
-  /// `{"session"?, "project"?, "text", "images"?, "mentions"?, "now"?}`: a
-  /// message to the session; with no session, to a new one in the project.
+  /// `{"session"?, "project"?, "bot"?, "text", "images"?, "mentions"?,
+  /// "now"?}`: a message to the bot's conversation ([LinkBot.id]), started
+  /// if it has none; else to the session; with neither, to a new one in the
+  /// project.
   /// Images are `{"data" (base64), "type", "name"?}`; mentions, the
   /// project's files the text names (`@path`), from its root. With `now`,
   /// taken up at once, the turn running stopped for it, rather than queued
@@ -124,6 +128,48 @@ abstract final class LinkMethods {
   /// base64), or `{"tooLarge": true, "size"}` past [LinkLimits.image].
   /// `bad` for a file that is not a picture.
   static const image = 'image';
+
+  /// `{"bot"?, "name", "avatar"?, "avatarImage"?, "identity", "abilities",
+  /// "proactive"}` (as [LinkBot]'s JSON): the bot changed, or a new one (no
+  /// `bot`): `{"bot": LinkBot}`. `avatarImage`, `{"data" (base64), "type"}`
+  /// (at most [LinkLimits.avatar]), is a new picture for it; else `avatar`
+  /// is an emoji, or the picture it has, kept.
+  static const saveBot = 'saveBot';
+
+  /// `{"bot"}`: its picture ([LinkBot.avatar], [isAvatarImage]):
+  /// `{"type", "data"}` (its media type, and base64); `notFound` when it
+  /// has none.
+  static const botAvatar = 'botAvatar';
+
+  /// `{"bot"}`: the bot deleted, its conversation and memory with it;
+  /// `unsupported` for the assistant.
+  static const deleteBot = 'deleteBot';
+
+  /// `{"bot"}`: what the bot remembers of the user, as it keeps it (kept
+  /// on the desktop, never sent elsewhere): `{"text", "self"}`, `self`
+  /// what it noted of itself (a desktop before those has no `self`).
+  static const botMemory = 'botMemory';
+
+  /// `{"bot", "text"}`: its memory as the user wrote it; empty clears it.
+  static const setBotMemory = 'setBotMemory';
+
+  /// `{"bot", "text"}`: its notes of itself as the user left them; empty
+  /// clears them.
+  static const setBotSelf = 'setBotSelf';
+
+  /// `{"bot"}`: what the user let the bot do unasked from now on, answering
+  /// it in its chat ("always allow"): `{"rules"}`, Claude Code's
+  /// permission rules (`Bash(make:*)`).
+  static const botAllowed = 'botAllowed';
+
+  /// `{"bot", "rules"}`: of those, only [rules] kept.
+  static const setBotAllowed = 'setBotAllowed';
+
+  /// `{"name", "gender", "signature", "picture"?}`: who the user is, as
+  /// their phone's profile says, for their bots to know (`picture`,
+  /// `{"data" (base64), "type"}` at most [LinkLimits.avatar], none for
+  /// none). Sent when it changes, and on connecting.
+  static const setMe = 'setMe';
 }
 
 /// How much of what a phone asks for it gets, at most.
@@ -139,6 +185,9 @@ abstract final class LinkLimits {
 
   /// A picture's bytes.
   static const image = 8 * 1024 * 1024;
+
+  /// A bot's picture's bytes.
+  static const avatar = 1024 * 1024;
 }
 
 /// A task an agent left running beside the conversation: a command, a
@@ -434,6 +483,7 @@ class LinkState {
     required this.device,
     this.projects = const [],
     this.sessions = const [],
+    this.bots = const [],
   });
 
   factory LinkState.fromJson(Map<String, Object?> json) => LinkState(
@@ -446,16 +496,25 @@ class LinkState {
       for (final session in (json['sessions'] as List?) ?? const [])
         SessionSummary.fromJson(_map(session)),
     ],
+    bots: [
+      for (final bot in (json['bots'] as List?) ?? const [])
+        LinkBot.fromJson(_map(bot)),
+    ],
   );
 
   final DeviceInfo device;
   final List<ProjectInfo> projects;
   final List<SessionSummary> sessions;
 
+  /// The bots, the assistant first; their conversations are not among
+  /// [sessions].
+  final List<LinkBot> bots;
+
   Map<String, Object?> toJson() => {
     'device': device.toJson(),
     'projects': [for (final project in projects) project.toJson()],
     'sessions': [for (final session in sessions) session.toJson()],
+    if (bots.isNotEmpty) 'bots': [for (final bot in bots) bot.toJson()],
   };
 }
 
@@ -539,6 +598,7 @@ class LinkSessionUpdate {
     this.changes = const [],
     this.tasks = const [],
     this.earlier,
+    this.goal,
   });
 
   factory LinkSessionUpdate.fromJson(Map<String, Object?> json) =>
@@ -565,6 +625,10 @@ class LinkSessionUpdate {
             LinkTask.fromJson(_map(task)),
         ],
         earlier: json['earlier'] as bool?,
+        goal: switch (json['goal']) {
+          final Map<String, Object?> map => map,
+          _ => null,
+        },
       );
 
   final String session;
@@ -595,6 +659,11 @@ class LinkSessionUpdate {
   /// asked to).
   final bool? earlier;
 
+  /// The goal the agent works toward (Claude Code's `/goal`), as JSON,
+  /// if any: `{"condition", "state", "checks", "reason", "setAt",
+  /// "duration", "tokens"}`, its times in milliseconds.
+  final Map<String, Object?>? goal;
+
   Map<String, Object?> toJson() => {
     'session': session,
     'start': start,
@@ -606,6 +675,7 @@ class LinkSessionUpdate {
     'changes': changes,
     if (tasks.isNotEmpty) 'tasks': [for (final task in tasks) task.toJson()],
     'earlier': ?earlier,
+    'goal': ?goal,
   };
 }
 

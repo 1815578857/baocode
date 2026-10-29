@@ -4190,6 +4190,60 @@ abstract class AppLocalizations {
   /// **'Updated todos'**
   String get toolUpdatedTodos;
 
+  /// No description provided for @todoCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Todos {done}/{total}'**
+  String todoCount(int done, int total);
+
+  /// No description provided for @todoAllDone.
+  ///
+  /// In en, this message translates to:
+  /// **'All done'**
+  String get todoAllDone;
+
+  /// No description provided for @todoNone.
+  ///
+  /// In en, this message translates to:
+  /// **'List empty'**
+  String get todoNone;
+
+  /// No description provided for @todoAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Added todo'**
+  String get todoAdded;
+
+  /// No description provided for @todoStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Started todo'**
+  String get todoStarted;
+
+  /// No description provided for @todoCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed todo'**
+  String get todoCompleted;
+
+  /// No description provided for @todoRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed todo'**
+  String get todoRemoved;
+
+  /// No description provided for @todoUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated todo'**
+  String get todoUpdated;
+
+  /// No description provided for @todoChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked todos'**
+  String get todoChecked;
+
   /// No description provided for @toolSending.
   ///
   /// In en, this message translates to:
@@ -5365,12 +5419,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Started and greeted with MCP\'s initialize, as `claude mcp list` checks it.'**
   String get mcpProbeNote;
-
-  /// No description provided for @todoCount.
-  ///
-  /// In en, this message translates to:
-  /// **'Todos {done}/{total}'**
-  String todoCount(int done, int total);
 
   /// No description provided for @queuedMessages.
   ///
@@ -17997,6 +18045,12 @@ abstract class AppLocalizations {
   /// **'No branch has this commit.'**
   String get gitLogInNoBranch;
 
+  /// No description provided for @gitLogInBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'In {count, plural, =1{1 branch} other{{count} branches}}'**
+  String gitLogInBranches(int count);
+
   /// No description provided for @gitLogList.
   ///
   /// In en, this message translates to:
@@ -18140,6 +18194,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copy the full hash'**
   String get gitLogCopyHash;
+
+  /// No description provided for @gitLogCopyRefNames.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Branch or Tag Name'**
+  String get gitLogCopyRefNames;
+
+  /// No description provided for @gitLogCopyName.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy \'{name}\''**
+  String gitLogCopyName(String name);
 
   /// No description provided for @gitLogLoading.
   ///
@@ -18296,12 +18362,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Collapse All'**
   String get gitCommitCollapseAll;
-
-  /// No description provided for @gitCommitGroupByDirectory.
-  ///
-  /// In en, this message translates to:
-  /// **'Group by Directory'**
-  String get gitCommitGroupByDirectory;
 
   /// No description provided for @gitCommitEmptyMessage.
   ///

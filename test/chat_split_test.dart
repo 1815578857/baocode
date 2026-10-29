@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:baocode/chat/chat_screen.dart';
 import 'package:baocode/chat/composer/composer.dart';
 import 'package:baocode/chat/widgets/markdown_view.dart';
+import 'package:baocode/chat/widgets/inline_rename_field.dart';
 import 'package:baocode/ide/ide_modern_ui.dart';
 import 'package:baocode/ide/ide_workbench.dart';
 import 'package:baocode/main.dart';
@@ -90,6 +91,30 @@ Future<void> dropAgent(WidgetTester tester, String title, Offset to) async {
   final gesture = await dragAgent(tester, title, to);
   await gesture.up();
   await tester.pumpAndSettle();
+}
+
+/// Drags a pane by its title, leaving the mouse down over [to].
+Future<TestGesture> dragTitle(
+  WidgetTester tester,
+  String title,
+  Offset to, {
+  bool empty = false,
+}) async {
+  final titleText = find.descendant(
+    of: pane(title),
+    matching: find.text(title),
+  );
+  final text = tester.getRect(titleText);
+  final gesture = await tester.startGesture(
+    empty ? Offset(text.right + 12, text.center.dy) : text.center,
+    kind: PointerDeviceKind.mouse,
+    pointer: 9,
+  );
+  await gesture.moveBy(const Offset(12, 0));
+  await tester.pump();
+  await gesture.moveTo(to);
+  await tester.pump();
+  return gesture;
 }
 
 /// Near the middle of [rect]'s [side].
@@ -370,6 +395,208 @@ void main() {
     expect(tester.getRect(pane(first)), gridRect(tester));
     expect(workspace.current!.title, first);
     expect(find.bySemanticsLabel('Close pane'), findsNothing);
+  });
+
+  testWidgets('on macOS a top pane\'s title bar drags the pane, not the '
+      'window; alone, the window', (tester) async {
+    const channel = MethodChannel('baocode/window');
+    var windowDrags = 0;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+      call,
+    ) async {
+      if (call.method == 'dragWindow') windowDrags++;
+      return null;
+    });
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        null,
+      );
+    });
+    final workspace = await pumpApp(tester);
+    final away = Offset(gridRect(tester).center.dx, gridRect(tester).top + 80);
+
+    // Alone, by its title (a long one leaves little else) or beside it.
+    var gesture = await dragTitle(tester, first, away);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    gesture = await dragTitle(tester, first, away, empty: true);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(windowDrags, 2);
+
+    await dropAgent(tester, second, near(gridRect(tester), PaneSide.right));
+    gesture = await dragTitle(
+      tester,
+      first,
+      tester.getRect(pane(second)).center,
+      empty: true,
+    );
+    expect(preview(), findsOneWidget);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(windowDrags, 2);
+    expect(workspace.grid.cells.first.title, second);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('a title dragged to another pane\'s center swaps their places '
+      'without rebuilding their conversations', (tester) async {
+    final workspace = await pumpApp(tester);
+    await dropAgent(tester, second, near(gridRect(tester), PaneSide.right));
+    final left = tester.getRect(pane(first));
+    final right = tester.getRect(pane(second));
+    final firstState = tester.state(pane(first));
+    final secondState = tester.state(pane(second));
+    final firstSession = tester.widget<ChatScreen>(pane(first)).session;
+    final sidebarOrder = workspace.threads.toList();
+
+    final gesture = await dragTitle(tester, first, right.center);
+    expect(preview(), findsOneWidget);
+    expect(tester.getRect(preview()), right.deflate(4));
+    // Only the preview moves before release.
+    expect(tester.getRect(pane(first)), left);
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(tester.getRect(pane(first)), right);
+    expect(tester.getRect(pane(second)), left);
+    expect(tester.state(pane(first)), same(firstState));
+    expect(tester.state(pane(second)), same(secondState));
+    expect(tester.widget<ChatScreen>(pane(first)).session, same(firstSession));
+    expect(workspace.current!.title, first);
+    expect(workspace.threads, sidebarOrder);
+    expect(preview(), findsNothing);
+  });
+
+  testWidgets(
+    'the empty title bar drags a pane to an edge, changing two '
+    'columns to two rows',
+    (tester) async {
+      final workspace = await pumpApp(tester);
+      await dropAgent(tester, second, near(gridRect(tester), PaneSide.right));
+      final before = workspace.grid.panes.toSet();
+      final gesture = await dragTitle(
+        tester,
+        first,
+        near(tester.getRect(pane(second)), PaneSide.bottom),
+        empty: true,
+      );
+      expect(preview(), findsOneWidget);
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(workspace.grid.panes.toSet(), before);
+      expect(workspace.grid.columnsSplit, isFalse);
+      expect(workspace.grid.rowsSplit, isTrue);
+      final bottom = tester.getRect(pane(first));
+      final top = tester.getRect(pane(second));
+      expect(bottom.width, gridRect(tester).width);
+      expect(top.width, gridRect(tester).width);
+      expect(bottom.top, top.bottom + ChatGridView.gap);
+    },
+    variant: TargetPlatformVariant(const {
+      TargetPlatform.macOS,
+      TargetPlatform.windows,
+    }),
+  );
+
+  testWidgets('a lower pane\'s title can move it without losing another pane', (
+    tester,
+  ) async {
+    final workspace = await pumpApp(tester);
+    await dropAgent(tester, second, near(gridRect(tester), PaneSide.right));
+    await dropAgent(
+      tester,
+      third,
+      near(tester.getRect(pane(first)), PaneSide.bottom),
+    );
+    final before = workspace.grid.panes.toSet();
+    final gesture = await dragTitle(
+      tester,
+      third,
+      near(tester.getRect(pane(second)), PaneSide.bottom),
+      empty: true,
+    );
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(workspace.grid.panes.toSet(), before);
+    expect(tester.getRect(pane(first)).height, gridRect(tester).height);
+    expect(
+      tester.getRect(pane(third)).top,
+      tester.getRect(pane(second)).bottom + ChatGridView.gap,
+    );
+  });
+
+  testWidgets('a title drag cancelled, dropped outside or on its own pane '
+      'does not rearrange the grid', (tester) async {
+    final workspace = await pumpApp(tester);
+    await dropAgent(tester, second, near(gridRect(tester), PaneSide.right));
+    final original = workspace.grid.cells;
+    final right = tester.getRect(pane(second));
+
+    var gesture = await dragTitle(tester, first, right.center);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(workspace.grid.cells, original);
+    expect(preview(), findsNothing);
+
+    gesture = await dragTitle(tester, first, const Offset(20, 80));
+    expect(preview(), findsNothing);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(workspace.grid.cells, original);
+
+    gesture = await dragTitle(
+      tester,
+      first,
+      tester.getRect(pane(first)).center,
+    );
+    expect(preview(), findsNothing);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(workspace.grid.cells, original);
+  });
+
+  testWidgets('title double clicks still rename, and toolbar buttons never '
+      'start a pane drag', (tester) async {
+    final workspace = await pumpApp(tester);
+    await dropAgent(tester, second, near(gridRect(tester), PaneSide.right));
+    final original = workspace.grid.cells;
+    final title = find.descendant(of: pane(first), matching: find.text(first));
+    await tester.tap(title, kind: PointerDeviceKind.mouse);
+    await tester.pump(const Duration(milliseconds: 80));
+    await tester.tap(title, kind: PointerDeviceKind.mouse);
+    await tester.pumpAndSettle();
+    expect(find.byType(InlineRenameField), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    final editor = find.descendant(
+      of: pane(second),
+      matching: find.byType(OpenInEditorButton),
+    );
+    final gesture = await tester.startGesture(
+      tester.getCenter(editor),
+      kind: PointerDeviceKind.mouse,
+    );
+    await gesture.moveTo(tester.getRect(pane(first)).center);
+    await tester.pump();
+    expect(preview(), findsNothing);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(workspace.grid.cells, original);
+  });
+
+  testWidgets('a sidebar agent already shown still only focuses its pane', (
+    tester,
+  ) async {
+    final workspace = await pumpApp(tester);
+    await dropAgent(tester, second, near(gridRect(tester), PaneSide.right));
+    final original = workspace.grid.cells;
+    await dropAgent(tester, first, tester.getRect(pane(second)).center);
+    expect(workspace.grid.cells, original);
+    expect(workspace.current!.title, first);
   });
 
   testWidgets(

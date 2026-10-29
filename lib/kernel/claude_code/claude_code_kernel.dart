@@ -29,6 +29,7 @@ import 'claude_code_transport.dart';
 import 'claude_code_translator.dart';
 import 'claude_elicitation.dart';
 import 'claude_goal.dart';
+import 'claude_numbers.dart';
 import 'claude_sdk_tools.dart';
 import 'turn_stats.dart';
 import 'control_channel.dart';
@@ -483,6 +484,11 @@ class ClaudeCodeKernel
   /// The workspace [_cwd] is the folder of, as it is at this launch.
   KernelWorkspace? get _workspace => _context.workspace?.call();
 
+  /// When the messages sent while it works are taken up: as its workspace
+  /// would have them, else as the user set.
+  QueuedMessages get _queuedMessages =>
+      _workspace?.queuedMessages ?? QueuedMessages.current();
+
   /// Starts the process, if not yet, and waits until it is ready.
   Future<void> _ensureStarted() {
     if (_disposed) return Future.error(StateError('disposed'));
@@ -556,7 +562,7 @@ class ClaudeCodeKernel
       _launchedModel = custom != null ? _model : null;
       _launchedWindow = _autocompact;
       _launchedSuggestions = PromptSuggestions.current();
-      final sdkServers = ClaudeSdkTools.servers;
+      final sdkServers = ClaudeSdkTools.serversFor(_cwd);
       final transport = await _start(
         ClaudeLaunch(
           cwd: _cwd,
@@ -574,13 +580,18 @@ class ClaudeCodeKernel
           promptSuggestions: _launchedSuggestions,
           attribution: CommitAttribution.current(),
           env: env,
-          directories: workspace?.folders ?? const [],
+          directories: [...?workspace?.folders, ...?workspace?.reaches],
+          folderInstructions: workspace?.folders.isNotEmpty ?? false,
           // Long pastes are kept on this machine: only its agent reads them.
           // A remote one's reads the files of this machine's copied there.
           readable: RemoteLocation.isRemote(_cwd)
               ? RemoteDrops.folders
               : [?PasteStore.directory],
           instructions: workspace?.instructions,
+          ownPrompt: workspace?.ownPrompt ?? false,
+          tools: workspace?.tools,
+          allowed: workspace?.allowedTools ?? const [],
+          asked: workspace?.askedTools ?? const [],
           models: switch (custom) {
             (final provider, _) => _requestedModels(provider),
             null => const [],
@@ -893,7 +904,12 @@ class ClaudeCodeKernel
       ItemUpserted(
         nextSeq,
         turn.id,
-        UserMessageItem(text: turn.text, queued: busy, images: turn.images),
+        UserMessageItem(
+          text: turn.text,
+          queued: busy,
+          images: turn.images,
+          sentAt: DateTime.now(),
+        ),
       ),
     );
     // Taken now, as the message was sent.
@@ -916,8 +932,7 @@ class ClaudeCodeKernel
   bool get _holds {
     final waiting = _queued.where((id) => !_held.containsKey(id));
     return waiting.any((id) => _sent[id]?.now ?? false) ||
-        (waiting.isNotEmpty &&
-            QueuedMessages.current() == QueuedMessages.afterTurn);
+        (waiting.isNotEmpty && _queuedMessages == QueuedMessages.afterTurn);
   }
 
   /// Gives the CLI the messages held for it, as far as [_holds] lets it: one
@@ -952,7 +967,7 @@ class ClaudeCodeKernel
         // CLI's own default).
         'priority': spareBackground
             ? 'now'
-            : switch (QueuedMessages.current()) {
+            : switch (_queuedMessages) {
                 QueuedMessages.afterTurn => 'later',
                 QueuedMessages.duringTurn => 'next',
               },
@@ -1836,6 +1851,7 @@ class ClaudeCodeKernel
               UserMessageItem(
                 text: _sent[id]?.text ?? '',
                 images: _sent[id]?.images ?? const [],
+                sentAt: DateTime.now(),
               ),
             ),
           );
@@ -1905,16 +1921,12 @@ class ClaudeCodeKernel
       // API time is the session's, too coarse for a speed).
       usage: switch (message['usage']) {
         final Map<Object?, Object?> usage => TurnUsage(
-          inputTokens:
-              [
-                'input_tokens',
-                'cache_creation_input_tokens',
-                'cache_read_input_tokens',
-              ].fold<int>(
-                0,
-                (sum, key) => sum + ((usage[key] as num?) ?? 0).toInt(),
-              ),
-          outputTokens: (usage['output_tokens'] as num?)?.toInt(),
+          inputTokens: [
+            'input_tokens',
+            'cache_creation_input_tokens',
+            'cache_read_input_tokens',
+          ].fold<int>(0, (sum, key) => sum + (claudeInt(usage[key]) ?? 0)),
+          outputTokens: claudeInt(usage['output_tokens']),
           costUsd: turnCost,
         ),
         _ => TurnUsage(costUsd: turnCost),
@@ -2312,10 +2324,7 @@ class ClaudeCodeKernel
     };
     if (id == null || usage == null) return false;
     final model = (body as Map)['model'] as String?;
-    int count(String key) => switch (usage[key]) {
-      final num n => n.toInt(),
-      _ => 0,
-    };
+    int count(String key) => claudeInt(usage[key]) ?? 0;
     final tokens = CacheTokens(
       read: count('cache_read_input_tokens'),
       written: count('cache_creation_input_tokens'),

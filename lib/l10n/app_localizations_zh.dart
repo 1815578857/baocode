@@ -2251,6 +2251,35 @@ class AppLocalizationsZh extends AppLocalizations {
   String get toolUpdatedTodos => '已更新待办';
 
   @override
+  String todoCount(int done, int total) {
+    return '待办 $done/$total';
+  }
+
+  @override
+  String get todoAllDone => '全部完成';
+
+  @override
+  String get todoNone => '列表为空';
+
+  @override
+  String get todoAdded => '添加待办';
+
+  @override
+  String get todoStarted => '开始待办';
+
+  @override
+  String get todoCompleted => '完成待办';
+
+  @override
+  String get todoRemoved => '删除待办';
+
+  @override
+  String get todoUpdated => '更新待办';
+
+  @override
+  String get todoChecked => '查看待办';
+
+  @override
   String get toolSending => '正在说';
 
   @override
@@ -3016,11 +3045,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get mcpProbeNote =>
       '启动后用 MCP 的 initialize 握手检测，与 `claude mcp list` 的检测方式相同。';
-
-  @override
-  String todoCount(int done, int total) {
-    return '待办 $done/$total';
-  }
 
   @override
   String queuedMessages(int count) {
@@ -10435,6 +10459,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitLogInNoBranch => '没有分支包含此提交。';
 
   @override
+  String gitLogInBranches(int count) {
+    return '所在分支（$count）';
+  }
+
+  @override
   String get gitLogList => '列表';
 
   @override
@@ -10516,6 +10545,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitLogCopyHash => '复制完整哈希';
+
+  @override
+  String get gitLogCopyRefNames => '复制分支或标签名';
+
+  @override
+  String gitLogCopyName(String name) {
+    return '复制“$name”';
+  }
 
   @override
   String get gitLogLoading => '正在读取历史…';
@@ -10602,9 +10639,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitCommitCollapseAll => '全部折叠';
-
-  @override
-  String get gitCommitGroupByDirectory => '按目录分组';
 
   @override
   String get gitCommitEmptyMessage => '请填写提交信息。';

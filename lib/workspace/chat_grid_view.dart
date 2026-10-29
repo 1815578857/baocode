@@ -14,7 +14,7 @@ import 'workspace.dart';
 
 /// Where a pane is in the grid, for what the window keeps at its top
 /// corners: the macOS traffic lights and the sidebar's toggle at the left,
-/// the pin and the editor button at the right.
+/// the window's pin at the right.
 typedef ChatPanePlace = ({bool topLeft, bool topRight, bool top, bool alone});
 
 /// The agents of [grid], each in its pane: [ChatGrid.layout]'s rectangles,
@@ -28,6 +28,7 @@ typedef ChatPanePlace = ({bool topLeft, bool topRight, bool top, bool alone});
 /// Over it, the place an agent dragged from the sidebar would go, released
 /// there ([ChatDrag]): the half of the pane under the pointer on the side
 /// it is near, where the grid can split that way; else the pane itself.
+/// A title bar's drag moves the existing pane beside it, or swaps places.
 class ChatGridView extends StatefulWidget {
   const ChatGridView({
     super.key,
@@ -140,8 +141,12 @@ class _ChatGridViewState extends State<ChatGridView> {
     final grid = widget.grid;
     final rects = _layout(grid, size);
     if (rects.isEmpty) return null;
-    // Shown already: its own pane, focused once released.
-    if (rects[thread] case final rect?) {
+    final rearrange = widget.drag.rearranging;
+    if (rearrange && !grid.contains(thread)) return null;
+    // A sidebar row shown already only focuses its pane. A title bar's
+    // drag can move it elsewhere in the grid instead.
+    if (!rearrange && rects[thread] != null) {
+      final rect = rects[thread]!;
       return ChatDrop(
         thread: thread,
         target: thread,
@@ -153,10 +158,13 @@ class _ChatGridViewState extends State<ChatGridView> {
     final MapEntry(key: target, value: rect) = rects.entries.reduce(
       (a, b) => _distance(a.value, at) <= _distance(b.value, at) ? a : b,
     );
+    if (rearrange && identical(thread, target)) return null;
+    // Removing the moved pane frees its cells before splitting the target.
+    final splitGrid = rearrange ? (grid.copy()..remove(thread)) : grid;
     PaneSide? side;
     var nearest = ChatGridView.edgeZone;
     for (final candidate in PaneSide.values) {
-      if (!grid.canSplit(target, candidate)) continue;
+      if (!splitGrid.canSplit(target, candidate)) continue;
       final away = switch (candidate) {
         PaneSide.left => (at.dx - rect.left) / rect.width,
         PaneSide.right => (rect.right - at.dx) / rect.width,
@@ -174,9 +182,10 @@ class _ChatGridViewState extends State<ChatGridView> {
         target: target,
         side: null,
         preview: rect,
+        rearrange: rearrange,
       );
     }
-    final next = grid.copy()..split(target, side, thread);
+    final next = splitGrid.copy()..split(target, side, thread);
     // A new line needs room for a pane at its least either side of it.
     final growth = Size(
       !grid.columnsSplit && next.columnsSplit
@@ -193,6 +202,7 @@ class _ChatGridViewState extends State<ChatGridView> {
       side: side,
       preview: _layout(next, size)[thread]!,
       growth: growth,
+      rearrange: rearrange,
       // Less than a pixel short is room enough.
       fits:
           windowRoom == null ||
@@ -280,6 +290,7 @@ class _ChatGridViewState extends State<ChatGridView> {
               ),
         for (final thread in grid.panes)
           LayoutId(
+            key: ObjectKey(thread),
             id: thread,
             child: Listener(
               onPointerDown: (event) {
@@ -337,9 +348,9 @@ Widget _framed(bool framed, Widget child) => Stack(
   ],
 );
 
-/// Where a press does not focus the pane it is in: the window's own tools
-/// in the top right pane's title bar (which act on the focused agent, not
-/// that pane's), and a pane's close button.
+/// Where a press does not focus the pane it is in: its title bar's tools,
+/// including Close. Each acts on its own pane or project without changing
+/// the focus, unless that action itself needs to (the side panel's).
 class KeepPaneFocus extends StatelessWidget {
   const KeepPaneFocus({super.key, required this.child});
 
