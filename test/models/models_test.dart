@@ -37,6 +37,10 @@ class _CountingSecretStore implements SecretStore {
   String? value;
   bool failing;
 
+  /// Thrown instead, when given: not the keychain's own failure (e.g. its
+  /// process not started).
+  Object? error;
+
   /// Held open, when given, to have the reads that arrive overlap.
   Completer<void>? gate;
 
@@ -47,6 +51,7 @@ class _CountingSecretStore implements SecretStore {
     reads++;
     final gate = this.gate;
     if (gate != null) await gate.future;
+    if (error case final error?) throw error;
     if (failing) throw const SecretStoreException('no keychain here');
     return value;
   }
@@ -471,6 +476,45 @@ void main() {
       expect(secrets.reads, 2, reason: 'the failure was not kept');
       expect(await providers.key('gw'), 'sk-2');
       expect(secrets.reads, 2);
+    });
+
+    test('a key read that fails otherwise throws to the requests that waited '
+        'on it, and is read again the next time', () async {
+      final gate = Completer<void>();
+      final secrets = _CountingSecretStore(value: 'sk-1', gate: gate)
+        ..error = const ProcessException('powershell.exe', [], 'not started');
+      final providers = ModelProviders.memory(
+        providers: [_gateway],
+        secrets: secrets,
+      );
+
+      final failed = [providers.key('gw'), providers.key('gw')];
+      gate.complete();
+      for (final read in failed) {
+        await expectLater(read, throwsA(isA<ProcessException>()));
+      }
+      expect(secrets.reads, 1);
+
+      secrets.error = null;
+      expect(await providers.key('gw'), 'sk-1');
+      expect(secrets.reads, 2, reason: 'the failure was not kept');
+    });
+
+    test('a key set while a read fails is kept', () async {
+      final gate = Completer<void>();
+      final secrets = _CountingSecretStore(failing: true, gate: gate);
+      final providers = ModelProviders.memory(
+        providers: [_gateway],
+        secrets: secrets,
+      );
+
+      final failed = providers.key('gw');
+      await providers.setKey('gw', 'sk-new');
+      gate.complete();
+      expect(await failed, isNull);
+
+      expect(await providers.key('gw'), 'sk-new');
+      expect(secrets.reads, 1, reason: 'the key set, not read again');
     });
 
     test('an upstream removed, or its models, takes the other upstreams\' '
