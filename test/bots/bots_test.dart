@@ -22,6 +22,7 @@ import 'package:baocode/images/image_tools.dart';
 import 'package:baocode/workspace/workspace.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 
 void main() {
   group('BotPacer', () {
@@ -293,9 +294,17 @@ void main() {
       );
       expect(launch.permissionMode, 'dontAsk');
       expect(launch.sdkServers, [ClaudeSdkTools.server]);
-      // The browser's tool search, as it may use it; no other.
-      expect(launch.tools, ['ToolSearch']);
-      expect(launch.arguments, containsAllInOrder(['--tools', 'ToolSearch']));
+      // The web's, its own to use, unasked; the browser's tool search, as
+      // it may use it; no other.
+      expect(launch.tools, ['WebSearch', 'WebFetch', 'ToolSearch']);
+      expect(
+        launch.arguments,
+        containsAllInOrder(['--tools', 'WebSearch,WebFetch,ToolSearch']),
+      );
+      expect(
+        (launch.settings['permissions'] as Map)['allow'],
+        containsAll(['WebSearch', 'WebFetch']),
+      );
       // None of the user's MCP servers: their notices are not its to tell.
       expect(launch.arguments, contains('--strict-mcp-config'));
     });
@@ -325,10 +334,17 @@ void main() {
         expect(await offered(none.folder), [
           'bot_say',
           'bot_later',
+          'bot_cancel_later',
           'bot_send_image',
           'bot_remember',
           'bot_my_picture',
+          'bot_user_picture',
         ]);
+        // The assistant's alone: its contacts looked after.
+        expect(
+          await offered(assistant.folder),
+          containsAll(['bot_list_bots', 'bot_save_bot', 'bot_delete_bot']),
+        );
         // Nor called, though named.
         final refused = await ClaudeSdkTools.handle({
           'jsonrpc': '2.0',
@@ -748,6 +764,164 @@ void main() {
       expect(
         ChatCodec.botEvent(note as UserMessageItem),
         contains('done: "${agent.title}"'),
+      );
+    });
+
+    test('only the assistant is told of every agent; another, of those it '
+        'started or wrote to', () async {
+      final assistant = bots.bots.single;
+      final mia = bots.save(
+        name: 'Mia',
+        identity: '',
+        abilities: {BotAbility.viewChats},
+      );
+      Future<AgentThread> run() async {
+        final agent = workspace.startAgent(workspace.projectAt(app));
+        agent.session.send(const ComposerMessage(text: 'build it'));
+        for (var i = 0; i < 300 && !agent.session.isStreaming; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+        workspace.notifyListeners();
+        return agent;
+      }
+
+      Future<void> finish(AgentThread agent) async {
+        agent.session.stop();
+        for (var i = 0; i < 300 && agent.session.isStreaming; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+        workspace.notifyListeners();
+        now = now.add(const Duration(minutes: 2));
+        bots.deliver();
+      }
+
+      List<String> told(Bot bot) {
+        final session = bots.threadFor(bot).session;
+        return [
+          for (var i = 0; i < session.itemCount; i++)
+            if (session.itemAt(i) case final UserMessageItem item
+                when ChatCodec.botEvent(item) != null)
+              ChatCodec.botEvent(item)!,
+        ];
+      }
+
+      final first = await run();
+      await finish(first);
+      expect(told(assistant), hasLength(1));
+      expect(told(mia), isEmpty);
+      // One it started: told of it.
+      final second = await run();
+      bots.watch(mia, second);
+      await finish(second);
+      expect(told(mia).single, contains('done: "${second.title}"'));
+      await pumpEventQueue();
+      expect(store.preferences['watching'], {
+        mia.id: [BotTools.idOf(second)],
+      });
+    });
+
+    test('it drops what it meant to come back to', () async {
+      final bot = bots.bots.single;
+      await call(bot, 'bot_later', {'minutes': 3, 'note': 'Remind of tea'});
+      await call(bot, 'bot_later', {'minutes': 60, 'note': 'Ask about x'});
+      final dropped = await call(bot, 'bot_cancel_later', {'note': 'TEA'});
+      expect('${dropped['content']}', contains('Remind of tea'));
+      expect([for (final l in bots.laters(bot)) l.note], ['Ask about x']);
+      final none = await call(bot, 'bot_cancel_later', {'note': 'nope'});
+      expect('${none['content']}', contains('Waiting:'));
+      expect(botEvents, contains('Never send a message saying you won'));
+    });
+
+    test('the assistant looks after the other bots, and itself', () async {
+      final assistant = bots.bots.single;
+      final made = await call(assistant, 'bot_save_bot', {
+        'name': '阿猫',
+        'emoji': '🐱',
+        'identity': '你是一只懒猫',
+      });
+      expect(made['isError'], isNot(isTrue));
+      final cat = bots.bots.firstWhere((b) => b.name == '阿猫');
+      expect(cat.avatar, '🐱');
+      expect(cat.abilities, isEmpty);
+      // Another's changed: it is told by whom.
+      await call(assistant, 'bot_save_bot', {'bot': cat.id, 'signature': '困'});
+      final catSession = bots.threadFor(cat).session;
+      final note = [
+        for (var i = 0; i < catSession.itemCount; i++) catSession.itemAt(i),
+      ].whereType<UserMessageItem>().last;
+      expect(ChatCodec.botEvent(note), contains('小宝 (the assistant'));
+      expect(bots.byId(cat.id)!.identity, '你是一只懒猫');
+      // Itself, a picture it made: cut square; not told what it did.
+      final file = File('$app/made.png')
+        ..writeAsBytesSync(
+          base64.decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAYAAAB/qH1jAAAAEklEQVR4nGP4z8Dw'
+            'HxkzoAsAAA8hD/EEN8afAAAAAElFTkSuQmCC',
+          ),
+        );
+      final changed = await call(assistant, 'bot_save_bot', {
+        'bot': assistant.id,
+        'picture': file.path,
+        'signature': '在呢',
+      });
+      expect(changed['isError'], isNot(isTrue), reason: '$changed');
+      final self = bots.byId(assistant.id)!;
+      expect(self.signature, '在呢');
+      expect(isAvatarImage(self.avatar!), isTrue);
+      final ownSession = bots.threadFor(self).session;
+      expect(
+        [for (var i = 0; i < ownSession.itemCount; i++) ownSession.itemAt(i)]
+            .whereType<UserMessageItem>(),
+        isEmpty,
+      );
+      // Not itself deleted; another, yes.
+      expect(
+        (await call(assistant, 'bot_delete_bot', {
+          'bot': assistant.id,
+        }))['isError'],
+        isTrue,
+      );
+      await call(assistant, 'bot_delete_bot', {'bot': cat.id});
+      expect(bots.byId(cat.id), isNull);
+      // None but the assistant does so.
+      final mia = bots.save(name: 'Mia', identity: '', abilities: {});
+      expect((await call(mia, 'bot_list_bots', {}))['isError'], isTrue);
+      expect(botInstructions(self, memory: ''), contains('<contacts>'));
+      expect(botInstructions(mia, memory: ''), isNot(contains('<contacts>')));
+    });
+
+    test('the bots know who the user is, their picture to see', () async {
+      final bot = bots.bots.single;
+      expect(
+        '${(await call(bot, 'bot_user_picture', {}))['content']}',
+        contains('none'),
+      );
+      final png = base64.decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk'
+        '+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      );
+      bots.setMe(const BotUser(name: 'Leo', signature: '写代码的'), (
+        bytes: png,
+        type: 'image/png',
+      ));
+      expect(bots.me.name, 'Leo');
+      expect(bots.myPicture!.bytes, png);
+      final seen = await call(bot, 'bot_user_picture', {});
+      expect(
+        (seen['content'] as List).map((c) => (c as Map)['type']),
+        contains('image'),
+      );
+      final told = workspace.agentSetup!(bot.folder)!.workspace().instructions;
+      expect(told, contains('Their name: Leo.'));
+      expect(told, contains('写代码的'));
+      await pumpEventQueue();
+      expect((store.preferences['me'] as Map)['name'], 'Leo');
+      // Its picture gone with it.
+      bots.setMe(const BotUser(name: 'Leo'), null);
+      expect(bots.myPicture, isNull);
+      expect(
+        folders.files.keys.where((f) => p.basename(f).startsWith('me-')),
+        isEmpty,
       );
     });
 

@@ -81,6 +81,19 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
   /// The most a bot may have waiting to come back to.
   static const maxLaters = 5;
 
+  /// The agents each bot started or wrote to, by its id: those it is
+  /// told of, the assistant aside (told of all).
+  final Map<String, List<String>> _watching = {};
+
+  /// The most agents a bot is told of for having started or written to.
+  static const maxWatching = 40;
+
+  /// Who the user is, as they put it on their phone.
+  BotUser _me = const BotUser();
+
+  /// The bots to start again once they stop answering: changed meanwhile.
+  final Set<String> _restartWhenIdle = {};
+
   /// The last turn end of each bot's the user has seen, by its id.
   final Map<String, int> _seen = {};
 
@@ -120,6 +133,14 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         ];
       }
     }
+    if (kept['watching'] case final Map<String, Object?> watching) {
+      for (final MapEntry(:key, :value) in watching.entries) {
+        _watching[key] = [
+          for (final id in value is List ? value : const []) ?id as String?,
+        ];
+      }
+    }
+    _me = BotUser.fromJson(kept['me']);
     if (!_bots.any((bot) => bot.assistant)) {
       final defaults = assistantDefaults(chinese: chinese);
       _bots.insert(
@@ -175,6 +196,11 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
           if (value.isNotEmpty)
             key: [for (final later in value) later.toJson()],
       },
+      'watching': {
+        for (final MapEntry(:key, :value) in _watching.entries)
+          if (value.isNotEmpty) key: value,
+      },
+      if (!_me.isEmpty) 'me': _me.toJson(),
     }),
   );
 
@@ -192,6 +218,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         folders: const [],
         instructions: botInstructions(
           bot,
+          user: _me,
           memory: folders.readMemory(bot.folder),
           self: selfNotes(bot),
           computer: computer,
@@ -205,18 +232,25 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         ),
         // Told only who it is and how it talks: no coding agent's prompt.
         ownPrompt: true,
-        // Its own tools only; the tool search, for the browser's, which
-        // are deferred.
-        tools: bot.can(BotAbility.browser) ? const ['ToolSearch'] : const [],
+        // Its own tools, and the web's, its own to use; the tool search,
+        // for the browser's, which are deferred.
+        tools: [...webTools, if (bot.can(BotAbility.browser)) 'ToolSearch'],
+        allowedTools: webTools,
         // What the user writes while it talks, taken up as it does: as a
-        // person hears what is said meanwhile.
+        // person hears what is said meanwhile; and shown where they wrote
+        // it.
         queuedMessages: QueuedMessages.duringTurn,
+        queuedInPlace: true,
       ),
       settings: {...settings, 'model': ?bot.model},
       kernel: KernelRegistry.claudeCode.id,
     ),
     null => null,
   };
+
+  /// Claude Code's own tools of the web every bot has: searching it,
+  /// reading a page.
+  static const webTools = ['WebSearch', 'WebFetch'];
 
   // --- What a bot is offered -------------------------------------------------
 
@@ -272,7 +306,12 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     final thread = threadOf(bot);
     if (thread == null || !thread.isOpen) return;
     final session = thread.session;
-    if (!session.isStreaming && session.sessionId != null) session.restart();
+    if (session.isStreaming) {
+      // Once it is done answering.
+      _restartWhenIdle.add(bot.id);
+    } else if (session.sessionId != null) {
+      session.restart();
+    }
   }
 
   /// How many messages [bot] sent since the user last read it: each of
@@ -371,6 +410,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     required Set<BotAbility> abilities,
     BotProactive proactive = const BotProactive(),
     BotAvatarImage? avatarImage,
+    Bot? by,
   }) {
     final root = folders.root;
     if (root == null) throw StateError('No bots here');
@@ -421,19 +461,21 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     if (!bot.can(BotAbility.viewChats)) _pacers.remove(bot.id);
     _save();
     _restart(bot);
-    _tellChanged(had, bot, avatarImage);
+    // Changed by itself, it knows.
+    if (by?.id != bot.id) _tellChanged(had, bot, avatarImage, by: by);
     notifyListeners();
     return bot;
   }
 
-  /// Tells [bot] what the user changed of it ([had] before): who it is
-  /// now, its new picture with it to see. Its to react to, or not.
-  void _tellChanged(Bot had, Bot bot, BotAvatarImage? picture) {
+  /// Tells [bot] what the user (or the bot [by]) changed of it ([had]
+  /// before): who it is now, its new picture with it to see. Its to react
+  /// to, or not.
+  void _tellChanged(Bot had, Bot bot, BotAvatarImage? picture, {Bot? by}) {
     String quoted(String text) => text.isEmpty ? '(none)' : '"$text"';
     final lines = [
       if (had.name != bot.name) '- Your name: now ${quoted(bot.name)}.',
       if (picture != null)
-        '- Your picture: a new one the user chose for you, here. Look at '
+        '- Your picture: a new one chosen for you, here. Look at '
             'it, and keep in a line what it shows (bot_remember, about '
             'self).'
       else if (had.avatar != bot.avatar)
@@ -460,7 +502,11 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
       ComposerMessage(
         text: botEventMessage(
           [
-            'The user changed your profile:',
+            by == null
+                ? 'The user changed your profile:'
+                : '${by.name} (${by.assistant ? 'the assistant, who looks after '
+                                "the user's bots" : 'another bot'}) changed your '
+                      'profile:',
             ...lines,
             'Now: ${botTime(_clock())}.',
           ].join('\n'),
@@ -480,10 +526,17 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     return bytes == null ? '' : utf8.decode(bytes, allowMalformed: true);
   }
 
-  void setSelfNotes(Bot bot, String text) => folders.writeFile(
-    p.join(bot.folder, selfFile),
-    Uint8List.fromList(utf8.encode(text)),
-  );
+  /// [bot]'s notes of itself now [text]: by itself, as it goes; else the
+  /// user's, which it is told from its next message ([restart]).
+  void setSelfNotes(Bot bot, String text, {bool restart = false}) {
+    folders.writeFile(
+      p.join(bot.folder, selfFile),
+      Uint8List.fromList(utf8.encode(text.trim().isEmpty ? '' : text)),
+    );
+    if (!restart) return;
+    _restart(bot);
+    notifyListeners();
+  }
 
   /// The file in its folder [selfNotes] are kept in.
   static const selfFile = 'SELF.md';
@@ -523,14 +576,16 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     if (file == null) return null;
     final bytes = folders.readFile(file);
     if (bytes == null) return null;
-    final type = switch (p.extension(file).toLowerCase()) {
-      '.jpg' || '.jpeg' => 'image/jpeg',
-      '.webp' => 'image/webp',
-      '.gif' => 'image/gif',
-      _ => 'image/png',
-    };
-    return (bytes: bytes, type: type);
+    return (bytes: bytes, type: _typeOf(file));
   }
+
+  static String _typeOf(String file) =>
+      switch (p.extension(file).toLowerCase()) {
+        '.jpg' || '.jpeg' => 'image/jpeg',
+        '.webp' => 'image/webp',
+        '.gif' => 'image/gif',
+        _ => 'image/png',
+      };
 
   String _newId() {
     final now = _clock().microsecondsSinceEpoch.toRadixString(36);
@@ -554,6 +609,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     _bots.remove(bot);
     _pacers.remove(id);
     _laters.remove(id);
+    _watching.remove(id);
     _seen.remove(id);
     _save();
     notifyListeners();
@@ -581,6 +637,44 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
   }
 
   String memory(Bot bot) => folders.readMemory(bot.folder);
+
+  // --- The user ---------------------------------------------------------
+
+  /// Who the user is, as they put it on their phone: for the bots to know.
+  BotUser get me => _me;
+
+  /// The user's own picture, as their phone sent it; none for none.
+  BotAvatarImage? get myPicture {
+    final root = folders.root;
+    final file = _me.picture;
+    if (root == null || file == null) return null;
+    final bytes = folders.readFile(p.join(root, file));
+    return bytes == null ? null : (bytes: bytes, type: _typeOf(file));
+  }
+
+  /// Who the user is now [me], their picture [picture] (none for none):
+  /// told the bots from their next message, if it changed.
+  void setMe(BotUser me, BotAvatarImage? picture) {
+    final root = folders.root;
+    if (root == null) return;
+    String? file;
+    if (picture != null) {
+      final hash = sha1.convert(picture.bytes).toString().substring(0, 12);
+      file = 'me-$hash${_extensions[picture.type] ?? '.png'}';
+      if (file != _me.picture) {
+        folders.writeFile(p.join(root, file), picture.bytes);
+      }
+    }
+    final now = me.withPicture(file);
+    if (now == _me) return;
+    if (_me.picture case final old? when old != file) {
+      folders.deleteFile(p.join(root, old));
+    }
+    _me = now;
+    _save();
+    _bots.forEach(_restart);
+    notifyListeners();
+  }
 
   void setMemory(Bot bot, String text) {
     folders.writeMemory(bot.folder, text.trim().isEmpty ? '' : text);
@@ -657,6 +751,9 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
       if (_followed.containsKey(session)) continue;
       Object? was;
       void listener() {
+        if (!session.isStreaming && _restartWhenIdle.remove(bot.id)) {
+          _restart(bot);
+        }
         final last = session.itemCount - 1;
         final now = (
           session.itemCount,
@@ -673,17 +770,43 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     }
   }
 
-  /// [events] for the bots that write first, to tell when it is time.
+  /// [events] for the bots they concern, to tell when it is time: the
+  /// assistant, which looks after the agents, of all of them (if it may
+  /// see them); another, of those it started or wrote to. Not every bot
+  /// of everything, each to write of it.
   void _tell(List<BotEvent> events) {
     if (events.isEmpty) return;
     for (final bot in _bots) {
-      // Those that see the agents: told what became of them.
-      if (!bot.can(BotAbility.viewChats)) continue;
+      final watching = _watching[bot.id] ?? const <String>[];
+      final told = [
+        for (final event in events)
+          if (bot.assistant
+              ? bot.can(BotAbility.viewChats)
+              : watching.contains(event.chat))
+            event,
+      ];
+      if (told.isEmpty) continue;
       final pacer = _pacers[bot.id] ??= BotPacer();
-      events.forEach(pacer.add);
+      told.forEach(pacer.add);
     }
     _schedule();
   }
+
+  /// [bot] started [thread], or wrote to it: told what becomes of it.
+  void watch(Bot bot, AgentThread thread) {
+    final id = BotTools.idOf(thread);
+    final watching = _watching[bot.id] ??= [];
+    watching
+      ..remove(id)
+      ..add(id);
+    if (watching.length > maxWatching) {
+      watching.removeRange(0, watching.length - maxWatching);
+    }
+    _save();
+  }
+
+  /// The agents [bot] is told of for having started or written to them.
+  List<String> watching(Bot bot) => List.unmodifiable(_watching[bot.id] ?? []);
 
   /// The agents at work for [longRun] and more, told of once a run; and
   /// a look again when the next of them will be.
@@ -754,6 +877,23 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
 
   /// What [bot] meant to come back to, soonest first.
   List<BotLater> laters(Bot bot) => List.unmodifiable(_laters[bot.id] ?? []);
+
+  /// [bot] no longer comes back to what its notes say [which] of (a part
+  /// of one, any case): those it dropped.
+  List<BotLater> cancelLaters(Bot bot, String which) {
+    final part = which.trim().toLowerCase();
+    final laters = _laters[bot.id];
+    if (part.isEmpty || laters == null) return const [];
+    final dropped = [
+      for (final later in laters)
+        if (later.note.toLowerCase().contains(part)) later,
+    ];
+    if (dropped.isEmpty) return const [];
+    laters.removeWhere(dropped.contains);
+    _save();
+    _schedule();
+    return dropped;
+  }
 
   void _schedule() {
     _timer?.cancel();

@@ -172,3 +172,67 @@ class Bot {
     'created': ?created?.millisecondsSinceEpoch,
   };
 }
+
+/// Who the user is, as they put it on their phone (its profile): for
+/// their bots to know them by. [picture] is the file in the bots' folder
+/// their picture is kept in.
+class BotUser {
+  const BotUser({
+    this.name = '',
+    this.gender = '',
+    this.signature = '',
+    this.picture,
+  });
+
+  final String name;
+  final String gender;
+
+  /// The line under their name.
+  final String signature;
+  final String? picture;
+
+  bool get isEmpty =>
+      name.isEmpty && gender.isEmpty && signature.isEmpty && picture == null;
+
+  BotUser withPicture(String? picture) => BotUser(
+    name: name,
+    gender: gender,
+    signature: signature,
+    picture: picture,
+  );
+
+  Map<String, Object?> toJson() => {
+    if (name.isNotEmpty) 'name': name,
+    if (gender.isNotEmpty) 'gender': gender,
+    if (signature.isNotEmpty) 'signature': signature,
+    'picture': ?picture,
+  };
+
+  static BotUser fromJson(Object? json) {
+    if (json is! Map) return const BotUser();
+    String text(String key) => switch (json[key]) {
+      final String value => value.trim(),
+      _ => '',
+    };
+    return BotUser(
+      name: text('name'),
+      gender: text('gender'),
+      signature: text('signature'),
+      picture: switch (json['picture']) {
+        final String file when file.isNotEmpty => file,
+        _ => null,
+      },
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is BotUser &&
+      other.name == name &&
+      other.gender == gender &&
+      other.signature == signature &&
+      other.picture == picture;
+
+  @override
+  int get hashCode => Object.hash(name, gender, signature, picture);
+}
