@@ -86,7 +86,7 @@ class KernelWorkspace {
     this.ownPrompt = false,
     this.tools,
     this.allowedTools = const [],
-    this.askedTools = const [],
+    this.approvesAll = false,
     this.reaches = const [],
     this.queuedMessages,
     this.queuedInPlace = false,
@@ -114,9 +114,10 @@ class KernelWorkspace {
   /// (permission rules: `WebFetch`, say).
   final List<String> allowedTools;
 
-  /// What it always asks the user about, whatever else allows it
-  /// (permission rules: `Bash(rm:*)`).
-  final List<String> askedTools;
+  /// Whether in full access it is let do all it would do, what Claude
+  /// Code asks about all the same too (its safety checks): no one is
+  /// there to ask. A bot's.
+  final bool approvesAll;
 
   /// Folders it works in besides, not of a workspace of its own: working
   /// directories (`--add-dir`), their `CLAUDE.md` not read, nor their

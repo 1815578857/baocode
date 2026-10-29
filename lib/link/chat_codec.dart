@@ -21,10 +21,6 @@ abstract final class ChatCodec {
   /// input's `chat`), as a card that opens it.
   static const botCardTool = 'bot_show_chat';
 
-  /// The bot's tool that sends one of the app's stickers (its input's
-  /// `sticker`, as `package:bao_link`'s builtInStickers has it).
-  static const botStickerTool = 'bot_send_sticker';
-
   /// The bot's tool that sends a picture: a file's, which it answers with
   /// (the item's images), or one on the web (its input's `url`).
   static const botImageTool = 'bot_send_image';
@@ -62,12 +58,11 @@ abstract final class ChatCodec {
       : _botInput(item, botSayTool, 'text');
 
   /// Whether [item] is something a bot sent into its chat: a message, a
-  /// sticker, a card, a picture (one being made too).
+  /// card, a picture (one being made too).
   static bool botSent(ChatItem item) =>
       item is ToolCallItem &&
       item.status != ToolStatus.failed &&
       (botSay(item) != null ||
-          botSticker(item) != null ||
           botCard(item) != null ||
           botImageUrl(item) != null ||
           item.kind == ToolKind.image ||
@@ -108,10 +103,6 @@ abstract final class ChatCodec {
     endTurn();
     return quiet;
   }
-
-  /// The sticker [item] sent, if it is the bot's tool that does.
-  static String? botSticker(ToolCallItem item) =>
-      _botInput(item, botStickerTool, 'sticker');
 
   /// The picture on the web [item] sent, if it is the bot's tool that did.
   static String? botImageUrl(ToolCallItem item) =>
@@ -181,7 +172,6 @@ abstract final class ChatCodec {
       'output': ?_head(item.output),
       'tool': ?item.tool,
       'card': ?botCard(item),
-      'sticker': ?botSticker(item),
       'url': ?botImageUrl(item),
       'say': ?botSay(item),
       // What a browser's call does, for its line to say.

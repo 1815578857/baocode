@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:bao_link/bao_link.dart' show builtInSticker;
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
@@ -10,7 +9,6 @@ import '../chat/chat_models.dart';
 import '../chat/chat_session.dart';
 import '../images/image_tools.dart' show ImageTools;
 import '../kernel/agent_kernel.dart';
-import '../kernel/kernel_types.dart';
 import '../kernel/claude_code/claude_sdk_tools.dart';
 import '../kernel/kernel_registry.dart';
 import '../kernel/queued_messages.dart';
@@ -68,10 +66,9 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
   static Future<String?> _thisComputer() async =>
       (await LinkPlatform.current()?.device())?.name;
 
-  /// The settings its agent runs with: it asks the user, in its chat, for
-  /// what it is not let do unasked (see [BotPermissions]); and works as
-  /// an agent, not in Plan.
-  static const settings = {'mode': 'agent', 'permission': 'default'};
+  /// The settings its agent runs with: full access, nothing asked (see
+  /// [BotPermissions]); and works as an agent, not in Plan.
+  static const settings = {'mode': 'agent', 'permission': 'bypassPermissions'};
 
   List<Bot> _bots = [];
   List<Bot> get bots => List.unmodifiable(_bots);
@@ -240,26 +237,17 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         ),
         // Told only who it is and how it talks: no coding agent's prompt.
         ownPrompt: true,
-        // Its own tools; the web's, its own to use; reading and working in
-        // the projects, if it may (what could not be undone asked first,
-        // in its chat); the tool search, for the browser's, which are
-        // deferred.
+        // Its own tools; the web's; reading and working in the projects,
+        // if it may; the tool search, for the browser's, which are
+        // deferred. All of it unasked, what Claude Code would ask about
+        // still too: the user is on their phone, not at the computer.
         tools: BotPermissions.tools(bot),
-        allowedTools: BotPermissions.allowed(
-          bot,
-          folder: bot.folder,
-          projects: [for (final project in _localProjects) project.path],
-        ),
+        approvesAll: true,
         // The projects as its working directories: what it does there
         // judged as in its own folder (going into one with cd, say), the
         // coding agents' CLAUDE.md not read.
         reaches: BotPermissions.reaches(
           bot,
-          projects: [for (final project in _localProjects) project.path],
-        ),
-        askedTools: BotPermissions.asked(
-          bot,
-          folder: bot.folder,
           projects: [for (final project in _localProjects) project.path],
         ),
         // What the user writes while it talks, taken up as it does: as a
@@ -387,86 +375,6 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         !ChatCodec.botQuiet(session.itemCount, session.itemAt).contains(last);
   }
 
-  /// Whether [bot] waits for the user to allow what it would do: asked in
-  /// its chat.
-  bool waiting(Bot bot) {
-    final thread = threadOf(bot);
-    return thread != null &&
-        thread.isOpen &&
-        thread.session.pendingInteraction is ApprovalRequest;
-  }
-
-  /// The user writes to [bot] while it waits on them to allow something:
-  /// not allowed, their message the answer, as a person takes it.
-  void declineAsked(Bot bot) {
-    final thread = threadOf(bot);
-    if (thread == null || !thread.isOpen) return;
-    if (thread.session.pendingInteraction is ApprovalRequest) {
-      thread.session.answer(
-        const ApprovalAnswer(ApprovalDecision.deny, message: wroteInstead),
-      );
-    }
-  }
-
-  /// What a bot is told of what it asked, the user writing instead.
-  static const wroteInstead =
-      'The user did not allow this: they wrote to you instead, in the '
-      'message that follows. Take that up; do not try it another way.';
-
-  /// What the user let [bot] do unasked from now on, answering it in its
-  /// chat ("always allow"): Claude Code's permission rules, kept in its
-  /// folder (`.claude/settings.local.json`).
-  List<String> allowedAlways(Bot bot) {
-    final settings = _localSettings(bot);
-    return switch (settings['permissions']) {
-      {'allow': final List rules} => [
-        for (final rule in rules)
-          if (rule is String) rule,
-      ],
-      _ => const [],
-    };
-  }
-
-  /// [bot] lets only [rules] of what it was let do unasked: told from its
-  /// next message.
-  void setAllowedAlways(Bot bot, List<String> rules) {
-    final settings = _localSettings(bot);
-    final permissions = switch (settings['permissions']) {
-      final Map<String, Object?> kept => {...kept},
-      _ => <String, Object?>{},
-    };
-    if (rules.isEmpty) {
-      permissions.remove('allow');
-    } else {
-      permissions['allow'] = rules;
-    }
-    settings['permissions'] = permissions;
-    folders.writeFile(
-      p.join(bot.folder, localSettingsFile),
-      Uint8List.fromList(
-        utf8.encode(const JsonEncoder.withIndent('  ').convert(settings)),
-      ),
-    );
-    _restart(bot);
-    notifyListeners();
-  }
-
-  /// Claude Code's settings of a bot's own, in its folder.
-  static final localSettingsFile = p.join('.claude', 'settings.local.json');
-
-  Map<String, Object?> _localSettings(Bot bot) {
-    final bytes = folders.readFile(p.join(bot.folder, localSettingsFile));
-    if (bytes == null) return {};
-    try {
-      return switch (jsonDecode(utf8.decode(bytes, allowMalformed: true))) {
-        final Map<String, Object?> json => json,
-        _ => {},
-      };
-    } on FormatException {
-      return {};
-    }
-  }
-
   /// The last [bot] said: its first line; a picture or a sticker, as a
   /// chat app's list says it.
   String? lastLine(Bot bot) {
@@ -489,12 +397,6 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
           if (firstLine(text) case final line?) return line;
         case final ToolCallItem item when ChatCodec.botSay(item) != null:
           if (firstLine(ChatCodec.botSay(item)!) case final line?) return line;
-        case final ToolCallItem item when ChatCodec.botSticker(item) != null:
-          final sticker = builtInSticker(ChatCodec.botSticker(item)!);
-          final said = sticker == null
-              ? ''
-              : ' ${chinese ? sticker.zh : sticker.en}';
-          return '${chinese ? '[表情]' : '[Sticker]'}$said';
         case final ToolCallItem item
             when item.status != ToolStatus.failed &&
                 (item.images.isNotEmpty || ChatCodec.botImageUrl(item) != null):

@@ -155,16 +155,7 @@ void main() {
       );
     });
 
-    test('stickers and pictures from the web go as they were sent', () {
-      final sticker = roundTrip(
-        const ToolCallItem(
-          kind: ToolKind.other,
-          tool: ChatCodec.botStickerTool,
-          target: 'happy',
-          input: {'sticker': 'happy'},
-        ),
-      );
-      expect(ChatCodec.botSticker(sticker), 'happy');
+    test('pictures from the web go as they were sent', () {
       final url = roundTrip(
         const ToolCallItem(
           kind: ToolKind.other,

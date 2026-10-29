@@ -1,7 +1,7 @@
-// A bot's hands, with the real Claude Code, without a phone: a project's
-// file read unasked; a file removed, asked first and allowed; an install
-// asked, the user writing instead; git looked at unasked; and the
-// project's CLAUDE.md not taken for the bot's.
+// A bot's hands, with the real Claude Code, without a phone, in full
+// access: a project's file read, a file removed, a file written into
+// .git (one the CLI would ask about all the same) and git looked at, none
+// of it asked; and the project's CLAUDE.md not taken for the bot's.
 //
 //   flutter test tool/live/bots_hands_live.dart
 import 'dart:io';
@@ -72,47 +72,36 @@ void main() {
       }
     }
 
-    /// Until it is done, or asks: what it asks.
-    Future<ApprovalRequest?> idle() async {
+    /// Until it is done; anything asked of the user, said (there should
+    /// be none).
+    Future<void> idle() async {
       await Future<void>.delayed(const Duration(seconds: 2));
       while (session.isStreaming) {
         if (session.pendingInteraction case final ApprovalRequest asked) {
           show();
-          stdout.writeln(
-            'ASKED ${asked.title} | ${switch (asked.preview) {
-              CommandPreview(:final command) => command,
-              final other => '$other',
-            }} | always: ${asked.alwaysAllowLabel} | waiting: ${bots.waiting(bot)}',
-          );
-          return asked;
+          stdout.writeln('ASKED (should not be) ${asked.title}');
+          session.answer(const ApprovalAnswer(ApprovalDecision.deny));
         }
         await Future<void>.delayed(const Duration(milliseconds: 300));
       }
       show();
-      return null;
     }
 
-    Future<ApprovalRequest?> send(String text) {
-      bots.declineAsked(bot);
+    Future<void> send(String text) {
       session.send(ComposerMessage(text: text));
       return idle();
     }
 
     await send('demo 项目的 notes.txt 里写了啥');
-    // Each it asks, allowed, till it is done.
-    for (
-      var ask = await send('帮我把 demo 里的 junk.log 删了');
-      ask != null;
-      ask = await idle()
-    ) {
-      session.answer(const ApprovalAnswer(ApprovalDecision.allowOnce));
-    }
+    await send('帮我把 demo 里的 junk.log 删了');
     stdout.writeln(
       'junk.log there: ${File('${demo.path}/junk.log').existsSync()}',
     );
-    final install = await send('在 demo 里 npm install lodash');
-    stdout.writeln('install asked: ${install != null}');
-    await send('算了 不装了');
+    await send('在 demo 的 .git/description 里写一行 "demo repo"');
+    stdout.writeln(
+      '.git/description: '
+      '${File('${demo.path}/.git/description').readAsStringSync().trim()}',
+    );
     await send('demo 现在 git 状态怎么样');
     bots.dispose();
     workspace.dispose();

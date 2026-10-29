@@ -67,7 +67,6 @@ class ClaudeLaunch {
     this.sdkServers = const [],
     this.tools,
     this.allowed = const [],
-    this.asked = const [],
     this.promptSuggestions = true,
   });
 
@@ -94,10 +93,6 @@ class ClaudeLaunch {
   /// Built-in tools it uses without asking (permission rules: `WebFetch`,
   /// say), as the flag settings allow them.
   final List<String> allowed;
-
-  /// What it always asks the user about, even where [allowed] or the
-  /// user's own rules would let it (permission rules: `Bash(rm:*)`).
-  final List<String> asked;
 
   /// Folders it works in besides [cwd] (a multi-folder workspace's): each
   /// an `--add-dir`, their `CLAUDE.md` read as [cwd]'s is.
@@ -203,7 +198,6 @@ class ClaudeLaunch {
     sdkServers: sdkServers,
     tools: tools,
     allowed: allowed,
-    asked: asked,
     promptSuggestions: promptSuggestions,
   );
 
@@ -229,14 +223,9 @@ class ClaudeLaunch {
       },
       'availableModels': allowlist,
     },
-    if (readable.isNotEmpty || allowed.isNotEmpty || asked.isNotEmpty)
+    if (readable.isNotEmpty || allowed.isNotEmpty)
       'permissions': {
-        if (readable.isNotEmpty || allowed.isNotEmpty)
-          'allow': [
-            for (final folder in readable) readRule(folder),
-            ...allowed,
-          ],
-        if (asked.isNotEmpty) 'ask': asked,
+        'allow': [for (final folder in readable) readRule(folder), ...allowed],
       },
     'env': {
       ...unsetEnvironment,

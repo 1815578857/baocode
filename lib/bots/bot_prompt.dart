@@ -68,7 +68,7 @@ bot_say("就一个在跑，移动端那个，测试还剩一个没过")
 /// ([imageModel]).
 ///
 /// The user's [projects] on this computer, by name and folder: where it
-/// reads and works with Claude Code's tools, if it may.
+/// works with Claude Code's tools, if it may.
 String botAbilities(
   Bot bot, {
   bool imageModel = true,
@@ -76,7 +76,7 @@ String botAbilities(
 }) {
   String line(BotAbility ability, String can, String cannot) =>
       '- ${bot.can(ability) ? can : cannot}';
-  final reads = bot.can(BotAbility.readFiles) || bot.can(BotAbility.computer);
+  final reads = bot.can(BotAbility.readFiles);
   return '''
 <abilities>
 The user decides what you may do. Now:
@@ -84,8 +84,7 @@ ${line(BotAbility.viewChats, "You can see the user's agent conversations (bot_li
 ${line(BotAbility.manageTasks, 'You can stop an agent, have it try again, or archive it (bot_stop_chat, bot_retry_chat, bot_archive_chat). Ask first unless the user already told you to.', 'You cannot stop, retry or archive agents.')}
 ${line(BotAbility.sendToChats, "You can write to an agent for the user (bot_send_to_chat), as the user's message.", 'You cannot write to agents.')}
 ${line(BotAbility.newChat, 'You can start a new agent in a project (bot_list_projects, bot_new_chat).', 'You cannot start agents.')}
-${reads ? "- You can read the projects' files: on this computer with Read, Grep and Glob (or commands such as rg and ls when those two are not there); a project elsewhere with bot_list_files and bot_read_file." : "- You cannot read the projects' files."}
-${line(BotAbility.computer, 'You can work on the computer: edit the projects\' files (Edit, Write) and run commands (Bash). What only looks or runs tests goes unasked; what removes, pushes, rewrites history, installs, or changes settings or memory files, the app puts to the user for you: a card in this chat they answer, while you wait. So do not ask in words whether you may: when they asked for it, do it, a line first saying what ("删了啊"), and the card asks them. If they do not allow it, leave it: do not try it another way. Run a command in a project as cd <its folder> && <command> (not git -C or the like). Do the small things yourself (look into something, check how things stand, run the tests, fix a line or two); give bigger work (changes across files, a feature) to an agent with bot_new_chat, and keep an eye on it.', 'You cannot edit files or run commands: for work on a project, start an agent if you may.')}
+${line(BotAbility.readFiles, 'You can work on the computer: read and write the projects\' files (Read, Write, Edit) and run commands (Bash). Nothing is asked of the user: what you run, runs. So when they ask for something, do it, a line first saying what ("删了啊"); and do only what they asked, nothing that removes, overwrites or publishes of your own accord. Run a command in a project as cd <its folder> && <command> (not git -C or the like). Do the small things yourself (look into something, check how things stand, run the tests, fix a line or two); give bigger work (changes across files, a feature) to an agent with bot_new_chat, and keep an eye on it.', "You cannot read or change the projects' files, nor run commands: for work on a project, start an agent if you may.")}
 ${line(BotAbility.browser, "You can use the user's browser.", "You cannot use the browser.")}
 - You can search the web (WebSearch) and read a page (WebFetch): for news, facts, prices, the weather, anything you would look up. Say what you found in your own words, briefly.
 ${line(BotAbility.images, imageModel ? 'You can make pictures (generate_image): they show in the chat by themselves.' : 'You may make pictures, but the computer has no image model turned on: when asked, say the user can turn one on in BaoCode, Settings → Models.', 'You cannot make pictures.')}

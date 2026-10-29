@@ -440,63 +440,6 @@ abstract final class BotTools {
       ),
       (
         tool(
-          'bot_list_files',
-          "Lists a project's files under a folder (all of them if none), "
-              'from its root.',
-          {
-            'project': {'type': 'string', 'description': 'Its name or id.'},
-            'folder': {'type': 'string'},
-          },
-          (input, call) async {
-            final found = project(input);
-            final (:files, :paths) = hostFilesOf(found);
-            final folder = (input['folder'] as String? ?? '').trim();
-            final root = found.root;
-            final listing = await listProjectFiles(
-              files,
-              folder.isEmpty ? root : paths.join(root, folder),
-              limit: 400,
-            );
-            return [
-              for (final path in listing.paths)
-                paths.relative(path, from: root).replaceAll(r'\', '/'),
-              if (listing.truncated) '…',
-            ].join('\n');
-          },
-          required: ['project'],
-          summary: (input, _) => '${input['project'] ?? ''}',
-        ),
-        const BotToolAccess({BotAbility.readFiles}),
-      ),
-      (
-        tool(
-          'bot_read_file',
-          "Reads a project's file, by its path from the project's root.",
-          {
-            'project': {'type': 'string', 'description': 'Its name or id.'},
-            'path': {'type': 'string'},
-          },
-          (input, call) async {
-            final found = project(input);
-            final (:files, :paths) = hostFilesOf(found);
-            final full = paths.normalize(
-              paths.join(found.root, text(input, 'path')),
-            );
-            if (!paths.isWithin(found.root, full)) {
-              throw StateError('Not in the project');
-            }
-            final read = await files.read(full);
-            return read.length > 40000
-                ? '${read.substring(0, 40000)}\n…'
-                : read;
-          },
-          required: ['project', 'path'],
-          summary: (input, _) => '${input['path'] ?? ''}',
-        ),
-        const BotToolAccess({BotAbility.readFiles}),
-      ),
-      (
-        tool(
           ChatCodec.botImageTool,
           'Sends a picture into this chat: one of a project\'s files '
           '(project and path), or one on the web (url). A picture made '

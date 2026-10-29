@@ -157,14 +157,6 @@ abstract final class LinkMethods {
   /// clears them.
   static const setBotSelf = 'setBotSelf';
 
-  /// `{"bot"}`: what the user let the bot do unasked from now on, answering
-  /// it in its chat ("always allow"): `{"rules"}`, Claude Code's
-  /// permission rules (`Bash(make:*)`).
-  static const botAllowed = 'botAllowed';
-
-  /// `{"bot", "rules"}`: of those, only [rules] kept.
-  static const setBotAllowed = 'setBotAllowed';
-
   /// `{"name", "gender", "signature", "picture"?}`: who the user is, as
   /// their phone's profile says, for their bots to know (`picture`,
   /// `{"data" (base64), "type"}` at most [LinkLimits.avatar], none for
