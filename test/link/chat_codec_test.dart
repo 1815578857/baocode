@@ -221,7 +221,7 @@ void main() {
       );
     });
 
-    test('its own texts show only in a turn it sent nothing in', () {
+    test('its own texts show only before it talks with its tools', () {
       const say = ToolCallItem(
         kind: ToolKind.other,
         tool: ChatCodec.botSayTool,
@@ -245,8 +245,11 @@ void main() {
         const AssistantTextItem('Done.'),
         const UserMessageItem(text: 'ok'),
         look,
+        // Taken up as it talked: what it writes after is a note still.
+        const UserMessageItem(text: '算了'),
+        const AssistantTextItem('They called it off.'),
       ];
-      expect(ChatCodec.botQuiet(items.length, (i) => items[i]), {3, 7});
+      expect(ChatCodec.botQuiet(items.length, (i) => items[i]), {3, 7, 11});
     });
 
     test('the user\'s sticker is told by its text', () {
@@ -269,6 +272,22 @@ void main() {
         '</${ChatCodec.botEventTag}>',
       );
       expect(ChatCodec.botEvent(note), '- failed: "Build" in monad');
+      // With a picture, referred to after it.
+      expect(
+        ChatCodec.botEvent(
+          user(
+            '<${ChatCodec.botEventTag}>\nnew picture\n</${ChatCodec.botEventTag}>\n[Image #2]',
+          ),
+        ),
+        'new picture',
+      );
+      // Taken up with the user's: theirs, without it.
+      expect(
+        ChatCodec.withoutBotEvents(
+          '<${ChatCodec.botEventTag}>\nx\n</${ChatCodec.botEventTag}>\n你好',
+        ),
+        '你好',
+      );
       expect(ChatCodec.botEvent(user('hi <${ChatCodec.botEventTag}>')), isNull);
     });
   });

@@ -85,7 +85,9 @@ class KernelWorkspace {
     this.instructions = '',
     this.ownPrompt = false,
     this.tools,
+    this.allowedTools = const [],
     this.queuedMessages,
+    this.queuedInPlace = false,
   });
 
   final List<String> folders;
@@ -105,6 +107,15 @@ class KernelWorkspace {
   /// own aside; all when null. Set, the app's MCP servers are its only
   /// ones: none of the user's.
   final List<String>? tools;
+
+  /// Built-in tools it uses without asking, whatever its permission mode
+  /// (permission rules: `WebFetch`, say).
+  final List<String> allowedTools;
+
+  /// Whether what the user writes while it works shows where they wrote
+  /// it, as a chat app's messages do, from the moment it is sent: not
+  /// apart, until taken up.
+  final bool queuedInPlace;
 }
 
 /// A setting the kernel offers a choice for. What is in effect is what the

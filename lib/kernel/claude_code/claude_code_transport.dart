@@ -65,6 +65,7 @@ class ClaudeLaunch {
     this.models = const [],
     this.sdkServers = const [],
     this.tools,
+    this.allowed = const [],
     this.promptSuggestions = true,
   });
 
@@ -87,6 +88,10 @@ class ClaudeLaunch {
   /// only MCP servers too (`--strict-mcp-config`): not the user's own,
   /// configured for Claude Code.
   final List<String>? tools;
+
+  /// Built-in tools it uses without asking (permission rules: `WebFetch`,
+  /// say), as the flag settings allow them.
+  final List<String> allowed;
 
   /// Folders it works in besides [cwd] (a multi-folder workspace's): each
   /// an `--add-dir`, their `CLAUDE.md` read as [cwd]'s is.
@@ -186,6 +191,7 @@ class ClaudeLaunch {
     models: models,
     sdkServers: sdkServers,
     tools: tools,
+    allowed: allowed,
     promptSuggestions: promptSuggestions,
   );
 
@@ -211,9 +217,9 @@ class ClaudeLaunch {
       },
       'availableModels': allowlist,
     },
-    if (readable.isNotEmpty)
+    if (readable.isNotEmpty || allowed.isNotEmpty)
       'permissions': {
-        'allow': [for (final folder in readable) readRule(folder)],
+        'allow': [for (final folder in readable) readRule(folder), ...allowed],
       },
     'env': {
       ...unsetEnvironment,

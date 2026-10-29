@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-
 /// What happened to one of the user's agents, for a bot to tell of.
 enum BotEventKind {
   /// It asks the user: a question, a permission, a plan.

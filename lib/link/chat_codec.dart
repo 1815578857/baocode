@@ -35,11 +35,22 @@ abstract final class ChatCodec {
 
   /// What the app told a bot in [item], if it is such a note.
   static String? botEvent(UserMessageItem item) {
-    final text = item.text.trim();
+    // The pictures that came with it referred to after it, if they are.
+    final text = item.text.replaceAll(imageReferencePattern, '').trim();
     const open = '<$botEventTag>', close = '</$botEventTag>';
     if (!text.startsWith(open) || !text.endsWith(close)) return null;
     return text.substring(open.length, text.length - close.length).trim();
   }
+
+  /// [text] (a message of the user's to a bot) without the app's notes
+  /// in it: taken up with one, the two are one message.
+  static String withoutBotEvents(String text) =>
+      text.replaceAll(_botEvents, '').trim();
+
+  static final _botEvents = RegExp(
+    '<$botEventTag>.*?</$botEventTag>',
+    dotAll: true,
+  );
 
   /// The agent [item] shows as a card, if it is the bot's tool that does.
   static String? botCard(ToolCallItem item) =>
@@ -64,12 +75,15 @@ abstract final class ChatCodec {
 
   /// Which of a bot's [count] items ([at] each) are texts of its own not
   /// shown in its chat: those of a turn it sent anything in (see
-  /// [botSent]), its notes to itself then. A turn it only wrote in, as
-  /// bots did before they talked with [botSayTool], shows them.
+  /// [botSent]), and all after, its notes to itself once it talks with its
+  /// tools (a message of the user's taken up as it talks splits its turn).
+  /// The turns before, as bots had before they talked with [botSayTool],
+  /// show them.
   static Set<int> botQuiet(int count, ChatItem Function(int) at) {
     final quiet = <int>{};
     final texts = <int>[];
     var sent = false;
+    var talked = false;
     void endTurn() {
       if (sent) quiet.addAll(texts);
       texts.clear();
@@ -81,9 +95,13 @@ abstract final class ChatCodec {
         case UserMessageItem(queued: false):
           endTurn();
         case AssistantTextItem():
-          texts.add(i);
+          if (talked) {
+            quiet.add(i);
+          } else {
+            texts.add(i);
+          }
         case final item when botSent(item):
-          sent = true;
+          sent = talked = true;
         default:
       }
     }
