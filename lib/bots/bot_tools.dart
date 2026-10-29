@@ -38,10 +38,6 @@ class BotToolAccess {
 /// remembers kept. Each for the bots with its ability on (see
 /// [Bots.offersTool]); none for the agents of projects.
 abstract final class BotTools {
-  /// The tool that shows one of the user's agents in the bot's chat, as a
-  /// card the phone opens it from (see chat_codec.dart).
-  static const showChat = ChatCodec.botCardTool;
-
   static final Map<String, BotToolAccess> _access = {};
 
   /// Who [tool] is for, if a bot's.
@@ -287,21 +283,6 @@ abstract final class BotTools {
               '"${thread.title}" in ${thread.project.name}, ${_status(thread)}:',
               ...lines.reversed,
             ].join('\n');
-          },
-          required: ['chat'],
-          summary: titled,
-        ),
-        _agents,
-      ),
-      (
-        tool(
-          showChat,
-          "Shows one of the user's agent conversations in this chat, as a "
-          'card they tap to open it. Use it whenever you speak of one.',
-          {'chat': chatId},
-          (input, call) async {
-            final thread = chat(input);
-            return 'Shown: "${thread.title}".';
           },
           required: ['chat'],
           summary: titled,

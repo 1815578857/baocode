@@ -17,10 +17,6 @@ abstract final class ChatCodec {
   /// a note.
   static const botEventTag = 'bao-event';
 
-  /// The bot's tool that shows one of the user's agents in its chat (its
-  /// input's `chat`), as a card that opens it.
-  static const botCardTool = 'bot_show_chat';
-
   /// The bot's tool that sends a picture: a file's, which it answers with
   /// (the item's images), or one on the web (its input's `url`).
   static const botImageTool = 'bot_send_image';
@@ -32,6 +28,10 @@ abstract final class ChatCodec {
   /// The tag a bot wraps narration in: what it does or what goes on, told
   /// beside its messages, not said to the user.
   static const botNarrateTag = 'bot_narrate';
+
+  /// The tag a bot wraps one of the user's agents' ids in, to show it in
+  /// its chat as a card that opens it.
+  static const botCardTag = 'bot_show_chat';
 
   /// What the app told a bot in [item], if it is such a note.
   static String? botEvent(UserMessageItem item) {
@@ -52,38 +52,34 @@ abstract final class ChatCodec {
     dotAll: true,
   );
 
-  /// The agent [item] shows as a card, if it is the bot's tool that does.
-  static String? botCard(ToolCallItem item) =>
-      _botInput(item, botCardTool, 'chat');
-
   /// The messages a bot's reply [text] has, in order: each `<bot_say>`'s,
   /// once closed (one still being written shows when it is whole).
   static List<String> botSays(String text) => [
-    for (final (said, narration) in botParts(text))
-      if (!narration) said,
+    for (final (tag, said) in botParts(text))
+      if (tag == botSayTag) said,
   ];
 
-  /// What a bot's reply [text] shows, in order: its messages, and its
-  /// narration (`<bot_narrate>`, [narration] true); each once closed.
-  static List<(String text, bool narration)> botParts(String text) => [
+  /// What a bot's reply [text] shows, in order, each once closed: its
+  /// messages ([botSayTag]), its narration ([botNarrateTag]) and the
+  /// agents it shows ([botCardTag], their ids).
+  static List<(String tag, String text)> botParts(String text) => [
     for (final match in _botParts.allMatches(text))
       if (match[2]!.trim() case final part when part.isNotEmpty)
-        (part, match[1] == botNarrateTag),
+        (match[1]!, part),
   ];
 
   static final _botParts = RegExp(
-    '<($botSayTag|$botNarrateTag)>(.*?)</\\1>',
+    '<($botSayTag|$botNarrateTag|$botCardTag)>(.*?)</\\1>',
     dotAll: true,
   );
 
-  /// Whether [item] is something a bot sent into its chat: a card, a
-  /// picture (one being made too). Its messages are in its texts (see
-  /// [botSays]).
+  /// Whether [item] is something a bot sent into its chat with its tools:
+  /// a picture (one being made too). Its messages and cards are in its
+  /// texts (see [botParts]).
   static bool botSent(ChatItem item) =>
       item is ToolCallItem &&
       item.status != ToolStatus.failed &&
-      (botCard(item) != null ||
-          botImageUrl(item) != null ||
+      (botImageUrl(item) != null ||
           item.kind == ToolKind.image ||
           item.images.isNotEmpty);
 
@@ -154,7 +150,6 @@ abstract final class ChatCodec {
       'status': item.status.name,
       'output': ?_head(item.output),
       'tool': ?item.tool,
-      'card': ?botCard(item),
       'url': ?botImageUrl(item),
       // What a browser's call does, for its line to say.
       if (item.kind == ToolKind.browser)
@@ -292,17 +287,16 @@ abstract final class ChatCodec {
         output: optional('output'),
         tool: optional('tool'),
         images: _decodeImages(json['images']),
-        input: switch ((json['making'], json['browse'], json['card'])) {
-          (_, _, final String card) => {'chat': card},
+        input: switch ((json['making'], json['browse'])) {
           _ when json['sticker'] is String => {'sticker': json['sticker']},
           _ when json['url'] is String => {'url': json['url']},
-          (final Map<String, Object?> making, _, _) => {
+          (final Map<String, Object?> making, _) => {
             'prompt': '',
             'count': ?making['count'],
             'size': ?making['size'],
             'aspect_ratio': ?making['aspect'],
           },
-          (_, final Map<String, Object?> browse, _) => {
+          (_, final Map<String, Object?> browse) => {
             'action': ?browse['action'],
             if (browse['url'] == true) 'url': '',
           },

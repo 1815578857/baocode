@@ -414,7 +414,7 @@ void main() {
         final hers = await offered(mia.folder);
         expect(
           hers,
-          containsAll(['bot_list_chats', 'bot_show_chat', 'bot_stop_chat']),
+          containsAll(['bot_list_chats', 'bot_read_chat', 'bot_stop_chat']),
         );
         expect(hers, contains('bot_remember'));
         final none = bots.save(name: 'Quiet', identity: '', abilities: {});
