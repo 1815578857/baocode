@@ -11247,9 +11247,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitCommitCollapseAll => 'Collapse All';
 
   @override
-  String get gitCommitGroupByDirectory => 'Group by Directory';
-
-  @override
   String get gitCommitEmptyMessage => 'Enter a commit message.';
 
   @override
