@@ -18,7 +18,6 @@ import 'images/image_tools.dart';
 import 'channel/channel_setup.dart';
 import 'channel/channel_gate.dart';
 import 'channel/channel_setup_welcome.dart';
-import 'chat/chat_column.dart';
 import 'chat/chat_keys.dart';
 import 'chat/chat_models.dart' show FileChange, FileChangeKind;
 import 'chat/chat_screen.dart';
@@ -294,9 +293,10 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   /// [AgentSidePanel.asks] as last seen.
   int _sidePanelAsks = 0;
 
-  /// The side panel shown for a conversation, beside the docked sidebar.
+  /// The side panel shown for a conversation, beside the docked sidebar:
+  /// the window's, or (agents side by side) the focused pane's.
   bool get _sidePanelWanted =>
-      _sidePanel.shown && (_agentThread ?? _workspace.current) != null;
+      _sidePanel.isShown && (_agentThread ?? _workspace.current) != null;
 
   /// Whether the window has the docked sidebar, at its least, beside the
   /// conversations and the side panel, at theirs.
@@ -434,11 +434,20 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   /// The panel at the right of the conversations: the focused agent's
   /// changes and the files opened from its conversation (see
   /// [AgentSidePanel]), shown and as wide as the last run left it.
-  late final AgentSidePanel _sidePanel = AgentSidePanel(
-    state: _workspace.sidePanelView,
-    onSave: () => _workspace.keepSidePanelView(_sidePanel.toJson()),
-    settings: widget.settings?.files?.settings,
-  )..addListener(_sidePanelChanged);
+  late final AgentSidePanel _sidePanel =
+      AgentSidePanel(
+          state: _workspace.sidePanelView,
+          onSave: () => _workspace.keepSidePanelView(_sidePanel.toJson()),
+          settings: widget.settings?.files?.settings,
+        )
+        ..pane = (() => _panesSidePanels ? _workspace.current?.session : null)
+        ..addListener(_sidePanelChanged);
+
+  /// Whether agents side by side each have a side panel of their own,
+  /// beside their pane (see [AgentSidePanel.pane]): not one window's
+  /// beside them all.
+  bool get _panesSidePanels =>
+      _agentThread == null && !_replacingChat && _workspace.grid.length > 1;
   bool _sidePanelShown = false;
   late bool _sidePanelAtLeft = _sidePanel.atLeft;
 
@@ -456,9 +465,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   /// [_sidePanelLast]).
   void _sidePanelChanged() {
     final asked = _sidePanel.asks != _sidePanelAsks;
-    if (_sidePanel.shown == _sidePanelShown &&
+    if (_sidePanel.isShown == _sidePanelShown &&
         _sidePanel.atLeft == _sidePanelAtLeft &&
         !asked) {
+      // Each pane's own, shown or hidden: their panes built anew.
+      if (_panesSidePanels && mounted) setState(() {});
       return;
     }
     _sidePanelAtLeft = _sidePanel.atLeft;
@@ -469,34 +480,35 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       _sidePanelLast = true;
       if (!shown && _sidesClash) _docked = false;
     }
-    _sidePanelShown = _sidePanel.shown;
+    _sidePanelShown = _sidePanel.isShown;
     if (mounted) setState(() {});
   }
 
   /// Toggle Side Panel, as the title bars' toggles show it: shown where it
-  /// gave way, it is asked for again.
-  void _toggleSidePanel() => _sidePanelShown && !_sidePanelHidden
+  /// gave way, it is asked for again. Of agents side by side, the focused
+  /// one's.
+  void _toggleSidePanel() => _sidePanel.isShown && !_sidePanelHidden
       ? _sidePanel.hide()
       : _sidePanel.show();
 
-  /// Whether the side panel shows for [thread]: it is the focused agent's,
-  /// so a pane's toggle shows it where that pane is the one.
-  bool _sidePanelShownFor(AgentThread thread) =>
-      _sidePanelShown &&
-      !_sidePanelHidden &&
-      (_agentThread != null || identical(thread, _workspace.current));
+  /// Whether the side panel shows for [thread]: of agents side by side, its
+  /// pane's own; else the window's, the focused agent's.
+  bool _sidePanelShownFor(AgentThread thread) => _panesSidePanels
+      ? _sidePanel.shownIn(thread.session) && !_sidePanelHidden
+      : _sidePanelShown &&
+            !_sidePanelHidden &&
+            (_agentThread != null || identical(thread, _workspace.current));
 
   /// [thread]'s pane's side panel: hidden where it is its agent's already,
   /// else shown for it, focused first.
   void _toggleSidePanelOf(AgentThread thread) {
-    if (_sidePanelShownFor(thread)) {
-      _sidePanel.hide();
-      return;
-    }
     if (_agentThread == null && !identical(thread, _workspace.current)) {
       _workspace.select(thread);
     }
-    _sidePanel.show();
+    if (_panesSidePanels) {
+      return _sidePanel.setShownIn(thread.session, !_sidePanelShownFor(thread));
+    }
+    _sidePanelShownFor(thread) ? _sidePanel.hide() : _sidePanel.show();
   }
 
   /// An agent dragged from the sidebar onto the conversations.
@@ -592,7 +604,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     ChannelGate.current?.addListener(_channelGateChanged);
     widget.settings?.files?.changes.addListener(_settingsFilesChanged);
     _settingsFilesChanged();
-    _sidePanelShown = _sidePanel.shown;
+    _sidePanelShown = _sidePanel.isShown;
     _sidePanelAsks = _sidePanel.asks;
     _workspace.addListener(_restoreSidePanel);
     _restoreSidePanel();
@@ -1868,7 +1880,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       'inputFocus' || 'textInputFocus' =>
         focus?.context?.findAncestorStateOfType<EditableTextState>() != null,
       'terminalFocus' || 'terminalFocusInAny' => _terminals?.focused ?? false,
-      ChatContextKeys.sidePanelFocus => _sidePanel.focusNode.hasFocus,
+      ChatContextKeys.sidePanelFocus => _sidePanel.hasFocus,
       'terminalProcessSupported' => _terminals != null,
       'terminalIsOpen' || 'terminalHasBeenCreated' =>
         _terminals?.current?.instances.isNotEmpty ?? false,
@@ -3221,10 +3233,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       onToggleTerminal: ide || _terminals?.root == null
           ? null
           : _toggleTerminal,
-      sidePanelShown: _sidePanel.shown && !_sidePanelHidden,
+      sidePanelShown: _sidePanel.isShown && !_sidePanelHidden,
       onToggleSidePanel: ide || (agent ?? _workspace.current) == null
           ? null
           : _toggleSidePanel,
+      chatTools: ide || !_toolsInPanes,
       onOpenFolder: _openFolder,
       onOpenSettings: () => unawaited(openSettings()),
       onToggleContextPanel: () {
@@ -3244,6 +3257,13 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
           : null,
     );
   }
+
+  /// Whether the conversations are side by side, each pane's title bar with
+  /// its own agent's terminal, side panel and editor buttons (see
+  /// [_buildChat]), as macOS has them: Windows' header then has only the
+  /// window's, the pin.
+  bool get _toolsInPanes =>
+      !_agentWindow && !_replacingChat && _workspace.grid.length >= 2;
 
   /// Whether the session's title is in Windows' header (see
   /// [WindowHeader.title]), not a row of the chat's own: the narrow
@@ -3541,12 +3561,15 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   }
 
   /// The open agents side by side (see [ChatGridView]), each with its
-  /// project's terminal panel under it (see [_withTerminal]), the side
-  /// panel at their right.
-  Widget _buildPanes({required bool showToggle}) => _withSidePanel(
-    _buildGrid(showToggle: showToggle),
-    showToggle: showToggle,
-  );
+  /// project's terminal panel under it (see [_withTerminal]); of several,
+  /// each with a side panel of its own (see [_paneSidePanel]), else the
+  /// side panel at their right.
+  Widget _buildPanes({required bool showToggle}) => _workspace.grid.length > 1
+      ? _buildGrid(showToggle: showToggle)
+      : _withSidePanel(
+          _buildGrid(showToggle: showToggle),
+          showToggle: showToggle,
+        );
 
   void _showSidePanelSection(SidePanelSection section) {
     final thread = _agentThread ?? _workspace.current;
@@ -3557,16 +3580,23 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     ChatCommandIds.toggleSidePanel: _toggleSidePanel,
     ChatCommandIds.toggleSidePanelPosition: () =>
         _sidePanel.atLeft = !_sidePanel.atLeft,
-    if (_sidePanel.focusNode.hasFocus)
+    if (_sidePanel.hasFocus)
       ChatCommandIds.sidePanelCloseTab: _closeSidePanelTab,
     for (final section in alwaysShownSections)
       section.command!: () => _showSidePanelSection(section),
   };
 
+  /// The focus of the focused agent's side panel: its pane's, of agents
+  /// side by side, else the window's.
+  FocusNode _sidePanelFocusOf(AgentThread thread) => _panesSidePanels
+      ? _sidePanel.focusNodeOf(thread.session)
+      : _sidePanel.focusNode;
+
   /// Close Tab, from the side panel; the focus stays there, for the next.
   void _closeSidePanelTab() {
     final thread = _agentThread ?? _workspace.current;
     if (thread == null) return;
+    final focus = _sidePanelFocusOf(thread);
     // One with unsaved changes asks first whether to save them.
     if (_sidePanel.tabsOf(thread.session).current case final tab?
         when tab.dirty) {
@@ -3574,13 +3604,13 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         closeSidePanelTabs(context, _sidePanel, thread.session, [tab]).then((
           _,
         ) {
-          if (mounted && _sidePanel.shown) _sidePanel.focusNode.requestFocus();
+          if (mounted && _sidePanelShownFor(thread)) focus.requestFocus();
         }),
       );
       return;
     }
     _sidePanel.closeCurrent(thread.session);
-    if (_sidePanel.shown) _sidePanel.focusNode.requestFocus();
+    if (_sidePanelShownFor(thread)) focus.requestFocus();
   }
 
   /// [showToggle]: the window's sidebar hidden, the panel at the
@@ -4232,7 +4262,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     );
   }
 
-  /// An agent dragged from the sidebar, released over the conversations.
+  /// An agent from the sidebar, or a pane's title bar, released over the
+  /// conversations.
   void _drop(ChatDrop drop) {
     final growth = drop.growth;
     if (growth != Size.zero) {
@@ -4243,7 +4274,9 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       }
       unawaited(WindowControls.grow(growth));
     }
-    if (drop.side case final side?) {
+    if (drop.rearrange) {
+      _workspace.rearrangePane(drop.thread, drop.target, side: drop.side);
+    } else if (drop.side case final side?) {
       _workspace.openBeside(drop.thread, drop.target, side);
     } else {
       _workspace.openInPlaceOf(drop.target, drop.thread);
@@ -4274,11 +4307,12 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     bool showsTerminals = false,
   }) {
     final thread = pane ?? _workspace.current;
-    // Windows keeps the toggle, the pin and the editor button in its header
-    // (see window_header/): all that is left for this row is the session's
-    // title, which then sits in the middle of it. Elsewhere the toggle is
-    // in the top left pane, by the traffic lights, and the others in each
-    // pane's title bar (the pin, the window's, in the top right one).
+    // Windows keeps the toggle and the pin in its header (see
+    // window_header/), and the terminal, side panel and editor buttons too
+    // while there is one conversation: all that is left for its row is the
+    // session's title, which then sits in the middle of it. Elsewhere the
+    // toggle is in the top left pane, by the traffic lights, and the others
+    // in each pane's title bar (the pin, the window's, in the top right one).
     final header = WindowControls.drawsHeader;
     // The side panel at the window's left has it, by the traffic lights.
     showToggle =
@@ -4312,7 +4346,9 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     // agent's and its project's, not the focused agent's. Only the pin,
     // which is the window's, is the top right pane's alone. A click on any
     // of them leaves the focus where it is, as closing another pane does.
-    final paneTools = !header && !embedded;
+    // So under Windows' header too, once there are panes: the header keeps
+    // the pin, and the others leave it for theirs (see [_toolsInPanes]).
+    final paneTools = !embedded && (!header || !place.alone);
     final terminals = _terminals;
     // In the order of the IDE's title bar ([panel][chat][pin][back]): the
     // terminal and the side panel as its panel and chat, then the pin, then
@@ -4363,6 +4399,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         ),
       ],
     ];
+    final draggable = !embedded && !place.alone && _agentThread == null;
     // The layout's context keys, for the chat's keybindings (see ChatKeys).
     final chat = ChatKeyScope(
       lookup: embedded ? _ideChatKeyContext : _chatKeyContext,
@@ -4373,6 +4410,25 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
         title: thread.localizedTitle(context.l10n),
         autofocus: thread.session.itemCount == 0,
         onRename: (title) => _workspace.rename(thread, title),
+        titleDragBuilder: draggable
+            ? (title) => MouseRegion(
+                cursor: SystemMouseCursors.grab,
+                child: ChatDragSource(
+                  drag: _drag,
+                  thread: thread,
+                  rearrange: true,
+                  child: title,
+                ),
+              )
+            : null,
+        onTitleDragStart: draggable
+            ? (event) => _drag.start(
+                thread,
+                event.pointer,
+                event.position,
+                rearrange: true,
+              )
+            : null,
         // Beside the sidebar, the traffic lights are over it, not here.
         titleBarInset: titleBarInset,
         leading: leading,
@@ -4422,50 +4478,32 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       ),
     );
     if (place.alone || embedded) return chat;
-    return _paneRail(thread, chat);
+    return _paneSidePanel(thread, chat);
   }
 
-  /// [chat], a pane among others, with the side panel's rail over its top
-  /// right (left, the panel at the left), under its title bar (and its close button), while the panel is
-  /// hidden: the rail of its own agent, as the window's would be were it
-  /// alone, and its column clear of it.
-  Widget _paneRail(AgentThread thread, Widget chat) => ListenableBuilder(
-    listenable: _sidePanel,
+  /// [chat], a pane among others, with a side panel of its own, of its
+  /// agent: beside it on its side, as the window's beside one conversation;
+  /// over it where the pane has not the room. While it is hidden, its rail
+  /// over the pane's top right (left, the panel at the left), under its
+  /// title bar.
+  Widget _paneSidePanel(AgentThread thread, Widget chat) => AgentSidePanelArea(
+    panel: _sidePanel,
+    conversation: thread.session,
+    hidden: _sidePanelHidden,
+    rail: _railFor(thread),
+    builder: (context) => _buildSidePanel(thread),
     child: chat,
-    builder: (context, chat) {
-      final rail = _sidePanel.shown && !_sidePanelHidden && !_replacingChat
-          ? null
-          : _railFor(thread);
-      // On the side the panel is.
-      final atLeft = _sidePanel.atLeft;
-      final inset = rail == null ? 0.0 : AgentSidePanelArea.railInset;
-      return ChatColumnInset(
-        right: atLeft ? 0 : inset,
-        left: atLeft ? inset : 0,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            chat!,
-            if (rail != null)
-              Positioned(
-                key: const ValueKey('rail'),
-                left: atLeft ? AgentSidePanelArea.railRight : null,
-                right: atLeft ? null : AgentSidePanelArea.railRight,
-                top: AppMetrics.titleBarHeight + 4,
-                child: rail,
-              ),
-          ],
-        ),
-      );
-    },
   );
 
   /// The file in front on the side panel, while it shows [thread]'s: on
   /// the files page, where it is edited (its cursor and selection with
   /// it); on the changes page, whose changes show.
   OpenEditor? _sidePanelEditor(AgentThread thread) {
-    if (!_sidePanel.shown || _sidePanelHidden || _replacingChat) return null;
-    if (!identical(_agentThread ?? _workspace.current, thread)) return null;
+    if (!_sidePanelShownFor(thread) || _replacingChat) return null;
+    if (!_panesSidePanels &&
+        !identical(_agentThread ?? _workspace.current, thread)) {
+      return null;
+    }
     final tabs = _sidePanel.tabsOf(thread.session);
     return switch (tabs.shown) {
       SidePanelSection.files => switch (tabs.active) {
