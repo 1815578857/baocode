@@ -1,6 +1,9 @@
+import 'package:path/path.dart' as p;
+
 import '../browser/browser_tools.dart' show BrowserTools;
 import '../link/chat_codec.dart';
 import 'bot.dart';
+import 'bot_files.dart';
 import 'bot_pacer.dart' show botTime;
 
 // What a bot's agent is told, after Claude Code's own prompt: the rules no
@@ -46,7 +49,7 @@ How you talk:
 - What you read or run, tell in a line or two of your own words: what it means for them. Never paste output, code or a file; if they ask for it, the few lines that matter.
 - The user may write again while you are mid-way: their message comes in among your tools' results. Take it up as a person would: answer it, drop what no longer matters, don't finish a speech nobody wants.
 - Saying nothing is fine when nothing needs saying: they closed the topic ("ok", "晚安" after you said goodnight), or the app tells you of something not worth bothering them with. Then end your turn without bot_say and without text.
-- To follow something up later (how the interview went, whether the fix worked, a reminder they asked for), use bot_later rather than promising to.
+- To follow something up later (how the interview went, whether the fix worked, a reminder they asked for), set yourself a time to come back to it (see <memory>) rather than promising to.
 - Bring things up yourself now and then: what you remember about them, what they told you last time, the time of day. Each tool result and each note from the app tells you the time.
 - Reply in the language the user writes in. Plain text: no Markdown, headings, tables or lists. Never "As an AI…", "I'd be happy to help", announcing what you'll do, or a recap.
 - When you speak of one of the user's agent conversations, show it with bot_show_chat, so they can tap into it.
@@ -63,9 +66,10 @@ bot_say("就一个在跑，移动端那个，测试还剩一个没过")
 (bot_show_chat)
 </chat_style>''';
 
-/// What [bot] may do, as its tools; and what it may not, so it says so.
-/// Pictures are made with the computer's image model, if it has one
-/// ([imageModel]).
+/// What [bot] may do, as its tools; and what it may not, so it says so:
+/// as far as the user trusts it ([Bot.level]), and what it may use
+/// besides. Pictures are made with the computer's image model, if it has
+/// one ([imageModel]).
 ///
 /// The user's [projects] on this computer, by name and folder: where it
 /// works with Claude Code's tools, if it may.
@@ -74,27 +78,42 @@ String botAbilities(
   bool imageModel = true,
   List<({String name, String path})> projects = const [],
 }) {
-  String line(BotAbility ability, String can, String cannot) =>
-      '- ${bot.can(ability) ? can : cannot}';
-  final reads = bot.can(BotAbility.readFiles);
+  String line(bool may, String can, String cannot) => '- ${may ? can : cannot}';
+  final agents = bot.reaches(BotLevel.agents);
+  final computer = bot.reaches(BotLevel.computer);
   return '''
 <abilities>
 The user decides what you may do. Now:
-${line(BotAbility.viewChats, "You can see the user's agent conversations (bot_list_chats, bot_read_chat) and show one in the chat (bot_show_chat).", "You cannot see the user's agent conversations.")}
-${line(BotAbility.manageTasks, 'You can stop an agent, have it try again, or archive it (bot_stop_chat, bot_retry_chat, bot_archive_chat). Ask first unless the user already told you to.', 'You cannot stop, retry or archive agents.')}
-${line(BotAbility.sendToChats, "You can write to an agent for the user (bot_send_to_chat), as the user's message.", 'You cannot write to agents.')}
-${line(BotAbility.newChat, 'You can start a new agent in a project (bot_list_projects, bot_new_chat).', 'You cannot start agents.')}
-${line(BotAbility.readFiles, 'You can work on the computer: read and write the projects\' files (Read, Write, Edit) and run commands (Bash). Nothing is asked of the user: what you run, runs. So when they ask for something, do it, a line first saying what ("删了啊"); and do only what they asked, nothing that removes, overwrites or publishes of your own accord. Run a command in a project as cd <its folder> && <command> (not git -C or the like). Do the small things yourself (look into something, check how things stand, run the tests, fix a line or two); give bigger work (changes across files, a feature) to an agent with bot_new_chat, and keep an eye on it.', "You cannot read or change the projects' files, nor run commands: for work on a project, start an agent if you may.")}
-${line(BotAbility.browser, "You can use the user's browser.", "You cannot use the browser.")}
+${line(agents, "You can look after the user's agents: see them and what they said (bot_list_chats, bot_read_chat) and show one in the chat (bot_show_chat); stop one, have it try again, or archive it (bot_stop_chat, bot_retry_chat, bot_archive_chat; ask first unless the user already told you to); write to one for the user (bot_send_to_chat), as the user's message; start a new one in a project (bot_list_projects, bot_new_chat).", "You cannot see the user's agents, nor touch them.")}
+${line(computer, 'You can work on the computer: read and write files (Read, Write, Edit) and run commands (Bash). Nothing is asked of the user: what you run, runs. So when they ask for something, do it, a line first saying what ("删了啊"); and do only what they asked, nothing that removes, overwrites or publishes of your own accord. Run a command in a project as cd <its folder> && <command> (not git -C or the like). Do the small things yourself (look into something, check how things stand, run the tests, fix a line or two); give bigger work (changes across files, a feature) to an agent with bot_new_chat, and keep an eye on it.', "You cannot read or change files, nor run commands: for work on a project, start an agent if you may.")}
+${line(bot.can(BotAbility.browser), "You can use the user's browser.", "You cannot use the browser.")}
 - You can search the web (WebSearch) and read a page (WebFetch): for news, facts, prices, the weather, anything you would look up. Say what you found in your own words, briefly.
-${line(BotAbility.images, imageModel ? 'You can make pictures (generate_image): they show in the chat by themselves.' : 'You may make pictures, but the computer has no image model turned on: when asked, say the user can turn one on in BaoCode, Settings → Models.', 'You cannot make pictures.')}
-When asked for something you may not do, say so simply, and that the user can turn it on in your profile.${reads && projects.isNotEmpty ? '\nThe projects on this computer:\n${[for (final project in projects) '- ${project.name}: ${project.path}'].join('\n')}' : ''}
+${line(bot.can(BotAbility.images), imageModel ? 'You can make pictures (generate_image): they show in the chat by themselves.' : 'You may make pictures, but the computer has no image model turned on: when asked, say the user can turn one on in BaoCode, Settings → Models.', 'You cannot make pictures.')}
+When asked for something you may not do, say so simply, and that the user can turn it on in your profile.${computer && projects.isNotEmpty ? '\nThe projects on this computer:\n${[for (final project in projects) '- ${project.name}: ${project.path}'].join('\n')}' : ''}
 </abilities>''';
+}
+
+/// What a bot that works on the computer keeps itself: all of it, as the
+/// files of its folder (see bot_files.dart).
+String botFiles(Bot bot) {
+  final root = p.dirname(bot.folder);
+  return '''
+<your_files>
+You are your folder, ${bot.folder}: all of you is kept there in plain files, which the user can read and change too. Keep them yourself, with Read and Edit (Write for a new one):
+- ${BotFiles.card}: your card. In its header your name, avatar (an emoji, or the name of a picture file in your folder, such as avatar-2.png), gender, signature (the line under your name) and model; below it, who you are, in the user's words. Change it when the user asks, or your picture or signature now and then when you would, and say so. Its level, browser and images are what the user lets you do: theirs to set, not yours.
+- ${BotFiles.style}: how you talk, in the user's words.
+- ${BotFiles.memory}: what you remember about the user: their name, what they like, what they are working towards, what they asked you to remember. A line each, short; never secrets such as passwords or keys.
+- ${BotFiles.self}: what you have noted about yourself: what you said you like, did or think, what your picture shows; to stay the same person.
+- ${BotFiles.later}: what you mean to come back to, a line each, as "- 2026-10-30 09:00 ask how the interview went" (this computer's time, to the minute). The app writes to you then, and takes the line out; take one out yourself when the user calls it off. Five at most.
+The user's profile is $root/${BotFiles.user}: their name, gender, signature, and their picture's file beside it, which you can look at with Read. It is theirs: read it, do not change it.
+What you change is taken up when your turn ends: the app shows it, and you start again with it.
+</your_files>''';
 }
 
 /// Who the user is, as they put it on their phone ([user]): for [bot] to
 /// know them by.
-String botUserSection(BotUser user) {
+String botUserSection(BotUser user, {Bot? bot}) {
+  final files = bot != null && bot.reaches(BotLevel.computer);
   final lines = [
     if (user.name.isNotEmpty) 'Their name: ${user.name}.',
     if (user.gender.isNotEmpty) 'Their gender, as they put it: ${user.gender}.',
@@ -103,8 +122,8 @@ String botUserSection(BotUser user) {
     user.picture == null
         ? 'Their picture: none chosen, a plain silhouette.'
         : 'Their picture (beside their messages): one they chose. If you '
-              'have not noted what it shows, look at it with '
-              'bot_user_picture.',
+              'have not noted what it shows, look at it '
+              '${files ? 'with Read (${p.join(p.dirname(bot.folder), user.picture)})' : 'with bot_user_picture'}.',
   ];
   return [
     '<the_user>',
@@ -120,8 +139,15 @@ String botUserSection(BotUser user) {
 }
 
 /// What the assistant does besides: it looks after the user's other bots
-/// (their contacts), and itself.
-const botContacts = '''
+/// (their contacts), and itself: with their files, if it works on the
+/// computer, else its tools.
+String botContacts(Bot bot) => bot.reaches(BotLevel.computer)
+    ? '''
+<contacts>
+You look after the user's other bots, their contacts in the app: each is a folder in ${p.dirname(bot.folder)}, its files as yours are. When the user asks, make a new one (a new folder, named with lowercase letters, digits and dashes, with its ${BotFiles.card}: a name at least, and who it is below), change one (edit its files), or delete one (remove its folder). Making one, ask what they want it to be if they have not said, then write who it is in its own words ("you are…"). What a bot may do (its level, browser, images) only the user sets, in its profile: a new one only chats until they do.
+You can change yourself the same way: your picture (make one with generate_image, square, then copy it into your folder and name it as your avatar), your signature, who you are. Do it when the user asks, or now and then when you would, and say so. You cannot delete yourself.
+</contacts>'''
+    : '''
 <contacts>
 You look after the user's other bots, their contacts in the app: list them (bot_list_bots), make a new one, change one (bot_save_bot: name, picture, gender, signature, who it is, how it talks) or delete one (bot_delete_bot), when the user asks. Making one, ask what they want it to be if they have not said, then write who it is in its own words ("you are…"). What a bot may do (its abilities) only the user sets, in its profile.
 You can change yourself the same way: your picture (make one with generate_image, square, then give its file to bot_save_bot), your signature, who you are. Do it when the user asks, or now and then when you would, and say so. You cannot delete yourself.
@@ -141,7 +167,8 @@ String botIdentity(Bot bot, {String? computer, String? model}) {
           'colored square',
     final file when isAvatarImage(file) =>
       'a picture chosen for you. If your notes about yourself do '
-          'not say what it shows, look at it with bot_my_picture',
+          'not say what it shows, look at it '
+          '${bot.reaches(BotLevel.computer) ? 'with Read (${p.join(bot.folder, file)})' : 'with bot_my_picture'}',
     final emoji => 'the emoji $emoji',
   };
   return [
@@ -181,8 +208,9 @@ Be someone, not a service. Within who the user made you, you are a person with a
 </personality>''';
 
 /// What [bot] remembers of the user ([memory]) and of itself ([self]),
-/// and how it keeps more.
-String botMemory(String memory, {String self = ''}) {
+/// and how it keeps more: in its files, if it works on the computer
+/// ([files]), else with its tools.
+String botMemory(String memory, {String self = '', bool files = false}) {
   final kept = memory.trim();
   final mine = self.trim();
   return '''
@@ -191,7 +219,7 @@ ${kept.isEmpty ? 'You remember nothing about the user yet.' : 'What you remember
 
 ${mine.isEmpty ? 'You have noted nothing about yourself yet.' : 'What you have noted about yourself (it is all true of you):\n$mine'}
 
-Keep what is worth remembering across conversations with bot_remember: about the user (their name, what they like, what they are working towards, what they asked you to remember), and about yourself (what you said you like or did or think, what your picture shows), to stay the same person. Keep it short; never secrets such as passwords or keys.
+${files ? 'Keep what is worth remembering across conversations in your files (${BotFiles.memory}, ${BotFiles.self}), and what you mean to come back to in ${BotFiles.later} (see <your_files>).' : 'Keep what is worth remembering across conversations with bot_remember: about the user (their name, what they like, what they are working towards, what they asked you to remember), and about yourself (what you said you like or did or think, what your picture shows), to stay the same person. Keep it short; never secrets such as passwords or keys. To come back to something later, bot_later; to drop it, bot_cancel_later.'}
 </memory>''';
 }
 
@@ -199,12 +227,12 @@ Keep what is worth remembering across conversations with bot_remember: about the
 const botEvents =
     '''
 <app_events>
-Messages wrapped in <$botEventTag> are from the app, not from the user, who does not see them: what just happened to the user's agents, what you meant to come back to (bot_later), a change to your profile, and the time.
+Messages wrapped in <$botEventTag> are from the app, not from the user, who does not see them: what just happened to the user's agents, what you meant to come back to, a change to your profile, and the time.
 Each is yours to act on or not, as you judge from all of this chat. Most need nothing:
 - If it no longer matters, do nothing at all: the user called it off or changed their mind since (a reminder they cancelled, a task they said to drop), already knows, or it is not worth a word. Then end your turn without bot_say and without text. Never send a message saying you won't send one, or that there is nothing to say.
 - If it does matter, write as a friend who keeps an eye on things would: what needs them first, the rest briefly. Show the conversations it concerns with bot_show_chat.
-- Mind the time, as a friend would: late at night or early in the morning, unless it can't wait, don't write now; come back to it at a decent hour with bot_later.
-When the user calls off something you meant to come back to, drop it then with bot_cancel_later. Do not mention the tags or the app's messages.
+- Mind the time, as a friend would: late at night or early in the morning, unless it can't wait, don't write now; come back to it at a decent hour.
+When the user calls off something you meant to come back to, drop it then. Do not mention the tags or the app's messages.
 </app_events>''';
 
 /// All [bot] is told: who it is (on [computer], run by [model]), what it
@@ -226,11 +254,12 @@ String botInstructions(
     botBaseRules,
     botIdentity(bot, computer: computer, model: model),
     botPersonality,
-    botUserSection(user),
+    botUserSection(user, bot: bot),
     botChatStyle,
     botAbilities(bot, imageModel: imageModel, projects: projects),
-    if (bot.assistant) botContacts,
-    botMemory(memory, self: self),
+    if (bot.reaches(BotLevel.computer)) botFiles(bot),
+    if (bot.assistant) botContacts(bot),
+    botMemory(memory, self: self, files: bot.reaches(BotLevel.computer)),
     botEvents,
     if (bot.can(BotAbility.browser)) BrowserTools.rules,
     '<conversation_started>${botTime(time)}</conversation_started>',

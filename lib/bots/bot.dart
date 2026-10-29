@@ -1,15 +1,16 @@
 import 'package:bao_link/bao_link.dart'
-    show BotAbility, BotProactive, isAvatarImage;
+    show BotAbility, BotLevel, BotProactive, isAvatarImage;
 import 'package:path/path.dart' as p;
 
 export 'package:bao_link/bao_link.dart'
-    show BotAbility, BotProactive, isAvatarImage;
+    show BotAbility, BotLevel, BotProactive, isAvatarImage;
 
 /// A bot as the user made it: who it is ([identity], [gender], [style],
-/// their words), what it
-/// may do ([abilities]). Its conversation runs in a folder of its own
-/// ([folder]), where what it remembers is kept too (see bot_folders.dart).
-/// [proactive] is as older phones set it: unused, it judges for itself.
+/// their words), how far it is trusted ([level]) and what it may use
+/// besides ([abilities]). It is a folder of its own ([folder]): its
+/// conversation runs there, and all of it is kept there in files (see
+/// bot_files.dart). [proactive] is the phone's: unused, it judges for
+/// itself.
 class Bot {
   const Bot({
     required this.id,
@@ -20,64 +21,13 @@ class Bot {
     this.signature = '',
     this.identity = '',
     this.style = '',
+    this.level = BotLevel.chat,
     this.abilities = const {},
     this.proactive = const BotProactive(),
     this.model,
     this.assistant = false,
     this.created,
   });
-
-  /// [json] as kept, its folder in [root].
-  static Bot? fromJson(Object? json, {required String root}) => switch (json) {
-    {'id': final String id, 'name': final String name} => Bot(
-      id: id,
-      name: name,
-      folder: p.join(root, id),
-      avatar: json['avatar'] as String?,
-      gender: json['gender'] as String? ?? '',
-      signature: json['signature'] as String? ?? '',
-      identity: json['identity'] as String? ?? '',
-      style: json['style'] as String? ?? '',
-      abilities: {
-        for (final name in (json['abilities'] as List?) ?? const [])
-          // Working on the computer was an ability of its own: now
-          // reading the files is.
-          ?BotAbility.values.asNameMap()[name == 'computer'
-              ? 'readFiles'
-              : name],
-        // Those come since it was kept: on for the assistant, as all of
-        // its are; off for the user's own, as a new bot's are.
-        if (json['assistant'] == true)
-          for (final ability in BotAbility.values)
-            if (!switch (json['known']) {
-              final List known => known.contains(ability.name),
-              _ => _firstAbilities.contains(ability.name),
-            })
-              ability,
-      },
-      proactive: switch (json['proactive']) {
-        final Map<String, Object?> proactive => BotProactive.fromJson(
-          proactive,
-        ),
-        _ => const BotProactive(),
-      },
-      model: json['model'] as String?,
-      assistant: json['assistant'] == true,
-      created: switch (json['created']) {
-        final int ms => DateTime.fromMillisecondsSinceEpoch(ms),
-        _ => _createdIn(id),
-      },
-    ),
-    _ => null,
-  };
-
-  /// When a bot named [id] was made, as its id says (`b` and the time,
-  /// see Bots); null for one whose does not.
-  static DateTime? _createdIn(String id) {
-    final match = RegExp(r'^b([0-9a-z]+)(?:-\d+)?$').firstMatch(id);
-    final micros = match == null ? null : int.tryParse(match[1]!, radix: 36);
-    return micros == null ? null : DateTime.fromMicrosecondsSinceEpoch(micros);
-  }
 
   final String id;
   final String name;
@@ -93,17 +43,6 @@ class Bot {
   String? get avatarFile =>
       isAvatarImage(avatar) ? p.join(folder, avatar) : null;
 
-  /// The abilities there were before the app kept which it knew of.
-  static const _firstAbilities = {
-    'viewChats',
-    'manageTasks',
-    'sendToChats',
-    'newChat',
-    'readFiles',
-    'browser',
-    'proactive',
-  };
-
   /// As the user put it: a word, or none.
   final String gender;
 
@@ -115,6 +54,7 @@ class Bot {
 
   /// How it talks, as the user wrote it.
   final String style;
+  final BotLevel level;
   final Set<BotAbility> abilities;
   final BotProactive proactive;
 
@@ -129,6 +69,9 @@ class Bot {
 
   bool can(BotAbility ability) => abilities.contains(ability);
 
+  /// Whether it is trusted with all [level] has.
+  bool reaches(BotLevel level) => this.level.reaches(level);
+
   Bot copyWith({
     String? name,
     String? avatar,
@@ -137,6 +80,7 @@ class Bot {
     String? signature,
     String? identity,
     String? style,
+    BotLevel? level,
     Set<BotAbility>? abilities,
     BotProactive? proactive,
     String? model,
@@ -149,32 +93,13 @@ class Bot {
     signature: signature ?? this.signature,
     identity: identity ?? this.identity,
     style: style ?? this.style,
+    level: level ?? this.level,
     abilities: abilities ?? this.abilities,
     proactive: proactive ?? this.proactive,
     model: model ?? this.model,
     assistant: assistant,
     created: created,
   );
-
-  Map<String, Object?> toJson() => {
-    'id': id,
-    'name': name,
-    'avatar': ?avatar,
-    if (gender.isNotEmpty) 'gender': gender,
-    if (signature.isNotEmpty) 'signature': signature,
-    'identity': identity,
-    if (style.isNotEmpty) 'style': style,
-    'abilities': [
-      for (final ability in BotAbility.values)
-        if (abilities.contains(ability)) ability.name,
-    ],
-    // Which there were, to tell those that come later.
-    'known': [for (final ability in BotAbility.values) ability.name],
-    'proactive': proactive.toJson(),
-    'model': ?model,
-    if (assistant) 'assistant': true,
-    'created': ?created?.millisecondsSinceEpoch,
-  };
 }
 
 /// Who the user is, as they put it on their phone (its profile): for

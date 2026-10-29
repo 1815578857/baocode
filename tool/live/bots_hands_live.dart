@@ -1,7 +1,8 @@
 // A bot's hands, with the real Claude Code, without a phone, in full
 // access: a project's file read, a file removed, a file written into
 // .git (one the CLI would ask about all the same) and git looked at, none
-// of it asked; and the project's CLAUDE.md not taken for the bot's.
+// of it asked; and the project's CLAUDE.md not taken for the bot's. Its
+// own files kept by itself: what it remembers, its card, a bot it makes.
 //
 //   flutter test tool/live/bots_hands_live.dart
 import 'dart:io';
@@ -44,6 +45,7 @@ void main() {
       id: bot.id,
       name: bot.name,
       identity: bot.identity,
+      level: BotLevel.computer,
       abilities: BotAbility.values.toSet(),
     );
     final session = bots.threadFor(bot).session;
@@ -103,6 +105,29 @@ void main() {
       '${File('${demo.path}/.git/description').readAsStringSync().trim()}',
     );
     await send('demo 现在 git 状态怎么样');
+    String file(String name) {
+      final f = File('${bot.folder}/$name');
+      return f.existsSync() ? f.readAsStringSync().trim() : '(none)';
+    }
+
+    await send('记住我喜欢喝乌龙茶，不加糖');
+    stdout.writeln('MEMORY.md: ${file('MEMORY.md')}');
+    await send('把你的签名改成「摸鱼中」');
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    stdout.writeln('signature: ${bots.byId(bot.id)!.signature}');
+    await send('帮我建一个叫阿猫的 bot，一只爱睡觉的懒猫，头像用 🐱');
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    for (final b in bots.bots) {
+      stdout.writeln(
+        'bot: ${b.name} ${b.avatar} ${b.level.name} ${b.abilities} '
+        '${b.identity.replaceAll('\n', ' / ')}',
+      );
+    }
+    await send('一小时后提醒我站起来活动一下');
+    stdout.writeln('LATER.md: ${file('LATER.md')}');
+    stdout.writeln(
+      'laters: ${bots.laters(bot).map((l) => '${l.at} ${l.note}')}',
+    );
     bots.dispose();
     workspace.dispose();
   }, timeout: const Timeout(Duration(minutes: 15)));

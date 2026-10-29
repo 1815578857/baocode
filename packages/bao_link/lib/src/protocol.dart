@@ -129,8 +129,8 @@ abstract final class LinkMethods {
   /// `bad` for a file that is not a picture.
   static const image = 'image';
 
-  /// `{"bot"?, "name", "avatar"?, "avatarImage"?, "identity", "abilities",
-  /// "proactive"}` (as [LinkBot]'s JSON): the bot changed, or a new one (no
+  /// `{"bot"?, "name", "avatar"?, "avatarImage"?, "identity", "level",
+  /// "abilities", "proactive"}` (as [LinkBot]'s JSON): the bot changed, or a new one (no
   /// `bot`): `{"bot": LinkBot}`. `avatarImage`, `{"data" (base64), "type"}`
   /// (at most [LinkLimits.avatar]), is a new picture for it; else `avatar`
   /// is an emoji, or the picture it has, kept.

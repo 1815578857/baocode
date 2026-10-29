@@ -18,16 +18,25 @@ import 'bot.dart';
 import 'bot_pacer.dart' show botTime;
 import 'bots.dart';
 
-/// Which bots a tool of theirs is for: those with any of [anyOf] on; all of
-/// them for none. Only the assistant, if [assistant].
+/// Which bots a tool of theirs is for: those trusted with [level]; only
+/// the assistant, if [assistant]. One that keeps what is in a bot's files
+/// ([files]) is not for a bot that works on the computer: it keeps its
+/// files itself, with Claude Code's tools.
 class BotToolAccess {
-  const BotToolAccess(this.anyOf, {this.assistant = false});
+  const BotToolAccess({
+    this.level = BotLevel.chat,
+    this.assistant = false,
+    this.files = false,
+  });
 
-  final Set<BotAbility> anyOf;
+  final BotLevel level;
   final bool assistant;
+  final bool files;
 
   bool allows(Bot bot) =>
-      (!assistant || bot.assistant) && (anyOf.isEmpty || anyOf.any(bot.can));
+      (!assistant || bot.assistant) &&
+      bot.reaches(level) &&
+      !(files && bot.reaches(BotLevel.computer));
 }
 
 /// The bots' tools (`mcp__baocode__bot_*`): the user's agents seen,
@@ -69,13 +78,8 @@ abstract final class BotTools {
     _access.clear();
   }
 
-  static const _view = BotToolAccess({BotAbility.viewChats});
-  static const _manage = BotToolAccess({BotAbility.manageTasks});
-  static const _projects = BotToolAccess({
-    BotAbility.viewChats,
-    BotAbility.newChat,
-    BotAbility.readFiles,
-  });
+  static const _agents = BotToolAccess(level: BotLevel.agents);
+  static const _files = BotToolAccess(files: true);
 
   static List<(ClaudeSdkTool, BotToolAccess)> _tools(Bots bots) {
     final workspace = bots.workspace;
@@ -172,7 +176,7 @@ abstract final class BotTools {
           required: ['text'],
           summary: (input, _) => clip(input, 'text'),
         ),
-        const BotToolAccess({}),
+        const BotToolAccess(),
       ),
       (
         tool(
@@ -210,7 +214,7 @@ abstract final class BotTools {
           required: ['minutes', 'note'],
           summary: (input, _) => clip(input, 'note'),
         ),
-        const BotToolAccess({}),
+        _files,
       ),
       (
         tool(
@@ -238,7 +242,7 @@ abstract final class BotTools {
           required: ['note'],
           summary: (input, _) => clip(input, 'note'),
         ),
-        const BotToolAccess({}),
+        _files,
       ),
       (
         tool(
@@ -274,7 +278,7 @@ abstract final class BotTools {
             return lines.take(limit.clamp(1, 100)).join('\n');
           },
         ),
-        _view,
+        _agents,
       ),
       (
         tool(
@@ -316,7 +320,7 @@ abstract final class BotTools {
           required: ['chat'],
           summary: titled,
         ),
-        _view,
+        _agents,
       ),
       (
         tool(
@@ -331,7 +335,7 @@ abstract final class BotTools {
           required: ['chat'],
           summary: titled,
         ),
-        _view,
+        _agents,
       ),
       (
         tool(
@@ -349,7 +353,7 @@ abstract final class BotTools {
           required: ['chat'],
           summary: titled,
         ),
-        _manage,
+        _agents,
       ),
       (
         tool(
@@ -367,7 +371,7 @@ abstract final class BotTools {
           required: ['chat'],
           summary: titled,
         ),
-        _manage,
+        _agents,
       ),
       (
         tool(
@@ -381,7 +385,7 @@ abstract final class BotTools {
           required: ['chat'],
           summary: titled,
         ),
-        _manage,
+        _agents,
       ),
       (
         tool(
@@ -403,7 +407,7 @@ abstract final class BotTools {
           required: ['chat', 'text'],
           summary: titled,
         ),
-        const BotToolAccess({BotAbility.sendToChats}),
+        _agents,
       ),
       (
         tool(
@@ -415,7 +419,7 @@ abstract final class BotTools {
               '${project.name} | ${project.path}',
           ].join('\n'),
         ),
-        _projects,
+        _agents,
       ),
       (
         tool(
@@ -436,7 +440,7 @@ abstract final class BotTools {
           required: ['project', 'text'],
           summary: (input, _) => '${input['project'] ?? ''}',
         ),
-        const BotToolAccess({BotAbility.newChat}),
+        _agents,
       ),
       (
         tool(
@@ -470,7 +474,7 @@ abstract final class BotTools {
               }
               return 'Sent.';
             }
-            if (!botOf(call).can(BotAbility.readFiles)) {
+            if (!botOf(call).reaches(BotLevel.computer)) {
               throw StateError(
                 "You cannot read the projects' files, so cannot send them.",
               );
@@ -499,7 +503,7 @@ abstract final class BotTools {
           },
           summary: (input, _) => '${input['path'] ?? input['url'] ?? ''}',
         ),
-        const BotToolAccess({}),
+        const BotToolAccess(),
       ),
       (
         tool(
@@ -534,13 +538,13 @@ abstract final class BotTools {
             if (self) {
               bots.setSelfNotes(bot, memory);
             } else {
-              bots.folders.writeMemory(bot.folder, memory);
+              bots.setMemory(bot, memory, restart: false);
             }
             return 'Remembered.';
           },
           required: ['text'],
         ),
-        const BotToolAccess({}),
+        _files,
       ),
       (
         tool(
@@ -563,7 +567,7 @@ abstract final class BotTools {
             };
           },
         ),
-        const BotToolAccess({}),
+        _files,
       ),
       (
         tool(
@@ -580,7 +584,7 @@ abstract final class BotTools {
             ];
           },
         ),
-        const BotToolAccess({}),
+        _files,
       ),
       (
         tool(
@@ -600,7 +604,7 @@ abstract final class BotTools {
                         final emoji => emoji,
                       }} | ${bot.gender.isEmpty ? '-' : bot.gender}'
                       ' | ${bot.signature.isEmpty ? '-' : bot.signature}'
-                      ' | ${[for (final a in bot.abilities) a.name].join(', ')}',
+                      ' | ${[bot.level.name, for (final a in bot.abilities) a.name].join(', ')}',
                   if (bot.identity.trim().isNotEmpty)
                     '  who: ${_clip(bot.identity, 300)}',
                   if (bot.style.trim().isNotEmpty)
@@ -609,7 +613,7 @@ abstract final class BotTools {
             ].join('\n');
           },
         ),
-        const BotToolAccess({}, assistant: true),
+        const BotToolAccess(assistant: true, files: true),
       ),
       (
         tool(
@@ -672,6 +676,7 @@ abstract final class BotTools {
               identity: given('identity') ?? had?.identity ?? '',
               style: given('style') ?? had?.style ?? '',
               // Only the user says what a bot may do.
+              level: had?.level ?? BotLevel.chat,
               abilities: had?.abilities ?? const {},
               proactive: had?.proactive ?? const BotProactive(),
               by: me,
@@ -684,7 +689,7 @@ abstract final class BotTools {
           },
           summary: (input, _) => '${input['name'] ?? input['bot'] ?? ''}',
         ),
-        const BotToolAccess({}, assistant: true),
+        const BotToolAccess(assistant: true, files: true),
       ),
       (
         tool(
@@ -710,7 +715,7 @@ abstract final class BotTools {
           required: ['bot'],
           summary: (input, _) => '${input['bot'] ?? ''}',
         ),
-        const BotToolAccess({}, assistant: true),
+        const BotToolAccess(assistant: true, files: true),
       ),
     ];
   }
