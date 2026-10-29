@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -610,6 +611,56 @@ void main() {
               'params': {'name': tool, 'arguments': input},
             }, ClaudeSdkCall(cwd: bot.folder)))['result']
             as Map;
+
+    test('it goes on in its conversation of the last run', () async {
+      // The kernels' sessions read slowly, as Claude Code's all are.
+      final listed = Completer<List<ProjectRecord>>();
+      final slow = KernelDescriptor(
+        id: kernel.id,
+        label: kernel.label,
+        icon: kernel.icon,
+        description: kernel.description,
+        create: kernel.create,
+        catalog: _Catalog(listed.future),
+      );
+      final loading = Workspace(
+        kernels: [slow],
+        projects: [Project('app', app)],
+      )..load();
+      addTearDown(loading.dispose);
+      final later = Bots(
+        workspace: loading,
+        folders: MemoryBotFolders(),
+        store: MemoryPreferenceStore(),
+        chinese: true,
+        clock: () => now,
+        computer: () async => 'Leo 的 MacBook',
+      );
+      addTearDown(later.dispose);
+      final started = later.start();
+      await pumpEventQueue();
+      expect(loading.threads, isEmpty);
+      listed.complete([
+        ProjectRecord(
+          path: '/bots/assistant',
+          sessions: [
+            SessionRecord(
+              id: 'kept',
+              title: '在吗',
+              updatedAt: now.subtract(const Duration(hours: 1)),
+              cwd: '/bots/assistant',
+            ),
+          ],
+        ),
+      ]);
+      await started;
+      final assistant = later.bots.single;
+      expect(later.threadOf(assistant)!.record?.id, 'kept');
+      expect([
+        for (final t in loading.threads)
+          if (t.project.path == assistant.folder) t,
+      ], hasLength(1));
+    });
 
     test('it comes back later on its own, when it said', () async {
       final bot = bots.save(name: 'Mia', identity: '', abilities: {});
@@ -1306,3 +1357,19 @@ void main() {
 
 Duration seconds(int n) => Duration(seconds: n);
 Duration minutes(int n) => Duration(minutes: n);
+
+/// Lists [projects] once they come.
+class _Catalog implements SessionCatalog {
+  _Catalog(this._projects);
+
+  final Future<List<ProjectRecord>> _projects;
+
+  @override
+  Future<List<ProjectRecord>> projects() => _projects;
+
+  @override
+  Future<List<SessionRecord>> sessionsIn(String cwd) async => const [];
+
+  @override
+  Future<void> delete(String id) async {}
+}
