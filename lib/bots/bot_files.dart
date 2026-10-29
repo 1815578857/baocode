@@ -127,9 +127,13 @@ abstract final class BotFiles {
           .map((line) => '$line\n')
           .join();
 
-  /// [later]'s line: `- 2026-10-30 09:00 ask how the interview went`.
-  static String laterLine(BotLater later) =>
-      '- ${_time(later.at)} ${later.note.replaceAll('\n', ' ').trim()}';
+  /// [later]'s line: `- 2026-10-30 09:00 ask how the interview went`; its
+  /// seconds too, if it has some (`09:00:10`).
+  static String laterLine(BotLater later) {
+    final at = later.at;
+    final seconds = at.second == 0 ? '' : ':${'${at.second}'.padLeft(2, '0')}';
+    return '- ${_time(at)}$seconds ${later.note.replaceAll('\n', ' ').trim()}';
+  }
 
   /// The lines of [text] that say when and what, soonest first; any other
   /// line is the bot's own.
@@ -152,7 +156,7 @@ abstract final class BotFiles {
   }
 
   static final _laterLine = RegExp(
-    r'^[-*]\s+(\d{4}-\d{2}-\d{2})[ T](\d{1,2}:\d{2})\s+(.+)$',
+    r'^[-*]\s+(\d{4}-\d{2}-\d{2})[ T](\d{1,2}:\d{2}(?::\d{2})?)\s+(.+)$',
   );
 
   /// [text] without the lines of [laters] (those come due).

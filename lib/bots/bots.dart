@@ -1135,9 +1135,16 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
 
   /// [bot] comes back, on its own, to [note] [after] from now: when.
   DateTime later(Bot bot, Duration after, String note) {
-    // To the minute, as its file has it.
+    // To the second, as its file has it.
     final now = _clock().add(after);
-    final at = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    final at = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute,
+      now.second,
+    );
     final laters = [...this.laters(bot), BotLater(at: at, note: note.trim())]
       ..sort((a, b) => a.at.compareTo(b.at));
     // The latest dropped, past the most it may have.

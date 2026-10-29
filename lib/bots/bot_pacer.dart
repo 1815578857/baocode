@@ -150,8 +150,9 @@ String botWakeText(
   'Now: ${botTime(now)}.',
 ].join('\n');
 
-/// [at] as a bot is told the time: its day and the hour.
-String botTime(DateTime at) {
+/// [at] as a bot is told the time: its day and the hour; the seconds too,
+/// with [seconds], if it has some.
+String botTime(DateTime at, {bool seconds = false}) {
   const days = [
     'Monday',
     'Tuesday',
@@ -163,5 +164,6 @@ String botTime(DateTime at) {
   ];
   String two(int n) => n.toString().padLeft(2, '0');
   return '${days[at.weekday - 1]} ${at.year}-${two(at.month)}-${two(at.day)} '
-      '${two(at.hour)}:${two(at.minute)}';
+      '${two(at.hour)}:${two(at.minute)}'
+      '${seconds && at.second != 0 ? ':${two(at.second)}' : ''}';
 }
