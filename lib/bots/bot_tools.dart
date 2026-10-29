@@ -1,7 +1,6 @@
 import 'dart:async';
 
-import 'package:bao_link/bao_link.dart'
-    show LinkLimits, builtInSticker, builtInStickers;
+import 'package:bao_link/bao_link.dart' show LinkLimits;
 
 import '../chat/chat_models.dart';
 import '../chat/chat_session.dart';
@@ -464,32 +463,6 @@ abstract final class BotTools {
           summary: (input, _) => '${input['path'] ?? ''}',
         ),
         const BotToolAccess({BotAbility.readFiles}),
-      ),
-      (
-        tool(
-          ChatCodec.botStickerTool,
-          'Sends one of the app\'s stickers into this chat, as a person '
-          'would in a chat app: now and then, where it fits the mood, '
-          'alone or after a message. The user\'s own come as '
-          '"[Sticker: id]". The stickers:\n'
-          '${[for (final sticker in builtInStickers) '- ${sticker.id}: ${sticker.en}'].join('\n')}',
-          {
-            'sticker': {
-              'type': 'string',
-              'enum': [for (final sticker in builtInStickers) sticker.id],
-            },
-          },
-          (input, call) async {
-            final id = text(input, 'sticker');
-            if (builtInSticker(id) == null) {
-              throw ArgumentError('No sticker $id');
-            }
-            return 'Sent.';
-          },
-          required: ['sticker'],
-          summary: (input, _) => '${input['sticker'] ?? ''}',
-        ),
-        const BotToolAccess({}),
       ),
       (
         tool(

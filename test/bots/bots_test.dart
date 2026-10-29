@@ -148,9 +148,10 @@ void main() {
         botAbilities(painter, imageModel: false),
         contains('no image model turned on'),
       );
-      // Stickers and pictures, the user's and its own.
-      expect(botChatStyle, contains('[Sticker: id]'));
-      expect(botChatStyle, contains('bot_send_sticker'));
+      // Emoji, not the app's stickers; pictures of its own.
+      expect(botChatStyle, contains('emoji'));
+      expect(botChatStyle, isNot(contains('bot_send_sticker')));
+      expect(botChatStyle, contains('bot_send_image'));
     });
   });
 
@@ -295,7 +296,6 @@ void main() {
         final none = bots.save(name: 'Quiet', identity: '', abilities: {});
         expect(await offered(none.folder), [
           'bot_say',
-          'bot_send_sticker',
           'bot_send_image',
           'bot_remember',
         ]);
@@ -464,7 +464,7 @@ void main() {
       expect(ClaudeSdkTools.asksUser(app), isTrue);
     });
 
-    test('it sends stickers, and pictures from the web or a project', () async {
+    test('it sends pictures from the web or a project', () async {
       Future<Map> call(
         Bot bot,
         String tool,
@@ -478,17 +478,10 @@ void main() {
               }, ClaudeSdkCall(cwd: bot.folder)))['result']
               as Map;
       final assistant = bots.bots.single;
+      // No stickers of the app's now: emoji in its messages.
       expect(
-        (await call(assistant, 'bot_send_sticker', {
-          'sticker': 'happy',
-        }))['isError'],
-        isNot(isTrue),
-      );
-      expect(
-        (await call(assistant, 'bot_send_sticker', {
-          'sticker': 'nope',
-        }))['isError'],
-        isTrue,
+        await offered(assistant.folder),
+        isNot(contains('bot_send_sticker')),
       );
       expect(
         (await call(assistant, 'bot_send_image', {
