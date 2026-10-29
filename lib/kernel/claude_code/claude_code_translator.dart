@@ -360,6 +360,11 @@ class ClaudeTranslator {
     _goalRecords.clear();
   }
 
+  /// When [message] (the user's) was sent: as kept; live, now.
+  DateTime? _sentAt(Map<String, Object?> message) =>
+      DateTime.tryParse('${message['timestamp']}')?.toLocal() ??
+      (replaying ? null : DateTime.now());
+
   void _replayedAt(Map<String, Object?> message) {
     if (!replaying || _replayed == null) return;
     if (message['uuid'] == _replayed!.id) return;
@@ -827,6 +832,7 @@ class ClaudeTranslator {
       final item = UserMessageItem(
         text: args.isEmpty ? command : '$command $args',
         images: images,
+        sentAt: _sentAt(message),
       );
       _answerPlan(feedback: item.text);
       _put(id, item);
@@ -845,7 +851,11 @@ class ClaudeTranslator {
       if (replaying) _replayedStopped = true;
       return;
     }
-    final item = UserMessageItem(text: trimmed, images: images);
+    final item = UserMessageItem(
+      text: trimmed,
+      images: images,
+      sentAt: _sentAt(message),
+    );
     // Said with a plan awaiting: what should change in it.
     _answerPlan(feedback: trimmed);
     _put(id, item);
