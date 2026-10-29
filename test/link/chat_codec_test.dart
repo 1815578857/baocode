@@ -194,6 +194,61 @@ void main() {
       }
     });
 
+    test('messages go as it said them', () {
+      final said = roundTrip(
+        const ToolCallItem(
+          kind: ToolKind.other,
+          tool: ChatCodec.botSayTool,
+          target: '等下 我看看',
+          input: {'text': '等下 我看看'},
+        ),
+      );
+      expect(ChatCodec.botSay(said), '等下 我看看');
+      expect(ChatCodec.botSent(said), isTrue);
+      expect(
+        ChatCodec.botSay(
+          roundTrip(
+            const ToolCallItem(
+              kind: ToolKind.other,
+              tool: ChatCodec.botSayTool,
+              target: 'x',
+              status: ToolStatus.failed,
+              input: {'text': 'x'},
+            ),
+          ),
+        ),
+        isNull,
+      );
+    });
+
+    test('its own texts show only in a turn it sent nothing in', () {
+      const say = ToolCallItem(
+        kind: ToolKind.other,
+        tool: ChatCodec.botSayTool,
+        target: '在',
+        input: {'text': '在'},
+      );
+      const look = ToolCallItem(
+        kind: ToolKind.other,
+        tool: 'bot_list_chats',
+        target: '',
+      );
+      final items = <ChatItem>[
+        const UserMessageItem(text: 'old'),
+        const AssistantTextItem('Before it talked so: shown.'),
+        const UserMessageItem(text: '在吗'),
+        const AssistantTextItem('Notes to itself.'),
+        say,
+        // What the user wrote meanwhile, waiting: the turn goes on.
+        const UserMessageItem(text: '?', queued: true),
+        look,
+        const AssistantTextItem('Done.'),
+        const UserMessageItem(text: 'ok'),
+        look,
+      ];
+      expect(ChatCodec.botQuiet(items.length, (i) => items[i]), {3, 7});
+    });
+
     test('the user\'s sticker is told by its text', () {
       expect(ChatCodec.sticker(ChatCodec.stickerText('love')), 'love');
       expect(ChatCodec.sticker('[Sticker: love]\n[Image #3]'), 'love');

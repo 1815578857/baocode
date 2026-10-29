@@ -61,6 +61,7 @@ class ClaudeLaunch {
     this.directories = const [],
     this.readable = const [],
     this.instructions,
+    this.ownPrompt = false,
     this.models = const [],
     this.sdkServers = const [],
     this.tools,
@@ -94,6 +95,11 @@ class ClaudeLaunch {
   /// Told the agent after [appendedSystemPrompt] (what the workspace it
   /// works in is); none when null.
   final String? instructions;
+
+  /// Whether [instructions] are all its system prompt (`--system-prompt`),
+  /// in place of Claude Code's own and [appendedSystemPrompt]: an agent
+  /// that does not code (a bot's).
+  final bool ownPrompt;
 
   /// The session id to continue.
   final String? resume;
@@ -176,6 +182,7 @@ class ClaudeLaunch {
     directories: directories,
     readable: readable,
     instructions: instructions,
+    ownPrompt: ownPrompt,
     models: models,
     sdkServers: sdkServers,
     tools: tools,
@@ -306,12 +313,17 @@ class ClaudeLaunch {
       '--allowedTools',
       sdkServers.map((name) => 'mcp__$name').join(','),
     ],
-    '--append-system-prompt',
-    switch (instructions) {
-      final instructions? when instructions.isNotEmpty =>
-        '$appendedSystemPrompt\n\n$instructions',
-      _ => appendedSystemPrompt,
-    },
+    if (ownPrompt) ...[
+      '--system-prompt',
+      instructions ?? '',
+    ] else ...[
+      '--append-system-prompt',
+      switch (instructions) {
+        final instructions? when instructions.isNotEmpty =>
+          '$appendedSystemPrompt\n\n$instructions',
+        _ => appendedSystemPrompt,
+      },
+    ],
   ];
 
   /// What the chat asks of the agent besides Claude Code's own prompt: how

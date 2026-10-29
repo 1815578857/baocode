@@ -13,6 +13,7 @@ import '../link/workspace_bridge.dart' show WorkspaceBridge, hostFilesOf;
 import '../models/image_api.dart' show imageMediaType;
 import '../workspace/workspace.dart';
 import 'bot.dart';
+import 'bot_pacer.dart' show botTime;
 import 'bots.dart';
 
 /// Which bots a tool of theirs is for: those with any of [anyOf] on; all of
@@ -35,6 +36,13 @@ abstract final class BotTools {
   static const showChat = ChatCodec.botCardTool;
 
   static final Map<String, BotToolAccess> _access = {};
+
+  /// How long a bot pauses after a message of [text], before its next: as
+  /// long as a person takes to write one, about. None in tests.
+  static Duration Function(String text) pause = typingPause;
+
+  static Duration typingPause(String text) =>
+      Duration(milliseconds: (300 + 40 * text.runes.length).clamp(600, 2400));
 
   /// Who [tool] is for, if a bot's.
   static BotToolAccess? abilityOf(String tool) => _access[tool];
@@ -136,7 +144,76 @@ abstract final class BotTools {
       }
     }
 
+    String clip(Map<String, Object?> input, String key) =>
+        _clip('${input[key] ?? ''}', 80);
+
     return [
+      (
+        tool(
+          ChatCodec.botSayTool,
+          'Sends the user a message: the only way you talk to them. One '
+          'message a call, as a person texts: call it again for the next. '
+          'Nothing else you write reaches them.',
+          {
+            'text': {
+              'type': 'string',
+              'description': 'The message: plain text, no Markdown.',
+            },
+          },
+          (input, call) async {
+            final said = text(input, 'text');
+            await Future<void>.delayed(pause(said));
+            return 'Sent, ${botTime(bots.now)}.';
+          },
+          required: ['text'],
+          summary: (input, _) => clip(input, 'text'),
+        ),
+        const BotToolAccess({}),
+      ),
+      (
+        tool(
+          'bot_later',
+          'Comes back to the user on your own, later: in so many minutes '
+              'you are woken with your note, to write to them if it still '
+              'makes sense. Use it to follow something up (how a talk went, '
+              'whether a fix worked, a reminder they asked for) instead of '
+              'promising to. At most ${Bots.maxLaters} waiting; their quiet '
+              'hours put it off to after them.',
+          {
+            'minutes': {
+              'type': 'integer',
+              'description': 'From now: 1 to 10080 (a week).',
+            },
+            'note': {
+              'type': 'string',
+              'description':
+                  'For yourself: what to come back to, and why, in a line.',
+            },
+          },
+          (input, call) async {
+            final bot = botOf(call);
+            if (bot.proactive.perDay <= 0) {
+              throw StateError(
+                'The user turned off your writing first: you cannot come '
+                'back on your own.',
+              );
+            }
+            final minutes = (input['minutes'] as num?)?.toInt() ?? 0;
+            if (minutes < 1 || minutes > 10080) {
+              throw ArgumentError('minutes is 1 to 10080');
+            }
+            final at = bots.later(
+              bot,
+              Duration(minutes: minutes),
+              text(input, 'note'),
+            );
+            return 'You will be woken ${botTime(at)}.';
+          },
+          required: ['minutes', 'note'],
+          summary: (input, _) => clip(input, 'note'),
+        ),
+        const BotToolAccess({BotAbility.proactive}),
+      ),
       (
         tool(
           'bot_list_chats',
@@ -393,7 +470,7 @@ abstract final class BotTools {
           ChatCodec.botStickerTool,
           'Sends one of the app\'s stickers into this chat, as a person '
           'would in a chat app: now and then, where it fits the mood, '
-          'never in place of an answer. The user\'s own come as '
+          'alone or after a message. The user\'s own come as '
           '"[Sticker: id]". The stickers:\n'
           '${[for (final sticker in builtInStickers) '- ${sticker.id}: ${sticker.en}'].join('\n')}',
           {

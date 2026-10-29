@@ -206,9 +206,7 @@ class WorkspaceBridge {
       model: bots.modelOf(bot),
       assistant: bot.assistant,
       session: session,
-      status: thread?.status == ThreadStatus.running
-          ? BotStatus.typing
-          : BotStatus.idle,
+      status: bots.typing(bot) ? BotStatus.typing : BotStatus.idle,
       unread: bots.unread(bot),
       last: bots.lastLine(bot),
       updatedAt: thread?.updatedAt,

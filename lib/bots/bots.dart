@@ -11,6 +11,7 @@ import '../images/image_tools.dart' show ImageTools;
 import '../kernel/agent_kernel.dart';
 import '../kernel/claude_code/claude_sdk_tools.dart';
 import '../kernel/kernel_registry.dart';
+import '../kernel/queued_messages.dart';
 import '../link/chat_codec.dart';
 import '../workspace/preference_store.dart';
 import '../workspace/workspace.dart';
@@ -62,6 +63,12 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
   final Map<String, BotPacer> _pacers = {};
   Timer? _timer;
 
+  /// What each bot meant to come back to, by its id, soonest first.
+  final Map<String, List<BotLater>> _laters = {};
+
+  /// The most a bot may have waiting to come back to.
+  static const maxLaters = 5;
+
   /// The last turn end of each bot's the user has seen, by its id.
   final Map<String, int> _seen = {};
 
@@ -75,6 +82,10 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
 
   bool _started = false;
 
+  /// Each bot's conversation followed, for the phones to hear of each of
+  /// its messages (not only of its turns' ends): what it was at last.
+  final Map<ChatSession, VoidCallback> _followed = {};
+
   Future<void> start() async {
     final root = folders.root;
     if (root == null || _started) return;
@@ -84,6 +95,14 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
       for (final json in (kept['bots'] as List?) ?? const [])
         ?Bot.fromJson(json, root: root),
     ];
+    if (kept['later'] case final Map<String, Object?> laters) {
+      for (final MapEntry(:key, :value) in laters.entries) {
+        _laters[key] = [
+          for (final json in value is List ? value : const [])
+            ?BotLater.fromJson(json),
+        ];
+      }
+    }
     if (!_bots.any((bot) => bot.assistant)) {
       final defaults = assistantDefaults(chinese: chinese);
       _bots.insert(
@@ -109,6 +128,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     _bots.forEach(threadFor);
     workspace.addListener(_watch);
     _watch();
+    _schedule();
     notifyListeners();
   }
 
@@ -120,6 +140,10 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
       BotTools.unregister();
       workspace.agentSetup = null;
     }
+    for (final MapEntry(key: session, value: listener) in _followed.entries) {
+      session.removeListener(listener);
+    }
+    _followed.clear();
     _timer?.cancel();
     _runningTimer?.cancel();
     super.dispose();
@@ -128,8 +152,16 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
   void _save() => unawaited(
     store?.write({
       'bots': [for (final bot in _bots) bot.toJson()],
+      'later': {
+        for (final MapEntry(:key, :value) in _laters.entries)
+          if (value.isNotEmpty)
+            key: [for (final later in value) later.toJson()],
+      },
     }),
   );
+
+  /// The time, as the bots have it.
+  DateTime get now => _clock();
 
   Bot? byId(String id) => _bots.where((bot) => bot.id == id).firstOrNull;
 
@@ -150,9 +182,14 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
               ) !=
               null,
         ),
+        // Told only who it is and how it talks: no coding agent's prompt.
+        ownPrompt: true,
         // Its own tools only; the tool search, for the browser's, which
         // are deferred.
         tools: bot.can(BotAbility.browser) ? const ['ToolSearch'] : const [],
+        // What the user writes while it talks, taken up as it does: as a
+        // person hears what is said meanwhile.
+        queuedMessages: QueuedMessages.duringTurn,
       ),
       settings: {...settings, 'model': ?bot.model},
       kernel: KernelRegistry.claudeCode.id,
@@ -217,21 +254,48 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     if (!session.isStreaming && session.sessionId != null) session.restart();
   }
 
-  /// How many of [bot]'s turns ended since the user last read it.
+  /// How many messages [bot] sent since the user last read it: each of
+  /// its messages, stickers, cards and pictures, as a chat app counts.
   int unread(Bot bot) {
     final thread = threadOf(bot);
     if (thread == null || !thread.isOpen) return 0;
-    final seq = thread.session.lastTurnEndSeq;
-    final seen = _seen[bot.id] ??= seq;
-    return seq > seen ? seq - seen : 0;
+    final session = thread.session;
+    final count = session.itemCount;
+    final seen = (_seen[bot.id] ??= count).clamp(0, count);
+    final quiet = ChatCodec.botQuiet(count, session.itemAt);
+    var unread = 0;
+    for (var i = seen; i < count; i++) {
+      if (_shown(session.itemAt(i), quiet.contains(i))) unread++;
+    }
+    return unread;
   }
 
   /// The user has read all [bot] said.
   void seen(Bot bot) {
     final thread = threadOf(bot);
     if (thread == null || !thread.isOpen) return;
-    _seen[bot.id] = thread.session.lastTurnEndSeq;
+    _seen[bot.id] = thread.session.itemCount;
     notifyListeners();
+  }
+
+  /// Whether [item] shows in a bot's chat as one of its messages: what it
+  /// sent; a text of its own, unless [quiet] (see [ChatCodec.botQuiet]).
+  static bool _shown(ChatItem item, bool quiet) => switch (item) {
+    AssistantTextItem(:final text) => !quiet && text.trim().isNotEmpty,
+    _ => ChatCodec.botSent(item),
+  };
+
+  /// Whether [bot] is writing to the user: at work, not on a note to
+  /// itself at the end of a turn it talked in (see [ChatCodec.botQuiet]).
+  bool typing(Bot bot) {
+    final thread = threadOf(bot);
+    if (thread == null || thread.status != ThreadStatus.running) return false;
+    if (!thread.isOpen) return true;
+    final session = thread.session;
+    final last = session.itemCount - 1;
+    return last < 0 ||
+        session.itemAt(last) is! AssistantTextItem ||
+        !ChatCodec.botQuiet(session.itemCount, session.itemAt).contains(last);
   }
 
   /// The last [bot] said: its first line; a picture or a sticker, as a
@@ -240,16 +304,22 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     final thread = threadOf(bot);
     if (thread == null || !thread.isOpen) return null;
     final session = thread.session;
+    final quiet = ChatCodec.botQuiet(session.itemCount, session.itemAt);
+    String? firstLine(String text) {
+      final line = text
+          .split('\n')
+          .map((l) => l.trim())
+          .firstWhere((l) => l.isNotEmpty, orElse: () => '');
+      if (line.isEmpty) return null;
+      return line.length > 120 ? '${line.substring(0, 120)}…' : line;
+    }
+
     for (var i = session.itemCount - 1; i >= 0; i--) {
       switch (session.itemAt(i)) {
-        case AssistantTextItem(:final text):
-          final line = text
-              .split('\n')
-              .map((l) => l.trim())
-              .firstWhere((l) => l.isNotEmpty, orElse: () => '');
-          if (line.isNotEmpty) {
-            return line.length > 120 ? '${line.substring(0, 120)}…' : line;
-          }
+        case AssistantTextItem(:final text) when !quiet.contains(i):
+          if (firstLine(text) case final line?) return line;
+        case final ToolCallItem item when ChatCodec.botSay(item) != null:
+          if (firstLine(ChatCodec.botSay(item)!) case final line?) return line;
         case final ToolCallItem item when ChatCodec.botSticker(item) != null:
           final sticker = builtInSticker(ChatCodec.botSticker(item)!);
           final said = sticker == null
@@ -400,6 +470,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     folders.delete(bot.folder);
     _bots.remove(bot);
     _pacers.remove(id);
+    _laters.remove(id);
     _seen.remove(id);
     _save();
     notifyListeners();
@@ -439,6 +510,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
   /// What changed for the agents the sidebar lists, told the bots that
   /// write first.
   void _watch() {
+    _follow();
     final gone = {..._statuses.keys};
     final events = <BotEvent>[];
     for (final thread in workspace.threads) {
@@ -491,6 +563,32 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         at: _clock(),
         detail: detail,
       );
+
+  /// Follows each bot's conversation open: tells, as it changes, when a
+  /// message comes or it starts or stops writing ([typing]).
+  void _follow() {
+    for (final bot in _bots) {
+      final thread = threadOf(bot);
+      if (thread == null || !thread.isOpen) continue;
+      final session = thread.session;
+      if (_followed.containsKey(session)) continue;
+      Object? was;
+      void listener() {
+        final last = session.itemCount - 1;
+        final now = (
+          session.itemCount,
+          session.isStreaming,
+          last >= 0 && session.itemAt(last) is AssistantTextItem,
+        );
+        if (now == was) return;
+        was = now;
+        notifyListeners();
+      }
+
+      _followed[session] = listener;
+      session.addListener(listener);
+    }
+  }
 
   /// [events] for the bots that write first, to tell when it is time.
   void _tell(List<BotEvent> events) {
@@ -558,12 +656,39 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     return null;
   }
 
+  /// [bot] comes back, on its own, to [note] [after] from now (out of
+  /// its quiet hours): when.
+  DateTime later(Bot bot, Duration after, String note) {
+    final at = BotPacer.outOfQuiet(bot.proactive, _clock().add(after));
+    final laters = _laters[bot.id] ??= [];
+    laters
+      ..add(BotLater(at: at, note: note.trim()))
+      ..sort((a, b) => a.at.compareTo(b.at));
+    // The latest dropped, past the most it may have.
+    if (laters.length > maxLaters) laters.removeRange(maxLaters, laters.length);
+    _save();
+    _schedule();
+    return at;
+  }
+
+  /// What [bot] meant to come back to, soonest first.
+  List<BotLater> laters(Bot bot) => List.unmodifiable(_laters[bot.id] ?? []);
+
+  /// Whether [bot] writes first: of the agents, and of what it meant to.
+  static bool _writesFirst(Bot bot) =>
+      bot.can(BotAbility.proactive) && bot.proactive.perDay > 0;
+
   void _schedule() {
     _timer?.cancel();
     final now = _clock();
     DateTime? next;
     for (final bot in _bots) {
-      final due = _pacers[bot.id]?.dueAt(bot.proactive, now);
+      var due = _pacers[bot.id]?.dueAt(bot.proactive, now);
+      if (_laters[bot.id]?.firstOrNull case final later?
+          when _writesFirst(bot)) {
+        final at = BotPacer.outOfQuiet(bot.proactive, later.at);
+        if (due == null || at.isBefore(due)) due = at.isBefore(now) ? now : at;
+      }
       if (due != null && (next == null || due.isBefore(next))) next = due;
     }
     if (next == null) return;
@@ -575,21 +700,41 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
   @visibleForTesting
   void deliver() {
     final now = _clock();
+    var busy = false;
     for (final bot in _bots) {
       final pacer = _pacers[bot.id];
-      if (pacer == null) continue;
+      final waiting = _laters[bot.id] ?? const <BotLater>[];
+      if (pacer == null && waiting.isEmpty) continue;
       final thread = threadFor(bot);
       // Not while it is answering: after.
-      if (thread.isOpen && thread.session.isStreaming) continue;
-      final events = pacer.take(bot.proactive, now);
-      if (events == null) continue;
+      if (thread.isOpen && thread.session.isStreaming) {
+        busy = true;
+        continue;
+      }
+      final events = pacer?.take(bot.proactive, now) ?? const <BotEvent>[];
+      final due = _writesFirst(bot)
+          ? [
+              for (final later in waiting)
+                if (!BotPacer.outOfQuiet(bot.proactive, later.at).isAfter(now))
+                  later,
+            ]
+          : const <BotLater>[];
+      if (events.isEmpty && due.isEmpty) continue;
+      if (due.isNotEmpty) {
+        waiting.removeWhere(due.contains);
+        _save();
+      }
       thread.session.send(
-        ComposerMessage(text: botEventMessage(botEventText(events))),
+        ComposerMessage(
+          text: botEventMessage(botWakeText(now, events: events, laters: due)),
+        ),
       );
     }
-    if (_pacers.values.any((p) => p.hasPending)) {
+    if (busy || _pacers.values.any((p) => p.hasPending)) {
       _timer?.cancel();
       _timer = Timer(const Duration(seconds: 30), _schedule);
+    } else {
+      _schedule();
     }
   }
 }
