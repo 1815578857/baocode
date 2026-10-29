@@ -78,6 +78,29 @@ void main() {
     }
   });
 
+  test('a bot\'s picture is told from an emoji by its file\'s name', () {
+    expect(isAvatarImage('avatar-0a1b2c3d4e5f.jpg'), isTrue);
+    expect(isAvatarImage('avatar-0a1b2c3d4e5f.PNG'), isFalse);
+    expect(isAvatarImage('🌸'), isFalse);
+    expect(isAvatarImage('../x.png'), isFalse);
+    expect(isAvatarImage(null), isFalse);
+    expect(
+      const LinkBot(
+        id: 'b',
+        name: 'Mia',
+        avatar: 'avatar-1.webp',
+      ).hasAvatarImage,
+      isTrue,
+    );
+  });
+
+  test('the stickers the app comes with, each once', () {
+    final ids = [for (final sticker in builtInStickers) sticker.id];
+    expect(ids.toSet(), hasLength(ids.length));
+    expect(builtInSticker('happy')?.zh, '开心');
+    expect(builtInSticker('nope'), isNull);
+  });
+
   test('the bots go to the phone, and back as they were', () {
     final state = LinkState.fromJson(
       jsonDecode(
