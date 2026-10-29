@@ -206,7 +206,9 @@ class WorkspaceBridge {
       model: bots.modelOf(bot),
       assistant: bot.assistant,
       session: session,
-      status: thread?.status == ThreadStatus.running
+      status: bots.waiting(bot)
+          ? BotStatus.waiting
+          : bots.typing(bot)
           ? BotStatus.typing
           : BotStatus.idle,
       unread: bots.unread(bot),
@@ -282,8 +284,11 @@ class WorkspaceBridge {
         if (text.isEmpty && _images(params['images']).isEmpty) return null;
         final AgentThread thread;
         if (params['bot'] case final Object id) {
-          // Its conversation, whichever it is now.
-          thread = _bots().threadFor(_bot(id));
+          // Its conversation, whichever it is now. What it asked to do,
+          // answered by the user's writing: not allowed.
+          final bot = _bot(id);
+          _bots().declineAsked(bot);
+          thread = _bots().threadFor(bot);
         } else if (params['session'] case final Object id) {
           thread = _thread(id);
         } else if (params['project'] case final String path) {
@@ -497,9 +502,39 @@ class WorkspaceBridge {
         _bots().delete(bot.id);
         return null;
       case LinkMethods.botMemory:
-        return {'text': _bots().memory(_bot(params['bot']))};
+        final bot = _bot(params['bot']);
+        return {'text': _bots().memory(bot), 'self': _bots().selfNotes(bot)};
       case LinkMethods.setBotMemory:
         _bots().setMemory(_bot(params['bot']), params['text'] as String? ?? '');
+        return null;
+      case LinkMethods.botAllowed:
+        return {'rules': _bots().allowedAlways(_bot(params['bot']))};
+      case LinkMethods.setBotAllowed:
+        _bots().setAllowedAlways(_bot(params['bot']), [
+          for (final rule in (params['rules'] as List?) ?? const [])
+            if (rule is String && rule.trim().isNotEmpty) rule.trim(),
+        ]);
+        return null;
+      case LinkMethods.setBotSelf:
+        _bots().setSelfNotes(
+          _bot(params['bot']),
+          params['text'] as String? ?? '',
+          restart: true,
+        );
+        return null;
+      case LinkMethods.setMe:
+        String text(String key) => switch (params[key]) {
+          final String value => value.trim(),
+          _ => '',
+        };
+        _bots().setMe(
+          BotUser(
+            name: text('name'),
+            gender: text('gender'),
+            signature: text('signature'),
+          ),
+          _avatarImage(params['picture']),
+        );
         return null;
       case LinkMethods.icon:
         final id = params['id'];

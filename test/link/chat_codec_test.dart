@@ -112,6 +112,19 @@ void main() {
             as UserMessageItem;
     expect(prompt.usage?.totalTokens, 15);
     expect(prompt.usage?.costUsd, 0.5);
+    final sent = DateTime(2026, 10, 29, 14, 5);
+    expect(
+      (ChatCodec.decode(
+                jsonDecode(
+                  jsonEncode(
+                    ChatCodec.encode(UserMessageItem(text: 'hi', sentAt: sent)),
+                  ),
+                ),
+              )!
+              as UserMessageItem)
+          .sentAt,
+      sent,
+    );
   });
 
   group('a bot\'s', () {
@@ -181,6 +194,64 @@ void main() {
       }
     });
 
+    test('messages go as it said them', () {
+      final said = roundTrip(
+        const ToolCallItem(
+          kind: ToolKind.other,
+          tool: ChatCodec.botSayTool,
+          target: '等下 我看看',
+          input: {'text': '等下 我看看'},
+        ),
+      );
+      expect(ChatCodec.botSay(said), '等下 我看看');
+      expect(ChatCodec.botSent(said), isTrue);
+      expect(
+        ChatCodec.botSay(
+          roundTrip(
+            const ToolCallItem(
+              kind: ToolKind.other,
+              tool: ChatCodec.botSayTool,
+              target: 'x',
+              status: ToolStatus.failed,
+              input: {'text': 'x'},
+            ),
+          ),
+        ),
+        isNull,
+      );
+    });
+
+    test('its own texts show only before it talks with its tools', () {
+      const say = ToolCallItem(
+        kind: ToolKind.other,
+        tool: ChatCodec.botSayTool,
+        target: '在',
+        input: {'text': '在'},
+      );
+      const look = ToolCallItem(
+        kind: ToolKind.other,
+        tool: 'bot_list_chats',
+        target: '',
+      );
+      final items = <ChatItem>[
+        const UserMessageItem(text: 'old'),
+        const AssistantTextItem('Before it talked so: shown.'),
+        const UserMessageItem(text: '在吗'),
+        const AssistantTextItem('Notes to itself.'),
+        say,
+        // What the user wrote meanwhile, waiting: the turn goes on.
+        const UserMessageItem(text: '?', queued: true),
+        look,
+        const AssistantTextItem('Done.'),
+        const UserMessageItem(text: 'ok'),
+        look,
+        // Taken up as it talked: what it writes after is a note still.
+        const UserMessageItem(text: '算了'),
+        const AssistantTextItem('They called it off.'),
+      ];
+      expect(ChatCodec.botQuiet(items.length, (i) => items[i]), {3, 7, 11});
+    });
+
     test('the user\'s sticker is told by its text', () {
       expect(ChatCodec.sticker(ChatCodec.stickerText('love')), 'love');
       expect(ChatCodec.sticker('[Sticker: love]\n[Image #3]'), 'love');
@@ -201,6 +272,22 @@ void main() {
         '</${ChatCodec.botEventTag}>',
       );
       expect(ChatCodec.botEvent(note), '- failed: "Build" in monad');
+      // With a picture, referred to after it.
+      expect(
+        ChatCodec.botEvent(
+          user(
+            '<${ChatCodec.botEventTag}>\nnew picture\n</${ChatCodec.botEventTag}>\n[Image #2]',
+          ),
+        ),
+        'new picture',
+      );
+      // Taken up with the user's: theirs, without it.
+      expect(
+        ChatCodec.withoutBotEvents(
+          '<${ChatCodec.botEventTag}>\nx\n</${ChatCodec.botEventTag}>\n你好',
+        ),
+        '你好',
+      );
       expect(ChatCodec.botEvent(user('hi <${ChatCodec.botEventTag}>')), isNull);
     });
   });

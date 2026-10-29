@@ -296,6 +296,9 @@ class _ChatTerminalAreaState extends State<ChatTerminalArea> {
               SizedBox(
                 height: rows.panel,
                 child: _ChatTerminalPanel(
+                  // The shared panel can move to another pane of the same
+                  // project without remounting its focused terminal.
+                  key: GlobalObjectKey(service),
                   terminals: _terminals,
                   root: _root,
                   service: service,
@@ -366,6 +369,7 @@ class _ChatTerminalAreaState extends State<ChatTerminalArea> {
 /// active terminal, with their tabs once there are two or more.
 class _ChatTerminalPanel extends StatelessWidget {
   const _ChatTerminalPanel({
+    super.key,
     required this.terminals,
     required this.root,
     required this.service,

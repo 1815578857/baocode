@@ -59,11 +59,15 @@ class ClaudeLaunch {
     this.env,
     this.settingsPath,
     this.directories = const [],
+    this.folderInstructions = true,
     this.readable = const [],
     this.instructions,
+    this.ownPrompt = false,
     this.models = const [],
     this.sdkServers = const [],
     this.tools,
+    this.allowed = const [],
+    this.asked = const [],
     this.promptSuggestions = true,
   });
 
@@ -87,13 +91,30 @@ class ClaudeLaunch {
   /// configured for Claude Code.
   final List<String>? tools;
 
+  /// Built-in tools it uses without asking (permission rules: `WebFetch`,
+  /// say), as the flag settings allow them.
+  final List<String> allowed;
+
+  /// What it always asks the user about, even where [allowed] or the
+  /// user's own rules would let it (permission rules: `Bash(rm:*)`).
+  final List<String> asked;
+
   /// Folders it works in besides [cwd] (a multi-folder workspace's): each
   /// an `--add-dir`, their `CLAUDE.md` read as [cwd]'s is.
   final List<String> directories;
 
+  /// Whether the `CLAUDE.md` of [directories] is read; not for those it
+  /// only reaches into (a bot's, the user's projects).
+  final bool folderInstructions;
+
   /// Told the agent after [appendedSystemPrompt] (what the workspace it
   /// works in is); none when null.
   final String? instructions;
+
+  /// Whether [instructions] are all its system prompt (`--system-prompt`),
+  /// in place of Claude Code's own and [appendedSystemPrompt]: an agent
+  /// that does not code (a bot's).
+  final bool ownPrompt;
 
   /// The session id to continue.
   final String? resume;
@@ -174,11 +195,15 @@ class ClaudeLaunch {
     env: env ?? this.env,
     settingsPath: settingsPath ?? this.settingsPath,
     directories: directories,
+    folderInstructions: folderInstructions,
     readable: readable,
     instructions: instructions,
+    ownPrompt: ownPrompt,
     models: models,
     sdkServers: sdkServers,
     tools: tools,
+    allowed: allowed,
+    asked: asked,
     promptSuggestions: promptSuggestions,
   );
 
@@ -204,14 +229,20 @@ class ClaudeLaunch {
       },
       'availableModels': allowlist,
     },
-    if (readable.isNotEmpty)
+    if (readable.isNotEmpty || allowed.isNotEmpty || asked.isNotEmpty)
       'permissions': {
-        'allow': [for (final folder in readable) readRule(folder)],
+        if (readable.isNotEmpty || allowed.isNotEmpty)
+          'allow': [
+            for (final folder in readable) readRule(folder),
+            ...allowed,
+          ],
+        if (asked.isNotEmpty) 'ask': asked,
       },
     'env': {
       ...unsetEnvironment,
       ...?env,
-      if (directories.isNotEmpty) ...additionalDirectoriesEnvironment,
+      if (directories.isNotEmpty && folderInstructions)
+        ...additionalDirectoriesEnvironment,
     },
   };
 
@@ -306,12 +337,17 @@ class ClaudeLaunch {
       '--allowedTools',
       sdkServers.map((name) => 'mcp__$name').join(','),
     ],
-    '--append-system-prompt',
-    switch (instructions) {
-      final instructions? when instructions.isNotEmpty =>
-        '$appendedSystemPrompt\n\n$instructions',
-      _ => appendedSystemPrompt,
-    },
+    if (ownPrompt) ...[
+      '--system-prompt',
+      instructions ?? '',
+    ] else ...[
+      '--append-system-prompt',
+      switch (instructions) {
+        final instructions? when instructions.isNotEmpty =>
+          '$appendedSystemPrompt\n\n$instructions',
+        _ => appendedSystemPrompt,
+      },
+    ],
   ];
 
   /// What the chat asks of the agent besides Claude Code's own prompt: how

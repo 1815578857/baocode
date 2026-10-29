@@ -484,6 +484,11 @@ class ClaudeCodeKernel
   /// The workspace [_cwd] is the folder of, as it is at this launch.
   KernelWorkspace? get _workspace => _context.workspace?.call();
 
+  /// When the messages sent while it works are taken up: as its workspace
+  /// would have them, else as the user set.
+  QueuedMessages get _queuedMessages =>
+      _workspace?.queuedMessages ?? QueuedMessages.current();
+
   /// Starts the process, if not yet, and waits until it is ready.
   Future<void> _ensureStarted() {
     if (_disposed) return Future.error(StateError('disposed'));
@@ -575,14 +580,18 @@ class ClaudeCodeKernel
           promptSuggestions: _launchedSuggestions,
           attribution: CommitAttribution.current(),
           env: env,
-          directories: workspace?.folders ?? const [],
+          directories: [...?workspace?.folders, ...?workspace?.reaches],
+          folderInstructions: workspace?.folders.isNotEmpty ?? false,
           // Long pastes are kept on this machine: only its agent reads them.
           // A remote one's reads the files of this machine's copied there.
           readable: RemoteLocation.isRemote(_cwd)
               ? RemoteDrops.folders
               : [?PasteStore.directory],
           instructions: workspace?.instructions,
+          ownPrompt: workspace?.ownPrompt ?? false,
           tools: workspace?.tools,
+          allowed: workspace?.allowedTools ?? const [],
+          asked: workspace?.askedTools ?? const [],
           models: switch (custom) {
             (final provider, _) => _requestedModels(provider),
             null => const [],
@@ -895,7 +904,12 @@ class ClaudeCodeKernel
       ItemUpserted(
         nextSeq,
         turn.id,
-        UserMessageItem(text: turn.text, queued: busy, images: turn.images),
+        UserMessageItem(
+          text: turn.text,
+          queued: busy,
+          images: turn.images,
+          sentAt: DateTime.now(),
+        ),
       ),
     );
     // Taken now, as the message was sent.
@@ -918,8 +932,7 @@ class ClaudeCodeKernel
   bool get _holds {
     final waiting = _queued.where((id) => !_held.containsKey(id));
     return waiting.any((id) => _sent[id]?.now ?? false) ||
-        (waiting.isNotEmpty &&
-            QueuedMessages.current() == QueuedMessages.afterTurn);
+        (waiting.isNotEmpty && _queuedMessages == QueuedMessages.afterTurn);
   }
 
   /// Gives the CLI the messages held for it, as far as [_holds] lets it: one
@@ -954,7 +967,7 @@ class ClaudeCodeKernel
         // CLI's own default).
         'priority': spareBackground
             ? 'now'
-            : switch (QueuedMessages.current()) {
+            : switch (_queuedMessages) {
                 QueuedMessages.afterTurn => 'later',
                 QueuedMessages.duringTurn => 'next',
               },
@@ -1838,6 +1851,7 @@ class ClaudeCodeKernel
               UserMessageItem(
                 text: _sent[id]?.text ?? '',
                 images: _sent[id]?.images ?? const [],
+                sentAt: DateTime.now(),
               ),
             ),
           );

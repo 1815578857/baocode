@@ -7,9 +7,9 @@ export 'package:bao_link/bao_link.dart'
 
 /// A bot as the user made it: who it is ([identity], [gender], [style],
 /// their words), what it
-/// may do ([abilities]), when it may write first ([proactive]). Its
-/// conversation runs in a folder of its own ([folder]), where its memory
-/// is kept too (see bot_store.dart).
+/// may do ([abilities]). Its conversation runs in a folder of its own
+/// ([folder]), where what it remembers is kept too (see bot_folders.dart).
+/// [proactive] is as older phones set it: unused, it judges for itself.
 class Bot {
   const Bot({
     required this.id,
@@ -24,6 +24,7 @@ class Bot {
     this.proactive = const BotProactive(),
     this.model,
     this.assistant = false,
+    this.created,
   });
 
   /// [json] as kept, its folder in [root].
@@ -58,9 +59,21 @@ class Bot {
       },
       model: json['model'] as String?,
       assistant: json['assistant'] == true,
+      created: switch (json['created']) {
+        final int ms => DateTime.fromMillisecondsSinceEpoch(ms),
+        _ => _createdIn(id),
+      },
     ),
     _ => null,
   };
+
+  /// When a bot named [id] was made, as its id says (`b` and the time,
+  /// see Bots); null for one whose does not.
+  static DateTime? _createdIn(String id) {
+    final match = RegExp(r'^b([0-9a-z]+)(?:-\d+)?$').firstMatch(id);
+    final micros = match == null ? null : int.tryParse(match[1]!, radix: 36);
+    return micros == null ? null : DateTime.fromMicrosecondsSinceEpoch(micros);
+  }
 
   final String id;
   final String name;
@@ -107,6 +120,9 @@ class Bot {
   /// The one the app starts with, which is not deleted.
   final bool assistant;
 
+  /// When the user made it, where known.
+  final DateTime? created;
+
   bool can(BotAbility ability) => abilities.contains(ability);
 
   Bot copyWith({
@@ -133,6 +149,7 @@ class Bot {
     proactive: proactive ?? this.proactive,
     model: model ?? this.model,
     assistant: assistant,
+    created: created,
   );
 
   Map<String, Object?> toJson() => {
@@ -152,5 +169,70 @@ class Bot {
     'proactive': proactive.toJson(),
     'model': ?model,
     if (assistant) 'assistant': true,
+    'created': ?created?.millisecondsSinceEpoch,
   };
+}
+
+/// Who the user is, as they put it on their phone (its profile): for
+/// their bots to know them by. [picture] is the file in the bots' folder
+/// their picture is kept in.
+class BotUser {
+  const BotUser({
+    this.name = '',
+    this.gender = '',
+    this.signature = '',
+    this.picture,
+  });
+
+  final String name;
+  final String gender;
+
+  /// The line under their name.
+  final String signature;
+  final String? picture;
+
+  bool get isEmpty =>
+      name.isEmpty && gender.isEmpty && signature.isEmpty && picture == null;
+
+  BotUser withPicture(String? picture) => BotUser(
+    name: name,
+    gender: gender,
+    signature: signature,
+    picture: picture,
+  );
+
+  Map<String, Object?> toJson() => {
+    if (name.isNotEmpty) 'name': name,
+    if (gender.isNotEmpty) 'gender': gender,
+    if (signature.isNotEmpty) 'signature': signature,
+    'picture': ?picture,
+  };
+
+  static BotUser fromJson(Object? json) {
+    if (json is! Map) return const BotUser();
+    String text(String key) => switch (json[key]) {
+      final String value => value.trim(),
+      _ => '',
+    };
+    return BotUser(
+      name: text('name'),
+      gender: text('gender'),
+      signature: text('signature'),
+      picture: switch (json['picture']) {
+        final String file when file.isNotEmpty => file,
+        _ => null,
+      },
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is BotUser &&
+      other.name == name &&
+      other.gender == gender &&
+      other.signature == signature &&
+      other.picture == picture;
+
+  @override
+  int get hashCode => Object.hash(name, gender, signature, picture);
 }
