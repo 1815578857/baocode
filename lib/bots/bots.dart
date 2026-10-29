@@ -152,6 +152,10 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     workspace.agentSetup = _setup;
     ClaudeSdkTools.gate = this;
     BotTools.register(this);
+    // The conversations kept from the last run listed first: else each
+    // bot, finding none yet, would start another and go on in that.
+    if (workspace.loading) await workspace.loaded;
+    if (_disposed) return;
     // Each with its conversation, for the phones to open from the first.
     _bots.forEach(threadFor);
     workspace.addListener(_watch);

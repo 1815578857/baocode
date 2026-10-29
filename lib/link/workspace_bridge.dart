@@ -280,7 +280,9 @@ class WorkspaceBridge {
         if (text.isEmpty && _images(params['images']).isEmpty) return null;
         final AgentThread thread;
         if (params['bot'] case final Object id) {
-          // Its conversation, whichever it is now.
+          // Its conversation, whichever it is now: the last run's, once
+          // listed, not another started.
+          if (workspace.loading) await workspace.loaded;
           thread = _bots().threadFor(_bot(id));
         } else if (params['session'] case final Object id) {
           thread = _thread(id);

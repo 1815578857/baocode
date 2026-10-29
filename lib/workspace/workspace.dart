@@ -321,6 +321,10 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
   bool _loading = false;
   bool get loading => _loading;
 
+  /// Completes once [load] has listed what the kernels keep.
+  Future<void> get loaded => _loaded.future;
+  final _loaded = Completer<void>();
+
   // --- Loading -------------------------------------------------------------
 
   /// Lists the projects and sessions the kernels keep, then opens a new
@@ -368,6 +372,7 @@ class Workspace extends ChangeNotifier implements ColorThemeStorage {
       _forgetGone(listed);
     }
     _loading = false;
+    if (!_loaded.isCompleted) _loaded.complete();
     for (final folder in {?_ideFolder, ..._windowFolders}) {
       _ensureIdeChat(folder);
     }
