@@ -439,7 +439,6 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
           memory: memory(bot),
           self: selfNotes(bot),
           computer: computer,
-          model: modelOf(bot),
           now: _clock(),
           imageModel:
               ClaudeSdkTools.called(

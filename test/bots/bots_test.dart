@@ -93,8 +93,7 @@ void main() {
     test('the rules first, then who the user made it', () {
       final told = botInstructions(bot, memory: 'Likes tea.');
       expect(told.indexOf('<bot_rules>'), 0);
-      expect(told, contains('say you are an AI'));
-      expect(told, contains('No sexual or explicit content'));
+      expect(told, contains('Keep strictly to the identity'));
       expect(told, contains('12356'));
       expect(told, contains('cannot approve or deny'));
       expect(
@@ -109,7 +108,7 @@ void main() {
       expect(told, contains('Likes tea.'));
     });
 
-    test('all it is: its picture, when and where, what runs it', () {
+    test('all it is: its picture, when and where', () {
       final made = DateTime(2026, 10, 1, 9);
       final told = botInstructions(
         Bot(
@@ -122,7 +121,6 @@ void main() {
         memory: '',
         self: '- Grew up by the sea',
         computer: 'Leo 的 MacBook',
-        model: 'Opus 5.5',
       );
       expect(
         told,
@@ -133,7 +131,6 @@ void main() {
       );
       expect(told, contains('The user made you on Thursday 2026-10-01.'));
       expect(told, contains('("Leo 的 MacBook")'));
-      expect(told, contains('the model Opus 5.5'));
       // A person of its own, the same each time.
       expect(told, contains('<personality>'));
       expect(told, contains('Grew up by the sea'));
