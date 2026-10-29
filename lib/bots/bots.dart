@@ -18,6 +18,7 @@ import '../remote/remote_location.dart';
 import '../workspace/preference_store.dart';
 import '../workspace/workspace.dart';
 import 'bot.dart';
+import 'bot_files.dart';
 import 'bot_folders.dart';
 import 'bot_pacer.dart';
 import 'bot_permissions.dart';
@@ -48,7 +49,8 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
   final Workspace workspace;
   final BotFolders folders;
 
-  /// Where the list of them is kept.
+  /// Where what the app keeps of them besides their files is: the agents
+  /// each is told of.
   final PreferenceStore? store;
   final DateTime Function() _clock;
 
@@ -75,9 +77,6 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
 
   final Map<String, BotPacer> _pacers = {};
   Timer? _timer;
-
-  /// What each bot meant to come back to, by its id, soonest first.
-  final Map<String, List<BotLater>> _laters = {};
 
   /// The most a bot may have waiting to come back to.
   static const maxLaters = 5;
@@ -122,18 +121,6 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
       debugPrint('bots: no computer name: $error');
     }
     final kept = await store?.read() ?? const {};
-    _bots = [
-      for (final json in (kept['bots'] as List?) ?? const [])
-        ?Bot.fromJson(json, root: root),
-    ];
-    if (kept['later'] case final Map<String, Object?> laters) {
-      for (final MapEntry(:key, :value) in laters.entries) {
-        _laters[key] = [
-          for (final json in value is List ? value : const [])
-            ?BotLater.fromJson(json),
-        ];
-      }
-    }
     if (kept['watching'] case final Map<String, Object?> watching) {
       for (final MapEntry(:key, :value) in watching.entries) {
         _watching[key] = [
@@ -141,22 +128,22 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         ];
       }
     }
-    _me = BotUser.fromJson(kept['me']);
+    _me = _readMe();
+    _bots = _readBots();
     if (!_bots.any((bot) => bot.assistant)) {
       final defaults = assistantDefaults(chinese: chinese);
-      _bots.insert(
-        0,
-        Bot(
-          id: 'assistant',
-          name: defaults.name,
-          folder: p.join(root, 'assistant'),
-          identity: defaults.identity,
-          abilities: BotAbility.values.toSet(),
-          assistant: true,
-          created: _clock(),
-        ),
+      final assistant = Bot(
+        id: 'assistant',
+        name: defaults.name,
+        folder: p.join(root, 'assistant'),
+        identity: defaults.identity,
+        level: BotLevel.computer,
+        abilities: BotFiles.shownAbilities.toSet(),
+        assistant: true,
+        created: _clock(),
       );
-      _save();
+      _writeBot(assistant);
+      _bots.insert(0, assistant);
     }
     for (final bot in _bots) {
       folders.make(bot.folder);
@@ -191,19 +178,147 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
 
   void _save() => unawaited(
     store?.write({
-      'bots': [for (final bot in _bots) bot.toJson()],
-      'later': {
-        for (final MapEntry(:key, :value) in _laters.entries)
-          if (value.isNotEmpty)
-            key: [for (final later in value) later.toJson()],
-      },
       'watching': {
         for (final MapEntry(:key, :value) in _watching.entries)
           if (value.isNotEmpty) key: value,
       },
-      if (!_me.isEmpty) 'me': _me.toJson(),
     }),
   );
+
+  // --- Their files ------------------------------------------------------
+
+  String _readText(String path) => switch (folders.readFile(path)) {
+    final bytes? => utf8.decode(bytes, allowMalformed: true),
+    null => '',
+  };
+
+  /// [text] at [path], a line's end last, as text files have; none for
+  /// nothing.
+  void _writeText(String path, String text) {
+    if (text.trim().isEmpty) {
+      folders.deleteFile(path);
+    } else {
+      final lines = '${text.trimRight()}\n';
+      folders.writeFile(path, Uint8List.fromList(utf8.encode(lines)));
+    }
+  }
+
+  /// The bots their folders hold, the assistant first, then as they were
+  /// made.
+  List<Bot> _readBots() {
+    final bots = [for (final folder in folders.folders()) ?_readBot(folder)];
+    final assistant = bots.where((bot) => bot.assistant).firstOrNull;
+    final epoch = DateTime.fromMillisecondsSinceEpoch(0);
+    return [
+      ?assistant,
+      ...bots.where((bot) => bot != assistant).toList()
+        ..sort((a, b) => (a.created ?? epoch).compareTo(b.created ?? epoch)),
+    ];
+  }
+
+  Bot? _readBot(String folder) {
+    final card = folders.readFile(p.join(folder, BotFiles.card));
+    if (card == null) return null;
+    return BotFiles.read(
+      folder,
+      utf8.decode(card, allowMalformed: true),
+      style: _readText(p.join(folder, BotFiles.style)),
+    );
+  }
+
+  void _writeBot(Bot bot) {
+    folders.make(bot.folder);
+    _writeText(p.join(bot.folder, BotFiles.card), BotFiles.cardText(bot));
+    _writeText(
+      p.join(bot.folder, BotFiles.style),
+      bot.style.isEmpty ? '' : '${bot.style}\n',
+    );
+  }
+
+  /// Whether [a] and [b] are the same as their files say.
+  static bool _same(Bot a, Bot b) =>
+      a.style == b.style && BotFiles.cardText(a) == BotFiles.cardText(b);
+
+  BotUser _readMe() => switch (folders.root) {
+    final root? => BotFiles.readUser(_readText(p.join(root, BotFiles.user))),
+    null => const BotUser(),
+  };
+
+  /// The bots, and the user, as their files say now: what a bot changed
+  /// itself ([by]), with Claude Code's tools, or the user by hand. A bot
+  /// changed starts again on it, told (but by itself); one made is added;
+  /// one whose folder is gone is gone, its conversation too (the
+  /// assistant's files are written again). How far a bot is trusted and
+  /// what it may use are the user's to set: as they were, a bot changing
+  /// them.
+  void reload({Bot? by}) {
+    final root = folders.root;
+    if (root == null || !_started) return;
+    var changed = false;
+    final next = <Bot>[];
+    for (var bot in _readBots()) {
+      final had = byId(bot.id);
+      if (by != null) {
+        final kept = Bot(
+          id: bot.id,
+          name: bot.name,
+          folder: bot.folder,
+          avatar: bot.avatar,
+          gender: bot.gender,
+          signature: bot.signature,
+          identity: bot.identity,
+          style: bot.style,
+          level: had?.level ?? BotLevel.chat,
+          abilities: had?.abilities ?? const {},
+          model: bot.model,
+          assistant: had?.assistant ?? false,
+          created: bot.created ?? had?.created ?? _clock(),
+        );
+        if (!_same(kept, bot)) _writeBot(kept);
+        bot = kept;
+      }
+      next.add(bot);
+      if (had == null) {
+        changed = true;
+        continue;
+      }
+      if (_same(had, bot)) continue;
+      changed = true;
+      _restart(bot);
+      if (by?.id != bot.id) {
+        _tellChanged(
+          had,
+          bot,
+          had.avatar == bot.avatar ? null : avatarImage(bot),
+          by: by,
+        );
+      }
+    }
+    for (final had in [..._bots]) {
+      if (next.any((bot) => bot.id == had.id)) continue;
+      if (had.assistant) {
+        _writeBot(had);
+        next.insert(0, had);
+      } else {
+        _forget(had);
+        changed = true;
+      }
+    }
+    final added = [
+      for (final bot in next)
+        if (byId(bot.id) == null) bot,
+    ];
+    _bots = next;
+    added.forEach(threadFor);
+    final me = _readMe();
+    if (me != _me) {
+      _me = me;
+      _bots.forEach(_restart);
+      changed = true;
+    }
+    _schedule();
+    if (changed) notifyListeners();
+  }
 
   /// The time, as the bots have it.
   DateTime get now => _clock();
@@ -220,7 +335,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         instructions: botInstructions(
           bot,
           user: _me,
-          memory: folders.readMemory(bot.folder),
+          memory: memory(bot),
           self: selfNotes(bot),
           computer: computer,
           model: modelOf(bot),
@@ -418,6 +533,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     String signature = '',
     required String identity,
     String style = '',
+    BotLevel level = BotLevel.chat,
     required Set<BotAbility> abilities,
     BotProactive proactive = const BotProactive(),
     BotAvatarImage? avatarImage,
@@ -430,26 +546,26 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     final Bot bot;
     if (id == null) {
       final newId = _newId();
+      final folder = p.join(root, newId);
       bot = Bot(
         id: newId,
         name: name,
-        folder: '',
-        avatar: _avatar(p.join(root, newId), avatar, avatarImage),
+        folder: folder,
+        avatar: _avatar(folder, avatar, avatarImage),
         gender: gender.trim(),
         signature: signature.trim(),
         identity: identity.trim(),
         style: style.trim(),
+        level: level,
         abilities: abilities,
         proactive: proactive,
         created: _clock(),
       );
-      final made = Bot.fromJson(bot.toJson(), root: root)!;
-      folders.make(made.folder);
-      _bots.add(made);
-      if (_started) threadFor(made);
-      _save();
+      _writeBot(bot);
+      _bots.add(bot);
+      if (_started) threadFor(bot);
       notifyListeners();
-      return made;
+      return bot;
     }
     final index = _bots.indexWhere((b) => b.id == id);
     if (index < 0) throw StateError('No bot $id');
@@ -466,11 +582,12 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
       signature: signature.trim(),
       identity: identity.trim(),
       style: style.trim(),
+      level: level,
       abilities: abilities,
       proactive: proactive,
     );
-    if (!bot.can(BotAbility.viewChats)) _pacers.remove(bot.id);
-    _save();
+    if (!bot.reaches(BotLevel.agents)) _pacers.remove(bot.id);
+    _writeBot(bot);
     _restart(bot);
     // Changed by itself, it knows.
     if (by?.id != bot.id) _tellChanged(had, bot, avatarImage, by: by);
@@ -501,6 +618,9 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
         '- Who you are, in their words, now:\n${bot.identity}',
       if (had.style != bot.style)
         '- How you talk, in their words, now:\n${bot.style}',
+      if (bot.level != had.level)
+        '- How far the user trusts you: now ${bot.level.name} (see your '
+            'abilities).',
       for (final ability in BotAbility.values)
         if (bot.can(ability) != had.can(ability))
           '- ${bot.can(ability) ? 'You may now' : 'You may no longer'}: '
@@ -532,25 +652,17 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
 
   /// What [bot] keeps of itself: what it said it likes, has done, thinks;
   /// to be the same one each time. Empty for nothing.
-  String selfNotes(Bot bot) {
-    final bytes = folders.readFile(p.join(bot.folder, selfFile));
-    return bytes == null ? '' : utf8.decode(bytes, allowMalformed: true);
-  }
+  String selfNotes(Bot bot) =>
+      _readText(p.join(bot.folder, BotFiles.self)).trim();
 
   /// [bot]'s notes of itself now [text]: by itself, as it goes; else the
   /// user's, which it is told from its next message ([restart]).
   void setSelfNotes(Bot bot, String text, {bool restart = false}) {
-    folders.writeFile(
-      p.join(bot.folder, selfFile),
-      Uint8List.fromList(utf8.encode(text.trim().isEmpty ? '' : text)),
-    );
+    _writeText(p.join(bot.folder, BotFiles.self), text);
     if (!restart) return;
     _restart(bot);
     notifyListeners();
   }
-
-  /// The file in its folder [selfNotes] are kept in.
-  static const selfFile = 'SELF.md';
 
   /// The avatar a bot in [folder] is saved with: [image], kept there as
   /// a file named after what it shows; else [asked], an emoji, or the
@@ -612,18 +724,22 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     final bot = byId(id);
     if (bot == null) return;
     if (bot.assistant) throw StateError('The assistant stays');
+    folders.delete(bot.folder);
+    _forget(bot);
+    notifyListeners();
+  }
+
+  /// [bot], its folder gone: its conversation deleted, nothing kept of it.
+  void _forget(Bot bot) {
     workspace.deleteAll([
       for (final thread in workspace.threads)
         if (thread.project.path == bot.folder) thread,
     ]);
-    folders.delete(bot.folder);
-    _bots.remove(bot);
-    _pacers.remove(id);
-    _laters.remove(id);
-    _watching.remove(id);
-    _seen.remove(id);
+    _bots.removeWhere((b) => b.id == bot.id);
+    _pacers.remove(bot.id);
+    _watching.remove(bot.id);
+    _seen.remove(bot.id);
     _save();
-    notifyListeners();
   }
 
   /// [bot] runs on [model] from now on: picked on its conversation, for
@@ -631,8 +747,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
   void setModel(Bot bot, String model) {
     final index = _bots.indexWhere((b) => b.id == bot.id);
     if (index < 0 || _bots[index].model == model) return;
-    _bots[index] = _bots[index].copyWith(model: model);
-    _save();
+    _writeBot(_bots[index] = _bots[index].copyWith(model: model));
     notifyListeners();
   }
 
@@ -647,7 +762,8 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     return bot.model;
   }
 
-  String memory(Bot bot) => folders.readMemory(bot.folder);
+  String memory(Bot bot) =>
+      _readText(p.join(bot.folder, BotFiles.memory)).trim();
 
   // --- The user ---------------------------------------------------------
 
@@ -682,13 +798,16 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
       folders.deleteFile(p.join(root, old));
     }
     _me = now;
-    _save();
+    _writeText(p.join(root, BotFiles.user), BotFiles.userText(now));
     _bots.forEach(_restart);
     notifyListeners();
   }
 
-  void setMemory(Bot bot, String text) {
-    folders.writeMemory(bot.folder, text.trim().isEmpty ? '' : text);
+  /// [bot]'s memory of the user now [text]: the user's, which it is told
+  /// from its next message; else by itself, as it goes ([restart] false).
+  void setMemory(Bot bot, String text, {bool restart = true}) {
+    _writeText(p.join(bot.folder, BotFiles.memory), text);
+    if (!restart) return;
     _restart(bot);
     notifyListeners();
   }
@@ -761,7 +880,13 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
       final session = thread.session;
       if (_followed.containsKey(session)) continue;
       Object? was;
+      var streaming = session.isStreaming;
       void listener() {
+        // Its turn done: what it changed of its files, taken up.
+        if (streaming && !session.isStreaming) {
+          scheduleMicrotask(() => reload(by: byId(bot.id) ?? bot));
+        }
+        streaming = session.isStreaming;
         if (!session.isStreaming && _restartWhenIdle.remove(bot.id)) {
           _restart(bot);
         }
@@ -792,7 +917,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
       final told = [
         for (final event in events)
           if (bot.assistant
-              ? bot.can(BotAbility.viewChats)
+              ? bot.reaches(BotLevel.agents)
               : watching.contains(event.chat))
             event,
       ];
@@ -874,34 +999,40 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
 
   /// [bot] comes back, on its own, to [note] [after] from now: when.
   DateTime later(Bot bot, Duration after, String note) {
-    final at = _clock().add(after);
-    final laters = _laters[bot.id] ??= [];
-    laters
-      ..add(BotLater(at: at, note: note.trim()))
+    // To the minute, as its file has it.
+    final now = _clock().add(after);
+    final at = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    final laters = [...this.laters(bot), BotLater(at: at, note: note.trim())]
       ..sort((a, b) => a.at.compareTo(b.at));
     // The latest dropped, past the most it may have.
     if (laters.length > maxLaters) laters.removeRange(maxLaters, laters.length);
-    _save();
+    _writeLaters(bot, laters);
     _schedule();
     return at;
   }
 
-  /// What [bot] meant to come back to, soonest first.
-  List<BotLater> laters(Bot bot) => List.unmodifiable(_laters[bot.id] ?? []);
+  /// What [bot] meant to come back to, soonest first: its LATER.md.
+  List<BotLater> laters(Bot bot) =>
+      BotFiles.readLaters(_readText(p.join(bot.folder, BotFiles.later)));
+
+  void _writeLaters(Bot bot, List<BotLater> laters) => _writeText(
+    p.join(bot.folder, BotFiles.later),
+    BotFiles.laterText(laters),
+  );
 
   /// [bot] no longer comes back to what its notes say [which] of (a part
   /// of one, any case): those it dropped.
   List<BotLater> cancelLaters(Bot bot, String which) {
     final part = which.trim().toLowerCase();
-    final laters = _laters[bot.id];
-    if (part.isEmpty || laters == null) return const [];
+    final laters = this.laters(bot);
+    if (part.isEmpty) return const [];
     final dropped = [
       for (final later in laters)
         if (later.note.toLowerCase().contains(part)) later,
     ];
     if (dropped.isEmpty) return const [];
-    laters.removeWhere(dropped.contains);
-    _save();
+    final path = p.join(bot.folder, BotFiles.later);
+    _writeText(path, BotFiles.withoutLaters(_readText(path), dropped));
     _schedule();
     return dropped;
   }
@@ -912,7 +1043,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     DateTime? next;
     for (final bot in _bots) {
       var due = _pacers[bot.id]?.dueAt(now);
-      if (_laters[bot.id]?.firstOrNull case final later?) {
+      if (laters(bot).firstOrNull case final later?) {
         final at = later.at.isBefore(now) ? now : later.at;
         if (due == null || at.isBefore(due)) due = at;
       }
@@ -930,7 +1061,7 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
     var busy = false;
     for (final bot in _bots) {
       final pacer = _pacers[bot.id];
-      final waiting = _laters[bot.id] ?? const <BotLater>[];
+      final waiting = laters(bot);
       if (pacer == null && waiting.isEmpty) continue;
       final thread = threadFor(bot);
       // Not while it is answering: after.
@@ -945,8 +1076,9 @@ class Bots extends ChangeNotifier implements ClaudeSdkGate {
       ];
       if (events.isEmpty && due.isEmpty) continue;
       if (due.isNotEmpty) {
-        waiting.removeWhere(due.contains);
-        _save();
+        // Its lines taken out: what else it wrote there stays.
+        final path = p.join(bot.folder, BotFiles.later);
+        _writeText(path, BotFiles.withoutLaters(_readText(path), due));
       }
       thread.session.send(
         ComposerMessage(
