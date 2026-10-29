@@ -20,6 +20,7 @@ import '../../settings/user_settings.dart';
 import '../../workspace/editor_launcher.dart' show openExternal;
 import '../agent_kernel.dart';
 import '../commit_attribution.dart';
+import '../extension_switches.dart';
 import '../kernel_event.dart';
 import '../kernel_types.dart';
 import '../prompt_suggestions.dart';
@@ -138,6 +139,7 @@ class ClaudeCodeKernel
       goalSaid: _syncGoal,
     );
     _providers.addListener(_providersChanged);
+    ExtensionSwitches.changes?.addListener(_applySwitches);
     _live.add(this);
     _sessionId = _context.resume?.id;
     final settings = _context.settings;
@@ -429,6 +431,14 @@ class ClaudeCodeKernel
   /// a restart (see [_applyWindow]).
   bool _launchedSuggestions = true;
 
+  /// What the process was started with, its flag settings' permission
+  /// rules sent again with the [ExtensionSwitches] as they change.
+  ClaudeLaunch? _launched;
+
+  /// The [ExtensionSwitches] the process has: at start, then each change
+  /// sent ([_applySwitches]).
+  ExtensionSwitches _appliedSwitches = ExtensionSwitches.none;
+
   /// The context window, as the CLI reports it: the smaller of the
   /// model's and [_window].
   int _contextWindow = 200000;
@@ -562,9 +572,10 @@ class ClaudeCodeKernel
       _launchedModel = custom != null ? _model : null;
       _launchedWindow = _autocompact;
       _launchedSuggestions = PromptSuggestions.current();
+      _appliedSwitches = ExtensionSwitches.current();
       final sdkServers = ClaudeSdkTools.serversFor(_cwd);
       final transport = await _start(
-        ClaudeLaunch(
+        _launched = ClaudeLaunch(
           cwd: _cwd,
           sdkServers: sdkServers,
           resume: _sessionId,
@@ -578,6 +589,7 @@ class ClaudeCodeKernel
           thinking: custom != null && direct && effort == 'none' ? false : null,
           autocompact: _autocompact,
           promptSuggestions: _launchedSuggestions,
+          switches: _appliedSwitches,
           attribution: CommitAttribution.current(),
           env: env,
           directories: [...?workspace?.folders, ...?workspace?.reaches],
@@ -621,6 +633,8 @@ class ClaudeCodeKernel
         return await _launch();
       }
       _setHealth(KernelHealth.ready);
+      // Switched since it was started.
+      _applySwitches();
       _syncGoal();
       final window = _window;
       _change([
@@ -820,11 +834,28 @@ class ClaudeCodeKernel
     _setHealth(KernelHealth.idle);
   }
 
+  /// The skills, MCP servers and tools turned on or off since the process
+  /// started, given it as flag settings: taken up at once, the next request
+  /// to the model without them.
+  void _applySwitches() {
+    final launch = _launched;
+    final switches = ExtensionSwitches.current();
+    if (!_running || launch == null || switches == _appliedSwitches) return;
+    _appliedSwitches = switches;
+    _change([
+      (
+        'apply_flag_settings',
+        {'settings': launch.switchSettings(switches, whole: true)},
+      ),
+    ]);
+  }
+
   @override
   void dispose() {
     _disposed = true;
     _goalRetry?.cancel();
     _providers.removeListener(_providersChanged);
+    ExtensionSwitches.changes?.removeListener(_applySwitches);
     _live.remove(this);
     _cancelSdkCalls();
     _teardown();

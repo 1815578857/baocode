@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart' show Icons;
+import 'package:flutter/material.dart' show ChangeNotifier, Icons;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bao_remote/claude.dart'
     show ClaudeHistoryPage, ClaudeNotInstalled;
@@ -23,6 +23,7 @@ import 'package:baocode/kernel/claude_code/turn_stats.dart';
 import 'package:baocode/kernel/codex/codex_kernel.dart';
 import 'package:baocode/kernel/codex/codex_transport.dart';
 import 'package:baocode/kernel/commit_attribution.dart';
+import 'package:baocode/kernel/extension_switches.dart';
 import 'package:baocode/kernel/kernel_event.dart';
 import 'package:baocode/kernel/kernel_types.dart';
 import 'package:baocode/kernel/mock/mock_kernels.dart';
@@ -1962,6 +1963,60 @@ void main() {
       await pumpEventQueue();
       expect(transcript.pendingInteraction, isNull);
       kernel.dispose();
+    });
+
+    test('skills, MCP servers and tools switched off: given at start, and '
+        'again whole as they change', () async {
+      final changes = ChangeNotifier();
+      var switches = const ExtensionSwitches(
+        disabledSkills: {'review'},
+        disabledServers: {'my.server'},
+      );
+      ExtensionSwitches.current = () => switches;
+      ExtensionSwitches.changes = changes;
+      addTearDown(() {
+        ExtensionSwitches.current = () => ExtensionSwitches.none;
+        ExtensionSwitches.changes = null;
+      });
+      final cli = FakeCli();
+      final launches = <ClaudeLaunch>[];
+      final kernel = ClaudeCodeKernel(
+        MockKernels.claudeCode,
+        const KernelContext(cwd: '/p'),
+        start: (launch) async {
+          launches.add(launch);
+          return cli;
+        },
+      );
+      kernel.prepare();
+      await pumpEventQueue();
+      final started = launches.single.settings;
+      final allow = (started['permissions'] as Map)['allow'];
+      expect((started['permissions'] as Map)['deny'], ['mcp__my_server']);
+      expect(started['skillOverrides'], {'review': 'off'});
+      expect(cli.requests('apply_flag_settings'), isEmpty);
+
+      // One back on, a tool off: all of it sent (the rules it started with
+      // kept), what is on now left out.
+      switches = switches
+          .withSkills(['review'], true)
+          .withServer('my.server', true)
+          .withTool('git', 'push', false);
+      changes.notifyListeners();
+      await pumpEventQueue();
+      expect(cli.requests('apply_flag_settings').single['settings'], {
+        'permissions': {
+          'allow': allow,
+          'deny': ['mcp__git__push'],
+        },
+        'skillOverrides': <String, String>{},
+      });
+      // The same again: nothing sent.
+      changes.notifyListeners();
+      await pumpEventQueue();
+      expect(cli.requests('apply_flag_settings'), hasLength(1));
+      kernel.dispose();
+      changes.dispose();
     });
 
     test('Plan\'s commands are left to the classifier with the approvals '

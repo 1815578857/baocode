@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../models/launch_environment.dart';
 import '../commit_attribution.dart';
+import '../extension_switches.dart';
 
 export 'package:bao_remote/claude.dart'
     show ClaudeFolderGone, ClaudeNoModel, ClaudeUnavailable;
@@ -68,7 +69,12 @@ class ClaudeLaunch {
     this.tools,
     this.allowed = const [],
     this.promptSuggestions = true,
+    this.switches = ExtensionSwitches.none,
   });
+
+  /// The skills, MCP servers and tools turned off (Settings → Customize):
+  /// permission rules and `skillOverrides` of the flag settings.
+  final ExtensionSwitches switches;
 
   /// Whether it suggests the next prompt after each turn
   /// (`--prompt-suggestions`), each a request of its own.
@@ -199,6 +205,7 @@ class ClaudeLaunch {
     tools: tools,
     allowed: allowed,
     promptSuggestions: promptSuggestions,
+    switches: switches,
   );
 
   Map<String, String>? get _attribution => switch (attribution) {
@@ -223,10 +230,7 @@ class ClaudeLaunch {
       },
       'availableModels': allowlist,
     },
-    if (readable.isNotEmpty || allowed.isNotEmpty)
-      'permissions': {
-        'allow': [for (final folder in readable) readRule(folder), ...allowed],
-      },
+    ...switchSettings(switches),
     'env': {
       ...unsetEnvironment,
       ...?env,
@@ -234,6 +238,27 @@ class ClaudeLaunch {
         ...additionalDirectoriesEnvironment,
     },
   };
+
+  /// The flag settings' `permissions` and `skillOverrides` with [switches]
+  /// in them: given at start, and again whole (`apply_flag_settings`
+  /// replaces each key, not merges into it) when they change, an empty one
+  /// taking back what was turned off.
+  Map<String, Object?> switchSettings(
+    ExtensionSwitches switches, {
+    bool whole = false,
+  }) {
+    final allow = [for (final folder in readable) readRule(folder), ...allowed];
+    final deny = switches.denyRules;
+    final overrides = switches.skillOverrides;
+    return {
+      if (whole || allow.isNotEmpty || deny.isNotEmpty)
+        'permissions': {
+          if (whole || allow.isNotEmpty) 'allow': allow,
+          if (whole || deny.isNotEmpty) 'deny': deny,
+        },
+      if (whole || overrides.isNotEmpty) 'skillOverrides': overrides,
+    };
+  }
 
   /// A provider's session's models, let through the user's own
   /// `availableModels`: those it is switched to and starts on, and its
