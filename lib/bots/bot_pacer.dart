@@ -119,6 +119,9 @@ class BotPacer {
   }
 
   /// [at], or the end of the quiet hours it falls in.
+  static DateTime outOfQuiet(BotProactive settings, DateTime at) =>
+      _outOfQuiet(settings, at);
+
   static DateTime _outOfQuiet(BotProactive settings, DateTime at) {
     final minute = at.hour * 60 + at.minute;
     if (!settings.isQuiet(minute)) return at;
@@ -141,4 +144,57 @@ String botEventText(List<BotEvent> events) {
     if (events.length > shown.length)
       '- and ${events.length - shown.length} more.',
   ].join('\n');
+}
+
+/// What a bot meant to come back to (its bot_later tool): when, and its
+/// note to itself of what.
+class BotLater {
+  const BotLater({required this.at, required this.note});
+
+  final DateTime at;
+  final String note;
+
+  Map<String, Object?> toJson() => {
+    'at': at.millisecondsSinceEpoch,
+    'note': note,
+  };
+
+  static BotLater? fromJson(Object? json) => switch (json) {
+    {'at': final int at, 'note': final String note} => BotLater(
+      at: DateTime.fromMillisecondsSinceEpoch(at),
+      note: note,
+    ),
+    _ => null,
+  };
+}
+
+/// The app's message waking a bot at [now]: what happened to the agents
+/// ([events]), what it meant to come back to ([laters]), and the time.
+String botWakeText(
+  DateTime now, {
+  List<BotEvent> events = const [],
+  List<BotLater> laters = const [],
+}) => [
+  if (events.isNotEmpty) botEventText(events),
+  if (laters.isNotEmpty) ...[
+    'You meant to come back to this now:',
+    for (final later in laters) '- ${later.note}',
+  ],
+  'Now: ${botTime(now)}.',
+].join('\n');
+
+/// [at] as a bot is told the time: its day and the hour.
+String botTime(DateTime at) {
+  const days = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${days[at.weekday - 1]} ${at.year}-${two(at.month)}-${two(at.day)} '
+      '${two(at.hour)}:${two(at.minute)}';
 }

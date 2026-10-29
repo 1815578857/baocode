@@ -6,10 +6,12 @@ import 'package:baocode/bots/bot.dart';
 import 'package:baocode/bots/bot_folders.dart';
 import 'package:baocode/bots/bot_pacer.dart';
 import 'package:baocode/bots/bot_prompt.dart';
+import 'package:baocode/bots/bot_tools.dart';
 import 'package:baocode/bots/bots.dart';
 import 'package:baocode/chat/chat_models.dart';
 import 'package:baocode/chat/chat_session.dart';
 import 'package:baocode/kernel/agent_kernel.dart';
+import 'package:baocode/kernel/queued_messages.dart';
 import 'package:baocode/link/chat_codec.dart';
 import 'package:baocode/kernel/claude_code/claude_code_kernel.dart';
 import 'package:baocode/kernel/claude_code/claude_code_transport.dart';
@@ -249,6 +251,17 @@ void main() {
       expect(launch.cwd, bot.folder);
       expect(launch.instructions, contains('<bot_rules>'));
       expect(launch.instructions, contains('小宝'));
+      // Its prompt in place of a coding agent's: none of the chat's notes
+      // on citing code either.
+      expect(launch.ownPrompt, isTrue);
+      expect(launch.arguments, contains('--system-prompt'));
+      expect(launch.arguments, isNot(contains('--append-system-prompt')));
+      expect(launch.arguments.join(' '), isNot(contains('<citing_code>')));
+      // What the user writes meanwhile, taken up as it talks.
+      expect(
+        workspace.agentSetup!(bot.folder)!.workspace().queuedMessages,
+        QueuedMessages.duringTurn,
+      );
       expect(launch.permissionMode, 'dontAsk');
       expect(launch.sdkServers, [ClaudeSdkTools.server]);
       // The browser's tool search, as it may use it; no other.
@@ -281,6 +294,7 @@ void main() {
         expect(hers, isNot(contains('bot_read_file')));
         final none = bots.save(name: 'Quiet', identity: '', abilities: {});
         expect(await offered(none.folder), [
+          'bot_say',
           'bot_send_sticker',
           'bot_send_image',
           'bot_remember',
@@ -520,6 +534,79 @@ void main() {
         }))['isError'],
         isTrue,
       );
+    });
+
+    Future<Map> call(Bot bot, String tool, Map<String, Object?> input) async =>
+        (await ClaudeSdkTools.handle({
+              'jsonrpc': '2.0',
+              'id': 5,
+              'method': 'tools/call',
+              'params': {'name': tool, 'arguments': input},
+            }, ClaudeSdkCall(cwd: bot.folder)))['result']
+            as Map;
+
+    test('it talks with bot_say, a pause after each message', () async {
+      final paused = <String>[];
+      BotTools.pause = (text) {
+        paused.add(text);
+        return Duration.zero;
+      };
+      addTearDown(() => BotTools.pause = BotTools.typingPause);
+      final bot = bots.bots.single;
+      final sent = await call(bot, 'bot_say', {'text': '等下 我看看'});
+      expect(sent['isError'], isNot(isTrue));
+      // The time told, as the conversation goes on.
+      expect('${sent['content']}', contains('Thursday 2026-10-29 14:00'));
+      expect(paused, ['等下 我看看']);
+      expect((await call(bot, 'bot_say', {'text': ' '}))['isError'], isTrue);
+      // As long as it takes to write, about; never long.
+      expect(BotTools.typingPause('嗯'), const Duration(milliseconds: 600));
+      expect(
+        BotTools.typingPause('x' * 500),
+        const Duration(milliseconds: 2400),
+      );
+    });
+
+    test('it comes back later on its own, out of the quiet hours', () async {
+      final bot = bots.bots.single;
+      final set = await call(bot, 'bot_later', {
+        'minutes': 90,
+        'note': 'Ask how the interview went',
+      });
+      expect(set['isError'], isNot(isTrue));
+      expect('${set['content']}', contains('15:30'));
+      expect(bots.laters(bot).single.at, DateTime(2026, 10, 29, 15, 30));
+      await pumpEventQueue();
+      expect(store.preferences['later'], {
+        'assistant': [
+          {
+            'at': DateTime(2026, 10, 29, 15, 30).millisecondsSinceEpoch,
+            'note': 'Ask how the interview went',
+          },
+        ],
+      });
+      // Not before its time.
+      now = DateTime(2026, 10, 29, 15);
+      bots.deliver();
+      expect(bots.threadOf(bot)!.session.itemCount, 0);
+      now = DateTime(2026, 10, 29, 15, 31);
+      bots.deliver();
+      final note = bots.threadOf(bot)!.session.itemAt(0) as UserMessageItem;
+      expect(ChatCodec.botEvent(note), contains('Ask how the interview went'));
+      expect(ChatCodec.botEvent(note), contains('Now: Thursday'));
+      expect(bots.laters(bot), isEmpty);
+
+      // At night, put off to the morning (quiet 23:00–08:00 by default).
+      now = DateTime(2026, 10, 29, 22, 30);
+      await call(bot, 'bot_later', {'minutes': 60, 'note': 'Remind of x'});
+      expect(bots.laters(bot).single.at, DateTime(2026, 10, 30, 8));
+      // Bad minutes; and none for one that may not write first.
+      expect(
+        (await call(bot, 'bot_later', {'minutes': 0, 'note': 'x'}))['isError'],
+        isTrue,
+      );
+      final mia = bots.save(name: 'Mia', identity: '', abilities: {});
+      expect(await offered(mia.folder), isNot(contains('bot_later')));
     });
 
     test('what it remembers: kept by it, seen, changed and cleared', () async {
