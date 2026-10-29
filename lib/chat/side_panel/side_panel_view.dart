@@ -83,11 +83,17 @@ class AgentSidePanelArea extends StatefulWidget {
     this.rail,
     this.railTop = AppMetrics.titleBarHeight + 4,
     this.hidden = false,
+    this.conversation,
     required this.child,
   });
 
   final AgentSidePanel panel;
   final WidgetBuilder builder;
+
+  /// One pane's, of agents side by side, its conversation's: shown as it
+  /// is there ([AgentSidePanel.shownIn]), with a focus of its own. None:
+  /// the window's ([AgentSidePanel.shown]).
+  final Object? conversation;
 
   /// While the panel is hidden, over the conversations' top right (left,
   /// the panel at their left), clear of their scrollbar: their column keeps
@@ -161,6 +167,22 @@ class _AgentSidePanelAreaState extends State<AgentSidePanelArea> {
 
   AgentSidePanel get _panel => widget.panel;
 
+  /// Whether it shows: the pane's, or the window's.
+  bool get _shownHere => switch (widget.conversation) {
+    final conversation? => _panel.shownIn(conversation),
+    null => _panel.shown,
+  };
+
+  FocusNode get _focusNode => switch (widget.conversation) {
+    final conversation? => _panel.focusNodeOf(conversation),
+    null => _panel.focusNode,
+  };
+
+  void _hide() => switch (widget.conversation) {
+    final conversation? => _panel.setShownIn(conversation, false),
+    null => _panel.hide(),
+  };
+
   /// The widest it shows in [room]: beside the conversations, what they
   /// leave at their least; over them, all but a strip of them.
   double _most(double room) => _overlay
@@ -180,7 +202,7 @@ class _AgentSidePanelAreaState extends State<AgentSidePanelArea> {
     builder: (context, _) => LayoutBuilder(
       builder: (context, constraints) {
         final room = constraints.maxWidth;
-        final shown = _panel.shown && !widget.hidden;
+        final shown = _shownHere && !widget.hidden;
         // Over the conversations only where it cannot be beside them at
         // its least; else beside them, narrower than it would be where
         // they need the room.
@@ -226,7 +248,7 @@ class _AgentSidePanelAreaState extends State<AgentSidePanelArea> {
                 Positioned.fill(
                   key: const ValueKey('scrim'),
                   child: GestureDetector(
-                    onTap: _panel.hide,
+                    onTap: _hide,
                     child: const ColoredBox(color: Color(0x33000000)),
                   ),
                 ),
@@ -299,12 +321,12 @@ class _AgentSidePanelAreaState extends State<AgentSidePanelArea> {
       // on the panel), for its keys.
       Listener(
         onPointerDown: (_) {
-          if (!_panel.focusNode.hasFocus) {
-            _panel.focusNode.requestFocus();
+          if (!_focusNode.hasFocus) {
+            _focusNode.requestFocus();
           }
         },
         child: Focus(
-          focusNode: _panel.focusNode,
+          focusNode: _focusNode,
           // The editor's background, all of it: the conversation's side,
           // not the window's.
           child: ColoredBox(
@@ -1613,7 +1635,7 @@ class _SectionBar extends StatelessWidget {
                     l10n.sidePanelHide,
                     ChatCommandIds.toggleSidePanel,
                   ),
-                  onPressed: panel.hide,
+                  onPressed: () => panel.hideFor(session),
                 ),
               ),
               const SizedBox(width: 6),
