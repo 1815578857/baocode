@@ -1012,6 +1012,15 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Select a file to preview it'), findsOneWidget);
+    // The list's toggle leads the files' tabs, there with none open; the
+    // other pages, without a list, have none.
+    final toggle = find.byKey(const ValueKey('side-panel-list-toggle'));
+    expect(toggle, findsOneWidget);
+    panel.showSection(session, SidePanelSection.changes);
+    await tester.pumpAndSettle();
+    expect(toggle, findsNothing);
+    panel.showSection(session, SidePanelSection.files);
+    await tester.pumpAndSettle();
     await tester.tap(find.descendant(of: list, matching: find.text('b.dart')));
     await tester.pumpAndSettle();
     expect(_active(panel, session)!.path, '/p/b.dart');
