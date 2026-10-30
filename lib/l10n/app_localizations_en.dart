@@ -4996,6 +4996,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get termKillTerminal => 'Kill Terminal';
 
   @override
+  String get termKillOtherTerminals => 'Kill Other Terminals';
+
+  @override
+  String get termKillAllTerminals => 'Kill All Terminals';
+
+  @override
+  String get termStopAllTasks => 'Stop All Running Tasks';
+
+  @override
+  String get termRunInNewTerminal => 'Run in New Terminal';
+
+  @override
   String get termNoTerminals => 'No terminals';
 
   @override

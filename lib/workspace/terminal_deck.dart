@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart' show kMiddleMouseButton;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../chat/chat_models.dart' show CommandStatus;
 import '../chat/chat_session.dart';
@@ -238,6 +239,7 @@ class _TerminalDeckState extends State<TerminalDeck> {
                           // Its name edited where it is the view.
                           renaming: terminals.editing == shell && here,
                           onSelect: () => _show(shell),
+                          onNew: () => _shown(widget.onNew()),
                           onRename: () {
                             _show(shell);
                             terminals.startRename(shell);
@@ -255,6 +257,14 @@ class _TerminalDeckState extends State<TerminalDeck> {
                       list: tasks,
                       shown: current is String ? current : null,
                       onShow: _show,
+                      files: widget.files!,
+                      onRun: terminals == null
+                          ? null
+                          : (command) {
+                              final shell = widget.onNew();
+                              _shown(shell);
+                              shell?.sendText(command, shouldExecute: true);
+                            },
                     ),
                   ],
                 ],
@@ -500,7 +510,11 @@ class _DeckTabState extends State<_DeckTab> {
             duration: const Duration(milliseconds: 120),
             height: _DeckTab.height,
             constraints: const BoxConstraints(maxWidth: 200),
-            padding: EdgeInsets.only(left: 8, right: onClose == null ? 8 : 3),
+            // Tight to its ends: a button at the end has room of its own.
+            padding: EdgeInsets.only(
+              left: 6,
+              right: onClose != null || widget.trailing != null ? 2 : 6,
+            ),
             decoration: BoxDecoration(
               color: active
                   ? AppColors.hover
@@ -566,7 +580,8 @@ class _DeckTabState extends State<_DeckTab> {
 }
 
 /// A terminal's tab: its name (edited in place while [renaming]), the
-/// exited marker, Kill as its close; Rename and Kill on a right click.
+/// exited marker, Kill as its close; on a right click, New Terminal,
+/// Rename, Clear and the kills ([terminalTabMenu]).
 class _ShellTab extends StatelessWidget {
   const _ShellTab({
     super.key,
@@ -575,6 +590,7 @@ class _ShellTab extends StatelessWidget {
     required this.active,
     required this.renaming,
     required this.onSelect,
+    required this.onNew,
     required this.onRename,
   });
 
@@ -583,6 +599,7 @@ class _ShellTab extends StatelessWidget {
   final bool active;
   final bool renaming;
   final VoidCallback onSelect;
+  final VoidCallback onNew;
   final VoidCallback onRename;
 
   @override
@@ -616,15 +633,13 @@ class _ShellTab extends StatelessWidget {
           showIdeMenu(
             context,
             position: position,
-            entries: ideMenuGroups([
-              [IdeMenuAction(l10n.termRename, onSelected: onRename)],
-              [
-                IdeMenuAction(
-                  l10n.termKillTerminal,
-                  onSelected: () => terminals.kill(shell),
-                ),
-              ],
-            ]),
+            entries: terminalTabMenu(
+              terminals,
+              shell,
+              l10n: l10n,
+              onNew: onNew,
+              onRename: onRename,
+            ),
           ),
         ),
       );
@@ -633,8 +648,8 @@ class _ShellTab extends StatelessWidget {
 }
 
 /// The background commands' tab: the one shown (the latest, until one is
-/// chosen) with its status, and a dropdown of them all to choose another
-/// or clear those ended; on a right click, Stop and the clearing.
+/// chosen) with its status, and a dropdown of them all to choose another;
+/// there and on a right click, what can be done to it ([_actions]).
 class _TasksTab extends StatelessWidget {
   const _TasksTab({
     super.key,
@@ -642,6 +657,8 @@ class _TasksTab extends StatelessWidget {
     required this.list,
     required this.shown,
     required this.onShow,
+    required this.files,
+    this.onRun,
   });
 
   final TerminalTasks tasks;
@@ -651,18 +668,60 @@ class _TasksTab extends StatelessWidget {
   final String? shown;
   final ValueChanged<Object> onShow;
 
-  /// What can be done to [task] and to those ended.
+  /// What reads a command's output, to copy it.
+  final IdeFileService files;
+
+  /// Runs a command line in a new terminal; null where there can be none.
+  final ValueChanged<String>? onRun;
+
+  /// What can be done to [task] and to the others: stop it or all those
+  /// running; run it again in a terminal; copy it or its output; clear it
+  /// or all those ended.
   List<List<IdeMenuEntry>> _actions(AppLocalizations l10n, KernelTask task) {
+    bool runs(KernelTask task) => task.status == CommandStatus.running;
+    final running = list.where(runs).toList();
     final ended = [
       for (final task in list)
-        if (task.status != CommandStatus.running) task,
+        if (!runs(task)) task,
     ];
+    final command = tasks.commandOf(task);
+    final output = task.outputFile;
+    void copy(String text) =>
+        unawaited(Clipboard.setData(ClipboardData(text: text)));
     return [
       [
-        if (task.status == CommandStatus.running)
+        if (runs(task))
           IdeMenuAction(l10n.chatStop, onSelected: () => tasks.stop(task)),
+        if (running.length > 1)
+          IdeMenuAction(
+            l10n.termStopAllTasks,
+            onSelected: () => running.forEach(tasks.stop),
+          ),
       ],
       [
+        if ((command, onRun) case (final command?, final run?))
+          IdeMenuAction(
+            l10n.termRunInNewTerminal,
+            onSelected: () => run(command),
+          ),
+      ],
+      [
+        if (command != null)
+          IdeMenuAction(l10n.termCopyCommand, onSelected: () => copy(command)),
+        if (output != null)
+          IdeMenuAction(
+            l10n.termCopyOutput,
+            onSelected: () => unawaited(
+              files.read(output, force: true).then(copy, onError: (_) {}),
+            ),
+          ),
+      ],
+      [
+        if (!runs(task))
+          IdeMenuAction(
+            l10n.termClearTask,
+            onSelected: () => tasks.clear([task]),
+          ),
         IdeMenuAction(
           l10n.termClearEndedTasks,
           enabled: ended.isNotEmpty,
@@ -689,7 +748,7 @@ class _TasksTab extends StatelessWidget {
       onSelect: () => onShow(task.id),
       // How many there are, by the dropdown listing them.
       trailing: Padding(
-        padding: const EdgeInsets.only(left: 5),
+        padding: const EdgeInsets.only(left: 4),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
