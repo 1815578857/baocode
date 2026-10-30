@@ -559,6 +559,63 @@ void main() {
       expect((await api.me()).login, 'new');
     });
 
+    test("GitLab's token renewed once for the requests that find it expired "
+        'together: its refresh token is good for one refresh', () async {
+      var now = DateTime(2026, 10, 15, 9);
+      final http = FakeForgeHttp()
+        ..on(
+          'POST',
+          'https://gitlab.com/oauth/token',
+          (request) => request.form?['grant_type'] == 'refresh_token'
+              ? {
+                  'access_token': 'new',
+                  'refresh_token': 'r2',
+                  'expires_in': 7200,
+                }
+              : {
+                  'access_token': 'old',
+                  'refresh_token': 'r1',
+                  'expires_in': 7200,
+                },
+        )
+        ..on(
+          'POST',
+          'https://gitlab.com/oauth/authorize_device',
+          (_) => {
+            'device_code': 'dc',
+            'user_code': 'U',
+            'verification_uri': 'https://gitlab.com/oauth/device',
+          },
+        )
+        ..on(
+          'GET',
+          'https://gitlab.com/api/v4/user',
+          (request) => {
+            'username': request.headers['Authorization']!.substring(7),
+          },
+        );
+      final accounts = ForgeAccounts(
+        http: http,
+        secrets: MemorySecretStore(),
+        clock: () => now,
+        gitlabClient: 'app',
+      );
+      await accounts.finishDeviceFlow(
+        await accounts.startDeviceFlow(ForgeKind.gitlab),
+        wait: (_) async {},
+      );
+      final api = accounts.apiFor('gitlab.com')!;
+      now = now.add(const Duration(hours: 2));
+      final users = await Future.wait([api.me(), api.me(), api.me()]);
+      expect(users.map((user) => user.login), ['new', 'new', 'new']);
+      bool refresh(FakeRequest request) =>
+          request.form?['grant_type'] == 'refresh_token';
+      expect(http.requests.where(refresh), hasLength(1));
+      // Kept: the next one does not renew it.
+      expect((await api.me()).login, 'new');
+      expect(http.requests.where(refresh), hasLength(1));
+    });
+
     test('a token read once: the requests that arrive while the keychain is '
         'answering it wait on that read, not on one of their own', () async {
       final gate = Completer<void>();
