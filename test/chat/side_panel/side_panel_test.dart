@@ -2585,4 +2585,48 @@ void main() {
     await command(LogicalKeyboardKey.keyZ);
     expect(edit!.controller.document.text, text);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('the pages\' bar is the window\'s title bar on macOS: its '
+      'empty part drags the window, its tabs do not', (tester) async {
+    _bigWindow(tester);
+    const window = MethodChannel('baocode/window');
+    final messenger = tester.binding.defaultBinaryMessenger;
+    var drags = 0;
+    messenger.setMockMethodCallHandler(window, (call) async {
+      if (call.method == 'dragWindow') drags++;
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(window, null));
+    final session = ChatSession(historyCount: 0);
+    addTearDown(session.dispose);
+    final panel = AgentSidePanel();
+    addTearDown(panel.dispose);
+    await tester.pumpWidget(
+      _app(
+        AgentSidePanelView(
+          notifications: IdeNotifications(),
+          panel: panel,
+          session: session,
+          files: _Files({}),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    Future<void> dragFrom(Offset start) async {
+      final drag = await tester.startGesture(
+        start,
+        kind: PointerDeviceKind.mouse,
+      );
+      await drag.moveBy(const Offset(40, 0));
+      await drag.up();
+      await tester.pump();
+    }
+
+    // Between the tabs and the buttons.
+    final move = find.byKey(const ValueKey('side-panel-move'));
+    await dragFrom(tester.getCenter(move) - const Offset(60, 0));
+    expect(drags, 1);
+    await dragFrom(tester.getCenter(find.byType(IdeEditorTab).first));
+    expect(drags, 1);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 }
