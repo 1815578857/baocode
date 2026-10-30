@@ -373,9 +373,6 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
   final LinkedHashSet<String> _markdownSources = LinkedHashSet();
   static const _keptMarkdownSources = 300;
 
-  /// The line (one-based) each markdown document's preview shows first:
-  /// where it was, or the caret's line in its source.
-  final Map<IdeDocument, int> _previewLines = {};
   final FocusNode _workbenchFocus = FocusNode(debugLabel: 'ide workbench');
   final FocusNode _explorerFocus = FocusNode(debugLabel: 'ide explorer');
   late IdeExplorerController _explorer;
@@ -748,6 +745,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         if (mounted) _terminals?.ensureTerminal();
       });
     }
+    widget.workspace.viewStates.restore(kept['editorViews']);
     final editors = switch (kept['editors']) {
       final List<Object?> paths => paths.whereType<String>().toList(),
       _ => const <String>[],
@@ -772,6 +770,12 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     ];
     final active = widget.workspace.active?.key;
     final search = _search.kept;
+    _editor?.keepViewStates();
+    final paths = widget.workspace.paths;
+    // Those of files (not a diff's or a revision's, nor an untitled one).
+    final views = widget.workspace.viewStates.toJson(
+      (key) => !key.contains('\u0000') && paths.isAbsolute(key),
+    );
     return {
       'sidebarWidth': _sidebarWidth,
       'chatWidth': _chatWidth,
@@ -785,8 +789,19 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       if (_changelists.several) 'gitChangelists': _changelists.toJson(),
       'editors': editors,
       if (editors.contains(active)) 'active': active,
+      if (views.isNotEmpty) 'editorViews': views,
     };
   }
+
+  /// Once the editor has come to rest (scrolled, its caret moved): where
+  /// it is kept, a scroll not written at each frame.
+  void _editorViewChanged() {
+    if (widget.onViewState == null) return;
+    _editorViewTimer?.cancel();
+    _editorViewTimer = Timer(const Duration(seconds: 1), _keepViewSoon);
+  }
+
+  Timer? _editorViewTimer;
 
   /// A moment after a change, as a sash dragged changes it at each frame.
   void _keepViewSoon() {
@@ -905,7 +920,11 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     var column = 1;
     if (preview) {
       await _flushEditor();
-      _previewLines[doc] = _caretPosition.lineNumber;
+      // The preview shows first the caret's line in its source.
+      widget.workspace.keepViewState(
+        doc,
+        (kept) => kept.copyWith(previewLine: _caretPosition.lineNumber),
+      );
       _markdownSources.remove(doc.path);
     } else {
       // The preview's caret, where it was put; else the line at its top.
@@ -989,9 +1008,14 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
       },
       // A remote project's host is Linux or macOS: POSIX paths.
       pathContext: _local ? p.context : p.posix,
-      initialLine: _previewLines[doc],
+      // Where it was.
+      initialLine: widget.workspace.viewStateOf(doc).previewLine,
       onLeave: (line) {
-        if (line != null) _previewLines[doc] = line;
+        if (line == null) return;
+        widget.workspace.keepViewState(
+          doc,
+          (kept) => kept.copyWith(previewLine: line),
+        );
       },
       onEdited: () => widget.workspace.notifyDocumentChanged(doc),
       onPaste: doc.readOnly ? null : () => _markdownPaste().paste(doc.path),
@@ -1140,8 +1164,11 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     _lifecycle = AppLifecycleListener(
       onResume: () => unawaited(_git?.refresh()),
       // The window left: `onFocusChange` and `onWindowChange` save.
-      onInactive: () =>
-          unawaited(_autoSaveNow(const {'onFocusChange', 'onWindowChange'})),
+      onInactive: () {
+        unawaited(_autoSaveNow(const {'onFocusChange', 'onWindowChange'}));
+        // Where the editors are, should the app be quit from elsewhere.
+        _keepView();
+      },
     );
     IdeLanguageNames.ensureLoaded(() {
       if (mounted) setState(() {});
@@ -1530,6 +1557,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     KeybindingService.instance.removeListener(_keybindingsChanged);
     widget.settings?.removeListener(_settingsChanged);
     widget.remote?.removeListener(_remoteChanged);
+    _editorViewTimer?.cancel();
     _keepView();
     _chordChecker?.cancel();
     _statusMessageTimer?.cancel();
@@ -4578,8 +4606,13 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                           )
                         : active.view != null &&
                               FileViews.byId(active.view!) != null
-                        ? KeyedSubtree(
+                        // Its lists scrolled as they were, those of them
+                        // keyed with a PageStorageKey.
+                        ? PageStorage(
                             key: ValueKey(active),
+                            bucket: widget.workspace.viewStates.bucket(
+                              active.key,
+                            ),
                             child: FileViews.byId(active.view!)!
                                 .build(context, active.path),
                           )
@@ -4587,6 +4620,14 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                         ? IdeImagePreview(
                             key: ValueKey(active),
                             path: active.path,
+                            initialTransform: widget.workspace
+                                .viewStateOf(active)
+                                .image,
+                            onLeave: (transform) =>
+                                widget.workspace.keepViewState(
+                                  active,
+                                  (kept) => kept.copyWith(image: transform),
+                                ),
                             read: switch (widget.workspace.files) {
                               final IdeHostFiles files => files.readBytes,
                               _ => null,
@@ -4629,6 +4670,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                                 onError: _report,
                                 onLspStatus: (_) {},
                                 onPositionChanged: _positionChanged,
+                                onScrolled: _editorViewChanged,
                                 // Go to Definition's target (F12),
                                 // centered even when already in view.
                                 onOpenLocation: (location) =>
@@ -4664,6 +4706,7 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
 
   void _positionChanged(IdeEditorPosition selection) {
     _caretMoved(selection.position);
+    _editorViewChanged();
     if (mounted &&
         (!_caretPosition.equals(selection.position) ||
             _statusColumn != selection.statusColumn ||

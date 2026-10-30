@@ -25,6 +25,7 @@ import '../vs/editor/contrib/smartSelect/browser/smart_select.dart';
 import '../vs/editor/contrib/snippet/browser/snippet_session.dart';
 import 'bracket_matching.dart' show defaultBracketPairs;
 import 'document_snapshot.dart';
+import 'editor_view_state.dart';
 import 'editor_view_styles.dart';
 import 'editor_document_model.dart';
 
@@ -64,6 +65,11 @@ class EditorSurfaceController extends ValueNotifier<TextEditingValue> {
   final EditorDocumentModel document;
   final bool _ownsDocument;
   bool _disposed = false;
+
+  /// Where the last surface to show it left its view (its scroll, its
+  /// folds): a surface shown it shows that again, as Monaco's
+  /// `restoreViewState`; null starts at the top.
+  EditorViewState? viewState;
 
   /// Secondary cursors in creation order (the primary is [value]'s).
   List<TextSelection> _secondary = const [];
