@@ -1085,6 +1085,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get menuWordWrap => 'Word Wrap';
 
   @override
+  String get cmdToggleMinimap => 'Toggle Minimap';
+
+  @override
+  String get menuMinimap => 'Minimap';
+
+  @override
   String get cmdTogglePanel => 'Toggle Panel Visibility';
 
   @override
@@ -7675,6 +7681,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get appearanceSettingsWordWrapDescription =>
       'Wraps long lines at the editor\'s width, in every editor. An editor\'s context menu and the Command Palette (Toggle Word Wrap) switch it too. Files of more than 5,000 lines are not wrapped.';
+
+  @override
+  String get appearanceSettingsCodeMinimap => 'Code Minimap';
+
+  @override
+  String get appearanceSettingsCodeMinimapDescription =>
+      'A minimap of the file at the right of the code editor, in every editor; it is not shown in an editor too narrow for it. An editor tab\'s context menu and the Command Palette (Toggle Minimap) switch it too.';
 
   @override
   String get appearanceSettingsUiScale => 'Interface Size';

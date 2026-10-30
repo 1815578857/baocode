@@ -11,6 +11,7 @@ import '../theme/codicons.dart';
 import '../theme/material_file_icons.dart';
 import '../theme/workbench_theme.dart' show themeColors;
 import '../workspace/window_controls.dart';
+import 'editor_minimap_setting.dart';
 import 'ide_hover.dart';
 import 'ide_menu.dart';
 import 'ide_workspace.dart';
@@ -270,6 +271,10 @@ class _IdeTabBarState extends State<IdeTabBar> {
             item(IdeTabAction.openInDefaultApp, l10n.openInDefaultApp),
           item(IdeTabAction.revealInExplorer, l10n.tabRevealInExplorerView),
         ],
+        // A code tab's: one choice for every editor (EditorMinimap). Not a
+        // diff's, whose editors have none.
+        if (!doc.isMedia && doc.openError == null && doc.diff == null)
+          [minimapMenuAction(l10n)],
       ]),
     );
   }

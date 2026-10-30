@@ -12,6 +12,7 @@ import '../../chat/reply_scroll.dart';
 import '../../chat/user_message_style.dart';
 import '../../chat/widgets/chat_minimap.dart';
 import '../../chat/widgets/pixel_loader.dart';
+import '../../ide/editor_minimap_setting.dart';
 import '../../ide/editor_word_wrap.dart';
 import '../../ide/ide_code_editor.dart';
 import '../../ide/ide_color_theme_picker.dart';
@@ -38,9 +39,9 @@ import 'settings_widgets.dart';
 /// running (see [PixelLoaderRole]); whether the sidebar's agents show
 /// their times ([SidebarTimes]), whether the windows are blurred
 /// underneath ([WindowBlur]); then the code's font, size and
-/// ligatures, whether the editors wrap long lines ([EditorWordWrap]), the
-/// window's text size and the terminal's (see [CodeFont]). A
-/// choice is applied and kept at once.
+/// ligatures, whether the editors wrap long lines ([EditorWordWrap]) and
+/// show their minimap ([EditorMinimap]), the window's text size and the
+/// terminal's (see [CodeFont]). A choice is applied and kept at once.
 class AppearanceSettingsPage extends StatelessWidget {
   const AppearanceSettingsPage({
     super.key,
@@ -381,6 +382,7 @@ class AppearanceSettingsPage extends StatelessWidget {
         CodeFont.uiScale,
         CodeFont.terminalSize,
         EditorWordWrap.on,
+        EditorMinimap.on,
       ]),
       builder: (context, _) {
         final widthStep = ChatWidth.stepOf(ChatWidth.current.value);
@@ -649,6 +651,12 @@ class AppearanceSettingsPage extends StatelessWidget {
                   description: l10n.appearanceSettingsWordWrapDescription,
                   value: EditorWordWrap.on.value,
                   onChanged: EditorWordWrap.set,
+                ),
+                SettingsSwitchRow(
+                  label: l10n.appearanceSettingsCodeMinimap,
+                  description: l10n.appearanceSettingsCodeMinimapDescription,
+                  value: EditorMinimap.on.value,
+                  onChanged: EditorMinimap.set,
                 ),
                 SettingsRow(
                   label: l10n.appearanceSettingsUiScale,

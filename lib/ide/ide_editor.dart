@@ -43,6 +43,7 @@ import '../base/uri.dart' show VsUri;
 import '../debug/base/event.dart' show DisposableStore;
 import '../debug/service/debug_service.dart';
 import 'debug_editor_glue.dart';
+import 'editor_minimap_setting.dart';
 import 'editor_word_wrap.dart';
 import 'git/git_annotations.dart';
 import 'git/git_blame.dart';
@@ -332,6 +333,7 @@ class IdeEditorState extends State<IdeEditor> {
     widget.agentEdits?.addListener(_rebuildSoon);
     IdeDiffOptions.instance.addListener(_diffOptionsChanged);
     EditorWordWrap.on.addListener(_rebuildSoon);
+    EditorMinimap.on.addListener(_rebuildSoon);
     if (widget.nativeEditorEnabled) _activateNativeController();
     _selectionChanged();
     _updateBlame(navigated: false);
@@ -1877,6 +1879,7 @@ class IdeEditorState extends State<IdeEditor> {
     _themes.removeListener(_colorThemeChanged);
     IdeDiffOptions.instance.removeListener(_diffOptionsChanged);
     EditorWordWrap.on.removeListener(_rebuildSoon);
+    EditorMinimap.on.removeListener(_rebuildSoon);
     EditorLanguageOverrides.instance.removeListener(_languageModesChanged);
     widget.agentEdits?.removeListener(_rebuildSoon);
     _debugListeners?.dispose();
@@ -2730,12 +2733,13 @@ class IdeEditorState extends State<IdeEditor> {
       ..._debugDecorations(),
       if (side == null) ..._lineChangeDecorations(colors),
     ],
-    // A diff editor's editors fold nothing and have no minimap.
+    // A diff editor's editors fold nothing and have no minimap; others
+    // have one unless it is turned off (EditorMinimap).
     viewZones: side?.zones ?? agent?.zones ?? const [],
     scrollPosition: side?.scrollPosition,
     folding: side == null,
     hiddenLines: side?.hiddenLines,
-    showMinimap: side == null,
+    showMinimap: side == null && EditorMinimap.on.value,
     onKeyEvent: _onEditorKey,
     keyResolver: widget.keyResolver == null ? null : _resolveTextKey,
     onHover: _language == null

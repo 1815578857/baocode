@@ -1,6 +1,7 @@
 // Command titles in the display language, by command id, as VS Code's
 // `localize2` titles: the palette lists the localized `Category: Title` and
 // also matches the English one (upstream `commandAlias`).
+import '../ide/editor_minimap_setting.dart';
 import '../ide/editor_word_wrap.dart';
 import '../ide/explorer_history.dart'
     show explorerRedoCommandId, explorerUndoCommandId;
@@ -30,6 +31,7 @@ String localizedCommandLabel(AppLocalizations l10n, String id, String english) {
     'workbench.action.files.saveAs' => l10n.cmdSaveAs,
     toggleAutoSaveCommandId => l10n.cmdToggleAutoSave,
     EditorWordWrap.commandId => l10n.cmdToggleWordWrap,
+    EditorMinimap.commandId => l10n.cmdToggleMinimap,
     'markdown.showPreview' => l10n.cmdMarkdownShowPreview,
     'markdown.showSource' => l10n.cmdMarkdownShowSource,
     'workbench.action.files.newUntitledFile' => l10n.cmdNewUntitledFile,
