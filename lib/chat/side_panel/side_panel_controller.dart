@@ -96,9 +96,8 @@ class SidePanelTabs {
   final List<SidePanelTab> diffs = [];
   SidePanelTab? activeDiff;
 
-  /// What is open on the terminal page: terminals (their instances) and
-  /// background commands' output (their ids).
-  final List<Object> terminals = [];
+  /// What the terminal page shows: a terminal (its instance), or a
+  /// background command's output (its id); none: its first terminal.
   Object? terminal;
 
   /// The tab in front on the page shown; none on the terminal page.
@@ -432,33 +431,11 @@ class AgentSidePanel extends ChangeNotifier {
     _showFor(conversation);
   }
 
-  /// Shows [id] in its tab: a terminal (its instance), or a background
-  /// command's output (its id).
+  /// Shows [id] on the terminal page: a terminal (its instance), or a
+  /// background command's output (its id).
   void openTerminal(Object conversation, Object id) {
-    final tabs = tabsOf(conversation);
-    if (!tabs.terminals.contains(id)) {
-      tabs.terminals.add(id);
-      while (tabs.terminals.length > maxTabs) {
-        tabs.terminals.removeAt(0);
-      }
-    }
-    tabs.terminal = id;
+    tabsOf(conversation).terminal = id;
     showSection(conversation, SidePanelSection.terminal);
-  }
-
-  /// Closes the tab of [id]; selects the one after it, else before it,
-  /// else none.
-  void closeTerminal(Object conversation, Object id) {
-    final tabs = tabsOf(conversation);
-    final index = tabs.terminals.indexOf(id);
-    if (index < 0) return;
-    tabs.terminals.removeAt(index);
-    if (tabs.terminal == id) {
-      tabs.terminal = tabs.terminals.isEmpty
-          ? null
-          : tabs.terminals[index.clamp(0, tabs.terminals.length - 1)];
-    }
-    notifyListeners();
   }
 
   /// Whether it changed.
@@ -705,11 +682,8 @@ class AgentSidePanel extends ChangeNotifier {
           SidePanelSection.changes ||
           SidePanelSection.plan:
         if (tabs.current case final tab?) return close(conversation, tab);
-      case SidePanelSection.terminal:
-        if (tabs.terminal case final id?) {
-          return closeTerminal(conversation, id);
-        }
-      case SidePanelSection.browser:
+      // Its tabs are the terminals themselves, killed by their own Close.
+      case SidePanelSection.terminal || SidePanelSection.browser:
         break;
     }
     hide();

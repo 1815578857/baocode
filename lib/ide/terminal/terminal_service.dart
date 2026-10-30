@@ -109,11 +109,13 @@ class TerminalService extends ChangeNotifier {
   /// [cwd] starts it in that folder instead of [root] (Open in Terminal).
   /// An extension's terminal starts as its [config] says; one
   /// `hideFromUser` is not listed in [instances], nor made active, until
-  /// [show]n.
+  /// [show]n. Not [activate], the active one stays (if there is one): one
+  /// made to show elsewhere than the panel.
   TerminalInstance create({
     TerminalProfile? profile,
     TerminalLaunchConfig? config,
     String? cwd,
+    bool activate = true,
   }) {
     final instance = TerminalInstance(
       id: _nextId++,
@@ -136,7 +138,7 @@ class TerminalService extends ChangeNotifier {
     _onDidCreate.add(instance);
     if (config?.hideFromUser ?? false) {
       _hidden.add(instance);
-    } else {
+    } else if (activate || _active == null) {
       _setActive(instance);
     }
     notifyListeners();

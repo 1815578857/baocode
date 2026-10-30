@@ -36,11 +36,9 @@ import '../../ide/ide_tab_bar.dart'
 import '../../ide/save_copy.dart';
 import '../../ide/tab_strip_scroll.dart';
 import '../../ide/terminal/links/terminal_links.dart' show TerminalLink;
-import '../../ide/terminal/terminal_instance.dart';
 import '../../ide/terminal/terminal_service.dart';
-import '../../ide/terminal/terminal_tabs.dart';
 import '../../ide/terminal/terminal_view.dart';
-import '../../kernel/kernel_types.dart' show KernelTask;
+import '../../workspace/terminal_deck.dart';
 import '../../workspace/title_bar_double_click.dart';
 import '../../workspace/window_controls.dart';
 import '../chat_models.dart' show CommandStatus;
@@ -63,7 +61,6 @@ import 'file_open.dart';
 import 'file_preview.dart';
 import 'git_changes.dart';
 import 'side_panel_controller.dart';
-import 'terminal_preview.dart';
 
 /// [child] (the conversations) and, at its right (its left, as [panel] is
 /// [AgentSidePanel.atLeft]) while [panel] shows, the side panel [builder]
@@ -75,6 +72,10 @@ import 'terminal_preview.dart';
 /// This machine's files, for what is shown as a file (one service: the
 /// preview reads its file anew when it changes).
 final IdeFileService _localFiles = IdeFileService(p.current);
+
+/// Where a terminal page with no panel beside it (no [TerminalHosts] of a
+/// window's) shows its terminals: there alone.
+final _pageHosts = TerminalHosts();
 
 class AgentSidePanelArea extends StatefulWidget {
   const AgentSidePanelArea({
@@ -417,6 +418,7 @@ class AgentSidePanelView extends StatelessWidget {
     this.searchEngine = ideSearchText,
     this.git,
     this.terminals,
+    this.terminalHosts,
     this.terminalSkipShell = const [],
     this.onOpenTerminalLink,
     this.commitMessage,
@@ -533,9 +535,13 @@ class AgentSidePanelView extends StatelessWidget {
   /// Where the changes page tells of what failed (the window's).
   final IdeNotifications notifications;
 
-  /// The project's terminals on the terminal page; none where terminals
-  /// cannot run.
+  /// The project's terminals on the terminal page, the same as its panel
+  /// under the conversation shows; none where terminals cannot run.
   final TerminalService? terminals;
+
+  /// Which of the two places shows each of them (see [TerminalDeck]);
+  /// none: the page's alone.
+  final TerminalHosts? terminalHosts;
 
   /// Keys the window keeps while one of them has focus (see
   /// [TerminalView.skipShell]).
@@ -868,146 +874,26 @@ class AgentSidePanelView extends StatelessWidget {
 
   /// The project's terminals and the agent's background commands, and
   /// those opened: a terminal, or a command's output.
+  /// The project's terminals and the agent's background commands, as the
+  /// panel under the conversation shows them ([TerminalDeck]).
   Widget _terminalPage(BuildContext context, SidePanelTabs tabs) {
-    final l10n = context.l10n;
     final terminals = this.terminals;
-    final shells = terminals?.instances ?? const <TerminalInstance>[];
-    final tasks = session.terminalTasks;
-    final byId = <Object, Object>{
-      for (final shell in shells) shell: shell,
-      for (final task in tasks) task.id: task,
-    };
-    final open = [
-      for (final id in tabs.terminals)
-        if (byId[id] case final item?) (id: id, item: item),
-    ];
-    final current = open
-        .where((entry) => entry.id == tabs.terminal)
-        .firstOrNull;
-    void newTerminal() {
-      final shell = terminals!.create();
-      panel.openTerminal(session, shell);
-      WidgetsBinding.instance.addPostFrameCallback((_) => shell.focus());
-    }
-
-    void kill(TerminalInstance shell) {
-      panel.closeTerminal(session, shell);
-      terminals!.kill(shell);
-    }
-
-    void stop(KernelTask task) => session.stopTask(task);
-
-    /// [id]'s tab's menu: closing it and the others, then what can be
-    /// done to what it shows.
-    List<IdeMenuEntry> menu(Object id) {
-      final ids = [for (final entry in open) entry.id];
-      final index = ids.indexOf(id);
-      final item = byId[id];
-      return ideMenuGroups([
-        _closeItems(
-          context,
-          index: index,
-          count: ids.length,
-          close: (which) {
-            for (final other in which(ids)) {
-              panel.closeTerminal(session, other);
-            }
-          },
-          id: id,
-        ),
-        [
-          if (item case final TerminalInstance shell)
-            IdeMenuAction(l10n.termKillTerminal, onSelected: () => kill(shell)),
-          if (item case final KernelTask task
-              when task.status == CommandStatus.running)
-            IdeMenuAction(l10n.chatStop, onSelected: () => stop(task)),
-        ],
-      ]);
-    }
-
-    return _Page(
+    return TerminalDeck(
       key: const ValueKey(('page', SidePanelSection.terminal)),
-      panel: panel,
-      // The IDE's terminal tabs, grouped: each opening in a tab here.
-      list: ColoredBox(
-        key: const ValueKey('side-panel-terminals'),
-        color: AppColors.code,
-        child: TerminalTabs(
-          terminals: terminals,
-          onNew: terminals == null ? null : newTerminal,
-          tasks: tasks,
-          grouped: true,
-          selected: current?.id,
-          onOpen: (id) => panel.openTerminal(session, id),
-          onKill: kill,
-          onStopTask: stop,
-          onClearTasks: session.clearTasks,
-          border: false,
-        ),
-      ),
-      tabs: open.isEmpty
-          ? null
-          : _TabStrip(
-              key: ValueKey(('terminals', session)),
-              selected: current?.id,
-              entries: [
-                for (final (:id, :item) in open)
-                  (
-                    id: id,
-                    child: switch (item) {
-                      final TerminalInstance shell => ListenableBuilder(
-                        listenable: shell,
-                        builder: (context, _) => _Tab(
-                          active: id == current?.id,
-                          icon: const _TabIcon(Codicons.terminal),
-                          label: shell.title,
-                          tooltip: shell.title,
-                          onTap: () => panel.openTerminal(session, id),
-                          onClose: () => panel.closeTerminal(session, id),
-                          menu: () => menu(id),
-                        ),
-                      ),
-                      final task as KernelTask => _Tab(
-                        active: id == current?.id,
-                        icon: TerminalTaskIcon(task, size: _Tab.iconSize),
-                        label: task.description,
-                        tooltip: task.description,
-                        onTap: () => panel.openTerminal(session, id),
-                        onClose: () => panel.closeTerminal(session, id),
-                        menu: () => menu(id),
-                      ),
-                    },
-                  ),
-              ],
-            ),
-      body: switch (current?.item) {
-        final TerminalInstance shell => TerminalView(
-          shell,
-          key: ObjectKey(shell),
-          skipShell: terminalSkipShell,
-          onKill: () => kill(shell),
-          onOpenLink: onOpenTerminalLink,
-        ),
-        final KernelTask task => TerminalPreview(
-          key: ValueKey((session, task.id)),
-          task: task,
-          command: session.commandOf(task.toolUseId),
-          files: files,
-          onStop: () => stop(task),
-          root: terminals?.root ?? session.root ?? '',
-          linkStat: terminals?.backend.linkStat,
-          skipShell: terminalSkipShell,
-          onOpenLink: onOpenTerminalLink,
-        ),
-        // The list says when there are none.
-        _ when shells.isEmpty && tasks.isEmpty && panel.listShown =>
-          const SizedBox.shrink(),
-        _ => _EmptySection(
-          shells.isEmpty && tasks.isEmpty
-              ? l10n.sidePanelNoTerminals
-              : l10n.sidePanelSelectTerminal,
-        ),
-      },
+      // Each conversation's page a place of its own.
+      place: session,
+      hosts: terminalHosts ?? _pageHosts,
+      terminals: terminals,
+      shown: tabs.terminal,
+      onShow: (id) => panel.openTerminal(session, id),
+      // Shown here, the panel's own left as it was.
+      onNew: () => terminals?.create(activate: false),
+      onNewWithProfile: (profile) =>
+          terminals?.create(profile: profile, activate: false),
+      tasks: SessionTerminalTasks(session),
+      files: files,
+      skipShell: terminalSkipShell,
+      onOpenLink: onOpenTerminalLink,
     );
   }
 
