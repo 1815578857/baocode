@@ -21,9 +21,10 @@ import '../extensions/ui/extensions_model.dart';
 import '../extensions/ui/extensions_view.dart';
 import '../extensions/ui/vsix_drop.dart';
 import '../platform/data_dir.dart';
-import '../chat/composer/composer_files.dart' show ComposerFile;
+import '../chat/composer/composer_files.dart' show CodeReference, ComposerFile;
 import '../chat/composer/file_drop.dart';
 import '../chat/open_editor.dart';
+import '../keybindings/chat_keybindings.dart' show ChatCommandIds;
 import '../keybindings/default_keybindings.dart'
     show commandCatalog, openSettingsCommandId;
 import '../keybindings/key_chord.dart';
@@ -144,6 +145,7 @@ class IdeWorkbench extends StatefulWidget {
     required this.visible,
     required this.chat,
     this.onAddToChat,
+    this.onAddCodeToChat,
     this.onAskInChat,
     required this.onBack,
     this.backLabel,
@@ -212,6 +214,11 @@ class IdeWorkbench extends StatefulWidget {
   /// Puts files and folders in [chat]'s composer (Source Control's Add to
   /// Chat); none offered when null.
   final ValueChanged<List<ComposerFile>>? onAddToChat;
+
+  /// Puts lines of code in [chat]'s composer, after what is typed there
+  /// (Add Selection to Chat), and the keyboard in it; with none, only the
+  /// keyboard. None offered when null.
+  final ValueChanged<List<CodeReference>>? onAddCodeToChat;
 
   /// Puts a request in [chat]'s composer, to be sent once looked over
   /// (Ask AI about a commit, changes, a conflict); none offered when null.
@@ -2845,6 +2852,14 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
 
   void _toggleChat() => _layout.toggleChat();
 
+  /// The editor's lines selected in the chat's composer, the chat shown
+  /// and the keyboard in it (as Cursor's ⌘L).
+  void _addSelectionToChat() {
+    final code = _editor?.selectedCode() ?? const <CodeReference>[];
+    if (!_chatShown) _toggleChat();
+    widget.onAddCodeToChat?.call(code);
+  }
+
   /// [text] in the chat's composer, the chat shown.
   void _askInChat(String text) {
     widget.onAskInChat?.call(text);
@@ -3635,6 +3650,13 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
         category: 'View',
         label: 'Toggle Chat',
         run: _toggleChat,
+      ),
+      IdeCommand(
+        id: ChatCommandIds.attachSelection,
+        category: 'Chat',
+        label: 'Add Selection to Chat',
+        enabled: widget.onAddCodeToChat != null && _editor != null,
+        run: _addSelectionToChat,
       ),
       // VS Code's ⌘J toggles the panel; here it is the chat's.
       IdeCommand(

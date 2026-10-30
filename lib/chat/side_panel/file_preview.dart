@@ -33,7 +33,8 @@ import '../../theme/material_file_icons.dart';
 import '../../theme/workbench_theme.dart' show themeColors;
 import '../../workspace/editor_launcher.dart' show openExternal;
 import '../../workspace/window_controls.dart';
-import '../composer/composer_files.dart' show ComposerFile, CopiedCode;
+import '../composer/composer_files.dart'
+    show CodeReference, ComposerFile, CopiedCode;
 import '../composer/file_drop.dart';
 import '../widgets/code_citation.dart' show CodeColorizer;
 import '../widgets/hover_builder.dart';
@@ -125,6 +126,14 @@ class FilePreview extends StatefulWidget {
 
   /// Past this many lines, the text is not colored.
   static const maxColoredLines = 5000;
+
+  /// The lines selected in the file [focus] is in, as its text, its lines
+  /// or its changes show it: references to them for the chat (Add
+  /// Selection to Chat). None where nothing is, or a markdown file shows
+  /// rendered.
+  static List<CodeReference> selectedAt(BuildContext? focus) =>
+      focus?.findAncestorStateOfType<_FilePreviewState>()?._selectedIn(focus) ??
+      const [];
 
   @override
   State<FilePreview> createState() => _FilePreviewState();
@@ -726,6 +735,40 @@ class _FilePreviewState extends State<FilePreview> {
     );
   }
 
+  /// What [FilePreview.selectedAt] finds at [focus], in it.
+  List<CodeReference> _selectedIn(BuildContext focus) {
+    List<CodeReference> of(
+      Iterable<({String text, int startLine, int endLine})> lines,
+    ) => [
+      for (final (:text, :startLine, :endLine) in lines)
+        CodeReference(
+          path: _request.path,
+          start: startLine,
+          end: endLine,
+          code: text,
+        ),
+    ];
+
+    switch (_loaded) {
+      case _Text() || _Diff() when _markdown != null && !_source:
+        return const [];
+      // Lines of the file as it is now: none of one deleted.
+      case _Diff(deleted: false):
+        final diff = focus.findAncestorStateOfType<IdeCodeDiffState>();
+        return of(diff?.selectedLines() ?? const []);
+      case _Text():
+        if (_edit case final edit?) return of(edit.controller.selectedLines());
+        final lines = focus.findAncestorStateOfType<_LinesState>();
+        final rows = lines?._selection.selectedRows();
+        if (rows == null) return const [];
+        return of([
+          (text: rows.text, startLine: rows.first + 1, endLine: rows.last + 1),
+        ]);
+      default:
+        return const [];
+    }
+  }
+
   /// Lines [start] to [end] copied, as [text]: pasted into the chat's
   /// composer, they go in as a reference to those lines of the file, as
   /// the IDE's editor's do.
@@ -1055,19 +1098,33 @@ class _LinesSelection extends StaticSelectionContainerDelegate
 
   @override
   SelectedContent? getSelectedContent() {
+    final (content, rows) = _selectedContent();
+    if (rows == null) return content;
+    onCopy(rows.first, rows.last, rows.text);
+    return SelectedContent(plainText: rows.text);
+  }
+
+  /// The rows selected (from 0) and their text, one to a line; null when
+  /// none is.
+  ({int first, int last, String text})? selectedRows() => _selectedContent().$2;
+
+  (SelectedContent?, ({int first, int last, String text})?) _selectedContent() {
     _rows.clear();
     final content = super.getSelectedContent();
-    if (content == null || _rows.isEmpty) return content;
-    final rows = [..._rows]..sort((a, b) => a.$1.compareTo(b.$1));
+    // The rows outside the selection tell nothing selected: not its own.
+    final rows = [
+      for (final row in _rows)
+        if (row.$2.isNotEmpty) row,
+    ]..sort((a, b) => a.$1.compareTo(b.$1));
     _rows.clear();
+    if (content == null || rows.isEmpty) return (content, null);
     // An empty line selects nothing of its own: kept, between the others.
     final byRow = {for (final (row, text) in rows) row: text};
     final text = [
       for (var row = rows.first.$1; row <= rows.last.$1; row++)
         byRow[row] ?? '',
     ].join('\n');
-    onCopy(rows.first.$1, rows.last.$1, text);
-    return SelectedContent(plainText: text);
+    return (content, (first: rows.first.$1, last: rows.last.$1, text: text));
   }
 }
 

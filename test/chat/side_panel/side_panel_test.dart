@@ -633,6 +633,90 @@ void main() {
     expect(copied, 'one\n\ntwo\n\n\nthree');
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
+  testWidgets('the lines selected where the focus is, for Add Selection to '
+      'Chat: of the lines shown, the file edited, its changes', (tester) async {
+    addTearDown(CopiedCode.clear);
+    List<CodeReference> selected() =>
+        FilePreview.selectedAt(FocusManager.instance.primaryFocus?.context);
+    final files = _Files({'/p/a.dart': 'one\n\ntwo\n\n\nthree'});
+
+    // Its lines, read only.
+    await tester.pumpWidget(
+      _app(
+        FilePreview(
+          request: const FileOpenRequest('/p/a.dart', diff: true),
+          files: files,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(selected(), isEmpty);
+    final from = tester.getTopLeft(find.text('two')) + const Offset(0.5, 4);
+    final to = tester.getTopRight(find.text('three')) + const Offset(1, 4);
+    final drag = await tester.startGesture(from, kind: PointerDeviceKind.mouse);
+    await tester.pump();
+    await drag.moveTo(to);
+    await tester.pump();
+    await drag.up();
+    await tester.pump();
+    expect(selected(), [
+      const CodeReference(
+        path: '/p/a.dart',
+        start: 3,
+        end: 6,
+        code: 'two\n\n\nthree',
+      ),
+    ]);
+
+    // The file, edited.
+    await tester.pumpWidget(
+      _app(
+        FilePreview(
+          key: const ValueKey('edit'),
+          request: const FileOpenRequest('/p/a.dart'),
+          files: files,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(IdeCodeEditor));
+    await tester.pump();
+    tester
+        .widget<IdeCodeEditor>(find.byType(IdeCodeEditor))
+        .controller
+        .select(0, 3);
+    await tester.pump();
+    expect(selected(), [
+      const CodeReference(path: '/p/a.dart', start: 1, end: 1, code: 'one'),
+    ]);
+
+    // Its changes: the lines of the file as it is now.
+    await tester.pumpWidget(
+      _app(
+        FilePreview(
+          key: const ValueKey('diff'),
+          request: FileOpenRequest(
+            '/p/a.dart',
+            diff: true,
+            original: () async => 'one\ntwo\nthree',
+          ),
+          files: _Files({'/p/a.dart': 'one\nTWO\nthree'}),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(EditorSurface).last);
+    await tester.pump();
+    tester
+        .widget<EditorSurface>(find.byType(EditorSurface).last)
+        .controller
+        .select(4, 7);
+    await tester.pump();
+    expect(selected(), [
+      const CodeReference(path: '/p/a.dart', start: 2, end: 2, code: 'TWO'),
+    ]);
+  });
+
   testWidgets('a diff shows in the IDE\'s diff editor; its lines copied '
       'paste into the composer as a reference to them', (tester) async {
     addTearDown(CopiedCode.clear);

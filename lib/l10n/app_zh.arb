@@ -63,6 +63,7 @@
   "cmdChatNextMode": "切换到下一个模式",
   "cmdChatOpenModelPicker": "打开模型选择器",
   "cmdChatAttachContext": "添加上下文…",
+  "cmdChatAttachSelection": "将所选内容添加到对话",
   "cmdChatPasteRaw": "粘贴为纯文本",
   "cmdChatSelectNextSuggestion": "选择下一个建议",
   "cmdChatSelectPrevSuggestion": "选择上一个建议",

@@ -2223,6 +2223,24 @@ class IdeEditorState extends State<IdeEditor> {
   /// Whether the text has the keyboard (upstream `editorTextFocus`).
   bool get hasTextFocus => _focusNode.hasFocus;
 
+  /// The lines selected, each selection's, as references to them for the
+  /// chat (Add Selection to Chat); none of a revision's, whose lines are
+  /// not the file's.
+  List<CodeReference> selectedCode() {
+    final doc = widget.active;
+    final controller = _nativeController;
+    if (controller == null || doc.readRevision != null) return const [];
+    return [
+      for (final (:text, :startLine, :endLine) in controller.selectedLines())
+        CodeReference(
+          path: doc.path,
+          start: startLine,
+          end: endLine,
+          code: text,
+        ),
+    ];
+  }
+
   /// Whether anything the editor shows has the keyboard: its text, the find
   /// widget, the rename input (upstream `editorFocus`).
   bool get hasFocus => _areaFocusNode.hasFocus;
