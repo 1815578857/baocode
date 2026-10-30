@@ -4667,12 +4667,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get termKillTerminal => '终止终端';
 
   @override
-  String get termShownElsewhere => '这个终端正在另一处显示';
-
-  @override
-  String get termShowHere => '在这里显示';
-
-  @override
   String get termNoTerminals => '没有终端';
 
   @override

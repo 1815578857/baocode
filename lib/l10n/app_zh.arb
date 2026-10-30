@@ -1332,8 +1332,6 @@
   "referencesSummary": "{title} — {files} 个文件中有 {count} 个结果",
   "termRename": "重命名...",
   "termKillTerminal": "终止终端",
-  "termShownElsewhere": "这个终端正在另一处显示",
-  "termShowHere": "在这里显示",
   "termNoTerminals": "没有终端",
   "termNewTerminal": "新建终端",
   "termNewTerminalKeys": "新建终端({keybinding})",

@@ -4990,12 +4990,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get termKillTerminal => 'Kill Terminal';
 
   @override
-  String get termShownElsewhere => 'This terminal is shown in another place';
-
-  @override
-  String get termShowHere => 'Show Here';
-
-  @override
   String get termNoTerminals => 'No terminals';
 
   @override

@@ -1,15 +1,16 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart' show kMiddleMouseButton;
 import 'package:flutter/material.dart';
 
 import '../chat/chat_models.dart' show CommandStatus;
 import '../chat/chat_session.dart';
 import '../chat/side_panel/terminal_preview.dart';
+import '../chat/widgets/inline_rename_field.dart';
 import '../ide/file_service.dart';
 import '../ide/ide_button.dart';
 import '../ide/ide_hover.dart';
 import '../ide/ide_menu.dart';
-import '../ide/ide_tab_bar.dart';
 import '../ide/tab_strip_scroll.dart';
 import '../ide/terminal/links/terminal_links.dart';
 import '../ide/terminal/terminal_instance.dart';
@@ -26,11 +27,11 @@ import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' show themeColors;
 
-/// Where each of a window's terminals shows: in one place at a time, its
-/// view having the terminal's keyboard focus and its size. The chat's
-/// terminals show in two, the panel under the conversation and the side
-/// panel's terminal page ([TerminalDeck]); a place showing one shown in
-/// the other has a way to take it instead.
+/// Which place has each of a window's terminals as its view: the one with
+/// the terminal's keyboard focus and its size. The chat's terminals show in
+/// two, the panel under the conversation and the side panel's terminal
+/// page ([TerminalDeck]), both live: the other place mirrors it (see
+/// [TerminalView.mirror]) until pressed, as tmux's latest client.
 class TerminalHosts extends ChangeNotifier {
   final Map<TerminalInstance, Object> _hosts = {};
   bool _disposed = false;
@@ -39,13 +40,14 @@ class TerminalHosts extends ChangeNotifier {
   /// The place showing [terminal]; none while no place does.
   Object? hostOf(TerminalInstance terminal) => _hosts[terminal];
 
-  /// Whether [place] shows [terminal], taking it if no place does: while
-  /// building, so the first place built has it and the others see so.
+  /// Whether [place] has [terminal] as its view, taking it if no place
+  /// does: while building, so the first place built has it, the others
+  /// mirroring it.
   bool take(TerminalInstance terminal, Object place) =>
       identical(_hosts.putIfAbsent(terminal, () => place), place);
 
-  /// [place] shows [terminal] from now on; where it showed, it no longer
-  /// does.
+  /// [place] has [terminal] as its view from now on; where it had, it
+  /// mirrors it.
   void claim(TerminalInstance terminal, Object place) {
     if (identical(_hosts[terminal], place)) return;
     _hosts[terminal] = place;
@@ -53,7 +55,7 @@ class TerminalHosts extends ChangeNotifier {
   }
 
   /// [place] shows none of the terminals but [except]: the others are
-  /// free for a place waiting for them. Told after the frame, as this is
+  /// free for a place mirroring them. Told after the frame, as this is
   /// done while building, and as a place goes.
   void release(Object place, {TerminalInstance? except}) {
     final before = _hosts.length;
@@ -158,6 +160,9 @@ class TerminalDeck extends StatefulWidget {
   /// After New Terminal at the row's end: the panel's Hide.
   final Widget? trailing;
 
+  /// The row of tabs' height.
+  static const barHeight = 34.0;
+
   /// As [TerminalView.skipShell] and [TerminalView.onOpenLink].
   final List<ShortcutActivator> skipShell;
   final ValueChanged<TerminalLink>? onOpenLink;
@@ -244,24 +249,27 @@ class _TerminalDeckState extends State<TerminalDeck> {
     bool here,
   ) {
     final terminals = widget.terminals;
-    return IdeTabStrip(
-      line: AppColors.partBorder,
+    return Container(
+      height: TerminalDeck.barHeight,
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.partBorder)),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
             child: TabStripScroll(
               controller: _scroll,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final shell in shells)
+                  for (final (i, shell) in shells.indexed) ...[
+                    if (i > 0) const SizedBox(width: 2),
                     _ShellTab(
                       key: ObjectKey(shell),
                       terminals: terminals!,
                       shell: shell,
                       active: shell == current,
-                      // Its name edited where it shows.
+                      // Its name edited where it is the view.
                       renaming: terminals.editing == shell && here,
                       onSelect: () => _show(shell),
                       onRename: () {
@@ -269,7 +277,9 @@ class _TerminalDeckState extends State<TerminalDeck> {
                         terminals.startRename(shell);
                       },
                     ),
-                  if (tasks.isNotEmpty)
+                  ],
+                  if (tasks.isNotEmpty) ...[
+                    if (shells.isNotEmpty) const SizedBox(width: 2),
                     _TasksTab(
                       key: const ValueKey(_tasksTab),
                       tasks: widget.tasks!,
@@ -277,44 +287,40 @@ class _TerminalDeckState extends State<TerminalDeck> {
                       shown: current is String ? current : null,
                       onShow: _show,
                     ),
+                  ],
                 ],
               ),
             ),
           ),
           if (terminals != null) ...[
-            const SizedBox(width: 4),
-            Center(
-              child: IdeActionButton(
-                key: const ValueKey('terminal-deck-new'),
-                icon: Codicons.add,
-                tooltip: switch (KeybindingService.instance.labelFor(
-                  'workbench.action.terminal.new',
-                )) {
-                  final keys? => context.l10n.termNewTerminalKeys(keys),
-                  null => context.l10n.termNewTerminal,
-                },
-                onPressed: () => _shown(widget.onNew()),
-              ),
+            IdeActionButton(
+              key: const ValueKey('terminal-deck-new'),
+              icon: Codicons.add,
+              tooltip: switch (KeybindingService.instance.labelFor(
+                'workbench.action.terminal.new',
+              )) {
+                final keys? => context.l10n.termNewTerminalKeys(keys),
+                null => context.l10n.termNewTerminal,
+              },
+              onPressed: () => _shown(widget.onNew()),
             ),
             if (widget.onNewWithProfile case final withProfile?)
-              Center(
-                child: IdeMenuButton(
-                  key: const ValueKey('terminal-deck-profiles'),
-                  icon: Codicons.chevronDown,
-                  tooltip: context.l10n.termLaunchProfile,
-                  width: 16,
-                  iconSize: 12,
-                  entries: () => _profiles(
-                    context.l10n,
-                    terminals.profiles,
-                    (profile) => _shown(withProfile(profile)),
-                  ),
+              IdeMenuButton(
+                key: const ValueKey('terminal-deck-profiles'),
+                icon: Codicons.chevronDown,
+                tooltip: context.l10n.termLaunchProfile,
+                width: 16,
+                iconSize: 12,
+                entries: () => _profiles(
+                  context.l10n,
+                  terminals.profiles,
+                  (profile) => _shown(withProfile(profile)),
                 ),
               ),
           ],
           if (widget.trailing case final trailing?) ...[
             const SizedBox(width: 2),
-            Center(child: trailing),
+            trailing,
           ],
           const SizedBox(width: 6),
         ],
@@ -373,20 +379,17 @@ class _TerminalDeckState extends State<TerminalDeck> {
     final l10n = context.l10n;
     final terminals = widget.terminals;
     switch (current) {
-      case final TerminalInstance shell when here:
+      case final TerminalInstance shell:
+        // Live in both places: the one that has it as its view, the other
+        // a mirror until pressed.
         return TerminalView(
           shell,
           key: ObjectKey(shell),
+          mirror: !here,
+          onActivate: () => widget.hosts.claim(shell, widget.place),
           skipShell: widget.skipShell,
           onKill: () => terminals!.kill(shell),
           onOpenLink: widget.onOpenLink,
-        );
-      case final TerminalInstance shell:
-        return _Note(
-          key: const ValueKey('terminal-deck-elsewhere'),
-          text: l10n.termShownElsewhere,
-          action: l10n.termShowHere,
-          onAction: () => _shown(shell),
         );
       case final String id:
         final task = tasks.firstWhere((task) => task.id == id);
@@ -421,6 +424,135 @@ KernelTask? _latest(List<KernelTask> tasks) => tasks.isEmpty
         orElse: () => tasks.last,
       );
 
+/// A tab of the deck's: a rounded pill of [icon] and [label] (or
+/// [editor] in its place), filled while [active] or hovered; [trailing]
+/// after it, the close button there while hovered or active. Its menu on
+/// a right click, closed by the middle button too.
+class _DeckTab extends StatefulWidget {
+  const _DeckTab({
+    required this.icon,
+    required this.label,
+    required this.tooltip,
+    required this.active,
+    required this.onSelect,
+    required this.onMenu,
+    this.editor,
+    this.trailing,
+    this.closeTooltip,
+    this.onClose,
+  });
+
+  final Widget icon;
+  final String label;
+  final String tooltip;
+  final bool active;
+  final VoidCallback onSelect;
+  final ValueChanged<Offset> onMenu;
+  final Widget? editor;
+  final Widget? trailing;
+  final String? closeTooltip;
+  final VoidCallback? onClose;
+
+  static const height = 24.0;
+  static const radius = 6.0;
+  static const labelStyle = TextStyle(fontSize: 12);
+
+  @override
+  State<_DeckTab> createState() => _DeckTabState();
+}
+
+class _DeckTabState extends State<_DeckTab> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = widget.active;
+    final foreground = active || _hover
+        ? AppColors.textPrimary
+        : AppColors.textMuted;
+    final onClose = widget.onClose;
+    final editor = widget.editor;
+    final tab = MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: Listener(
+        onPointerDown: (event) {
+          if (event.buttons & kMiddleMouseButton != 0) onClose?.call();
+        },
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onSelect,
+          onSecondaryTapUp: (details) => widget.onMenu(details.globalPosition),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            height: _DeckTab.height,
+            constraints: const BoxConstraints(maxWidth: 200),
+            padding: EdgeInsets.only(left: 8, right: onClose == null ? 8 : 3),
+            decoration: BoxDecoration(
+              color: active
+                  ? AppColors.hover
+                  : _hover
+                  ? AppColors.hover.withValues(alpha: AppColors.hover.a * .5)
+                  : null,
+              borderRadius: BorderRadius.circular(_DeckTab.radius),
+              border: Border.all(
+                color: active ? AppColors.border : Colors.transparent,
+              ),
+            ),
+            child: IconTheme.merge(
+              data: IconThemeData(size: 14, color: foreground),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox.square(
+                    dimension: 14,
+                    child: Center(child: widget.icon),
+                  ),
+                  const SizedBox(width: 5),
+                  if (editor != null)
+                    SizedBox(width: 120, child: editor)
+                  else
+                    Flexible(
+                      child: Text(
+                        widget.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _DeckTab.labelStyle.copyWith(color: foreground),
+                      ),
+                    ),
+                  ?widget.trailing,
+                  if (onClose != null)
+                    SizedBox.square(
+                      dimension: 18,
+                      child: Visibility.maintain(
+                        visible: _hover || active,
+                        child: IdeActionButton(
+                          icon: Codicons.close,
+                          tooltip: widget.closeTooltip ?? '',
+                          size: 18,
+                          iconSize: 12,
+                          color: foreground,
+                          onPressed: onClose,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    return Semantics(
+      button: true,
+      selected: active,
+      label: widget.tooltip,
+      child: IdeHover(message: widget.tooltip, child: tab),
+    );
+  }
+}
+
 /// A terminal's tab: its name (edited in place while [renaming]), the
 /// exited marker, Kill as its close; Rename and Kill on a right click.
 class _ShellTab extends StatelessWidget {
@@ -446,24 +578,25 @@ class _ShellTab extends StatelessWidget {
     listenable: shell,
     builder: (context, _) {
       final l10n = context.l10n;
-      return IdeEditorTab(
+      return _DeckTab(
         icon: shell.exitMessage != null
             ? const TerminalExitedIcon()
-            : Icon(
-                Codicons.terminal,
-                size: 14,
-                color: themeColors['icon.foreground'],
-              ),
+            : const Icon(Codicons.terminal),
         label: shell.title,
         tooltip: shell.exitMessage ?? shell.title,
         active: active,
-        minWidth: 64,
-        borderTop: false,
-        renaming: renaming,
-        onRenamed: (title) {
-          terminals.endRename(shell, title);
-          shell.focus();
-        },
+        editor: renaming
+            ? InlineRenameField(
+                initial: shell.title,
+                style: _DeckTab.labelStyle.copyWith(
+                  color: AppColors.textPrimary,
+                ),
+                onDone: (title) {
+                  terminals.endRename(shell, title);
+                  shell.focus();
+                },
+              )
+            : null,
         onSelect: onSelect,
         closeTooltip: l10n.termKillTerminal,
         onClose: () => terminals.kill(shell),
@@ -534,33 +667,34 @@ class _TasksTab extends StatelessWidget {
       (task) => task.id == shown,
       orElse: () => _latest(list)!,
     );
-    return IdeEditorTab(
+    return _DeckTab(
       icon: TerminalTaskIcon(task, size: 14),
       label: task.description.isEmpty
           ? l10n.sidePanelBackgroundTasks
           : task.description,
       tooltip: '${l10n.sidePanelBackgroundTasks} · ${task.description}',
       active: shown != null,
-      minWidth: 64,
-      borderTop: false,
       onSelect: () => onShow(task.id),
-      trailing: IdeMenuButton(
-        key: const ValueKey('terminal-deck-tasks'),
-        icon: Codicons.chevronDown,
-        tooltip: l10n.sidePanelBackgroundTasks,
-        size: 18,
-        iconSize: 12,
-        entries: () => ideMenuGroups([
-          [
-            for (final each in list.reversed)
-              IdeMenuAction(
-                each.description,
-                checked: each.id == task.id && shown != null,
-                onSelected: () => onShow(each.id),
-              ),
-          ],
-          ..._actions(l10n, task),
-        ]),
+      trailing: Padding(
+        padding: const EdgeInsets.only(left: 2),
+        child: IdeMenuButton(
+          key: const ValueKey('terminal-deck-tasks'),
+          icon: Codicons.chevronDown,
+          tooltip: l10n.sidePanelBackgroundTasks,
+          size: 18,
+          iconSize: 12,
+          entries: () => ideMenuGroups([
+            [
+              for (final each in list.reversed)
+                IdeMenuAction(
+                  each.description,
+                  checked: each.id == task.id && shown != null,
+                  onSelected: () => onShow(each.id),
+                ),
+            ],
+            ..._actions(l10n, task),
+          ]),
+        ),
       ),
       onMenu: (position) => unawaited(
         showIdeMenu(
@@ -573,10 +707,9 @@ class _TasksTab extends StatelessWidget {
   }
 }
 
-/// What the deck says in place of a terminal: none, or one shown in the
-/// other place; with a button doing something about it.
+/// What the deck says with no terminal: none, with New Terminal.
 class _Note extends StatelessWidget {
-  const _Note({super.key, required this.text, this.action, this.onAction});
+  const _Note({required this.text, this.action, this.onAction});
 
   final String text;
   final String? action;
