@@ -159,6 +159,7 @@
   "cmdChatNextMode": "Switch to Next Mode",
   "cmdChatOpenModelPicker": "Open Model Picker",
   "cmdChatAttachContext": "Add Context…",
+  "cmdChatAttachSelection": "Add Selection to Chat",
   "cmdChatPasteRaw": "Paste as Plain Text",
   "cmdChatSelectNextSuggestion": "Select Next Suggestion",
   "cmdChatSelectPrevSuggestion": "Select Previous Suggestion",

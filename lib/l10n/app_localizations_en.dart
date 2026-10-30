@@ -214,6 +214,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cmdChatAttachContext => 'Add Context…';
 
   @override
+  String get cmdChatAttachSelection => 'Add Selection to Chat';
+
+  @override
   String get cmdChatPasteRaw => 'Paste as Plain Text';
 
   @override

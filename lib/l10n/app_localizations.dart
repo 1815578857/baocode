@@ -476,6 +476,12 @@ abstract class AppLocalizations {
   /// **'Add Context…'**
   String get cmdChatAttachContext;
 
+  /// No description provided for @cmdChatAttachSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Selection to Chat'**
+  String get cmdChatAttachSelection;
+
   /// No description provided for @cmdChatPasteRaw.
   ///
   /// In en, this message translates to:

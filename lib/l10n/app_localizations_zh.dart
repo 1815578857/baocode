@@ -213,6 +213,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cmdChatAttachContext => '添加上下文…';
 
   @override
+  String get cmdChatAttachSelection => '将所选内容添加到对话';
+
+  @override
   String get cmdChatPasteRaw => '粘贴为纯文本';
 
   @override
