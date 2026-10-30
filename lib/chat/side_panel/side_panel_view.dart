@@ -708,7 +708,24 @@ class AgentSidePanelView extends StatelessWidget {
                 ),
               ],
             ),
-      tabs: _fileTabs(context, tabs, tabs.files, active),
+      // The list's toggle before the files' tabs, the page the only one
+      // with a list: there with no file open too.
+      tabs: _fileTabs(
+        context,
+        tabs,
+        tabs.files,
+        active,
+        leading: IdeActionButton(
+          key: const ValueKey('side-panel-list-toggle'),
+          icon: panel.listShown
+              ? Codicons.layoutSidebarLeft
+              : Codicons.layoutSidebarLeftOff,
+          tooltip: panel.listShown
+              ? l10n.sidePanelHideList
+              : l10n.sidePanelShowList,
+          onPressed: panel.toggleList,
+        ),
+      ),
       body: active == null
           ? _EmptySection(l10n.sidePanelSelectFile)
           : ShownWhenReady(child: _preview(context, active)),
@@ -1026,9 +1043,10 @@ class AgentSidePanelView extends StatelessWidget {
     BuildContext context,
     SidePanelTabs tabs,
     List<SidePanelTab> list,
-    SidePanelTab? active,
-  ) {
-    if (list.isEmpty) return null;
+    SidePanelTab? active, {
+    Widget? leading,
+  }) {
+    if (list.isEmpty && leading == null) return null;
     final root = session.root;
     final descriptions = ideTabDescriptions([
       for (final tab in list) tab.path,
@@ -1041,6 +1059,7 @@ class AgentSidePanelView extends StatelessWidget {
     return _TabStrip(
       key: ValueKey((tabs.section, session)),
       selected: active,
+      leading: leading,
       entries: [
         for (final (i, tab) in list.indexed)
           (
@@ -1396,7 +1415,7 @@ class _SectionBar extends StatelessWidget {
   /// How many files Git has changed.
   final int changes;
 
-  /// The list's toggle and the close button, at the right.
+  /// Moving the panel and the close button, at the right.
   static const _actionsWidth = 2 * 22.0 + 2 + 6;
 
   /// The pages there: the browser's once one of the user's has connected,
@@ -1515,22 +1534,6 @@ class _SectionBar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 2),
-                // The plan's page has no list to show or hide.
-                if (shown != SidePanelSection.plan) ...[
-                  Center(
-                    child: IdeActionButton(
-                      key: const ValueKey('side-panel-list-toggle'),
-                      icon: panel.listShown
-                          ? Codicons.layoutSidebarLeft
-                          : Codicons.layoutSidebarLeftOff,
-                      tooltip: panel.listShown
-                          ? l10n.sidePanelHideList
-                          : l10n.sidePanelShowList,
-                      onPressed: panel.toggleList,
-                    ),
-                  ),
-                  const SizedBox(width: 2),
-                ],
                 Center(
                   child: IdeActionButton(
                     icon: Codicons.close,
@@ -1723,9 +1726,17 @@ class _PageState extends State<_Page> {
 /// A page's tabs, the IDE editor's ([IdeTabStrip]): scrolled to keep the one in front
 /// in sight.
 class _TabStrip extends StatefulWidget {
-  const _TabStrip({super.key, required this.selected, required this.entries});
+  const _TabStrip({
+    super.key,
+    required this.selected,
+    required this.entries,
+    this.leading,
+  });
   final Object? selected;
   final List<({Object id, Widget child})> entries;
+
+  /// Before the tabs, not scrolled with them.
+  final Widget? leading;
 
   @override
   State<_TabStrip> createState() => _TabStripState();
@@ -1774,9 +1785,8 @@ class _TabStripState extends State<_TabStrip> {
   }
 
   @override
-  Widget build(BuildContext context) => IdeTabStrip(
-    line: AppColors.partBorder,
-    child: TabStripScroll(
+  Widget build(BuildContext context) {
+    final tabs = TabStripScroll(
       controller: _scroll,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1788,8 +1798,23 @@ class _TabStripState extends State<_TabStrip> {
             ),
         ],
       ),
-    ),
-  );
+    );
+    return IdeTabStrip(
+      line: AppColors.partBorder,
+      child: switch (widget.leading) {
+        final leading? => Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(width: 6),
+            Center(child: leading),
+            const SizedBox(width: 4),
+            Expanded(child: tabs),
+          ],
+        ),
+        null => tabs,
+      },
+    );
+  }
 }
 
 /// A codicon in a tab, as big as a file's icon there.
