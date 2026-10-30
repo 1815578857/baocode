@@ -131,6 +131,7 @@ import 'terminal/terminal_panel.dart';
 import 'terminal/terminal_tasks.dart';
 import 'terminal/terminal_profile_service.dart';
 import 'terminal/terminal_profiles.dart';
+import 'terminal/terminal_hosts.dart';
 import 'terminal/terminal_service.dart';
 
 part 'ide_workbench_extensions.dart';
@@ -166,6 +167,8 @@ class IdeWorkbench extends StatefulWidget {
     this.onPinnedChanged,
     this.terminalBackend = const TerminalBackend(),
     this.terminalTasks,
+    this.terminals,
+    this.terminalHosts,
     this.colorThemes,
     this.recentFolders = const [],
     this.onOpenRecent,
@@ -279,6 +282,13 @@ class IdeWorkbench extends StatefulWidget {
   /// The background commands of the agent in its chat, listed with the
   /// terminals (see [IdeWorkbenchState.showTerminalTask]).
   final TerminalTasks? terminalTasks;
+
+  /// The project's terminals where the chat has them too, the same in
+  /// both (kept by the chat, not disposed here); else the IDE's own, on
+  /// [terminalBackend]. [terminalHosts] has where each shows, the IDE's
+  /// panel one of the places.
+  final TerminalService? terminals;
+  final TerminalHosts? terminalHosts;
 
   /// The color themes Preferences: Color Theme (⌘K ⌘T) picks from; the
   /// command is disabled without them.
@@ -608,6 +618,9 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
 
   /// The panel's terminals; none where they cannot run (the web).
   TerminalService? _terminals;
+
+  /// Whether [_terminals] are the IDE's own, not the chat's.
+  bool _ownsTerminals = true;
   List<StreamSubscription<Object?>> _terminalRequests = const [];
   IdeReferences? _references;
 
@@ -1143,11 +1156,15 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     widget.agentEdits?.open = _openAgentChange;
     widget.settings?.addListener(_settingsChanged);
     widget.remote?.addListener(_remoteChanged);
-    if (widget.terminalBackend.supported) {
-      final terminals = _terminals = TerminalService(
-        root: widget.workspace.root,
-        backend: widget.terminalBackend,
-      )..addListener(_terminalsChanged);
+    if (widget.terminals != null || widget.terminalBackend.supported) {
+      _ownsTerminals = widget.terminals == null;
+      final terminals = _terminals =
+          (widget.terminals ??
+                TerminalService(
+                  root: widget.workspace.root,
+                  backend: widget.terminalBackend,
+                ))
+            ..addListener(_terminalsChanged);
       // An extension's `Terminal.show()` and `hide()`.
       _terminalRequests = [
         terminals.onDidRequestShow.listen((preserveFocus) {
@@ -1254,8 +1271,10 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     _git = workspace.git?..addListener(_gitChanged);
     _gitChanged();
     // New terminals start in the project (a workspace's first folder);
-    // those running stay where they are.
-    _terminals?.root = workspace.roots.firstOrNull ?? workspace.root;
+    // those running stay where they are. The chat's start where it says.
+    if (_ownsTerminals) {
+      _terminals?.root = workspace.roots.firstOrNull ?? workspace.root;
+    }
     _attachDebug();
   }
 
@@ -1334,7 +1353,9 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     if (workspace.isMultiRoot) {
       _explorer.roots = workspace.roots;
       _fileIndex.roots = workspace.roots;
-      _terminals?.root = workspace.roots.firstOrNull ?? workspace.root;
+      if (_ownsTerminals) {
+        _terminals?.root = workspace.roots.firstOrNull ?? workspace.root;
+      }
     }
     final git = workspace.git;
     if (identical(git, _git)) return;
@@ -1585,9 +1606,8 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
     for (final subscription in _terminalRequests) {
       unawaited(subscription.cancel());
     }
-    _terminals
-      ?..removeListener(_terminalsChanged)
-      ..dispose();
+    _terminals?.removeListener(_terminalsChanged);
+    if (_ownsTerminals) _terminals?.dispose();
     _panelFocus.dispose();
     _problemsList.dispose();
     _referencesList.dispose();
@@ -5131,6 +5151,9 @@ class IdeWorkbenchState extends State<IdeWorkbench> {
                         onOpenLink: _openTerminalLink,
                         shouldSkipShell: _terminalSkipsShell,
                         resolveKey: _terminalFindKey,
+                        hosts: widget.terminalHosts,
+                        place: this,
+                        shown: widget.visible,
                       ),
                       null => null,
                     },

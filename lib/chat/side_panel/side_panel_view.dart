@@ -36,6 +36,7 @@ import '../../ide/ide_tab_bar.dart'
 import '../../ide/save_copy.dart';
 import '../../ide/tab_strip_scroll.dart';
 import '../../ide/terminal/links/terminal_links.dart' show TerminalLink;
+import '../../ide/terminal/terminal_hosts.dart';
 import '../../ide/terminal/terminal_service.dart';
 import '../../ide/terminal/terminal_view.dart';
 import '../../workspace/terminal_deck.dart';
