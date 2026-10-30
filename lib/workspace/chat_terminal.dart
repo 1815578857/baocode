@@ -17,6 +17,7 @@ import '../l10n/l10n.dart';
 import '../sidebar/sidebar.dart' show SidebarIconButton;
 import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
+import '../theme/workbench_theme.dart' show themeColors;
 import 'terminal_deck.dart';
 
 /// Toggle Terminal (⌃`): the chat window's panel, as the IDE's.
@@ -372,7 +373,10 @@ class _ChatTerminalAreaState extends State<ChatTerminalArea> {
       onDoubleTap: () => setState(() => _terminals.setHeight(_root, null)),
       child: Container(
         height: ChatTerminalArea.sashHeight,
-        alignment: Alignment.bottomCenter,
+        // The panel's own top, nothing under it showing through; the line
+        // where the conversation ends.
+        color: themeColors.get('terminal.background') ?? AppColors.code,
+        alignment: Alignment.topCenter,
         // At rest the line between the two; dragged, as thick as the IDE's
         // sashes, in their `sash.hoverBorder`.
         child: AnimatedContainer(
