@@ -2144,6 +2144,18 @@ abstract class AppLocalizations {
   /// **'Word Wrap'**
   String get menuWordWrap;
 
+  /// No description provided for @cmdToggleMinimap.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle Minimap'**
+  String get cmdToggleMinimap;
+
+  /// No description provided for @menuMinimap.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimap'**
+  String get menuMinimap;
+
   /// No description provided for @cmdTogglePanel.
   ///
   /// In en, this message translates to:
@@ -12476,6 +12488,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wraps long lines at the editor\'s width, in every editor. An editor\'s context menu and the Command Palette (Toggle Word Wrap) switch it too. Files of more than 5,000 lines are not wrapped.'**
   String get appearanceSettingsWordWrapDescription;
+
+  /// No description provided for @appearanceSettingsCodeMinimap.
+  ///
+  /// In en, this message translates to:
+  /// **'Code Minimap'**
+  String get appearanceSettingsCodeMinimap;
+
+  /// No description provided for @appearanceSettingsCodeMinimapDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'A minimap of the file at the right of the code editor, in every editor; it is not shown in an editor too narrow for it. An editor tab\'s context menu and the Command Palette (Toggle Minimap) switch it too.'**
+  String get appearanceSettingsCodeMinimapDescription;
 
   /// No description provided for @appearanceSettingsUiScale.
   ///

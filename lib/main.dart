@@ -33,6 +33,7 @@ import 'diagnostics/frame_watch.dart';
 import 'diagnostics/hang_watch.dart';
 import 'diagnostics/diagnostics_upload.dart';
 import 'extensions/theme_extensions.dart';
+import 'ide/editor_minimap_setting.dart';
 import 'ide/editor_word_wrap.dart';
 import 'ide/git/git_repository.dart';
 import 'ide/git/repository_scan.dart';
@@ -342,6 +343,8 @@ Future<void> main(List<String> arguments) async {
     });
     // Whether the editors wrap long lines.
     EditorWordWrap.follow(files.settings);
+    // Whether the code editors show their minimap.
+    EditorMinimap.follow(files.settings);
   }
   // Emoji as pictures: fetched into the cache the first run, in the
   // background, through the proxy.

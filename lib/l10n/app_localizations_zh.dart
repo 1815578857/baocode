@@ -1054,6 +1054,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get menuWordWrap => '自动换行';
 
   @override
+  String get cmdToggleMinimap => '切换缩略图';
+
+  @override
+  String get menuMinimap => '缩略图';
+
+  @override
   String get cmdTogglePanel => '切换面板可见性';
 
   @override
@@ -7227,6 +7233,13 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get appearanceSettingsWordWrapDescription =>
       '长行在编辑器宽度处折行，所有编辑器共用。编辑器右键菜单和命令面板（切换自动换行）也能切换。超过 5000 行的文件不折行。';
+
+  @override
+  String get appearanceSettingsCodeMinimap => '代码缩略图';
+
+  @override
+  String get appearanceSettingsCodeMinimapDescription =>
+      '代码编辑器右侧显示整个文件的缩略图，所有编辑器共用；编辑器太窄时不显示。编辑器标签页右键菜单和命令面板（切换缩略图）也能切换。';
 
   @override
   String get appearanceSettingsUiScale => '界面大小';
