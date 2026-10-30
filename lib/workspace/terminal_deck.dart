@@ -249,11 +249,8 @@ class _TerminalDeckState extends State<TerminalDeck> {
     bool here,
   ) {
     final terminals = widget.terminals;
-    return Container(
+    return SizedBox(
       height: TerminalDeck.barHeight,
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.partBorder)),
-      ),
       child: Row(
         children: [
           Expanded(
