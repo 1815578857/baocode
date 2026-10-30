@@ -8097,18 +8097,6 @@ abstract class AppLocalizations {
   /// **'Kill Terminal'**
   String get termKillTerminal;
 
-  /// No description provided for @termShownElsewhere.
-  ///
-  /// In en, this message translates to:
-  /// **'This terminal is shown in another place'**
-  String get termShownElsewhere;
-
-  /// No description provided for @termShowHere.
-  ///
-  /// In en, this message translates to:
-  /// **'Show Here'**
-  String get termShowHere;
-
   /// No description provided for @termNoTerminals.
   ///
   /// In en, this message translates to:
