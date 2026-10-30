@@ -41,6 +41,7 @@ import '../../ide/terminal/terminal_service.dart';
 import '../../ide/terminal/terminal_tabs.dart';
 import '../../ide/terminal/terminal_view.dart';
 import '../../kernel/kernel_types.dart' show KernelTask;
+import '../../workspace/title_bar_double_click.dart';
 import '../../workspace/window_controls.dart';
 import '../chat_models.dart' show CommandStatus;
 import '../../keybindings/chat_keybindings.dart';
@@ -428,6 +429,7 @@ class AgentSidePanelView extends StatelessWidget {
     this.onRemoveFolder,
     this.titleBarInset = 0,
     this.leading,
+    this.windowTitleBar = true,
   });
 
   final AgentSidePanel panel;
@@ -436,6 +438,11 @@ class AgentSidePanelView extends StatelessWidget {
   /// Room kept at the left of its tabs: for the traffic lights, where it
   /// is at the window's top left.
   final double titleBarInset;
+
+  /// Whether its tabs' bar runs along the window's top, the empty part of
+  /// it the window's title bar (see [TitleBarDoubleClick]): not in a pane
+  /// below another.
+  final bool windowTitleBar;
 
   /// Before its tabs, after [titleBarInset]: the window's sidebar toggle,
   /// by the traffic lights, where it is at the window's top left.
@@ -560,6 +567,7 @@ class AgentSidePanelView extends StatelessWidget {
             changes: _gits.fold(0, (sum, git) => sum + (git.state?.count ?? 0)),
             inset: titleBarInset,
             leading: leading,
+            windowTitleBar: windowTitleBar,
           ),
           Expanded(
             child: switch (tabs.shown) {
@@ -1480,10 +1488,14 @@ class _SectionBar extends StatelessWidget {
     required this.changes,
     this.inset = 0,
     this.leading,
+    this.windowTitleBar = true,
   });
   final AgentSidePanel panel;
   final ChatSession session;
   final SidePanelTabs tabs;
+
+  /// See [AgentSidePanelView.windowTitleBar].
+  final bool windowTitleBar;
 
   /// Room kept at the left of the tabs (see
   /// [AgentSidePanelView.titleBarInset]).
@@ -1559,89 +1571,95 @@ class _SectionBar extends StatelessWidget {
     final running = session.terminalTasks
         .where((task) => task.status == CommandStatus.running)
         .length;
-    return IdeTabStrip(
-      line: AppColors.partBorder,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final sections = _sections;
-          final shown = tabs.shown;
-          final compact =
-              constraints.maxWidth <
-              _fullWidth(context, sections, {
-                    SidePanelSection.changes: changes,
-                    SidePanelSection.terminal: running,
-                  }) +
-                  _actionsWidth +
-                  inset +
-                  (leading == null ? 0 : _leadingWidth);
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(width: inset),
-              if (leading case final leading?) ...[
-                Center(child: leading),
-                const SizedBox(width: 6),
-              ],
-              for (final section in sections)
-                _SectionTab(
-                  section: section,
-                  selected: shown == section,
-                  compact: compact,
-                  count: switch (section) {
-                    SidePanelSection.files ||
-                    SidePanelSection.browser ||
-                    SidePanelSection.plan => 0,
-                    SidePanelSection.changes => changes,
-                    SidePanelSection.terminal => running,
-                  },
-                  onTap: () => panel.showSection(session, section),
-                ),
-              const Spacer(),
-              // To the conversations' other side.
-              Center(
-                child: IdeActionButton(
-                  key: const ValueKey('side-panel-move'),
-                  icon: Codicons.arrowSwap,
-                  tooltip: KeybindingService.instance.titleWithKeybinding(
-                    panel.atLeft
-                        ? l10n.sidePanelMoveRight
-                        : l10n.sidePanelMoveLeft,
-                    ChatCommandIds.toggleSidePanelPosition,
+    // On macOS it is part of the window's top, as the conversation's title
+    // bar beside it: its empty part drags the window, and a double click
+    // there does what one on the system's title bar does.
+    return TitleBarDoubleClick(
+      windowTitleBar: windowTitleBar,
+      child: IdeTabStrip(
+        line: AppColors.partBorder,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final sections = _sections;
+            final shown = tabs.shown;
+            final compact =
+                constraints.maxWidth <
+                _fullWidth(context, sections, {
+                      SidePanelSection.changes: changes,
+                      SidePanelSection.terminal: running,
+                    }) +
+                    _actionsWidth +
+                    inset +
+                    (leading == null ? 0 : _leadingWidth);
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(width: inset),
+                if (leading case final leading?) ...[
+                  Center(child: leading),
+                  const SizedBox(width: 6),
+                ],
+                for (final section in sections)
+                  _SectionTab(
+                    section: section,
+                    selected: shown == section,
+                    compact: compact,
+                    count: switch (section) {
+                      SidePanelSection.files ||
+                      SidePanelSection.browser ||
+                      SidePanelSection.plan => 0,
+                      SidePanelSection.changes => changes,
+                      SidePanelSection.terminal => running,
+                    },
+                    onTap: () => panel.showSection(session, section),
                   ),
-                  onPressed: () => panel.atLeft = !panel.atLeft,
-                ),
-              ),
-              const SizedBox(width: 2),
-              // The plan's page has no list to show or hide.
-              if (shown != SidePanelSection.plan) ...[
+                const Spacer(),
+                // To the conversations' other side.
                 Center(
                   child: IdeActionButton(
-                    key: const ValueKey('side-panel-list-toggle'),
-                    icon: panel.listShown
-                        ? Codicons.layoutSidebarLeft
-                        : Codicons.layoutSidebarLeftOff,
-                    tooltip: panel.listShown
-                        ? l10n.sidePanelHideList
-                        : l10n.sidePanelShowList,
-                    onPressed: panel.toggleList,
+                    key: const ValueKey('side-panel-move'),
+                    icon: Codicons.arrowSwap,
+                    tooltip: KeybindingService.instance.titleWithKeybinding(
+                      panel.atLeft
+                          ? l10n.sidePanelMoveRight
+                          : l10n.sidePanelMoveLeft,
+                      ChatCommandIds.toggleSidePanelPosition,
+                    ),
+                    onPressed: () => panel.atLeft = !panel.atLeft,
                   ),
                 ),
                 const SizedBox(width: 2),
-              ],
-              Center(
-                child: IdeActionButton(
-                  icon: Codicons.close,
-                  tooltip: KeybindingService.instance.titleWithKeybinding(
-                    l10n.sidePanelHide,
-                    ChatCommandIds.toggleSidePanel,
+                // The plan's page has no list to show or hide.
+                if (shown != SidePanelSection.plan) ...[
+                  Center(
+                    child: IdeActionButton(
+                      key: const ValueKey('side-panel-list-toggle'),
+                      icon: panel.listShown
+                          ? Codicons.layoutSidebarLeft
+                          : Codicons.layoutSidebarLeftOff,
+                      tooltip: panel.listShown
+                          ? l10n.sidePanelHideList
+                          : l10n.sidePanelShowList,
+                      onPressed: panel.toggleList,
+                    ),
                   ),
-                  onPressed: () => panel.hideFor(session),
+                  const SizedBox(width: 2),
+                ],
+                Center(
+                  child: IdeActionButton(
+                    icon: Codicons.close,
+                    tooltip: KeybindingService.instance.titleWithKeybinding(
+                      l10n.sidePanelHide,
+                      ChatCommandIds.toggleSidePanel,
+                    ),
+                    onPressed: () => panel.hideFor(session),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 6),
-            ],
-          );
-        },
+                const SizedBox(width: 6),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

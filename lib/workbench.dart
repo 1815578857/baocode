@@ -3696,6 +3696,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     AgentThread thread, {
     double titleBarInset = 0,
     Widget? leading,
+    bool windowTitleBar = true,
   }) {
     final location = thread.project.path;
     final multi = _workspace.workspaceAt(location);
@@ -3708,6 +3709,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
           thread,
           titleBarInset: titleBarInset,
           leading: leading,
+          windowTitleBar: windowTitleBar,
         ),
       );
     }
@@ -3715,6 +3717,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       thread,
       titleBarInset: titleBarInset,
       leading: leading,
+      windowTitleBar: windowTitleBar,
     );
   }
 
@@ -3722,12 +3725,14 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     AgentThread thread, {
     double titleBarInset = 0,
     Widget? leading,
+    bool windowTitleBar = true,
   }) => ListenableBuilder(
     listenable: _worktreeSignals(thread),
     builder: (context, _) => _sidePanelViewOf(
       thread,
       titleBarInset: titleBarInset,
       leading: leading,
+      windowTitleBar: windowTitleBar,
     ),
   );
 
@@ -3735,6 +3740,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
     AgentThread thread, {
     double titleBarInset = 0,
     Widget? leading,
+    bool windowTitleBar = true,
   }) {
     final (:files, :paths) = _projectFiles(thread);
     final location = thread.project.path;
@@ -3801,6 +3807,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
           : (folder) => _workspace.removeWorkspaceFolder(multi, folder),
       titleBarInset: titleBarInset,
       leading: leading,
+      windowTitleBar: windowTitleBar,
     );
   }
 
@@ -4478,7 +4485,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
       ),
     );
     if (place.alone || embedded) return chat;
-    return _paneSidePanel(thread, chat);
+    return _paneSidePanel(thread, chat, top: place.top);
   }
 
   /// [chat], a pane among others, with a side panel of its own, of its
@@ -4486,14 +4493,17 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
   /// over it where the pane has not the room. While it is hidden, its rail
   /// over the pane's top right (left, the panel at the left), under its
   /// title bar.
-  Widget _paneSidePanel(AgentThread thread, Widget chat) => AgentSidePanelArea(
-    panel: _sidePanel,
-    conversation: thread.session,
-    hidden: _sidePanelHidden,
-    rail: _railFor(thread),
-    builder: (context) => _buildSidePanel(thread),
-    child: chat,
-  );
+  ///
+  /// [top]: the pane is along the window's top, and so is the panel's bar.
+  Widget _paneSidePanel(AgentThread thread, Widget chat, {required bool top}) =>
+      AgentSidePanelArea(
+        panel: _sidePanel,
+        conversation: thread.session,
+        hidden: _sidePanelHidden,
+        rail: _railFor(thread),
+        builder: (context) => _buildSidePanel(thread, windowTitleBar: top),
+        child: chat,
+      );
 
   /// The file in front on the side panel, while it shows [thread]'s: on
   /// the files page, where it is edited (its cursor and selection with
