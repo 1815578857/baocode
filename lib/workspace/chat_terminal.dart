@@ -8,6 +8,7 @@ import '../ide/ide_hover.dart';
 import '../ide/ide_modern_ui.dart';
 import '../ide/ide_rows.dart';
 import '../ide/terminal/links/terminal_links.dart';
+import '../ide/terminal/terminal_hosts.dart';
 import '../ide/terminal/terminal_instance.dart';
 import '../ide/terminal/terminal_profiles.dart';
 import '../ide/terminal/terminal_service.dart';

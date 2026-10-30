@@ -178,6 +178,23 @@ class TerminalService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Moves [instance]'s tab to [index] among [instances]: a tab dragged
+  /// there.
+  void move(TerminalInstance instance, int index) {
+    final shown = instances;
+    final from = shown.indexOf(instance);
+    if (from < 0) return;
+    final to = index.clamp(0, shown.length - 1);
+    if (to == from) return;
+    final rest = [...shown]..removeAt(from);
+    _instances.remove(instance);
+    _instances.insert(
+      to < rest.length ? _instances.indexOf(rest[to]) : _instances.length,
+      instance,
+    );
+    notifyListeners();
+  }
+
   /// Focus Next (and Previous) Terminal Group: the one after the active
   /// one, round to the first.
   void focusNext() => _step(1);

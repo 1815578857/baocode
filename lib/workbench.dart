@@ -2819,6 +2819,11 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
               final thread? => SessionTerminalTasks(thread.session),
               null => null,
             },
+            // The project's terminals, the chat's: the same in both.
+            terminals: path == _noFolder
+                ? null
+                : _terminals?.terminalsOf(path),
+            terminalHosts: _terminals?.hosts,
             remote: switch (ProjectHost.of(path)) {
               final SshHost host => SshStatusIndicator(
                 host,

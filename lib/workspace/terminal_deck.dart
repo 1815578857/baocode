@@ -9,10 +9,13 @@ import '../chat/side_panel/terminal_preview.dart';
 import '../chat/widgets/inline_rename_field.dart';
 import '../ide/file_service.dart';
 import '../ide/ide_button.dart';
+import '../ide/ide_chat_title.dart' show TabDragSource, TabDropLine;
 import '../ide/ide_hover.dart';
+import '../ide/ide_list.dart' show IdeTitleBadge;
 import '../ide/ide_menu.dart';
 import '../ide/tab_strip_scroll.dart';
 import '../ide/terminal/links/terminal_links.dart';
+import '../ide/terminal/terminal_hosts.dart';
 import '../ide/terminal/terminal_instance.dart';
 import '../ide/terminal/terminal_profile_service.dart';
 import '../ide/terminal/terminal_profiles.dart';
@@ -26,56 +29,6 @@ import '../l10n/l10n.dart';
 import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
 import '../theme/workbench_theme.dart' show themeColors;
-
-/// Which place has each of a window's terminals as its view: the one with
-/// the terminal's keyboard focus and its size. The chat's terminals show in
-/// two, the panel under the conversation and the side panel's terminal
-/// page ([TerminalDeck]), both live: the other place mirrors it (see
-/// [TerminalView.mirror]) until pressed, as tmux's latest client.
-class TerminalHosts extends ChangeNotifier {
-  final Map<TerminalInstance, Object> _hosts = {};
-  bool _disposed = false;
-  bool _telling = false;
-
-  /// The place showing [terminal]; none while no place does.
-  Object? hostOf(TerminalInstance terminal) => _hosts[terminal];
-
-  /// Whether [place] has [terminal] as its view, taking it if no place
-  /// does: while building, so the first place built has it, the others
-  /// mirroring it.
-  bool take(TerminalInstance terminal, Object place) =>
-      identical(_hosts.putIfAbsent(terminal, () => place), place);
-
-  /// [place] has [terminal] as its view from now on; where it had, it
-  /// mirrors it.
-  void claim(TerminalInstance terminal, Object place) {
-    if (identical(_hosts[terminal], place)) return;
-    _hosts[terminal] = place;
-    notifyListeners();
-  }
-
-  /// [place] shows none of the terminals but [except]: the others are
-  /// free for a place mirroring them. Told after the frame, as this is
-  /// done while building, and as a place goes.
-  void release(Object place, {TerminalInstance? except}) {
-    final before = _hosts.length;
-    _hosts.removeWhere(
-      (terminal, host) => identical(host, place) && terminal != except,
-    );
-    if (_hosts.length == before || _telling) return;
-    _telling = true;
-    scheduleMicrotask(() {
-      _telling = false;
-      if (!_disposed) notifyListeners();
-    });
-  }
-
-  @override
-  void dispose() {
-    _disposed = true;
-    super.dispose();
-  }
-}
 
 /// A chat's background commands, as a [TerminalDeck] (and the IDE's
 /// TERMINAL tab) lists them.
@@ -174,6 +127,12 @@ class TerminalDeck extends StatefulWidget {
 class _TerminalDeckState extends State<TerminalDeck> {
   final _scroll = ScrollController();
 
+  /// The terminals' tabs, to find where one dragged would go; the one
+  /// dragged, and the index it would go to (none: where it is).
+  final Map<TerminalInstance, GlobalKey> _tabKeys = {};
+  TerminalInstance? _dragged;
+  int? _spot;
+
   /// The tab of the background commands, as [TabStripScroll] reveals it.
   static const _tasksTab = Object();
 
@@ -224,6 +183,7 @@ class _TerminalDeckState extends State<TerminalDeck> {
       final shells = terminals?.instances ?? const <TerminalInstance>[];
       final tasks = _tasks;
       final current = _current(shells, tasks);
+      _tabKeys.removeWhere((shell, _) => !shells.contains(shell));
       final shell = current is TerminalInstance ? current : null;
       // What it showed before is free for the other place.
       widget.hosts.release(widget.place, except: shell);
@@ -261,20 +221,32 @@ class _TerminalDeckState extends State<TerminalDeck> {
                 children: [
                   for (final (i, shell) in shells.indexed) ...[
                     if (i > 0) const SizedBox(width: 2),
-                    _ShellTab(
-                      key: ObjectKey(shell),
-                      terminals: terminals!,
-                      shell: shell,
-                      active: shell == current,
-                      // Its name edited where it is the view.
-                      renaming: terminals.editing == shell && here,
-                      onSelect: () => _show(shell),
-                      onRename: () {
-                        _show(shell);
-                        terminals.startRename(shell);
-                      },
+                    if (_spot == i) const TabDropLine(),
+                    TabDragSource(
+                      key: _tabKeys.putIfAbsent(shell, GlobalKey.new),
+                      enabled: shells.length > 1,
+                      onStart: () => setState(() => _dragged = shell),
+                      onUpdate: (position) => _moveDrag(shells, position),
+                      onEnd: () => _endDrag(terminals),
+                      child: Opacity(
+                        opacity: identical(shell, _dragged) ? .5 : 1,
+                        child: _ShellTab(
+                          key: ObjectKey(shell),
+                          terminals: terminals!,
+                          shell: shell,
+                          active: shell == current,
+                          // Its name edited where it is the view.
+                          renaming: terminals.editing == shell && here,
+                          onSelect: () => _show(shell),
+                          onRename: () {
+                            _show(shell);
+                            terminals.startRename(shell);
+                          },
+                        ),
+                      ),
                     ),
                   ],
+                  if (_spot == shells.length) const TabDropLine(),
                   if (tasks.isNotEmpty) ...[
                     if (shells.isNotEmpty) const SizedBox(width: 2),
                     _TasksTab(
@@ -323,6 +295,49 @@ class _TerminalDeckState extends State<TerminalDeck> {
         ],
       ),
     );
+  }
+
+  /// A terminal's tab dragged to [position] (global): the tabs scroll on
+  /// near an end; it would go before the first tab whose middle is past
+  /// the pointer.
+  void _moveDrag(List<TerminalInstance> shells, Offset position) {
+    final dragged = _dragged;
+    if (dragged == null) return;
+    if (context.findRenderObject() case final RenderBox box
+        when _scroll.hasClients) {
+      final x = box.globalToLocal(position).dx;
+      final step = x < 24 ? -8.0 : (x > box.size.width - 24 ? 8.0 : 0.0);
+      if (step != 0) {
+        final scrolled = _scroll.position;
+        _scroll.jumpTo(
+          (scrolled.pixels + step).clamp(
+            scrolled.minScrollExtent,
+            scrolled.maxScrollExtent,
+          ),
+        );
+      }
+    }
+    var at = shells.length;
+    for (final (i, shell) in shells.indexed) {
+      final box = _tabKeys[shell]?.currentContext?.findRenderObject();
+      if (box is! RenderBox || !box.attached) continue;
+      if (position.dx < box.localToGlobal(box.size.center(Offset.zero)).dx) {
+        at = i;
+        break;
+      }
+    }
+    final from = shells.indexOf(dragged);
+    final spot = at == from || at == from + 1 ? null : at;
+    if (spot != _spot) setState(() => _spot = spot);
+  }
+
+  void _endDrag(TerminalService terminals) {
+    final (shell, at) = (_dragged, _spot);
+    setState(() => _dragged = _spot = null);
+    if (shell == null || at == null) return;
+    final from = terminals.instances.indexOf(shell);
+    if (from < 0) return;
+    terminals.move(shell, at > from ? at - 1 : at);
   }
 
   /// The dropdown by New Terminal: a terminal on each profile, the default
@@ -672,25 +687,37 @@ class _TasksTab extends StatelessWidget {
       tooltip: '${l10n.sidePanelBackgroundTasks} · ${task.description}',
       active: shown != null,
       onSelect: () => onShow(task.id),
+      // How many there are, by the dropdown listing them.
       trailing: Padding(
-        padding: const EdgeInsets.only(left: 2),
-        child: IdeMenuButton(
-          key: const ValueKey('terminal-deck-tasks'),
-          icon: Codicons.chevronDown,
-          tooltip: l10n.sidePanelBackgroundTasks,
-          size: 18,
-          iconSize: 12,
-          entries: () => ideMenuGroups([
-            [
-              for (final each in list.reversed)
-                IdeMenuAction(
-                  each.description,
-                  checked: each.id == task.id && shown != null,
-                  onSelected: () => onShow(each.id),
-                ),
-            ],
-            ..._actions(l10n, task),
-          ]),
+        padding: const EdgeInsets.only(left: 5),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IdeTitleBadge(
+              list.length,
+              key: const ValueKey('terminal-deck-task-count'),
+            ),
+            const SizedBox(width: 2),
+            IdeMenuButton(
+              key: const ValueKey('terminal-deck-tasks'),
+              icon: Codicons.chevronDown,
+              tooltip: l10n.sidePanelBackgroundTasks,
+              size: 18,
+              iconSize: 12,
+              entries: () => ideMenuGroups([
+                [
+                  for (final each in list.reversed)
+                    IdeMenuAction(
+                      each.description,
+                      icon: TerminalTaskIcon(each, size: 14),
+                      checked: each.id == task.id && shown != null,
+                      onSelected: () => onShow(each.id),
+                    ),
+                ],
+                ..._actions(l10n, task),
+              ]),
+            ),
+          ],
         ),
       ),
       onMenu: (position) => unawaited(
