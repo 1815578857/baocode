@@ -8109,6 +8109,30 @@ abstract class AppLocalizations {
   /// **'Kill Terminal'**
   String get termKillTerminal;
 
+  /// No description provided for @termKillOtherTerminals.
+  ///
+  /// In en, this message translates to:
+  /// **'Kill Other Terminals'**
+  String get termKillOtherTerminals;
+
+  /// No description provided for @termKillAllTerminals.
+  ///
+  /// In en, this message translates to:
+  /// **'Kill All Terminals'**
+  String get termKillAllTerminals;
+
+  /// No description provided for @termStopAllTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop All Running Tasks'**
+  String get termStopAllTasks;
+
+  /// No description provided for @termRunInNewTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Run in New Terminal'**
+  String get termRunInNewTerminal;
+
   /// No description provided for @termNoTerminals.
   ///
   /// In en, this message translates to:

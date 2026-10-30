@@ -4673,6 +4673,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get termKillTerminal => '终止终端';
 
   @override
+  String get termKillOtherTerminals => '终止其他终端';
+
+  @override
+  String get termKillAllTerminals => '终止所有终端';
+
+  @override
+  String get termStopAllTasks => '停止所有运行中的任务';
+
+  @override
+  String get termRunInNewTerminal => '在新终端中运行';
+
+  @override
   String get termNoTerminals => '没有终端';
 
   @override
