@@ -75,13 +75,11 @@ import 'ide/lsp/packs/lsp_settings_template.dart';
 import 'ide/terminal/links/terminal_links.dart';
 import 'ide/terminal/terminal_instance.dart';
 import 'ide/terminal/terminal_panel.dart' show terminalCommandsToSkipShell;
-import 'ide/terminal/terminal_tasks.dart';
 import 'keybindings/chat_keybindings.dart';
 import 'keybindings/default_keybindings.dart';
 import 'keybindings/key_chord.dart';
 import 'keybindings/keybinding_service.dart';
 import 'keybindings/window_keybindings.dart';
-import 'kernel/kernel_types.dart' show KernelTask;
 import 'l10n/command_titles.dart';
 import 'l10n/l10n.dart';
 import 'notifications/attention_host.dart';
@@ -135,6 +133,7 @@ import 'workspace/chat_quota_bar.dart';
 import 'workspace/chat_drag.dart';
 import 'workspace/chat_grid_view.dart';
 import 'workspace/chat_terminal.dart';
+import 'workspace/terminal_deck.dart';
 import 'workspace/editor_launcher.dart' show openExternal;
 import 'workspace/ssh_server_edit.dart';
 import 'workspace/new_chat_folder_bar.dart';
@@ -2717,7 +2716,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
             pane: thread,
             showsTerminals: _terminals != null,
           ),
-          thread.project.path,
+          thread,
         ),
         showToggle: showToggle,
       );
@@ -2803,7 +2802,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
             ),
             // Its chat's background commands, with its terminals.
             terminalTasks: switch (_workspace.ideChat(path)) {
-              final thread? => _SessionTerminalTasks(thread.session),
+              final thread? => SessionTerminalTasks(thread.session),
               null => null,
             },
             remote: switch (ProjectHost.of(path)) {
@@ -3775,7 +3774,8 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
                 insertSpaces: insertSpaces,
               ),
       git: _shownGit(thread),
-      terminals: _terminals?.sidePanelTerminals(thread.project.path),
+      terminals: _terminals?.terminalsOf(thread.project.path),
+      terminalHosts: _terminals?.hosts,
       terminalSkipShell: chatTerminalSkipShell,
       onOpenTerminalLink: _openTerminalLink,
       // Claude Haiku where the project is, as the IDE's Source Control.
@@ -4158,15 +4158,18 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
 
   /// [child] with [root]'s terminal panel under it (see
   /// [ChatTerminalArea]): in a pane, its own project's, at its width.
-  Widget _withTerminal(Widget child, String root) => switch (_terminals) {
-    final terminals? => ChatTerminalArea(
-      terminals: terminals,
-      root: root,
-      onOpenLink: _openTerminalLink,
-      child: child,
-    ),
-    null => child,
-  };
+  Widget _withTerminal(Widget child, AgentThread thread) =>
+      switch (_terminals) {
+        final terminals? => ChatTerminalArea(
+          terminals: terminals,
+          root: thread.project.path,
+          tasks: SessionTerminalTasks(thread.session),
+          files: _projectFiles(thread).files,
+          onOpenLink: _openTerminalLink,
+          child: child,
+        ),
+        null => child,
+      };
 
   Widget _buildGrid({required bool showToggle}) {
     if (_stashing) {
@@ -4197,7 +4200,7 @@ class _WorkbenchState extends State<Workbench> implements WindowDelegate {
           place: place,
           showsTerminals: showsTerminals,
         );
-        return showsTerminals ? _withTerminal(chat, thread.project.path) : chat;
+        return showsTerminals ? _withTerminal(chat, thread) : chat;
       },
       // Those not focused in the sidebar's color, set apart.
       paneBackground: (thread) => identical(thread, _workspace.current)
@@ -4979,40 +4982,4 @@ class _EmptyWorkspace extends StatelessWidget {
       ],
     );
   }
-}
-
-/// A chat's background commands, for its IDE's TERMINAL tab.
-class _SessionTerminalTasks implements TerminalTasks {
-  const _SessionTerminalTasks(this.session);
-
-  final ChatSession session;
-
-  @override
-  List<KernelTask> get tasks => session.terminalTasks;
-
-  @override
-  String? commandOf(KernelTask task) => session.commandOf(task.toolUseId);
-
-  @override
-  void stop(KernelTask task) => session.stopTask(task);
-
-  @override
-  void clear(Iterable<KernelTask> tasks) => session.clearTasks(tasks);
-
-  @override
-  String get root => session.root ?? '';
-
-  @override
-  void addListener(VoidCallback listener) => session.addListener(listener);
-
-  @override
-  void removeListener(VoidCallback listener) =>
-      session.removeListener(listener);
-
-  @override
-  bool operator ==(Object other) =>
-      other is _SessionTerminalTasks && identical(other.session, session);
-
-  @override
-  int get hashCode => identityHashCode(session);
 }

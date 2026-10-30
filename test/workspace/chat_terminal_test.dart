@@ -2,6 +2,7 @@
 // workspace/chat_terminal.dart): its toggles, its keys, and the project
 // its terminals start in.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bao_editor/monaco/flutter/keybinding_entry.dart';
@@ -58,7 +59,7 @@ Future<void> _settle(WidgetTester tester) async {
 final _mac = TargetPlatformVariant.only(TargetPlatform.macOS);
 final _windows = TargetPlatformVariant.only(TargetPlatform.windows);
 
-Finder get _panel => find.text('TERMINAL');
+Finder get _panel => find.byKey(const ValueKey('chat-terminal-panel'));
 
 /// The title bar's button (the panel's own Hide is another).
 Finder get _toggle => find.byType(ChatTerminalToggle);
@@ -446,8 +447,8 @@ void main() {
     expect(_panel, findsNothing);
   }, variant: _windows);
 
-  test('the side panel\'s terminals are each project\'s own, apart from the '
-      'panel\'s, and keep the window asking before it closes', () async {
+  test('the side panel\'s terminals are its panel\'s, each project\'s own, '
+      'and keep the window asking before it closes', () async {
     final started = <FakePty>[];
     final terminals = ChatTerminals(
       fakeTerminalBackend(started),
@@ -455,14 +456,15 @@ void main() {
       pathOf: (root) => '$root-host',
     );
     addTearDown(terminals.dispose);
-    final side = terminals.sidePanelTerminals('/p');
-    expect(terminals.sidePanelTerminals('/p'), same(side));
-    expect(terminals.sidePanelTerminals('/q'), isNot(same(side)));
+    final side = terminals.terminalsOf('/p');
+    expect(terminals.terminalsOf('/p'), same(side));
+    expect(terminals.terminalsOf('/q'), isNot(same(side)));
     expect(terminals.running(childProcesses: false), isFalse);
-    side.create();
+    // Made on the side panel's page: the panel stays hidden.
+    side.create(activate: false);
     await pumpEventQueue();
     expect(started.single.launch!.workingDirectory, '/p-host');
-    expect(terminals.current, isNull);
+    expect(terminals.current, same(side));
     expect(terminals.shown, isFalse);
     expect(terminals.running(childProcesses: false), isTrue);
   });

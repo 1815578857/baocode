@@ -3505,6 +3505,9 @@
   },
   "termRename": "Rename...",
   "termKillTerminal": "Kill Terminal",
+  "termShownElsewhere": "This terminal is shown in another place",
+  "termShowHere": "Show Here",
+  "termNoTerminals": "No terminals",
   "termNewTerminal": "New Terminal",
   "termNewTerminalKeys": "New Terminal ({keybinding})",
   "@termNewTerminalKeys": {
