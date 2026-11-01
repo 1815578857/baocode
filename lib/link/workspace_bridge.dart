@@ -15,6 +15,9 @@ import '../customize/customizations.dart';
 import '../ide/file_service.dart';
 import '../kernel/agent_kernel.dart' show KernelChoiceKind;
 import '../kernel/kernel_types.dart';
+import '../models/codex/codex_service.dart';
+import '../models/model_providers.dart';
+import '../models/model_runtime.dart' show codexService;
 import '../remote/project_host.dart';
 import '../workspace/workspace.dart';
 import 'chat_codec.dart';
@@ -43,6 +46,9 @@ class WorkspaceBridge {
     this.filesOf = hostFilesOf,
     this.customizations,
     this.bots,
+    this.providers,
+    this.codex,
+    this.quotaTimeout = const Duration(seconds: 20),
     this.throttle = const Duration(milliseconds: 150),
   });
 
@@ -63,6 +69,10 @@ class WorkspaceBridge {
 
   /// The user's bots; none told without.
   final Bots? bots;
+
+  final ModelProviders? providers;
+  final CodexService? codex;
+  final Duration quotaTimeout;
 
   /// How often a phone hears of changes at most: a turn's text streams in
   /// many more times than that.
@@ -241,6 +251,72 @@ class WorkspaceBridge {
 
   Future<Object?> handle(String method, Map<String, Object?> params) async {
     switch (method) {
+      case LinkMethods.quota:
+        final service = codex ?? codexService;
+        final session = workspace.threads
+            .where(
+              (thread) =>
+                  idOf(thread) == params['session'] ||
+                  thread.session.sessionId == params['session'],
+            )
+            .firstOrNull
+            ?.session
+            .sessionId;
+        final available = (providers ?? ModelProviders.current).providers
+            .where(
+              (provider) =>
+                  provider.protocol.usesAccounts &&
+                  provider.accounts.isNotEmpty &&
+                  (params['provider'] == null ||
+                      provider.id == params['provider']),
+            )
+            .toList();
+        if (params['refresh'] == true) {
+          try {
+            await Future.wait([
+              for (final provider in available)
+                Future<void>.sync(
+                  () => service.refreshUsage(provider, force: true),
+                ).catchError((Object _) {}),
+            ]).timeout(quotaTimeout);
+          } catch (_) {
+            // A failed or slow refresh leaves the last known quota available.
+          }
+        }
+        final snapshots = <Map<String, Object?>>[];
+        for (final provider in available) {
+          final current = service.accountFor(provider, session: session)?.id;
+          final accounts = <Map<String, Object?>>[];
+          for (final account in provider.accounts) {
+            final usage = service.usage(provider.id, account.id);
+            accounts.add({
+              'id': account.id,
+              'displayName': account.displayName,
+              'enabled': account.enabled,
+              'current': current == account.id,
+              'plan': usage?.plan ?? account.plan,
+              'limitedUntil': service
+                  .limitedUntil(provider.id, account.id)
+                  ?.millisecondsSinceEpoch,
+              'error': service.error(provider.id, account.id),
+              'at': usage?.at.millisecondsSinceEpoch,
+              'windows': [
+                for (final window in usage?.windows ?? [])
+                  {
+                    'minutes': window.minutes,
+                    'leftPercent': window.leftPercent,
+                    'resetsAt': window.resetsAt?.millisecondsSinceEpoch,
+                  },
+              ],
+            });
+          }
+          snapshots.add({
+            'id': provider.id,
+            'name': provider.name,
+            'accounts': accounts,
+          });
+        }
+        return {'providers': snapshots};
       case LinkMethods.state:
         final json = state().toJson();
         _stateSent = jsonEncode(json);

@@ -22,6 +22,14 @@ abstract final class LinkMethods {
   /// `{}`: the [LinkState] now; [LinkEvents.state] follows each change.
   static const state = 'state';
 
+  /// `{"provider"?, "session"?, "refresh"?}` -> `{"providers": [...]}`:
+  /// account-backed providers' public quota snapshots, never credentials.
+  /// Each provider has `id`, `name`, `accounts`: `id`, `displayName`,
+  /// `enabled`, `current`, `plan`?, `limitedUntil`?, `error`?, `at`?,
+  /// and `windows` (`minutes`?, `leftPercent`, `resetsAt`?). Times are epoch
+  /// milliseconds. Forced refresh waits up to 20 seconds before replying.
+  static const quota = 'quota';
+
   /// `{"session", "window"?}`: follows the session, [LinkEvents.session]
   /// bringing all of it at once, then what changes. With `window` (an
   /// int N), only the last N items at first, and more as it asks
