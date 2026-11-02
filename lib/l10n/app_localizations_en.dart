@@ -151,6 +151,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cmdChatFocusPreviousPane => 'Focus Previous Pane';
 
   @override
+  String get cmdChatFocusPaneLeft => 'Focus Left Pane';
+
+  @override
+  String get cmdChatFocusPaneRight => 'Focus Right Pane';
+
+  @override
+  String get cmdChatFocusPaneUp => 'Focus Above Pane';
+
+  @override
+  String get cmdChatFocusPaneDown => 'Focus Below Pane';
+
+  @override
+  String get cmdChatNextPaneTab => 'Open Next Tab in Pane';
+
+  @override
+  String get cmdChatPreviousPaneTab => 'Open Previous Tab in Pane';
+
+  @override
+  String get cmdChatTogglePaneTabs => 'Toggle Pane Tabs';
+
+  @override
+  String get workspacePaneTabs => 'Show as Tabs';
+
+  @override
   String get cmdChatSearch => 'Search';
 
   @override
@@ -1460,6 +1484,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cmdSidePanelFiles => 'Show Agent Files';
 
   @override
+  String get cmdSidePanelUsage => 'Show Conversation Usage';
+
+  @override
   String get cmdSidePanelTerminal => 'Show Agent Terminals';
 
   @override
@@ -1765,6 +1792,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agentImageUntitled => 'Image';
 
   @override
+  String get chatTitleSummarize => 'Summarize into a new title';
+
+  @override
+  String get chatTitleSummarizing => 'Summarizing…';
+
+  @override
+  String get chatTitleSummarizeFailed => 'No title could be had. Try again';
+
+  @override
   String get sidebarNewAgent => 'New Chat';
 
   @override
@@ -2000,6 +2036,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sidebarFork => 'Fork';
+
+  @override
+  String get sidebarDetachAside => 'Detach from Conversation';
+
+  @override
+  String sidebarDeleteAsidesToo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Its $count /btw conversations are deleted with it.',
+      one: 'Its /btw conversation is deleted with it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get btwCommandDetail =>
+      'Ask in a conversation of its own, beside this one';
+
+  @override
+  String get sidebarFoldAsides => 'Hide /btw Conversations';
+
+  @override
+  String sidebarUnfoldAsides(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Show its $count /btw conversations',
+      one: 'Show its /btw conversation',
+    );
+    return '$_temp0';
+  }
 
   @override
   String sidebarShowMore(int count) {
@@ -2918,12 +2986,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Changed again since the agent left it, so Undo could not take the agent\'s change out. Undo it by hand, then keep it.';
 
   @override
-  String get stripChangeShared =>
-      'Another agent was working in this project at the same time: some of this change may be its.';
-
-  @override
   String get stripChangeUntracked =>
-      'What it was before is not known (it is ignored or too large and the agent did not tell, or it is outside the project): it can be kept, not undone.';
+      'What it was before is not known (too large to keep, or the agent did not tell): it can be kept, not undone.';
 
   @override
   String get stripChangesDiff => 'Agent Changes';
@@ -4840,6 +4904,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get langNavigationUnavailable =>
+      'No language server is available for code navigation in this file.';
+
+  @override
+  String langNavigationInstall(String id) {
+    return 'Install the \'$id\' language server to enable code navigation in this file.';
+  }
+
+  @override
   String get langReferences => 'References';
 
   @override
@@ -5235,6 +5308,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workspaceClosePane => 'Close pane';
+
+  @override
+  String workspaceCloseBackTo(String title) {
+    return 'Close pane, back to $title';
+  }
+
+  @override
+  String workspaceCovers(String title) {
+    return 'Over $title, which shows again once this closes';
+  }
+
+  @override
+  String workspaceCovered(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count conversations under this one',
+      one: '1 conversation under this one',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get workspaceLoadingProjects => 'Loading projects…';
@@ -7576,6 +7670,24 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get appearanceSettingsEditDetail => 'File Edits';
+
+  @override
+  String get appearanceSettingsEditDetailDescription =>
+      'How the agent\'s edits to files show in the conversation: as a card of the changes, always open; or as one line that opens to them.';
+
+  @override
+  String get appearanceSettingsEditDetailCard => 'Card with changes';
+
+  @override
+  String get appearanceSettingsEditDetailCompact => 'Compact';
+
+  @override
+  String appearanceSettingsEditDetailLabel(String detail) {
+    return 'File edits: $detail';
+  }
+
+  @override
   String get appearanceSettingsReplyScroll => 'As a Reply Comes';
 
   @override
@@ -8699,14 +8811,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mobileSettingsDescription =>
-      'Follow and drive this computer\'s agents from BaoCode on your phone, over the local network or the internet. What goes between them is end-to-end encrypted.';
+      'Follow and drive this computer\'s agents from BaoCode on your phone: directly on the same network, across the internet through a hole punched in the routers between them, or through BaoCode\'s relay when neither works. What goes between them is end-to-end encrypted; a relay cannot read it.';
 
   @override
   String get mobileAllow => 'Allow Phones to Connect';
 
   @override
   String get mobileAllowDescription =>
-      'Phones paired with this computer connect to it directly.';
+      'Phones paired with this computer can connect to it, wherever they are.';
 
   @override
   String get mobileStatus => 'Status';
@@ -8718,56 +8830,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mobileStatusStarting => 'Starting…';
 
   @override
-  String mobileStatusListening(int port) {
-    return 'Listening on port $port';
-  }
-
-  @override
   String mobileStatusFailed(String error) {
-    return 'Could not listen: $error';
+    return 'Could not start: $error';
   }
 
   @override
-  String get mobileAddresses => 'Addresses';
-
-  @override
-  String get mobileAddressesDescription =>
-      'Where phones reach this computer, in the order they try them: the local network first, then the internet.';
-
-  @override
-  String get mobileAddressesNone => 'No network found.';
-
-  @override
-  String get mobileAddressesRefresh => 'Refresh';
-
-  @override
-  String get mobilePort => 'Port';
-
-  @override
-  String get mobilePortDescription =>
-      'The port phones connect to. Forward it on the router to reach this computer from the internet.';
-
-  @override
-  String mobilePortInvalid(String text) {
-    return 'Not a port: $text. Enter a number from 1 to 65535.';
-  }
-
-  @override
-  String get mobilePublicAddress => 'Public Address';
-
-  @override
-  String get mobilePublicAddressDescription =>
-      'A domain or IP this computer can be reached at from the internet (with the port forwarded), put in the QR code; several separated by commas. Behind a proxy that only takes HTTPS (such as a Cloudflare Tunnel), write it as wss://domain. Public IPv6 addresses are found by themselves.';
-
-  @override
-  String get mobileRelay => 'Relay';
+  String get mobileRelay => 'Relays';
 
   @override
   String get mobileRelayDescription =>
-      'Reach this computer through BaoCode\'s relay when none of its addresses can be reached. Coming later.';
-
-  @override
-  String get mobileRelayUnavailable => 'Not Available Yet';
+      'Phones that cannot reach this computer directly go through one. It only passes along what is sealed between the two. Nothing to set on the phone: it learns them when paired, and again each time it connects.';
 
   @override
   String get mobilePair => 'Pair a Phone';
@@ -8787,6 +8859,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mobilePairCopyLink => 'Copy Link';
+
+  @override
+  String get mobilePairQrHint =>
+      'Click to copy the link, to paste on the phone';
+
+  @override
+  String get mobileGetApp => 'Get the Phone App';
+
+  @override
+  String get mobileGetAppDescription =>
+      'Scan with the phone\'s camera: the same downloads as on baocode.dev.';
+
+  @override
+  String get mobileGetAndroidDetail => 'The APK; it keeps itself up to date';
+
+  @override
+  String get mobileGetIos => 'iPhone and iPad';
+
+  @override
+  String get mobileGetIosDetail => 'The beta, on TestFlight';
+
+  @override
+  String mobileGetOpen(String url) {
+    return 'Click to open $url';
+  }
 
   @override
   String get mobilePairCopied => 'Copied';
@@ -8862,6 +8959,75 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mobilePairAllow => 'Allow';
+
+  @override
+  String mobileStatusOnline(String relay) {
+    return 'On, reachable through $relay';
+  }
+
+  @override
+  String get mobileStatusNoRelay =>
+      'On; no relay reached yet, so only phones on the same network can connect';
+
+  @override
+  String mobileStatusDenied(String reason) {
+    return 'On, but the relay turned this computer away: $reason';
+  }
+
+  @override
+  String get mobileRelayInvalid =>
+      'Not a relay address; one looks like https://relay.example.com';
+
+  @override
+  String get mobileRelayPinned => 'Relay Used';
+
+  @override
+  String get mobileRelayCustom => 'Custom';
+
+  @override
+  String get mobileRelayCustomAddress => 'Custom Address';
+
+  @override
+  String get mobileRelayCustomDescription =>
+      'The address of a relay you run yourself (baocode-relay).';
+
+  @override
+  String get mobileRelayMode => 'How';
+
+  @override
+  String get mobileRelayModeAuto => 'Automatic';
+
+  @override
+  String get mobileRelayModeAutoDescription =>
+      'BaoCode\'s relays, the nearest that answers.';
+
+  @override
+  String get mobileRelayModePinned => 'Pick One';
+
+  @override
+  String get mobileRelayModePinnedDescription =>
+      'Only the one picked: one of BaoCode\'s, or a custom address.';
+
+  @override
+  String get mobilePathLan => 'Same network';
+
+  @override
+  String get mobilePathDirect => 'Direct';
+
+  @override
+  String get mobilePathRelay => 'Through the relay';
+
+  @override
+  String mobilePathRtt(int ms) {
+    return '$ms ms';
+  }
+
+  @override
+  String get mobileLegacyPhone =>
+      'Needs pairing again: paired before the connection was rebuilt';
+
+  @override
+  String get mobileLegacyRepair => 'Pair Again';
 
   @override
   String get settingsSectionStash => 'Stash';
@@ -9525,10 +9691,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get branchBarDetached => 'Detached HEAD';
 
   @override
-  String get branchBarRunning =>
-      'Branches can\'t be switched while the agent works';
-
-  @override
   String branchBarFailed(String branch) {
     return 'Couldn\'t switch to “$branch”';
   }
@@ -9565,7 +9727,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'github.com, or your company\'s GitHub Enterprise';
 
   @override
-  String get accountsGitLabHosts => 'gitlab.com, or a self-managed GitLab';
+  String get accountsGitLabHosts =>
+      'gitlab.com, or a self-managed GitLab (http:// or https://, with its port)';
 
   @override
   String get accountsSignInBrowser => 'Sign in with Browser';
@@ -9606,7 +9769,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountsSignIn => 'Sign In';
 
   @override
-  String get accountsHost => 'Host';
+  String get accountsHost => 'Server';
 
   @override
   String get accountsToken => 'Token';
@@ -9627,6 +9790,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get accountsTokenRefused =>
       'The token was not accepted. Check that it is complete and has not expired.';
+
+  @override
+  String get accountsCertificateTitle => 'Untrusted Certificate';
+
+  @override
+  String accountsCertificateDetail(
+    String host,
+    String issuer,
+    String fingerprint,
+  ) {
+    return 'The certificate of $host cannot be verified ($issuer).\n\nSHA-256 fingerprint:\n$fingerprint\n\nTrusting it lets BaoCode reach this server, and only the certificate with this fingerprint is accepted. You are asked again if the certificate changes.';
+  }
+
+  @override
+  String get accountsCertificateTrust => 'Trust and Continue';
 
   @override
   String accountsBrowserTitle(String forge) {
@@ -11076,22 +11254,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitLogSelectCommit => 'Select a commit to see its details.';
 
   @override
-  String get gitLogAuthor => 'Author';
-
-  @override
   String get gitLogParents => 'Parent: ';
-
-  @override
-  String get gitLogShowBranches => 'Show Branches';
-
-  @override
-  String get gitLogHideBranches => 'Hide Branches';
-
-  @override
-  String get gitLogShowSizes => 'Show Sizes';
-
-  @override
-  String get gitLogHideSizes => 'Hide Sizes';
 
   @override
   String gitLogFileCount(int count) {
@@ -11339,10 +11502,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get diffRevertChange => 'Revert';
+  String get diffRevertChange => 'Undo this change (back to the left side)';
 
   @override
-  String get diffRemoveChange => 'Remove';
+  String get diffRemoveChange => 'Undo this change (remove the added lines)';
 
   @override
   String get diffPreviousDifference => 'Previous Difference';
@@ -11401,18 +11564,6 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
-
-  @override
-  String get diffHighlightCharacters => 'Highlight Characters';
-
-  @override
-  String get diffHighlightWords => 'Highlight Words';
-
-  @override
-  String get diffHighlightLines => 'Highlight Lines';
-
-  @override
-  String get diffHighlightNone => 'Do Not Highlight';
 
   @override
   String get diffGoToFile => 'Go to Changed File';
@@ -11988,11 +12139,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitChangelistDelete => 'Delete Changelist';
 
   @override
-  String gitChangelistTurn(String request) {
-    return 'AI: $request';
-  }
-
-  @override
   String get gitStashChangesTitle => 'Stash Changes';
 
   @override
@@ -12424,4 +12570,898 @@ class AppLocalizationsEn extends AppLocalizations {
   String compareFilesLabel(String original, String modified) {
     return '$original ↔ $modified';
   }
+
+  @override
+  String get settingsSectionUsage => 'Usage';
+
+  @override
+  String get sidePanelUsage => 'Usage';
+
+  @override
+  String get ustatKeywords =>
+      'usage statistics tokens cache calls cost dashboard upstream model';
+
+  @override
+  String get ustatAll => 'All';
+
+  @override
+  String get ustatAgent => 'Agent';
+
+  @override
+  String get ustatKind => 'Kind';
+
+  @override
+  String get ustatModel => 'Model';
+
+  @override
+  String get ustatUpstream => 'Upstream';
+
+  @override
+  String get ustatConversation => 'Conversation';
+
+  @override
+  String get ustatFailedOnly => 'Failed only';
+
+  @override
+  String get ustatResetFilters => 'Reset filters';
+
+  @override
+  String get ustatRefresh => 'Refresh';
+
+  @override
+  String get ustatUnpin => 'Back to the whole range';
+
+  @override
+  String get ustatRangeHour => 'Last hour';
+
+  @override
+  String get ustatRangeToday => 'Today';
+
+  @override
+  String get ustatRangeDay => 'Last 24 hours';
+
+  @override
+  String get ustatRangeWeek => 'Last 7 days';
+
+  @override
+  String get ustatRangeMonth => 'Last 30 days';
+
+  @override
+  String get ustatRangeQuarter => 'Last 90 days';
+
+  @override
+  String get ustatRangeAll => 'All time';
+
+  @override
+  String get ustatClassMain => 'Main agent';
+
+  @override
+  String get ustatClassSubagent => 'Subagent';
+
+  @override
+  String get ustatClassWorkflow => 'Workflow';
+
+  @override
+  String get ustatClassCompaction => 'Compaction';
+
+  @override
+  String get ustatClassAuxiliary => 'Auxiliary';
+
+  @override
+  String get ustatClassSideReply => 'Side reply';
+
+  @override
+  String get ustatMainAgent => 'Main agent';
+
+  @override
+  String get ustatPartSystem => 'System prompt';
+
+  @override
+  String get ustatPartTools => 'Tool definitions';
+
+  @override
+  String get ustatPartUser => 'User messages';
+
+  @override
+  String get ustatPartAssistant => 'Replies';
+
+  @override
+  String get ustatPartThinking => 'Thinking';
+
+  @override
+  String get ustatPartToolUse => 'Tool calls';
+
+  @override
+  String get ustatPartToolResult => 'Tool results';
+
+  @override
+  String get ustatPartMedia => 'Images & files';
+
+  @override
+  String get ustatTokenInput => 'Input';
+
+  @override
+  String get ustatTokenOutput => 'Output';
+
+  @override
+  String get ustatTokenCacheRead => 'Cache read';
+
+  @override
+  String get ustatTokenCacheWrite => 'Cache write';
+
+  @override
+  String get ustatTokenReasoning => 'Reasoning';
+
+  @override
+  String get ustatTotalTokens => 'Tokens';
+
+  @override
+  String ustatTokensDetail(String input, String output) {
+    return '$input in · $output out';
+  }
+
+  @override
+  String get ustatCalls => 'Calls';
+
+  @override
+  String ustatCallsDetail(String count) {
+    return '$count tool calls asked';
+  }
+
+  @override
+  String get ustatCallsOk => 'Succeeded';
+
+  @override
+  String ustatCallsShort(int count) {
+    return '$count calls';
+  }
+
+  @override
+  String get ustatCacheHit => 'Cache hit rate';
+
+  @override
+  String ustatCacheDetail(String read, String written) {
+    return '$read read · $written written';
+  }
+
+  @override
+  String get ustatFirstToken => 'Time to first token';
+
+  @override
+  String ustatDurationDetail(String duration) {
+    return '$duration per call on average';
+  }
+
+  @override
+  String get ustatSpeed => 'Output speed';
+
+  @override
+  String ustatOutputDetail(String tokens) {
+    return '$tokens output in all';
+  }
+
+  @override
+  String ustatReasoningDetail(String tokens) {
+    return '$tokens of it reasoning';
+  }
+
+  @override
+  String get ustatErrors => 'Failed';
+
+  @override
+  String ustatErrorRate(String rate) {
+    return '$rate of calls';
+  }
+
+  @override
+  String get ustatOverTime => 'Over time';
+
+  @override
+  String get ustatMetricTokens => 'Tokens';
+
+  @override
+  String get ustatMetricCalls => 'Calls';
+
+  @override
+  String get ustatMetricLatency => 'Latency';
+
+  @override
+  String get ustatMetricSpeed => 'Speed';
+
+  @override
+  String get ustatByUpstream => 'By upstream';
+
+  @override
+  String get ustatByModel => 'By model';
+
+  @override
+  String get ustatByConversation => 'By conversation';
+
+  @override
+  String get ustatByTurn => 'By turn';
+
+  @override
+  String get ustatByTurnDetail =>
+      'Each of your messages and all the requests that answered it';
+
+  @override
+  String ustatTurnDetail(String duration, String peak) {
+    return '$duration · context up to $peak';
+  }
+
+  @override
+  String get ustatNoConversations => 'No conversation named its session';
+
+  @override
+  String get ustatTools => 'Tools';
+
+  @override
+  String get ustatToolsDetail =>
+      'What their results brought into the context (estimated), how often they were called, how long they ran';
+
+  @override
+  String get ustatToolSortTokens => 'Context';
+
+  @override
+  String get ustatToolSortCalls => 'Calls';
+
+  @override
+  String get ustatToolSortTime => 'Time';
+
+  @override
+  String get ustatNoTools => 'No tools were used';
+
+  @override
+  String get ustatToolCalled => 'Called';
+
+  @override
+  String get ustatToolResult => 'result';
+
+  @override
+  String ustatShowAll(int count) {
+    return 'Show all $count';
+  }
+
+  @override
+  String get ustatShowLess => 'Show less';
+
+  @override
+  String get ustatContextGrowth => 'Context growth';
+
+  @override
+  String ustatContextNow(String tokens) {
+    return '$tokens now';
+  }
+
+  @override
+  String ustatContextPeak(String tokens) {
+    return 'peak $tokens';
+  }
+
+  @override
+  String ustatCompactions(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count compactions',
+      one: '1 compaction',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String ustatCompactedFrom(String tokens) {
+    return 'Compacted at $tokens';
+  }
+
+  @override
+  String get ustatContextMakeup => 'What fills the context';
+
+  @override
+  String get ustatRecentCalls => 'Recent calls';
+
+  @override
+  String get ustatCallsTitle => 'Calls';
+
+  @override
+  String ustatRecentCallsDetail(int count) {
+    return '$count in all, newest first';
+  }
+
+  @override
+  String ustatShowMoreCalls(int count) {
+    return 'Show more ($count left)';
+  }
+
+  @override
+  String get ustatNoCalls => 'No calls';
+
+  @override
+  String get ustatCopyJson => 'Copy the call as JSON';
+
+  @override
+  String get ustatFieldTime => 'Time';
+
+  @override
+  String get ustatFieldStatus => 'Status';
+
+  @override
+  String get ustatFieldUpstream => 'Upstream';
+
+  @override
+  String get ustatFieldModel => 'Model';
+
+  @override
+  String get ustatFieldEffort => 'Effort';
+
+  @override
+  String get ustatFieldClass => 'Kind';
+
+  @override
+  String get ustatFieldSession => 'Session';
+
+  @override
+  String get ustatFieldAgent => 'Agent';
+
+  @override
+  String get ustatFieldTask => 'Task';
+
+  @override
+  String get ustatFieldAccount => 'Account';
+
+  @override
+  String get ustatFieldUpstreamLatency => 'Upstream answered';
+
+  @override
+  String get ustatFieldFirstToken => 'First token';
+
+  @override
+  String get ustatFieldDuration => 'Duration';
+
+  @override
+  String get ustatFieldSpeed => 'Speed';
+
+  @override
+  String get ustatFieldMessages => 'Messages';
+
+  @override
+  String get ustatFieldTools => 'tools';
+
+  @override
+  String get ustatFieldBytes => 'Size';
+
+  @override
+  String get ustatFieldCompacted => 'After compaction';
+
+  @override
+  String get ustatFieldError => 'Error';
+
+  @override
+  String get ustatEmptyTitle => 'No calls yet';
+
+  @override
+  String get ustatEmptyDetail => 'Calls show here once a conversation runs.';
+
+  @override
+  String get ustatEmptyFiltered => 'Nothing matches these filters';
+
+  @override
+  String get ustatConversationNew => 'Usage shows once the conversation starts';
+
+  @override
+  String get ustatConversationEmpty => 'No calls kept for this conversation';
+
+  @override
+  String get ustatConversationEmptyDetail =>
+      'Only conversations on a custom upstream are counted: Claude\'s official service does not go through BaoCode\'s proxy.';
+
+  @override
+  String get ustatRecordOff => 'Usage is not being recorded';
+
+  @override
+  String get ustatTurnOn => 'Turn on';
+
+  @override
+  String get ustatDataTitle => 'Data';
+
+  @override
+  String get ustatDataDescription =>
+      'Detailed records take room: keep them as long as you like, and clear what you no longer need.';
+
+  @override
+  String get ustatRecord => 'Record usage';
+
+  @override
+  String get ustatRecordDescription =>
+      'Claude Code\'s own calls are read from what it prints; sessions on a custom upstream go through BaoCode\'s local proxy, which keeps each call. Applies to agents started from now on.';
+
+  @override
+  String get ustatRecordOffDescription =>
+      'Turn it on to keep each call to a model: tokens, the cache, time, by conversation, subagent and tool.';
+
+  @override
+  String get ustatDetailed => 'Detailed records';
+
+  @override
+  String get ustatDetailedDescription =>
+      'Also keeps what filled each request\'s context and the tools\' share. Takes more room.';
+
+  @override
+  String get ustatRetention => 'Keep records for';
+
+  @override
+  String get ustatRetentionDescription =>
+      'Older days are deleted as they pass.';
+
+  @override
+  String ustatKeepDays(int days) {
+    return '$days days';
+  }
+
+  @override
+  String get ustatKeepForever => 'Forever';
+
+  @override
+  String ustatSpace(String size) {
+    return 'Using $size';
+  }
+
+  @override
+  String ustatSpaceDetail(int days, String oldest) {
+    return '$days days kept, since $oldest';
+  }
+
+  @override
+  String get ustatSpaceEmpty => 'Nothing kept yet';
+
+  @override
+  String get ustatClearEllipsis => 'Clear…';
+
+  @override
+  String get ustatClear => 'Clear';
+
+  @override
+  String ustatClearOlderThan(int days) {
+    return 'Clear all but the last $days days';
+  }
+
+  @override
+  String get ustatClearShown => 'Clear the time shown';
+
+  @override
+  String get ustatClearShownFiltered => 'Clear what the filters show';
+
+  @override
+  String get ustatClearAll => 'Clear everything';
+
+  @override
+  String ustatClearConfirm(String what) {
+    return '$what?';
+  }
+
+  @override
+  String get ustatClearDetail =>
+      'The calls are deleted from this computer. This cannot be undone.';
+
+  @override
+  String get autoResetCreditsToggle => 'Auto-Use Reset Credits';
+
+  @override
+  String modelsResetCredits(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count resets left',
+      one: '1 reset left',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String modelsResetCreditsTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count reset credits',
+      one: '1 reset credit',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get modelsResetCreditsDetail =>
+      'Using one starts this account\'s quota windows over at once.';
+
+  @override
+  String modelsResetCreditExpires(String time) {
+    return 'Expires $time';
+  }
+
+  @override
+  String get modelsResetCreditUse => 'Reset Now';
+
+  @override
+  String modelsResetCreditConfirm(String account) {
+    return 'Use a reset credit of $account?';
+  }
+
+  @override
+  String get modelsResetCreditConfirmDetail =>
+      'Its quota starts over at once. The credit can\'t be given back, and whatever quota is left now is lost.';
+
+  @override
+  String resetCreditsHint(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count reset credits expire',
+      one: 'A reset credit expires',
+    );
+    return '$_temp0 within a week. To get their worth, use Codex models on this plan, resetting once the quota runs out:';
+  }
+
+  @override
+  String resetCreditsHintDay(String day, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count times',
+      one: 'once',
+    );
+    return '$day: reset $_temp0';
+  }
+
+  @override
+  String resetCreditsHintBy(String time) {
+    return 'by $time';
+  }
+
+  @override
+  String get resetCreditsHintToday => 'Today';
+
+  @override
+  String get resetCreditsHintTomorrow => 'Tomorrow';
+
+  @override
+  String get resetCreditsHintAuto => 'Reset Automatically';
+
+  @override
+  String get resetCreditsHintLater => 'Got It';
+
+  @override
+  String get ustatPartMemory => 'CLAUDE.md & rules';
+
+  @override
+  String get ustatPartSkills => 'Skills';
+
+  @override
+  String get ustatPartMcp => 'MCP';
+
+  @override
+  String get ustatPartMessages => 'Conversation';
+
+  @override
+  String ustatCacheHitShort(String rate) {
+    return '$rate cached';
+  }
+
+  @override
+  String get ustatCompactedAfter => 'First after compacting';
+
+  @override
+  String get ustatContextPickHint => 'Click to see what filled it';
+
+  @override
+  String ustatRequests(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count requests',
+      one: '1 request',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String ustatRequestOf(int index, int count) {
+    return '#$index of $count';
+  }
+
+  @override
+  String get ustatPreviousRequest => 'Previous request';
+
+  @override
+  String get ustatNextRequest => 'Next request';
+
+  @override
+  String get ustatNoMakeup =>
+      'What filled this request\'s context was not recorded (turn on Detailed recording).';
+
+  @override
+  String get ustatMakeupNoDetail =>
+      'Recorded before the breakdown by tool, MCP server and skill: requests from now on have it.';
+
+  @override
+  String get ustatMakeupShapeMissing =>
+      'The breakdown of this request\'s tools and skills was not found.';
+
+  @override
+  String ustatMcpTools(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tools',
+      one: '1 tool',
+      zero: 'instructions only',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get ustatMcpInstructions => 'Instructions';
+
+  @override
+  String get ustatSkillPlugin => 'plugin';
+
+  @override
+  String ustatToolInputs(String tokens) {
+    return 'inputs $tokens';
+  }
+
+  @override
+  String get ustatSwitchedHint =>
+      'Saved to Settings → Customize. The agent\'s next requests go without what was turned off.';
+
+  @override
+  String get ustatShowAuxiliary => 'Show auxiliary requests';
+
+  @override
+  String get ustatShowAuxiliaryDescription =>
+      'Count Claude Code\'s requests beside the conversation (suggesting the next prompt, naming the conversation, summing up a web page) in the charts and totals. They are kept either way.';
+
+  @override
+  String get ustatTrace => 'Debug capture';
+
+  @override
+  String get ustatTraceDescription =>
+      'Also keep every request to a custom upstream whole: as Claude Code sent it, as it went to the upstream, the upstream\'s raw answer and what went back; of Claude Code\'s own models, only their answers. Keys are masked. Takes a lot of space: turn it off when done.';
+
+  @override
+  String get ustatTraceTitle => 'Raw exchange';
+
+  @override
+  String get ustatTraceLoading => 'Reading…';
+
+  @override
+  String get ustatTraceGone => 'The raw exchange was cleared.';
+
+  @override
+  String get ustatTraceNone =>
+      'Nothing went this way (it was answered before).';
+
+  @override
+  String get ustatTraceRequestBody => 'Request body';
+
+  @override
+  String get ustatTraceRawResponse => 'Raw response';
+
+  @override
+  String get ustatTraceToUpstream => 'Sent upstream';
+
+  @override
+  String ustatTraceResponseHeaders(int count) {
+    return 'Response headers · $count';
+  }
+
+  @override
+  String get ustatTraceAnswerOnly =>
+      'As Claude Code printed it; the request to Anthropic is not seen';
+
+  @override
+  String ustatTraceTry(int n) {
+    return 'Try $n';
+  }
+
+  @override
+  String get ustatTraceCopyAll => 'Copy all';
+
+  @override
+  String get ustatTraceCopyBody => 'Copy';
+
+  @override
+  String ustatTraceHeaders(int count) {
+    return 'Request headers · $count';
+  }
+
+  @override
+  String get ustatTraceRaw => 'As sent';
+
+  @override
+  String get ustatTraceFormatted => 'Formatted';
+
+  @override
+  String get ustatTraceEmpty => 'Empty';
+
+  @override
+  String ustatTraceMore(String size) {
+    return 'Show more ($size left)';
+  }
+
+  @override
+  String get ustatTraceTruncated => 'cut at 24M characters';
+
+  @override
+  String ustatSpaceTraces(String size, int count) {
+    return '; raw exchanges $size ($count)';
+  }
+
+  @override
+  String get ustatClearTraces => 'Clear the raw exchanges only';
+
+  @override
+  String get ustatClearTracesDetail =>
+      'The calls stay; their raw requests and answers are deleted from this computer.';
+
+  @override
+  String get ustatColumnTotal => 'Total';
+
+  @override
+  String get ustatColumnMix => 'Breakdown';
+
+  @override
+  String ustatDeferred(String size) {
+    return 'deferred, $size';
+  }
+
+  @override
+  String get ustatSwitchedOff => 'turned off';
+
+  @override
+  String usageUntilCompaction(String tokens) {
+    return '$tokens to auto-compact';
+  }
+
+  @override
+  String get usageAgentDefinition => 'agent';
+
+  @override
+  String get usageAttachments => 'Reminders & attachments';
+
+  @override
+  String get ustatCost => 'Cost';
+
+  @override
+  String get ustatCostEstimated => 'At the prices as they are now';
+
+  @override
+  String ustatCostUnpriced(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count calls unpriced',
+      one: '1 call unpriced',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get ustatCostNoPrices => 'No prices set';
+
+  @override
+  String get ustatPrices => 'Model prices';
+
+  @override
+  String get ustatPricesDetail =>
+      'A million tokens each. Costs are worked out at the prices as they are now, the calls before a change included.';
+
+  @override
+  String get ustatPricesAgentHint =>
+      'BaoCode can keep these for you: ask it in a chat to look up the current prices of these models and update them. It checks the upstream\'s own pricing page and writes them here.';
+
+  @override
+  String get ustatPriceCurrency => 'Currency';
+
+  @override
+  String get ustatPriceAnyUpstream => 'any upstream';
+
+  @override
+  String get ustatPriceSource => 'Where the price was read';
+
+  @override
+  String ustatPriceUpdated(String when) {
+    return 'updated $when';
+  }
+
+  @override
+  String get ustatPriceClear => 'Clear the price';
+
+  @override
+  String get ustatPriceIncomplete =>
+      'Fill in both the input and the output price';
+
+  @override
+  String get ustatPriceSpent => 'In this time';
+
+  @override
+  String get modelsAutoResetCreditsOff => 'Off';
+
+  @override
+  String get modelsAutoResetCreditsLong => 'When the Week or Month Runs Out';
+
+  @override
+  String get modelsAutoResetCreditsAny => 'When Any Window Runs Out';
+
+  @override
+  String get modelsAutoResetCreditsOffDescription =>
+      'An account out of quota waits for it to start over.';
+
+  @override
+  String get modelsAutoResetCreditsLongDescription =>
+      'An account out of its week (or month) uses a reset credit and goes on. Five hours running out is waited for: they start over soon.';
+
+  @override
+  String get modelsAutoResetCreditsAnyDescription =>
+      'An account out of any window, five hours too, uses a reset credit at once and goes on. Credits go faster.';
+
+  @override
+  String get ustatQuota => 'Claude Plan';
+
+  @override
+  String get ustatQuotaDetail =>
+      'How much of the plan\'s limits Claude Code\'s own models took in this time, from the limits as they stood after each call.';
+
+  @override
+  String get ustatQuotaFiveHour => '5-hour limit';
+
+  @override
+  String get ustatQuotaWeek => 'Weekly limit';
+
+  @override
+  String ustatQuotaWeekOf(String model) {
+    return 'Weekly $model limit';
+  }
+
+  @override
+  String ustatQuotaUsed(String percent) {
+    return '$percent used in this time';
+  }
+
+  @override
+  String ustatQuotaPeak(String percent, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count times',
+      one: 'once',
+    );
+    return 'Peak $percent in this time · reset $_temp0';
+  }
+
+  @override
+  String ustatQuotaPerPercent(String tokens) {
+    return '1% of the weekly limit ≈ $tokens tokens';
+  }
+
+  @override
+  String ustatQuotaPerPercentCost(String cost) {
+    return '≈ $cost at API prices';
+  }
+
+  @override
+  String ustatCacheSaved(String amount) {
+    return '$amount saved';
+  }
+
+  @override
+  String ustatCostIn(String currency) {
+    return 'In $currency only; the other currencies are in the totals';
+  }
+
+  @override
+  String get ustatPriceClaudeDefault =>
+      'Claude Code\'s own models without a price of yours are priced at Anthropic\'s API prices: the grey figures.';
+
+  @override
+  String get ustatContextUnpickHint =>
+      'Click again to unpick: back to the context as it is now';
 }

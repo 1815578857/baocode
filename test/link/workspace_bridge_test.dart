@@ -1,10 +1,10 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
 
-import 'package:baocode/models/model_provider.dart';
-import 'package:baocode/models/model_providers.dart';
 import 'package:baocode/models/codex/codex_service.dart';
 import 'package:baocode/models/codex/codex_usage.dart';
+import 'package:baocode/models/model_provider.dart';
+import 'package:baocode/models/model_providers.dart';
 
 import 'package:bao_link/bao_link.dart';
 import 'package:bao_remote/claude.dart' show ClaudeHistoryPage;
@@ -25,11 +25,13 @@ import '../kernel_test.dart' show FakeCli;
 class _QuotaService extends CodexUnavailable {
   bool forced = false;
   bool fail = false, hang = false;
+  String? hangProvider;
+
   @override
   Future<void> refreshUsage(ModelProvider provider, {bool force = true}) async {
     forced = force;
     if (fail) throw StateError('刷新失败');
-    if (hang) await Completer<void>().future;
+    if (hang || provider.id == hangProvider) await Completer<void>().future;
   }
 
   @override
@@ -38,6 +40,7 @@ class _QuotaService extends CodexUnavailable {
     plan: 'Plus',
     primary: const CodexWindow(usedPercent: 47, minutes: 300),
   );
+
   @override
   ProviderAccount? accountFor(ModelProvider provider, {String? session}) =>
       provider.accounts.first;
@@ -73,6 +76,7 @@ void main() {
   final asked = <String?>[];
 
   late Workspace workspace;
+  late FakeCli cli;
   late WorkspaceBridge bridge;
   late LinkPeer phone;
   late String id;
@@ -98,7 +102,7 @@ void main() {
             cwd: '/p',
           ),
         ),
-        start: (_) async => FakeCli(),
+        start: (_) async => cli = FakeCli(),
         readHistoryPage: (session, {required turns, before}) async {
           asked.add(before);
           return switch (before) {
@@ -141,7 +145,7 @@ void main() {
     workspace.dispose();
   });
 
-  test('手机额度只返回公开字段，强制刷新等待服务完成', () async {
+  test('手机额度只返回公开字段，刷新失败或超时保留快照', () async {
     final service = _QuotaService();
     final providers = ModelProviders.memory(
       providers: const [
@@ -155,10 +159,11 @@ void main() {
         ),
       ],
     );
-    final peersPair = await peers();
+    final (phonePeer, desktopPeer) = await peers();
+    addTearDown(phonePeer.close);
     final quotaBridge = WorkspaceBridge(
       workspace: workspace,
-      peer: peersPair.$2,
+      peer: desktopPeer,
       device: () => const DeviceInfo(name: '电脑', kind: 'mac', system: '测试'),
       providers: providers,
       codex: service,
@@ -189,8 +194,45 @@ void main() {
         'session': '未知会话',
         'refresh': true,
       }) as Map;
-      expect((snapshot['providers'] as List).single['accounts'], isNotEmpty);
+      final accounts =
+          (snapshot['providers'] as List).single['accounts'] as List;
+      expect(accounts, isNotEmpty);
+      expect((accounts.single as Map)['error'], hang ? '额度刷新超时' : '额度刷新失败');
     }
+  });
+
+  test('一个额度源超时不把已完成的额度源标记为失败', () async {
+    final service = _QuotaService()..hangProvider = 'slow';
+    final providers = ModelProviders.memory(
+      providers: [
+        for (final source in ['fast', 'slow'])
+          ModelProvider(
+            id: source,
+            name: source,
+            protocol: ProviderProtocol.codex,
+            accounts: const [ProviderAccount(id: 'account', email: '合成账号')],
+          ),
+      ],
+    );
+    final (phonePeer, desktopPeer) = await peers();
+    addTearDown(phonePeer.close);
+    final quotaBridge = WorkspaceBridge(
+      workspace: workspace,
+      peer: desktopPeer,
+      device: () => const DeviceInfo(name: '电脑', kind: 'mac', system: '测试'),
+      providers: providers,
+      codex: service,
+      quotaTimeout: const Duration(milliseconds: 10),
+    );
+    addTearDown(quotaBridge.dispose);
+    final result =
+        await quotaBridge.handle(LinkMethods.quota, {'refresh': true}) as Map;
+    final snapshots = result['providers'] as List;
+    expect(((snapshots[0] as Map)['accounts'] as List).single['error'], isNull);
+    expect(
+      ((snapshots[1] as Map)['accounts'] as List).single['error'],
+      '额度刷新超时',
+    );
   });
 
   Future<LinkSessionUpdate> open([int? window]) async =>
@@ -349,6 +391,96 @@ void main() {
         throwsA(isA<LinkRemoteException>()),
       );
     });
+  });
+
+  test('streamed text goes as what was added, and adds up the same', () async {
+    final mirror = LinkSessionMirror()
+      ..opened(
+        jsonDecode(
+          jsonEncode(await bridge.handle(LinkMethods.open, {'session': id})),
+        ) as Map<String, Object?>,
+      );
+    final wire = <Map<String, Object?>>[];
+    final sub = phone.events
+        .where((e) => e.name == LinkEvents.session)
+        .listen((e) => wire.add(e.data! as Map<String, Object?>));
+    addTearDown(sub.cancel);
+    await bridge.handle(LinkMethods.send, {'session': id, 'text': 'go'});
+    await settle();
+    Future<void> stream(Map<String, Object?> event) async {
+      cli.push({'type': 'stream_event', 'event': event});
+      await settle();
+    }
+
+    await stream({
+      'type': 'message_start',
+      'message': {
+        'id': 'm-live',
+        'usage': {'input_tokens': 1},
+      },
+    });
+    await stream({
+      'type': 'content_block_start',
+      'index': 0,
+      'content_block': {'type': 'text', 'text': ''},
+    });
+    for (final words in ['Once ', 'upon ', 'a ', 'time']) {
+      await stream({
+        'type': 'content_block_delta',
+        'index': 0,
+        'delta': {'type': 'text_delta', 'text': words},
+      });
+    }
+    final whole = [for (final update in wire) mirror.apply(update)];
+    expect(whole, everyElement(isNotNull));
+    expect(wire.where((w) => w['append'] != null), isNotEmpty);
+    expect(wire.skip(1).where((w) => w['partial'] != true), isEmpty);
+
+    final fresh = await open();
+    final last = whole.last!;
+    expect(last['count'], fresh.count);
+    final items = last['items']! as List;
+    expect(
+      jsonEncode(items),
+      jsonEncode(fresh.items.sublist(fresh.count - items.length)),
+    );
+    expect(jsonEncode(fresh.items), contains('Once upon a time'));
+  });
+
+  test('a task\'s output is watched: what was added, then all again', () async {
+    var text = 'one\n';
+    final sent = <LinkOutput>[];
+    final watch = OutputWatch(
+      session: 's',
+      task: 't',
+      text: text,
+      read: () async => text,
+      emit: sent.add,
+      every: const Duration(milliseconds: 5),
+    );
+    addTearDown(watch.dispose);
+    text += 'two\n';
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    expect(sent.single.text, 'two\n');
+    expect(sent.single.offset, text.length);
+    expect(sent.single.reset, isFalse);
+
+    // Cut and written again: the phone is sent its tail whole.
+    text = 'fresh\n';
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    expect(sent.last.reset, isTrue);
+    expect(sent.last.text, 'fresh\n');
+
+    // More at once than the phone keeps: its tail, whole.
+    text += 'x' * (LinkLimits.output + 10);
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    expect(sent.last.reset, isTrue);
+    expect(sent.last.text.length, LinkLimits.output);
+    final count = sent.length;
+    watch.dispose();
+    text += 'more';
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    expect(sent, hasLength(count));
   });
 
   test('a plan is not started while none awaits', () async {
@@ -553,13 +685,11 @@ void main() {
 
 /// A phone's end and a desktop's, connected.
 Future<(LinkPeer, LinkPeer)> peers() async {
-  final (a, b) = MemoryLinkSocket.pair();
-  final desktop = LinkIdentity.generate();
-  final accepted = SecureChannel.accept(b, identity: desktop);
-  final connected = await SecureChannel.connect(
-    a,
-    identity: LinkIdentity.generate(),
-    serverKey: desktop.publicKey,
+  final (a, b) = MemoryLinkConnection.pair(
+    a: LinkIdentity.generate().id,
+    b: LinkIdentity.generate().id,
   );
-  return (LinkPeer(connected), LinkPeer(await accepted));
+  final accepted = LinkPeer.accept(b);
+  final connected = await LinkPeer.connect(a);
+  return (connected, await accepted);
 }
