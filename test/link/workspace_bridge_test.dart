@@ -1,4 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
+
+import 'package:baocode/models/codex/codex_service.dart';
+import 'package:baocode/models/codex/codex_usage.dart';
+import 'package:baocode/models/model_provider.dart';
+import 'package:baocode/models/model_providers.dart';
 
 import 'package:bao_link/bao_link.dart';
 import 'package:bao_remote/claude.dart' show ClaudeHistoryPage;
@@ -15,6 +21,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../kernel_test.dart' show FakeCli;
+
+class _QuotaService extends CodexUnavailable {
+  bool forced = false;
+  bool fail = false, hang = false;
+  String? hangProvider;
+
+  @override
+  Future<void> refreshUsage(ModelProvider provider, {bool force = true}) async {
+    forced = force;
+    if (fail) throw StateError('刷新失败');
+    if (hang || provider.id == hangProvider) await Completer<void>().future;
+  }
+
+  @override
+  CodexUsage? usage(String providerId, String accountId) => CodexUsage(
+    at: DateTime(2026),
+    plan: 'Plus',
+    primary: const CodexWindow(usedPercent: 47, minutes: 300),
+  );
+
+  @override
+  ProviderAccount? accountFor(ModelProvider provider, {String? session}) =>
+      provider.accounts.first;
+}
 
 /// A conversation of six turns (a prompt and an answer each), read three
 /// at a time from its end: u4..u6, then u1..u3.
@@ -113,6 +143,96 @@ void main() {
   tearDown(() {
     bridge.dispose();
     workspace.dispose();
+  });
+
+  test('手机额度只返回公开字段，刷新失败或超时保留快照', () async {
+    final service = _QuotaService();
+    final providers = ModelProviders.memory(
+      providers: const [
+        ModelProvider(
+          id: '账号源',
+          name: 'ChatGPT',
+          protocol: ProviderProtocol.codex,
+          accounts: [
+            ProviderAccount(id: '账号甲', email: '用户甲', accountId: '敏感工作区'),
+          ],
+        ),
+      ],
+    );
+    final (phonePeer, desktopPeer) = await peers();
+    addTearDown(phonePeer.close);
+    final quotaBridge = WorkspaceBridge(
+      workspace: workspace,
+      peer: desktopPeer,
+      device: () => const DeviceInfo(name: '电脑', kind: 'mac', system: '测试'),
+      providers: providers,
+      codex: service,
+      quotaTimeout: const Duration(milliseconds: 10),
+    );
+    addTearDown(quotaBridge.dispose);
+    final result = await quotaBridge.handle(LinkMethods.quota, {
+      'provider': '账号源',
+      'session': id,
+      'refresh': true,
+    }) as Map;
+    expect(service.forced, isTrue);
+    final account =
+        ((result['providers'] as List).single['accounts'] as List).single
+            as Map;
+    expect(account['displayName'], '用户甲');
+    expect(account['current'], isTrue);
+    expect((account['windows'] as List).single['leftPercent'], 53);
+    expect(jsonEncode(result), isNot(contains('敏感工作区')));
+    expect(account.keys, isNot(contains('token')));
+    final empty =
+        await quotaBridge.handle(LinkMethods.quota, {'provider': '不存在'}) as Map;
+    expect(empty['providers'], isEmpty);
+    for (final hang in [false, true]) {
+      service.fail = !hang;
+      service.hang = hang;
+      final snapshot = await quotaBridge.handle(LinkMethods.quota, {
+        'session': '未知会话',
+        'refresh': true,
+      }) as Map;
+      final accounts =
+          (snapshot['providers'] as List).single['accounts'] as List;
+      expect(accounts, isNotEmpty);
+      expect((accounts.single as Map)['error'], hang ? '额度刷新超时' : '额度刷新失败');
+    }
+  });
+
+  test('一个额度源超时不把已完成的额度源标记为失败', () async {
+    final service = _QuotaService()..hangProvider = 'slow';
+    final providers = ModelProviders.memory(
+      providers: [
+        for (final source in ['fast', 'slow'])
+          ModelProvider(
+            id: source,
+            name: source,
+            protocol: ProviderProtocol.codex,
+            accounts: const [ProviderAccount(id: 'account', email: '合成账号')],
+          ),
+      ],
+    );
+    final (phonePeer, desktopPeer) = await peers();
+    addTearDown(phonePeer.close);
+    final quotaBridge = WorkspaceBridge(
+      workspace: workspace,
+      peer: desktopPeer,
+      device: () => const DeviceInfo(name: '电脑', kind: 'mac', system: '测试'),
+      providers: providers,
+      codex: service,
+      quotaTimeout: const Duration(milliseconds: 10),
+    );
+    addTearDown(quotaBridge.dispose);
+    final result =
+        await quotaBridge.handle(LinkMethods.quota, {'refresh': true}) as Map;
+    final snapshots = result['providers'] as List;
+    expect(((snapshots[0] as Map)['accounts'] as List).single['error'], isNull);
+    expect(
+      ((snapshots[1] as Map)['accounts'] as List).single['error'],
+      '额度刷新超时',
+    );
   });
 
   Future<LinkSessionUpdate> open([int? window]) async =>

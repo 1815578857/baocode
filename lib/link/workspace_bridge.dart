@@ -17,6 +17,9 @@ import '../customize/customizations.dart';
 import '../ide/file_service.dart';
 import '../kernel/agent_kernel.dart' show KernelChoiceKind;
 import '../kernel/kernel_types.dart';
+import '../models/codex/codex_service.dart';
+import '../models/model_providers.dart';
+import '../models/model_runtime.dart' show codexService;
 import '../remote/project_host.dart';
 import '../remote/ssh_host.dart';
 import '../workspace/workspace.dart';
@@ -60,6 +63,9 @@ class WorkspaceBridge {
     this.reachHost = reachProjectHost,
     this.customizations,
     this.bots,
+    this.providers,
+    this.codex,
+    this.quotaTimeout = const Duration(seconds: 20),
     this.throttle = const Duration(milliseconds: 150),
     this.outputEvery = const Duration(milliseconds: 500),
   });
@@ -94,6 +100,10 @@ class WorkspaceBridge {
 
   /// The user's bots; none told without.
   final Bots? bots;
+
+  final ModelProviders? providers;
+  final CodexService? codex;
+  final Duration quotaTimeout;
 
   /// How often a phone hears of changes at most: a turn's text streams in
   /// many more times than that.
@@ -330,8 +340,101 @@ class WorkspaceBridge {
     return {'session': idOf(thread)};
   }
 
+  Future<Map<String, Object?>> _quota(Map<String, Object?> params) async {
+    final service = codex ?? codexService;
+    final session = workspace.threads
+        .where(
+          (thread) =>
+              idOf(thread) == params['session'] ||
+              thread.session.sessionId == params['session'],
+        )
+        .firstOrNull
+        ?.session
+        .sessionId;
+    final available = (providers ?? ModelProviders.current).providers
+        .where(
+          (provider) =>
+              provider.protocol.usesAccounts &&
+              provider.accounts.isNotEmpty &&
+              (params['provider'] == null || provider.id == params['provider']),
+        )
+        .toList();
+    final refreshErrors = <String, String>{};
+    final refreshed = <String>{};
+    if (params['refresh'] == true) {
+      await Future.wait([
+        for (final provider in available)
+          () async {
+            try {
+              await service.refreshUsage(provider, force: true);
+            } catch (_) {
+              // 回传失败状态但不把可能包含凭据的上游异常发给手机。
+              refreshErrors[provider.id] = '额度刷新失败';
+            } finally {
+              refreshed.add(provider.id);
+            }
+          }(),
+      ]).timeout(
+        quotaTimeout,
+        onTimeout: () {
+          for (final provider in available) {
+            if (!refreshed.contains(provider.id)) {
+              refreshErrors[provider.id] = '额度刷新超时';
+            }
+          }
+          return [];
+        },
+      );
+    }
+    return {
+      'providers': [
+        for (final provider in available)
+          {
+            'id': provider.id,
+            'name': provider.name,
+            'accounts': [
+              for (final account in provider.accounts)
+                {
+                  'id': account.id,
+                  'displayName': account.displayName,
+                  'enabled': account.enabled,
+                  'current':
+                      service.accountFor(provider, session: session)?.id ==
+                      account.id,
+                  'plan':
+                      service.usage(provider.id, account.id)?.plan ??
+                      account.plan,
+                  'limitedUntil': service
+                      .limitedUntil(provider.id, account.id)
+                      ?.millisecondsSinceEpoch,
+                  'error':
+                      refreshErrors[provider.id] ??
+                      service.error(provider.id, account.id),
+                  'at': service
+                      .usage(provider.id, account.id)
+                      ?.at
+                      .millisecondsSinceEpoch,
+                  'windows': [
+                    for (final window
+                        in service.usage(provider.id, account.id)?.windows ??
+                            [])
+                      {
+                        'minutes': window.minutes,
+                        'leftPercent': window.leftPercent,
+                        'resetsAt': window.resetsAt?.millisecondsSinceEpoch,
+                      },
+                  ],
+                },
+            ],
+          },
+      ],
+    };
+  }
+
   Future<Object?> handle(String method, Map<String, Object?> params) async {
     switch (method) {
+      case LinkMethods.quota:
+        return _quota(params);
       case LinkMethods.state:
         final json = state().toJson();
         _stateSent = jsonEncode(json);

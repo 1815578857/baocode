@@ -22,6 +22,13 @@ abstract final class LinkMethods {
   /// `{}`: the [LinkState] now; [LinkEvents.state] follows each change.
   static const state = 'state';
 
+  /// `{"provider"?, "session"?, "refresh"?}` -> `{"providers": [...]}`:
+  /// 个人扩展，只返回账号的公开额度快照，不包含凭据。
+  /// 每个账号包括 id/displayName/enabled/current/plan/limitedUntil/error/at，
+  /// windows 包括 minutes/leftPercent/resetsAt；时间为 epoch 毫秒。
+  /// 强制刷新最多等待 20 秒；官方桌面未实现时返回 unknown/unsupported。
+  static const quota = 'quota';
+
   /// `{"session", "window"?}`: follows the session, [LinkEvents.session]
   /// bringing all of it at once, then what changes. With `window` (an
   /// int N), only the last N items at first, and more as it asks
