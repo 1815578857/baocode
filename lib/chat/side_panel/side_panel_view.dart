@@ -630,7 +630,12 @@ class AgentSidePanelView extends StatelessWidget {
           // The IDE's Search view, under its own title: the way back to the
           // tree first among its actions.
           ? IdeSearchView(
-              session: panel.searchOf(explorer.root, searchEngine),
+              session: panel.searchOf(
+                explorer.root,
+                searchEngine,
+                files: files,
+                watch: watchDirectory,
+              ),
               root: explorer.root,
               titleBorder: _titleBorder,
               background: AppColors.code,
@@ -1360,12 +1365,14 @@ extension SidePanelSectionUi on SidePanelSection {
   };
 }
 
-/// Whether [session]'s usage page is offered: once a call of it is kept,
-/// or while it is the page [picked] (by its command, say).
+/// Whether [session]'s usage page is offered: once a call of it is kept
+/// or under way, or while it is the page [picked] (by its command, say).
 bool _usageOffered(ChatSession? session, {SidePanelSection? picked}) {
   if (picked == SidePanelSection.usage) return true;
   final id = session?.sessionId;
-  return id != null && UsageLedger.current.hasCalls(id);
+  if (id == null) return false;
+  final ledger = UsageLedger.current;
+  return ledger.hasCalls(id) || ledger.underway(id).isNotEmpty;
 }
 
 /// The window's quick entries, just below the conversation title bar.

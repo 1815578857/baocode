@@ -14601,6 +14601,60 @@ abstract class AppLocalizations {
   /// **'Only the one picked: one of BaoCode\'s, or a custom address.'**
   String get mobileRelayModePinnedDescription;
 
+  /// No description provided for @mobileRelayModeDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct Only'**
+  String get mobileRelayModeDirect;
+
+  /// No description provided for @mobileRelayModeDirectDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'No relay: phones connect straight to this computer. It needs a public address, or the port below forwarded to it.'**
+  String get mobileRelayModeDirectDescription;
+
+  /// No description provided for @mobileDirectPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct Port'**
+  String get mobileDirectPort;
+
+  /// No description provided for @mobileDirectPortDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The UDP port phones connect to. Forward it to this computer at the router, and allow it in the firewall.'**
+  String get mobileDirectPortDescription;
+
+  /// No description provided for @mobileDirectPortInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'A port from 1024 to 65535.'**
+  String get mobileDirectPortInvalid;
+
+  /// No description provided for @mobileDirectAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct Address'**
+  String get mobileDirectAddress;
+
+  /// No description provided for @mobileDirectAddressDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'It goes in the pairing code and in every connection after.'**
+  String get mobileDirectAddressDescription;
+
+  /// No description provided for @mobileDirectAddressNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No public address yet: check again once this computer is online, or forward the port to it if it is behind a router.'**
+  String get mobileDirectAddressNone;
+
+  /// No description provided for @mobileStatusDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'On, direct only'**
+  String get mobileStatusDirect;
+
   /// No description provided for @mobilePathLan.
   ///
   /// In en, this message translates to:
@@ -21079,6 +21133,18 @@ abstract class AppLocalizations {
   /// **'Upstream answered'**
   String get ustatFieldUpstreamLatency;
 
+  /// A call under way, nothing of its answer yet
+  ///
+  /// In en, this message translates to:
+  /// **'Requesting'**
+  String get ustatCallAsking;
+
+  /// A call under way, its answer coming
+  ///
+  /// In en, this message translates to:
+  /// **'Answering'**
+  String get ustatCallAnswering;
+
   /// No description provided for @ustatFieldFirstToken.
   ///
   /// In en, this message translates to:
@@ -21736,7 +21802,7 @@ abstract class AppLocalizations {
   /// No description provided for @ustatPricesDetail.
   ///
   /// In en, this message translates to:
-  /// **'A million tokens each. Costs are worked out at the prices as they are now, the calls before a change included.'**
+  /// **'A million tokens each. Costs are worked out at the prices as they are now, the calls before a change included, unless a price is set from a date on.'**
   String get ustatPricesDetail;
 
   /// No description provided for @ustatPricesAgentHint.
@@ -21894,6 +21960,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Claude Code\'s own models without a price of yours are priced at Anthropic\'s API prices: the grey figures.'**
   String get ustatPriceClaudeDefault;
+
+  /// No description provided for @ustatPriceRuleTiers.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} tiers by prompt length'**
+  String ustatPriceRuleTiers(int count);
+
+  /// No description provided for @ustatPriceRuleSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'peak and off-peak hours'**
+  String get ustatPriceRuleSchedule;
+
+  /// No description provided for @ustatPriceRuleFast.
+  ///
+  /// In en, this message translates to:
+  /// **'fast mode ×{factor}'**
+  String ustatPriceRuleFast(String factor);
+
+  /// No description provided for @ustatPriceRuleServiceTiers.
+  ///
+  /// In en, this message translates to:
+  /// **'by service tier'**
+  String get ustatPriceRuleServiceTiers;
+
+  /// No description provided for @ustatPriceRuleGeo.
+  ///
+  /// In en, this message translates to:
+  /// **'by region'**
+  String get ustatPriceRuleGeo;
+
+  /// No description provided for @ustatPriceRulePerCall.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} a call'**
+  String ustatPriceRulePerCall(String amount);
+
+  /// No description provided for @ustatPriceRuleTools.
+  ///
+  /// In en, this message translates to:
+  /// **'tools priced a use'**
+  String get ustatPriceRuleTools;
+
+  /// No description provided for @ustatPriceRuleVersions.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} prices by date'**
+  String ustatPriceRuleVersions(int count);
+
+  /// No description provided for @ustatPriceRuleRate.
+  ///
+  /// In en, this message translates to:
+  /// **'upstream rate ×{factor}'**
+  String ustatPriceRuleRate(String factor);
+
+  /// No description provided for @ustatPriceRuleTime.
+  ///
+  /// In en, this message translates to:
+  /// **'time of week ×{factor}'**
+  String ustatPriceRuleTime(String factor);
+
+  /// No description provided for @ustatPriceRuleFees.
+  ///
+  /// In en, this message translates to:
+  /// **'fees {amount}'**
+  String ustatPriceRuleFees(String amount);
+
+  /// No description provided for @ustatFees.
+  ///
+  /// In en, this message translates to:
+  /// **'Fees'**
+  String get ustatFees;
+
+  /// No description provided for @ustatPricedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Priced by'**
+  String get ustatPricedBy;
+
+  /// No description provided for @ustatUpstreamRates.
+  ///
+  /// In en, this message translates to:
+  /// **'Upstream rates'**
+  String get ustatUpstreamRates;
+
+  /// No description provided for @ustatUpstreamRatesDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'The models of these upstreams without a price of their own: the same model\'s price elsewhere, times the rate.'**
+  String get ustatUpstreamRatesDetail;
+
+  /// No description provided for @ustatUpstreamRateClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the rate'**
+  String get ustatUpstreamRateClear;
 
   /// No description provided for @ustatContextUnpickHint.
   ///

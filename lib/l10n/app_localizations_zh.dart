@@ -8503,10 +8503,39 @@ class AppLocalizationsZh extends AppLocalizations {
       '只用你指定的一台：BaoCode 的某一台，或自定义地址。';
 
   @override
+  String get mobileRelayModeDirect => '仅直连';
+
+  @override
+  String get mobileRelayModeDirectDescription =>
+      '不经过任何中继：手机直接连到这台电脑。电脑要有公网 IP，或者让下面的端口能从外面访问。';
+
+  @override
+  String get mobileDirectPort => '直连端口';
+
+  @override
+  String get mobileDirectPortDescription =>
+      '手机连接的 UDP 端口。路由器后面的话，把这个 UDP 端口转发给这台电脑，并在防火墙和云安全组里放行。';
+
+  @override
+  String get mobileDirectPortInvalid => '端口要在 1024–65535 之间。';
+
+  @override
+  String get mobileDirectAddress => '直连地址';
+
+  @override
+  String get mobileDirectAddressDescription => '配对二维码和之后的每次连接都会带上它。';
+
+  @override
+  String get mobileDirectAddressNone => '还没有公网地址：电脑上线后再看；在路由器后面的话，需要把端口转发过来。';
+
+  @override
+  String get mobileStatusDirect => '已开启 · 仅直连';
+
+  @override
   String get mobilePathLan => '局域网直连';
 
   @override
-  String get mobilePathDirect => '打洞直连';
+  String get mobilePathDirect => '直连';
 
   @override
   String get mobilePathRelay => '经中继';
@@ -12226,6 +12255,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ustatFieldUpstreamLatency => '上游响应';
 
   @override
+  String get ustatCallAsking => '请求中';
+
+  @override
+  String get ustatCallAnswering => '输出中';
+
+  @override
   String get ustatFieldFirstToken => '首字';
 
   @override
@@ -12615,7 +12650,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ustatPrices => '模型价格';
 
   @override
-  String get ustatPricesDetail => '每百万 token 的价格。费用按当前价格计算，改价后之前的调用也按新价格算。';
+  String get ustatPricesDetail =>
+      '每百万 token 的价格。费用按当前价格计算，改价后之前的调用也按新价格算；设了生效日期的价格只算那天之后的调用。';
 
   @override
   String get ustatPricesAgentHint =>
@@ -12714,6 +12750,68 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get ustatPriceClaudeDefault =>
       'Claude Code 自带模型没填价格时按 Anthropic API 价折算，即输入框里的灰色数字。';
+
+  @override
+  String ustatPriceRuleTiers(int count) {
+    return '按上下文长度分 $count 档';
+  }
+
+  @override
+  String get ustatPriceRuleSchedule => '峰谷时段';
+
+  @override
+  String ustatPriceRuleFast(String factor) {
+    return '快速模式 ×$factor';
+  }
+
+  @override
+  String get ustatPriceRuleServiceTiers => '按服务档位';
+
+  @override
+  String get ustatPriceRuleGeo => '按区域';
+
+  @override
+  String ustatPriceRulePerCall(String amount) {
+    return '每次 $amount';
+  }
+
+  @override
+  String get ustatPriceRuleTools => '工具按次计费';
+
+  @override
+  String ustatPriceRuleVersions(int count) {
+    return '$count 个按日期生效的价格';
+  }
+
+  @override
+  String ustatPriceRuleRate(String factor) {
+    return '上游倍率 ×$factor';
+  }
+
+  @override
+  String ustatPriceRuleTime(String factor) {
+    return '时段 ×$factor';
+  }
+
+  @override
+  String ustatPriceRuleFees(String amount) {
+    return '费用 $amount';
+  }
+
+  @override
+  String get ustatFees => '按次费用';
+
+  @override
+  String get ustatPricedBy => '计价依据';
+
+  @override
+  String get ustatUpstreamRates => '上游倍率';
+
+  @override
+  String get ustatUpstreamRatesDetail => '这些上游里没有单独设价的模型，按别处同名模型的价格乘以倍率计算。';
+
+  @override
+  String get ustatUpstreamRateClear => '清除倍率';
 
   @override
   String get ustatContextUnpickHint => '再次点击取消选中，回到当前上下文';

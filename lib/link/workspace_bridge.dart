@@ -278,6 +278,7 @@ class WorkspaceBridge {
       unread: bots.unread(bot),
       last: bots.lastLine(bot),
       updatedAt: thread?.updatedAt,
+      notices: bots.notices(bot),
     );
   }
 
@@ -409,7 +410,10 @@ class WorkspaceBridge {
                       ?.millisecondsSinceEpoch,
                   'error':
                       refreshErrors[provider.id] ??
-                      service.error(provider.id, account.id),
+                      (service.error(provider.id, account.id)?.isNotEmpty ==
+                              true
+                          ? '额度状态异常'
+                          : null),
                   'at': service
                       .usage(provider.id, account.id)
                       ?.at

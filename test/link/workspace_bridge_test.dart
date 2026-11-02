@@ -26,6 +26,10 @@ class _QuotaService extends CodexUnavailable {
   bool forced = false;
   bool fail = false, hang = false;
   String? hangProvider;
+  String? upstreamError;
+
+  @override
+  String? error(String providerId, String accountId) => upstreamError;
 
   @override
   Future<void> refreshUsage(ModelProvider provider, {bool force = true}) async {
@@ -199,6 +203,57 @@ void main() {
       expect(accounts, isNotEmpty);
       expect((accounts.single as Map)['error'], hang ? '额度刷新超时' : '额度刷新失败');
     }
+  });
+
+  test('服务缓存的上游错误文本不外发，只回固定中文错误，刷新失败文案优先', () async {
+    const marker = 'SYNTHETIC-SENSITIVE-MARKER';
+    final service = _QuotaService()..upstreamError = '上游原始响应 $marker';
+    final providers = ModelProviders.memory(
+      providers: const [
+        ModelProvider(
+          id: '账号源',
+          name: 'ChatGPT',
+          protocol: ProviderProtocol.codex,
+          accounts: [ProviderAccount(id: '账号甲', email: '用户甲')],
+        ),
+      ],
+    );
+    final (phonePeer, desktopPeer) = await peers();
+    addTearDown(phonePeer.close);
+    final quotaBridge = WorkspaceBridge(
+      workspace: workspace,
+      peer: desktopPeer,
+      device: () => const DeviceInfo(name: '电脑', kind: 'mac', system: '测试'),
+      providers: providers,
+      codex: service,
+      quotaTimeout: const Duration(milliseconds: 10),
+    );
+    addTearDown(quotaBridge.dispose);
+    Future<Map> ask(Map<String, Object?> params) async {
+      final result = await quotaBridge.handle(LinkMethods.quota, params) as Map;
+      expect(
+        jsonEncode(result).contains(marker),
+        isFalse,
+        reason: '额度响应泄漏了上游错误文本（已隐去内容）',
+      );
+      return ((result['providers'] as List).single['accounts'] as List).single
+          as Map;
+    }
+
+    expect((await ask({}))['error'], '额度状态异常');
+    expect((await ask({'refresh': true}))['error'], '额度状态异常');
+    expect((await ask({}))['at'], isNotNull, reason: '快照仍然保留');
+    service.fail = true;
+    expect((await ask({'refresh': true}))['error'], '额度刷新失败');
+    service
+      ..fail = false
+      ..hang = true;
+    expect((await ask({'refresh': true}))['error'], '额度刷新超时');
+    service
+      ..hang = false
+      ..upstreamError = null;
+    expect((await ask({'refresh': true}))['error'], isNull);
+    expect((await ask({}))['error'], isNull);
   });
 
   test('一个额度源超时不把已完成的额度源标记为失败', () async {

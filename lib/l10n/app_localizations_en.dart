@@ -9009,6 +9009,37 @@ class AppLocalizationsEn extends AppLocalizations {
       'Only the one picked: one of BaoCode\'s, or a custom address.';
 
   @override
+  String get mobileRelayModeDirect => 'Direct Only';
+
+  @override
+  String get mobileRelayModeDirectDescription =>
+      'No relay: phones connect straight to this computer. It needs a public address, or the port below forwarded to it.';
+
+  @override
+  String get mobileDirectPort => 'Direct Port';
+
+  @override
+  String get mobileDirectPortDescription =>
+      'The UDP port phones connect to. Forward it to this computer at the router, and allow it in the firewall.';
+
+  @override
+  String get mobileDirectPortInvalid => 'A port from 1024 to 65535.';
+
+  @override
+  String get mobileDirectAddress => 'Direct Address';
+
+  @override
+  String get mobileDirectAddressDescription =>
+      'It goes in the pairing code and in every connection after.';
+
+  @override
+  String get mobileDirectAddressNone =>
+      'No public address yet: check again once this computer is online, or forward the port to it if it is behind a router.';
+
+  @override
+  String get mobileStatusDirect => 'On, direct only';
+
+  @override
   String get mobilePathLan => 'Same network';
 
   @override
@@ -12913,6 +12944,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ustatFieldUpstreamLatency => 'Upstream answered';
 
   @override
+  String get ustatCallAsking => 'Requesting';
+
+  @override
+  String get ustatCallAnswering => 'Answering';
+
+  @override
   String get ustatFieldFirstToken => 'First token';
 
   @override
@@ -13352,7 +13389,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ustatPricesDetail =>
-      'A million tokens each. Costs are worked out at the prices as they are now, the calls before a change included.';
+      'A million tokens each. Costs are worked out at the prices as they are now, the calls before a change included, unless a price is set from a date on.';
 
   @override
   String get ustatPricesAgentHint =>
@@ -13460,6 +13497,69 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get ustatPriceClaudeDefault =>
       'Claude Code\'s own models without a price of yours are priced at Anthropic\'s API prices: the grey figures.';
+
+  @override
+  String ustatPriceRuleTiers(int count) {
+    return '$count tiers by prompt length';
+  }
+
+  @override
+  String get ustatPriceRuleSchedule => 'peak and off-peak hours';
+
+  @override
+  String ustatPriceRuleFast(String factor) {
+    return 'fast mode ×$factor';
+  }
+
+  @override
+  String get ustatPriceRuleServiceTiers => 'by service tier';
+
+  @override
+  String get ustatPriceRuleGeo => 'by region';
+
+  @override
+  String ustatPriceRulePerCall(String amount) {
+    return '$amount a call';
+  }
+
+  @override
+  String get ustatPriceRuleTools => 'tools priced a use';
+
+  @override
+  String ustatPriceRuleVersions(int count) {
+    return '$count prices by date';
+  }
+
+  @override
+  String ustatPriceRuleRate(String factor) {
+    return 'upstream rate ×$factor';
+  }
+
+  @override
+  String ustatPriceRuleTime(String factor) {
+    return 'time of week ×$factor';
+  }
+
+  @override
+  String ustatPriceRuleFees(String amount) {
+    return 'fees $amount';
+  }
+
+  @override
+  String get ustatFees => 'Fees';
+
+  @override
+  String get ustatPricedBy => 'Priced by';
+
+  @override
+  String get ustatUpstreamRates => 'Upstream rates';
+
+  @override
+  String get ustatUpstreamRatesDetail =>
+      'The models of these upstreams without a price of their own: the same model\'s price elsewhere, times the rate.';
+
+  @override
+  String get ustatUpstreamRateClear => 'Clear the rate';
 
   @override
   String get ustatContextUnpickHint =>
