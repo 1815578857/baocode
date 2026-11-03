@@ -150,6 +150,23 @@ void main() {
     workspace.dispose();
   });
 
+  test('手机项目置顶更新桌面工作区与公开状态，取消可往返', () async {
+    expect(bridge.state().projects.single.pinned, isFalse);
+    await bridge.handle(LinkMethods.pinProject, {'project': '/p', 'pinned': true});
+    expect(workspace.isPinnedProject(workspace.projects.single), isTrue);
+    expect(bridge.state().projects.single.toJson()['pinned'], isTrue);
+    await bridge.handle(LinkMethods.pinProject, {'project': '/p', 'pinned': false});
+    expect(bridge.state().projects.single.pinned, isFalse);
+  });
+
+  test('未知项目置顶失败，不改变现有项目', () async {
+    await expectLater(
+      bridge.handle(LinkMethods.pinProject, {'project': '/missing', 'pinned': true}),
+      throwsA(isA<LinkRemoteException>().having((error) => error.code, 'code', LinkErrors.notFound)),
+    );
+    expect(bridge.state().projects.single.pinned, isFalse);
+  });
+
   test('手机额度只返回公开字段，刷新失败或超时保留快照', () async {
     final service = _QuotaService();
     final providers = ModelProviders.memory(
