@@ -8,7 +8,8 @@ import 'package:flutter/services.dart' show ServicesBinding;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:path/path.dart' as p;
 import 'package:bao_editor/textmate/textmate_syntax.dart';
-import 'package:bao_markdown/bao_markdown.dart' show MdClipboard;
+import 'package:bao_markdown/bao_markdown.dart'
+    show MarkdownEditor, MdClipboard;
 
 import 'package:bao_editor/monaco/flutter/language_assets.dart';
 
@@ -171,6 +172,7 @@ Future<void> main(List<String> arguments) async {
   if (!kIsWeb) {
     AppEventWatch.start();
     FrameWatch.start();
+    MarkdownEditor.onInputLost = (message) => appEvent('input', message);
   }
   // The Windows app's own logs and the macOS app's hang reports go beside
   // them.
@@ -886,12 +888,14 @@ class _BaoCodeAppState extends State<BaoCodeApp> {
   }
 
   /// The terminals take the theme's colors (`getXtermTheme`); the window's
-  /// own parts follow its type.
+  /// own parts follow its type. The panel's on a card as the editors are,
+  /// of their color: without `terminal.background`, theirs.
   void _colorThemeChanged() {
     final colors = _themes.colors;
     terminalColorTheme.value = TerminalColorTheme.resolve(
       colors.get,
       type: colors.type,
+      inEditor: true,
     );
     editorTerminalColorTheme.value = TerminalColorTheme.resolve(
       colors.get,
@@ -971,9 +975,10 @@ class _BaoCodeAppState extends State<BaoCodeApp> {
         // icons and gaps grow with the text they hold.
         final zoom = percent / 100;
         final media = UiZoom.zoomed(MediaQuery.of(context), zoom);
-        // The traffic lights, level with the title bar as it grows.
+        // The traffic lights in the middle of the title bar, as it grows.
         WindowControls.setTitleBarDrop(
-          AppMetrics.titleBarHeight * (zoom - 1) / 2,
+          (AppMetrics.titleBarHeight * zoom - AppMetrics.nativeTitleBarHeight) /
+              2,
           viewId: window.viewId,
         );
         // Windows blurs glyphs drawn at a fractional pixel size.

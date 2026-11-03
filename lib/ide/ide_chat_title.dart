@@ -22,6 +22,7 @@ import 'ide_hover.dart';
 import 'ide_menu.dart';
 import 'ide_tab_bar.dart';
 import 'tab_strip_scroll.dart';
+import '../workspace/islands.dart';
 
 class IdeChatTitle extends StatelessWidget {
   const IdeChatTitle({
@@ -324,6 +325,13 @@ class _ChatTabsState extends State<_ChatTabs> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final (i, thread) in tabs.indexed) ...[
+            if (i > 0)
+              ?IdeTabStrip.separator(
+                context,
+                shown:
+                    !identical(tabs[i - 1], widget.current) &&
+                    !identical(thread, widget.current),
+              ),
             if (_spot == i) const TabDropLine(),
             TabDragSource(
               enabled: tabs.length > 1,
@@ -332,20 +340,23 @@ class _ChatTabsState extends State<_ChatTabs> {
               onEnd: _endDrag,
               child: Opacity(
                 opacity: identical(thread, _dragged) ? .5 : 1,
-                child: _ChatTab(
-                  key: _keys.putIfAbsent(thread, GlobalKey.new),
-                  thread: thread,
-                  title: thread.localizedTitle(l10n),
-                  active: identical(thread, widget.current),
-                  closeTooltip: l10n.commonClose,
-                  renaming: identical(thread, _renaming),
-                  onRename: (text) {
-                    setState(() => _renaming = null);
-                    if (text != null) widget.onRename(thread, text);
-                  },
-                  onSelect: () => widget.onOpen(thread),
-                  onClose: () => widget.onClose([thread]),
-                  onMenu: (position) => _showMenu(thread, position),
+                child: IslandTabStart(
+                  atStart: i == 0,
+                  child: _ChatTab(
+                    key: _keys.putIfAbsent(thread, GlobalKey.new),
+                    thread: thread,
+                    title: thread.localizedTitle(l10n),
+                    active: identical(thread, widget.current),
+                    closeTooltip: l10n.commonClose,
+                    renaming: identical(thread, _renaming),
+                    onRename: (text) {
+                      setState(() => _renaming = null);
+                      if (text != null) widget.onRename(thread, text);
+                    },
+                    onSelect: () => widget.onOpen(thread),
+                    onClose: () => widget.onClose([thread]),
+                    onMenu: (position) => _showMenu(thread, position),
+                  ),
                 ),
               ),
             ),

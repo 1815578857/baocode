@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:baocode/workspace/islands.dart';
 import 'package:baocode/chat/widgets/pixel_loader.dart';
 import 'package:baocode/chat/chat_screen.dart';
 import 'package:baocode/chat/chat_session.dart';
@@ -879,7 +880,7 @@ void main() {
     expect(decoration().color, IdeListColors.activeSelection);
     expectForeground(IdeListColors.activeSelectionForeground);
     expect(tester.getSize(row).height, IdeListColors.rowHeight);
-    expect(decoration().borderRadius, BorderRadius.circular(4));
+    expect(decoration().borderRadius, BorderRadius.circular(Islands.rowRadius));
 
     listFocus.requestFocus();
     await tester.pump();
@@ -1012,7 +1013,8 @@ void main() {
     final workspace = await pumpApp(tester, width: 700);
     expect(find.byType(Sidebar), findsNothing);
     final chatWidth = tester.getSize(find.byType(ChatScreen)).width;
-    expect(chatWidth, 700);
+    // The window's, less the gaps about its card.
+    expect(chatWidth, 700 - 2 * Islands.gap);
 
     await tester.tap(find.bySemanticsLabel('Show sidebar'));
     await tester.pumpAndSettle();

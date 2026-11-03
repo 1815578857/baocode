@@ -23,6 +23,7 @@ import '../theme/app_theme.dart';
 import '../theme/codicons.dart';
 import '../workspace/editor_launcher.dart';
 import '../workspace/agent_title.dart' show askedTitles;
+import '../workspace/islands.dart';
 import '../workspace/title_bar_double_click.dart';
 import '../workspace/window_controls.dart';
 import 'agent_view.dart';
@@ -83,6 +84,8 @@ class ChatScreen extends StatefulWidget {
     this.windowTitleBar = true,
     this.titleBar = true,
     this.focused = true,
+    this.island,
+    this.islandBorder,
     this.onOpenChange,
     this.onOpenCode,
     this.fileLinks,
@@ -98,6 +101,7 @@ class ChatScreen extends StatefulWidget {
     this.commandFile,
     this.openEditor,
     this.onSideQuestion,
+    this.onFork,
     this.asideAt,
     this.back,
   });
@@ -157,6 +161,13 @@ class ChatScreen extends StatefulWidget {
   /// others' titles are dimmer.
   final bool focused;
 
+  /// Given, the conversation and its input are on a card of this color
+  /// (see [Island]), its title bar and [below] on the window's, outside it.
+  final Color? island;
+
+  /// The outline of the card ([island]): [Islands.border] by default.
+  final Color? islandBorder;
+
   /// Opens a changed file's changes: against [original], its text before
   /// the agent changed it, or the file alone where that is not known.
   final void Function(FileChange change, Future<String> Function()? original)?
@@ -215,6 +226,11 @@ class ChatScreen extends StatefulWidget {
   /// the message's images and mentions, is asked in a conversation of its
   /// own beside this one, from all of this one so far.
   final ValueChanged<ComposerMessage>? onSideQuestion;
+
+  /// Given, `/fork` sent here is not the agent's: the conversation is
+  /// copied into a new one, as the sidebar's Fork, and what follows the
+  /// command (empty for none) is sent there.
+  final ValueChanged<ComposerMessage>? onFork;
 
   /// What shows under the conversation's item of the id given: the
   /// conversations asked beside it from there (see [onSideQuestion]).
@@ -754,6 +770,7 @@ class _ChatScreenState extends State<ChatScreen>
     if (!identical(commands, _commandSource)) {
       _commandSource = commands;
       final aside = widget.onSideQuestion != null;
+      final fork = widget.onFork != null;
       _commands = [
         // Taken here, not by the agent: a conversation beside this one
         // (see [ChatScreen.onSideQuestion]), in place of the CLI's own.
@@ -764,8 +781,17 @@ class _ChatScreenState extends State<ChatScreen>
             detail: context.l10n.btwCommandDetail,
             icon: Codicons.commentDiscussion,
           ),
+        // And a copy of this one (see [ChatScreen.onFork]).
+        if (fork)
+          Suggestion(
+            kind: SuggestionKind.command,
+            label: _forkCommand,
+            detail: context.l10n.forkCommandDetail,
+            icon: Codicons.repoForked,
+          ),
         for (final command in commands)
-          if (!aside || command.name != _asideCommand)
+          if ((!aside || command.name != _asideCommand) &&
+              (!fork || command.name != _forkCommand))
             Suggestion(
               kind: SuggestionKind.command,
               label: command.name,
@@ -797,6 +823,28 @@ class _ChatScreenState extends State<ChatScreen>
     if (!question.isEmpty) handler(question);
     return true;
   }
+
+  static const _forkCommand = 'fork';
+
+  /// Takes `/fork …` for a copy of this conversation: true when it was one.
+  /// What follows, with the message's images and mentions, is sent there.
+  bool _interceptFork(ComposerMessage message) {
+    final handler = widget.onFork;
+    if (handler == null) return false;
+    final text = message.text.trimLeft();
+    if (!text.startsWith(RegExp('^/$_forkCommand(\\s|\$)'))) return false;
+    handler(
+      ComposerMessage(
+        text: text.substring(_forkCommand.length + 1).trim(),
+        mentions: message.mentions,
+        images: message.images,
+      ),
+    );
+    return true;
+  }
+
+  bool _intercept(ComposerMessage message) =>
+      _interceptSideQuestion(message) || _interceptFork(message);
 
   List<KernelCommand>? _commandSource;
   List<Suggestion> _commands = const [];
@@ -1027,158 +1075,223 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Widget _buildScaffold() {
+    final island = widget.island;
+    final conversation = _buildConversation();
+    final footer = _footer;
     return Scaffold(
+      // The window's color about the card, or the card's it is on (the
+      // IDE's): none of its own.
+      backgroundColor: island == null && !_onCard ? null : Colors.transparent,
       body: Column(
         children: [
           // The session's title, in the row the window's header leaves it
           // (macOS draws a title bar of its own over it; see AppMetrics).
           if (!widget.embedded && (widget.titleBar || _renaming))
             _buildTitleBar(),
-          // Esc goes back from a subagent: a keybinding of the chat's
-          // (closeSubagent).
-          Expanded(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ConversationLayer(
-                  entrance: kAlwaysCompleteAnimation,
-                  cover: _layers.firstOrNull?.animation,
-                  interactive: _agentShown == null,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      _withBack(
-                        ChatHistoryView(
-                          key: _historyKey,
-                          feed: _session,
-                          maxContentWidth: _maxContentWidth,
-                          minimap: _minimap,
-                          minimapRoom: widget.back == null
-                              ? null
-                              : _backMinimapRoom,
-                          onOpenAgent: _openAgent,
-                          onSetGoal: _setGoal,
-                          onFindClosed: () =>
-                              _composerKey.currentState?.focus(),
-                          after: switch (widget.asideAt) {
-                            final asideAt? => (index) => switch (_session
-                                .itemIdAt(index)) {
-                              final id? => asideAt(id),
-                              null => null,
-                            },
-                            null => null,
-                          },
-                        ),
-                      ),
-                      // The start hint, before the first message.
-                      ListenableBuilder(
-                        listenable: _session,
-                        builder: (context, _) => switch (widget.startHint) {
-                          _ when _session.itemCount != 0 =>
-                            const SizedBox.shrink(),
-                          final build? when _starting => Align(
-                            alignment: Alignment.bottomCenter,
-                            child: SingleChildScrollView(
-                              // No minimap yet: nothing to scroll.
-                              child: _ConversationColumn(
-                                maxWidth: _maxContentWidth,
-                                minimap: false,
-                                child: build(context, const SizedBox.shrink()),
-                              ),
-                            ),
-                          ),
-                          _ => const SizedBox.shrink(),
-                        },
-                      ),
-                      // An earlier conversation still being read (from a
-                      // remote host it may take a while).
-                      ListenableBuilder(
-                        listenable: _session,
-                        builder: (context, _) =>
-                            _session.loadingHistory && _session.itemCount == 0
-                            ? const _HistoryLoading()
-                            : const SizedBox.shrink(),
-                      ),
-                    ],
+          // Its card even with no row under it (the terminal's then).
+          if (island == null && footer == 0)
+            ...conversation
+          else ...[
+            Expanded(
+              child: island == null
+                  ? Column(children: conversation)
+                  : Island(
+                      color: island,
+                      borderColor: widget.islandBorder,
+                      child: Column(children: conversation),
+                    ),
+            ),
+            if (footer > 0)
+              // Under the card, at the composer's width: the row there with
+              // nothing in it too, the card's foot where the side panel's is.
+              SizedBox(
+                height: footer,
+                child: _ConversationColumn(
+                  maxWidth: _maxContentWidth,
+                  minimap: false,
+                  inset: Islands.inset,
+                  bottom: 0,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _agentShown == null ? widget.below : null,
                   ),
                 ),
-                for (final (i, layer) in _layers.indexed)
-                  ConversationLayer(
-                    key: ObjectKey(layer),
-                    entrance: layer.animation,
-                    cover: _layers.elementAtOrNull(i + 1)?.animation,
-                    interactive: identical(layer, _agentShown),
-                    child: _buildAgentPage(i, layer),
-                  ),
-              ],
-            ),
-          ),
-          ListenableBuilder(
-            listenable: _session,
-            // In the middle as the history's text is, laid out (not built)
-            // for the width: a pane being resized does not build the
-            // composer anew. The minimap stays beside the history, over
-            // it: no room left for it here.
-            builder: (context, _) => _ConversationColumn(
-              maxWidth: _maxContentWidth,
-              minimap: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Whether it is on a card: its own ([ChatScreen.island]), or the one
+  /// it is put on (the IDE's, see [IslandSurface]).
+  bool get _onCard =>
+      widget.island != null || IslandSurface.colorOf(context) != null;
+
+  /// The row under the card, on the window's color: its own card's, or the
+  /// one it is on's (the IDE's), if that leaves one; else 0, [ChatScreen.below]
+  /// under the input.
+  double get _footer => IslandFootHosted.of(context)
+      ? 0
+      : widget.island != null
+      ? Islands.belowHeight
+      : IslandSurface.footerOf(context);
+
+  /// The history over the panels and the input, as a column's children.
+  List<Widget> _buildConversation() {
+    return [
+      // Esc goes back from a subagent: a keybinding of the chat's
+      // (closeSubagent).
+      Expanded(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ConversationLayer(
+              entrance: kAlwaysCompleteAnimation,
+              cover: _layers.firstOrNull?.animation,
+              interactive: _agentShown == null,
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  _PanelSlot(
-                    child: HealthBanner.shows(_session.health)
-                        ? HealthBanner(
-                            health: _session.health,
-                            kernelName: _session.kernel.label,
-                            onRetry: _session.restart,
-                            onSetUpModel: () =>
-                                unawaited(showModelWelcome(context)),
-                          )
-                        : null,
+                  _withBack(
+                    ChatHistoryView(
+                      key: _historyKey,
+                      feed: _session,
+                      maxContentWidth: _maxContentWidth,
+                      minimap: _minimap,
+                      minimapRoom: widget.back == null
+                          ? null
+                          : _backMinimapRoom,
+                      onOpenAgent: _openAgent,
+                      onSetGoal: _setGoal,
+                      onFindClosed: () => _composerKey.currentState?.focus(),
+                      after: switch (widget.asideAt) {
+                        final asideAt? => (index) => switch (_session.itemIdAt(
+                          index,
+                        )) {
+                          final id? => asideAt(id),
+                          null => null,
+                        },
+                        null => null,
+                      },
+                    ),
                   ),
-                  // A remote project's host out of reach: said once, by the
-                  // banner above when the agent failed on it.
-                  if (!HealthBanner.shows(_session.health))
-                    SshHostBanner(location: _session.kernelContext.cwd),
-                  // Claude Code being downloaded for this machine, or put on
-                  // a remote project's host.
-                  ClaudeInstallBanner(location: _session.kernelContext.cwd),
-                  // BaoCode's own core picked: the CLI suggested.
-                  if (_localClaudeCode) ClaudeCoreHint(onSwitched: _movedToCli),
-                  // Reset credits of the model's ChatGPT accounts about to
-                  // expire: a plan to use them.
-                  ResetCreditsHint(model: _session.models?.selected.id),
-                  _PanelSlot(
-                    child: switch (_session.pendingInteraction) {
-                      final request? => InteractionPanel(
-                        key: ObjectKey(request),
-                        request: request,
-                        onAnswer: _answer,
+                  // The start hint, before the first message.
+                  ListenableBuilder(
+                    listenable: _session,
+                    builder: (context, _) => switch (widget.startHint) {
+                      _ when _session.itemCount != 0 => const SizedBox.shrink(),
+                      final build? when _starting => Align(
+                        alignment: Alignment.bottomCenter,
+                        child: SingleChildScrollView(
+                          // No minimap yet: nothing to scroll.
+                          child: _ConversationColumn(
+                            maxWidth: _maxContentWidth,
+                            minimap: false,
+                            child: build(context, const SizedBox.shrink()),
+                          ),
+                        ),
                       ),
-                      null => null,
+                      _ => const SizedBox.shrink(),
                     },
                   ),
-                  if (widget.start case final start? when _starting)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: start,
-                    ),
-                  // A subagent's conversation takes no messages.
-                  _BottomSwitcher(
-                    child: _agentShown == null
-                        ? _buildDock()
-                        : const SizedBox.shrink(key: ValueKey('none')),
+                  // An earlier conversation still being read (from a
+                  // remote host it may take a while).
+                  ListenableBuilder(
+                    listenable: _session,
+                    builder: (context, _) =>
+                        _session.loadingHistory && _session.itemCount == 0
+                        ? const _HistoryLoading()
+                        : const SizedBox.shrink(),
                   ),
                 ],
               ),
             ),
-          ),
-          // As much room under it as over it.
-          if (_wasStarting) const Spacer(),
-        ],
+            for (final (i, layer) in _layers.indexed)
+              ConversationLayer(
+                key: ObjectKey(layer),
+                entrance: layer.animation,
+                cover: _layers.elementAtOrNull(i + 1)?.animation,
+                interactive: identical(layer, _agentShown),
+                child: _buildAgentPage(i, layer),
+              ),
+          ],
+        ),
       ),
-    );
+      ListenableBuilder(
+        listenable: _session,
+        // In the middle as the history's text is, laid out (not built)
+        // for the width: a pane being resized does not build the
+        // composer anew. The minimap stays beside the history, over
+        // it: no room left for it here.
+        builder: (context, _) => _ConversationColumn(
+          maxWidth: _maxContentWidth,
+          minimap: false,
+          // On a card, as far from its sides as from its foot; the row
+          // under it (the IDE's) closer.
+          inset: _onCard ? Islands.inset : null,
+          bottom: !_onCard
+              ? 12
+              : _footer == 0 &&
+                    widget.below != null &&
+                    !IslandFootHosted.of(context)
+              ? 4
+              : Islands.inset,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _PanelSlot(
+                child: HealthBanner.shows(_session.health)
+                    ? HealthBanner(
+                        health: _session.health,
+                        kernelName: _session.kernel.label,
+                        onRetry: _session.restart,
+                        onSetUpModel: () =>
+                            unawaited(showModelWelcome(context)),
+                      )
+                    : null,
+              ),
+              // A remote project's host out of reach: said once, by the
+              // banner above when the agent failed on it.
+              if (!HealthBanner.shows(_session.health))
+                SshHostBanner(location: _session.kernelContext.cwd),
+              // Claude Code being downloaded for this machine, or put on
+              // a remote project's host.
+              ClaudeInstallBanner(location: _session.kernelContext.cwd),
+              // BaoCode's own core picked: the CLI suggested.
+              if (_localClaudeCode) ClaudeCoreHint(onSwitched: _movedToCli),
+              // Reset credits of the model's ChatGPT accounts about to
+              // expire: a plan to use them.
+              ResetCreditsHint(model: _session.models?.selected.id),
+              _PanelSlot(
+                child: switch (_session.pendingInteraction) {
+                  final request? => InteractionPanel(
+                    key: ObjectKey(request),
+                    request: request,
+                    onAnswer: _answer,
+                  ),
+                  null => null,
+                },
+              ),
+              if (widget.start case final start? when _starting)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: start,
+                ),
+              // A subagent's conversation takes no messages.
+              _BottomSwitcher(
+                child: _agentShown == null
+                    ? _buildDock()
+                    : const SizedBox.shrink(key: ValueKey('none')),
+              ),
+            ],
+          ),
+        ),
+      ),
+      // As much room under it as over it.
+      if (_wasStarting) const Spacer(),
+    ];
   }
 
   /// The subagent [layer], [index] in: the way here, and its conversation.
@@ -1319,11 +1432,12 @@ class _ChatScreenState extends State<ChatScreen>
           },
           contextPanelOpen: _contextPanelOpen,
           onToggleContextPanel: _toggleContextPanel,
-          onIntercept: widget.onSideQuestion == null
+          onIntercept: widget.onSideQuestion == null && widget.onFork == null
               ? null
-              : _interceptSideQuestion,
+              : _intercept,
         ),
-        ?widget.below,
+        // On a card, it is under the card (see [_buildScaffold]).
+        if (_footer == 0 && !IslandFootHosted.of(context)) ?widget.below,
       ],
     );
   }
@@ -1413,15 +1527,25 @@ class _ConversationColumn extends SingleChildRenderObjectWidget {
   const _ConversationColumn({
     required this.maxWidth,
     required this.minimap,
+    this.bottom = 12,
+    this.inset,
     required super.child,
   });
 
   final double maxWidth;
   final bool minimap;
 
+  /// The room under [child].
+  final double bottom;
+
+  /// [child] wider than the column by as much as the column's gutter is
+  /// past this, at the most this far from the sides: the composer on a
+  /// card, as far from its edges as from its foot.
+  final double? inset;
+
   @override
   _RenderConversationColumn createRenderObject(BuildContext context) =>
-      _RenderConversationColumn(maxWidth, minimap);
+      _RenderConversationColumn(maxWidth, minimap, bottom, inset);
 
   @override
   void updateRenderObject(
@@ -1430,12 +1554,27 @@ class _ConversationColumn extends SingleChildRenderObjectWidget {
   ) {
     renderObject
       ..maxWidth = maxWidth
-      ..minimap = minimap;
+      ..minimap = minimap
+      ..bottom = bottom
+      ..inset = inset;
   }
 }
 
 class _RenderConversationColumn extends RenderShiftedBox {
-  _RenderConversationColumn(this._maxWidth, this._minimap) : super(null);
+  _RenderConversationColumn(
+    this._maxWidth,
+    this._minimap,
+    this._bottom,
+    this._inset,
+  ) : super(null);
+
+  double? get inset => _inset;
+  double? _inset;
+  set inset(double? value) {
+    if (value == _inset) return;
+    _inset = value;
+    markNeedsLayout();
+  }
 
   bool get minimap => _minimap;
   bool _minimap;
@@ -1453,10 +1592,23 @@ class _RenderConversationColumn extends RenderShiftedBox {
     markNeedsLayout();
   }
 
-  static const _bottom = 12.0;
+  double get bottom => _bottom;
+  double _bottom;
+  set bottom(double value) {
+    if (value == _bottom) return;
+    _bottom = value;
+    markNeedsLayout();
+  }
 
-  double _width(double width) =>
-      _columnWidth(width, _maxWidth, minimap: _minimap);
+  double _width(double width) {
+    final column = _columnWidth(width, _maxWidth, minimap: _minimap);
+    final inset = _inset;
+    if (inset == null) return column;
+    return math.max(
+      0,
+      math.min(width - 2 * inset, column + 2 * (chatGutter(width) - inset)),
+    );
+  }
 
   BoxConstraints _childConstraints(BoxConstraints constraints) {
     return BoxConstraints.tightFor(width: _width(constraints.maxWidth))

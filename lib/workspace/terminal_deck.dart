@@ -213,6 +213,7 @@ class _TerminalDeckState extends State<TerminalDeck> {
     return IdeTabStrip(
       line: AppColors.partBorder,
       small: true,
+      flat: true,
       child: Row(
         children: [
           Expanded(
@@ -270,6 +271,8 @@ class _TerminalDeckState extends State<TerminalDeck> {
               ),
             ),
           ),
+          // Clear of the tabs scrolled under the actions.
+          const SizedBox(width: 4),
           if (terminals != null) ...[
             IdeActionButton(
               key: const ValueKey('terminal-deck-new'),
@@ -300,7 +303,6 @@ class _TerminalDeckState extends State<TerminalDeck> {
             const SizedBox(width: 2),
             trailing,
           ],
-          const SizedBox(width: 6),
         ],
       ),
     );

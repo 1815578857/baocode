@@ -44,6 +44,7 @@ import '../ide_menu.dart';
 import '../ide_panes.dart';
 import '../ide_workspace.dart';
 import '../lsp/lsp_protocol.dart';
+import '../../workspace/islands.dart';
 import 'text_search.dart';
 
 /// The inputs of the Search view, for [IdeSearchSession.requestFocus].
@@ -1196,7 +1197,9 @@ class IdeSearchViewState extends State<IdeSearchView>
     // their tooltips (searchActionsTopBar.ts, in `MenuId.ViewTitle`).
     final keys = KeybindingService.instance;
     return ColoredBox(
-      color: widget.background ?? AppColors.sidebarSurface,
+      color:
+          widget.background ??
+          Islands.underOr(context, AppColors.sidebarSurface),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

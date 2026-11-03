@@ -98,11 +98,15 @@ abstract final class AppColors {
   /// the page, tinged with [accent]; the input's when typed into, a step on
   /// towards [accent].
   static Color bubbleBorder({bool focused = false}) {
-    final line = Color.lerp(
-      _towardsText(bubbleFill, 0.12),
-      accent.withValues(alpha: 1),
-      0.03,
-    )!;
+    // The theme's own `agentsChatInput.border`, where it has one.
+    final colors = _colors;
+    final line = colors.theme.defines('agentsChatInput.border')
+        ? Color.alphaBlend(colors['agentsChatInput.border'], code)
+        : Color.lerp(
+            _towardsText(bubbleFill, 0.12),
+            accent.withValues(alpha: 1),
+            0.03,
+          )!;
     return focused ? Color.lerp(line, accent.withValues(alpha: 1), 0.2)! : line;
   }
 
@@ -213,8 +217,14 @@ abstract final class AppColors {
 
 /// Window chrome shared by the sidebar and the chat, so their edges line up.
 abstract final class AppMetrics {
-  /// The Flutter-drawn title bar, level with the native traffic lights.
-  static const titleBarHeight = 30.0;
+  /// The Flutter-drawn title bar, the native traffic lights moved down to
+  /// its middle (see [nativeTitleBarHeight]): a row of the window's color
+  /// over the cards (see Islands), a part's tabs at its foot.
+  static const titleBarHeight = 44.0;
+
+  /// The title bar AppKit lays the traffic lights out in, unmoved: their
+  /// middle half that down.
+  static const nativeTitleBarHeight = 28.0;
 
   /// From the title bar to the first content under it (the sidebar's New
   /// Agent button, the chat's stuck message).
