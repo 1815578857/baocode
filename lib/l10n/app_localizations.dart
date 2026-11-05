@@ -4586,6 +4586,12 @@ abstract class AppLocalizations {
   /// **'Copy Image'**
   String get imageCopy;
 
+  /// 复制图片到系统剪贴板失败时的提示。
+  ///
+  /// In en, this message translates to:
+  /// **'Could not copy the image. Try again.'**
+  String get imageCopyFailed;
+
   /// Part of a folded run of steps' line, e.g. "Read 3 files, ran 2 commands".
   ///
   /// In en, this message translates to:

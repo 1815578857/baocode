@@ -45,6 +45,7 @@ class ImageThumbnails extends StatelessWidget {
             // A new image at this position is a new thumbnail.
             key: ObjectKey(image),
             image: image,
+            images: images,
             size: size,
             onRemove: onRemove == null ? null : () => onRemove!(i),
           ),
@@ -57,11 +58,13 @@ class _Thumbnail extends StatelessWidget {
   const _Thumbnail({
     super.key,
     required this.image,
+    required this.images,
     required this.size,
     this.onRemove,
   });
 
   final ImageAttachment image;
+  final List<ImageAttachment> images;
   final double size;
   final VoidCallback? onRemove;
 
@@ -75,11 +78,11 @@ class _Thumbnail extends StatelessWidget {
           // In a message, a right click offers its menu (see
           // fileLinkMenuAt).
           FileLinkMenuRegion(
-            menu: ImageMenu(image),
+            menu: ImageMenu(image, images: images),
             child: Listener(
               onPointerDown: (_) => PreviewPressScope._press(context),
               child: GestureDetector(
-                onTap: () => showImagePreview(context, image),
+                onTap: () => showImagePreview(context, image, images: images),
                 child: IdeHover(
                   message: image.name ?? '',
                   child: Container(
@@ -151,12 +154,44 @@ void showImagePreview(
   BuildContext context,
   ImageAttachment image, {
   ChatItemMenu? menu,
-}) => showImageGallery(
-  context,
-  count: 1,
-  load: (_) => SynchronousFuture(image),
-  menu: menu == null ? null : (_) => menu,
-);
+  List<ImageAttachment> images = const [],
+}) {
+  final at = images.indexWhere((entry) => identical(entry, image));
+  final group = at < 0 ? [image] : images;
+  showImageGallery(
+    context,
+    count: group.length,
+    index: at < 0 ? 0 : at,
+    load: (index) => SynchronousFuture(group[index]),
+    menu: menu == null ? null : (index) => identical(group[index], image) ? menu : null,
+  );
+}
+
+/// 只选中一张图片引用时，复制原图；混合文字仍走原来的文本复制。
+ImageAttachment? selectedReferenceImage(String text, Iterable<ImageAttachment> images) {
+  final selected = text.trim();
+  final match = imageReferencePattern.matchAsPrefix(selected);
+  if (match == null || match.end != selected.length) return null;
+  final number = int.parse(match[1]!);
+  for (final (index, image) in images.indexed) {
+    if ((image.number ?? index + 1) == number) return image;
+  }
+  return null;
+}
+
+Future<void> copyChatImage(BuildContext context, ImageAttachment image) async {
+  var copied = false;
+  try {
+    copied = await WindowControls.writePasteboardImage(image);
+  } on PlatformException {
+    // 不把复制失败降级为图片引用文字。
+  }
+  if (!copied && context.mounted) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: Text(context.l10n.imageCopyFailed)),
+    );
+  }
+}
 
 /// Shows images whole, as [showImagePreview] does, [count] of them (read
 /// by [load] as they show), from the one at [index]: the arrows at its
@@ -187,9 +222,10 @@ void showImageGallery(
 /// to copy it, and on this machine to open it in its app or show it in the
 /// file manager (as a file of its own, see [ShownFiles.bytes]).
 class ImageMenu implements ChatItemMenu {
-  const ImageMenu(this.image);
+  const ImageMenu(this.image, {this.images = const []});
 
   final ImageAttachment image;
+  final List<ImageAttachment> images;
 
   @override
   Future<void> show(BuildContext context, Offset position) {
@@ -201,7 +237,7 @@ class ImageMenu implements ChatItemMenu {
         [
           IdeMenuAction(
             l10n.fileLinkPreview,
-            onSelected: () => showImagePreview(context, image),
+            onSelected: () => showImagePreview(context, image, images: images),
           ),
           if (WindowControls.canOpenInDefaultApp)
             IdeMenuAction(
@@ -216,8 +252,7 @@ class ImageMenu implements ChatItemMenu {
         [
           IdeMenuAction(
             l10n.imageCopy,
-            onSelected: () =>
-                unawaited(WindowControls.writePasteboardImage(image)),
+            onSelected: () => unawaited(copyChatImage(context, image)),
           ),
         ],
         [
@@ -320,7 +355,7 @@ class _ImagePreviewState extends State<_ImagePreview> {
 
   void _copy() {
     if (_image case final image?) {
-      unawaited(WindowControls.writePasteboardImage(image));
+      unawaited(copyChatImage(context, image));
     }
   }
 
@@ -492,14 +527,16 @@ class ImagePreviewClick extends StatelessWidget {
     super.key,
     required this.image,
     required this.child,
+    this.images = const [],
   });
 
   final ImageAttachment image;
   final Widget child;
+  final List<ImageAttachment> images;
 
   @override
   Widget build(BuildContext context) => PreviewClick(
-    onOpen: () => showImagePreview(context, image),
+    onOpen: () => showImagePreview(context, image, images: images),
     child: child,
   );
 }

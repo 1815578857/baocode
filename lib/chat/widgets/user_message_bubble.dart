@@ -127,6 +127,7 @@ TextSpan _messageSpan(
               ComposerImageEmbed.decode(data),
               byNumber[ComposerImageEmbed.decode(data)],
               _messageStyle,
+              images: images,
             ),
           ComposerEmbed(type: ComposerCodeEmbed.type, :final data) =>
             ComposerCodeChip.span(data, _messageStyle),
@@ -140,7 +141,7 @@ TextSpan _messageSpan(
         },
       for (final (i, (number, image)) in untagged.indexed) ...[
         if (i > 0 || text.isNotEmpty) const TextSpan(text: ' '),
-        ComposerImageChip.span(number, image, _messageStyle),
+        ComposerImageChip.span(number, image, _messageStyle, images: images),
       ],
     ],
   );

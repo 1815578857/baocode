@@ -1110,8 +1110,15 @@ void main() {
     expect(find.text('Plus'), findsOneWidget);
     expect(find.text('5h'), findsOneWidget);
     expect(find.text('Weekly'), findsOneWidget);
-    expect(find.textContaining('42% used · resets in 1 h '), findsOne);
-    expect(find.text('7% used'), findsOneWidget);
+    expect(find.textContaining('58% left · resets in 1 h '), findsOne);
+    expect(find.text('93% left'), findsOneWidget);
+    expect(find.textContaining('% used'), findsNothing);
+    expect(
+      tester
+          .widgetList<FractionallySizedBox>(find.byType(FractionallySizedBox))
+          .map((bar) => bar.widthFactor),
+      containsAll([0.58, 0.93]),
+    );
     // One account: nothing to balance.
     expect(find.text('Load Balancing'), findsNothing);
 

@@ -338,9 +338,15 @@ class ComposerImageEmbed {
 /// The images a composer holds, by number, for the references in its text
 /// to show.
 class ComposerImages extends InheritedWidget {
-  const ComposerImages({super.key, required this.images, required super.child});
+  const ComposerImages({super.key, required this.images, required super.child, this.gallery});
 
   final Map<int, ImageAttachment> images;
+  final List<ImageAttachment>? gallery;
+
+  static List<ImageAttachment> galleryOf(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<ComposerImages>();
+    return scope?.gallery ?? scope?.images.values.toList() ?? const [];
+  }
 
   static Map<int, ImageAttachment> of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<ComposerImages>()?.images ??
@@ -348,7 +354,7 @@ class ComposerImages extends InheritedWidget {
 
   @override
   bool updateShouldNotify(ComposerImages oldWidget) =>
-      !identical(images, oldWidget.images);
+      !identical(images, oldWidget.images) || !identical(gallery, oldWidget.gallery);
 }
 
 /// The composer's things as its editor shows them: each as its tag,
@@ -402,6 +408,7 @@ class _ComposerImageAtom extends StatelessWidget {
   Widget build(BuildContext context) => ComposerImageChip(
     number: number,
     image: ComposerImages.of(context)[number],
+    images: ComposerImages.galleryOf(context),
     textStyle: textStyle,
   );
 }
@@ -1267,24 +1274,28 @@ class ComposerImageChip extends StatelessWidget {
     required this.number,
     required this.image,
     required this.textStyle,
+    this.images = const [],
   });
 
   final int number;
   final ImageAttachment? image;
   final TextStyle textStyle;
+  final List<ImageAttachment> images;
 
   /// [ComposerImageChip] as a span for rich text of [textStyle].
   static InlineSpan span(
     int number,
     ImageAttachment? image,
-    TextStyle textStyle,
-  ) => WidgetSpan(
+    TextStyle textStyle, {
+    List<ImageAttachment> images = const [],
+  }) => WidgetSpan(
     alignment: PlaceholderAlignment.baseline,
     baseline: TextBaseline.alphabetic,
     child: ComposerImageChip(
       number: number,
       image: image,
       textStyle: textStyle,
+      images: images,
     ),
   );
 
@@ -1347,10 +1358,10 @@ class ComposerImageChip extends StatelessWidget {
       ),
     );
     if (image != null) {
-      chip = ImagePreviewClick(image: image, child: chip);
+      chip = ImagePreviewClick(image: image, images: images, child: chip);
       chip = HoverTooltip(
         content: (context) => _ImageHover(image.bytes),
-        child: FileLinkMenuRegion(menu: ImageMenu(image), child: chip),
+        child: FileLinkMenuRegion(menu: ImageMenu(image, images: images), child: chip),
       );
     }
     return SelectableToken(text: imageReference(number), child: chip);

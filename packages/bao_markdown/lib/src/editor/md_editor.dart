@@ -53,6 +53,7 @@ class MarkdownEditor extends StatefulWidget {
     this.physics,
     this.onKey,
     this.onPaste,
+    this.onCopy,
     this.onPasteCopy,
     this.colorize,
     this.onClick,
@@ -87,6 +88,9 @@ class MarkdownEditor extends StatefulWidget {
   /// pasted it (files, pictures, HTML made markdown…), else the text is
   /// put in as it is.
   final Future<bool> Function()? onPaste;
+
+  /// 非剪切的复制：返回 true 表示已处理（例如复制实际图片而非嵌入标签）。
+  final Future<bool> Function(MdClip clip)? onCopy;
 
   /// A paste of what an editor of its kind copied: its markdown as it is
   /// to go in (its tags numbered on from those here, say); as it is
@@ -2143,6 +2147,9 @@ class MarkdownEditorState extends State<MarkdownEditor>
       markdown: controller.substring(selection.start, selection.end),
       fromPlain: controller.plain,
     );
+    if (widget.onCopy case final copy? when !cut) {
+      if (await copy(clip)) return;
+    }
     if (cut && !widget.readOnly) {
       controller.replace(selection.start, selection.end, '');
     }

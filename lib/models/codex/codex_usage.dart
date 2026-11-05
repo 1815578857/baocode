@@ -105,14 +105,19 @@ class CodexUsage {
       : windows.map((w) => w.usedPercent).reduce((a, b) => a > b ? a : b);
 
   /// Until when it can take no request: the latest reset of a window used
-  /// up, when the limit is reached.
+  /// up, or of the fullest when the limit is reached short of 100.
   DateTime? get limitedUntil {
-    final full = [
-      for (final window in windows)
-        if (window.usedPercent >= 100 || limitReached) ?window.resetsAt,
-    ];
-    if (full.isEmpty) return null;
-    return full.reduce((a, b) => a.isAfter(b) ? a : b);
+    final timed = windows.where((window) => window.resetsAt != null);
+    if (timed.isEmpty) return null;
+    final fullest = timed
+        .map((window) => window.usedPercent)
+        .reduce((a, b) => a > b ? a : b);
+    if (fullest < 100 && !limitReached) return null;
+    final bar = fullest < 100 ? fullest : 100;
+    return timed
+        .where((window) => window.usedPercent >= bar)
+        .map((window) => window.resetsAt!)
+        .reduce((a, b) => a.isAfter(b) ? a : b);
   }
 
   /// As `/wham/usage` answers.

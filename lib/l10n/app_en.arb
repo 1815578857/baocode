@@ -1478,6 +1478,10 @@
     }
   },
   "imageCopy": "Copy Image",
+  "imageCopyFailed": "Could not copy the image. Try again.",
+  "@imageCopyFailed": {
+    "description": "复制图片到系统剪贴板失败时的提示。"
+  },
   "@imageCopy": {
     "description": "Context menu item of an enlarged image: copies the image to the clipboard."
   },

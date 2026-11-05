@@ -242,6 +242,141 @@ void main() {
     expect(_shown(tester), [1]);
   }, variant: _macOS);
 
+  testWidgets('单独复制编辑器里的图片引用会写入图片而非引用文字', (tester) async {
+    await _pump(tester);
+    await _pasteImages(tester, 1);
+    final image = tester.widget<ComposerImageChip>(find.descendant(
+      of: find.byType(ChatComposer).last, matching: find.byType(ComposerImageChip),
+    )).image!;
+    final calls = _windowCalls(tester);
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (_) async => null);
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+    _controller(tester).selection = TextSelection(baseOffset: 0, extentOffset: _controller(tester).length);
+    await tester.runAsync(() => tester.state<MarkdownEditorState>(_editor).copy());
+    await tester.pump();
+    final copies = calls.where((call) => call.method == 'writePasteboardImage');
+    expect(copies, hasLength(1));
+    expect((copies.single.arguments as Map)['bytes'], image.bytes);
+    expect((copies.single.arguments as Map)['type'], 'image/png');
+  }, variant: _macOS);
+
+  testWidgets('混合文字和图片或字面引用仍按文字复制，不丢掉文字', (tester) async {
+    await _pump(tester);
+    await _pasteImages(tester, 1);
+    final calls = _windowCalls(tester);
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') copied = (call.arguments as Map)['text'] as String;
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+    _type(tester, '附带说明');
+    _controller(tester).selection = TextSelection(baseOffset: 0, extentOffset: _controller(tester).length);
+    await tester.runAsync(() => tester.state<MarkdownEditorState>(_editor).copy());
+    expect(copied, '[Image #1] 附带说明');
+    expect(calls.where((call) => call.method == 'writePasteboardImage'), isEmpty);
+    _controller(tester).replace(0, _controller(tester).length, '[Image #1]',
+      selection: const TextSelection(baseOffset: 0, extentOffset: 10));
+    await tester.pump();
+    await tester.runAsync(() => tester.state<MarkdownEditorState>(_editor).copy());
+    expect(copied, '[Image #1]');
+    expect(calls.where((call) => call.method == 'writePasteboardImage'), isEmpty);
+  }, variant: _macOS);
+
+  testWidgets('系统拒绝图片复制时明确报错，不伪装成引用文字复制成功', (tester) async {
+    await _pump(tester);
+    await _pasteImages(tester, 1);
+    final copiedText = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') copiedText.add((call.arguments as Map)['text'] as String);
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('baocode/window'),
+      (call) async => call.method == 'writePasteboardImage' ? false : null);
+    _controller(tester).selection = TextSelection(baseOffset: 0, extentOffset: _controller(tester).length);
+    await tester.runAsync(() => tester.state<MarkdownEditorState>(_editor).copy());
+    await tester.pump();
+    expect(find.text('Could not copy the image. Try again.'), findsOneWidget);
+    expect(copiedText, isEmpty);
+  }, variant: _macOS);
+
+  testWidgets('已删除的图片引用不应继续出现在编辑器画廊中', (tester) async {
+    await _pump(tester);
+    await _pasteImages(tester, 3);
+    final controller = _controller(tester);
+    final first = controller.embeds.first;
+    controller.replace(first.start, first.end, '',
+      selection: TextSelection.collapsed(offset: first.start));
+    await tester.pump();
+    final chips = find.descendant(of: find.byType(ChatComposer).last,
+      matching: find.byType(ComposerImageChip));
+    expect(chips, findsNWidgets(2));
+    await _openPreview(tester, tester.tap(chips.first));
+    expect(find.text('1 / 2'), findsOneWidget);
+  }, variant: _macOS);
+
+  testWidgets('同一组编辑附件从点击图片开始，可通过箭头切换', (tester) async {
+    await _pump(tester);
+    await _pasteImages(tester, 3);
+    final chips = find.descendant(of: find.byType(ChatComposer).last,
+      matching: find.byType(ComposerImageChip));
+    await _openPreview(tester, tester.tap(chips.at(1)));
+    expect(find.text('2 / 3'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('image-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('3 / 3'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pumpAndSettle();
+    expect(find.text('2 / 3'), findsOneWidget);
+  }, variant: _macOS);
+
+  testWidgets('已发消息的图片标签选中复制时保留原图', (tester) async {
+    final session = await _pump(tester);
+    await _pasteImages(tester, 1);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    session.stop();
+    await tester.pump(const Duration(seconds: 1));
+    final chip = find.descendant(of: find.byType(SuperListView),
+      matching: find.byType(ComposerImageChip)).first;
+    final image = tester.widget<ComposerImageChip>(chip).image!;
+    final calls = _windowCalls(tester);
+    final rect = tester.getRect(chip);
+    final mouse = await tester.startGesture(rect.centerLeft + const Offset(1, 0),
+      kind: PointerDeviceKind.mouse);
+    await tester.pump();
+    await mouse.moveTo(rect.centerRight - const Offset(1, 0));
+    await tester.pump();
+    await mouse.up();
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await tester.pump();
+    final copies = calls.where((call) => call.method == 'writePasteboardImage');
+    expect(copies, hasLength(1));
+    expect((copies.single.arguments as Map)['bytes'], image.bytes);
+  }, variant: _macOS);
+
+  testWidgets('已发消息的多张图片预览可切换，图片点击不打开编辑器', (tester) async {
+    final session = await _pump(tester);
+    await _pasteImages(tester, 2);
+    _type(tester, '两张图片');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    session.stop();
+    await tester.pump(const Duration(seconds: 1));
+    final chips = find.descendant(of: find.byType(SuperListView),
+      matching: find.byType(ComposerImageChip));
+    await _openPreview(tester, tester.tap(chips.first));
+    expect(find.text('1 / 2'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('image-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('2 / 2'), findsOneWidget);
+  }, variant: _macOS);
+
   testWidgets('a click on a reference shows its image whole, which a right '
       'click or a shortcut copies', (tester) async {
     await _pump(tester);

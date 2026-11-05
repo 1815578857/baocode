@@ -2562,6 +2562,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get imageCopy => 'Copy Image';
 
   @override
+  String get imageCopyFailed => 'Could not copy the image. Try again.';
+
+  @override
   String stepsRead(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

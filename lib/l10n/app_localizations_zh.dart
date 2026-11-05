@@ -2475,6 +2475,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get imageCopy => '复制图片';
 
   @override
+  String get imageCopyFailed => '无法复制图片，请重试。';
+
+  @override
   String stepsRead(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

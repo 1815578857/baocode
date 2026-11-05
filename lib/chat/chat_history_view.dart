@@ -37,6 +37,7 @@ import 'widgets/own_selection.dart';
 import 'widgets/content_image.dart' show ChatImage, ChatImages;
 import 'widgets/fold_line.dart';
 import 'widgets/hover_builder.dart';
+import 'widgets/image_thumbnails.dart' show selectedReferenceImage, copyChatImage;
 import 'widgets/lazy_segment.dart' show SelectionEndHolder;
 import 'widgets/turn_footer.dart';
 import 'widgets/user_message_bubble.dart';
@@ -2442,6 +2443,22 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
   /// The file link the last right click pressed on (see [_contextMenu]).
   ChatItemMenu? _linkMenu;
 
+  ImageAttachment? _selectedImage() {
+    final first = _selectionDelegate._start?.point.index;
+    final last = _selectionDelegate._end?.point.index;
+    if (first == null || first != last || first < 0 || first >= _feed.itemCount) return null;
+    final item = _feed.itemAt(first);
+    if (item is! UserMessageItem) return null;
+    return selectedReferenceImage(_selectionDelegate.getSelectedContent()?.plainText ?? '', item.images);
+  }
+
+  bool _copySelectedImage() {
+    final image = _selectedImage();
+    if (image == null) return false;
+    unawaited(copyChatImage(context, image));
+    return true;
+  }
+
   /// The selection's right click: on a file the conversation names, that
   /// file's menu (see [FileLinkMenu]) in place of the selection's.
   Widget _contextMenu(BuildContext context, SelectableRegionState selection) {
@@ -2453,6 +2470,20 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
         if (mounted) unawaited(menu.show(this.context, at));
       });
       return const SizedBox.shrink();
+    }
+    if (_selectedImage() case final image?) {
+      return AdaptiveTextSelectionToolbar.buttonItems(
+        anchors: selection.contextMenuAnchors,
+        buttonItems: [
+          for (final item in selection.contextMenuButtonItems)
+            if (item.type == ContextMenuButtonType.copy)
+              ContextMenuButtonItem(type: item.type, label: item.label, onPressed: () {
+                selection.hideToolbar();
+                unawaited(copyChatImage(this.context, image));
+              })
+            else item,
+        ],
+      );
     }
     return AdaptiveTextSelectionToolbar.selectableRegion(
       selectableRegionState: selection,
@@ -2644,7 +2675,9 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                   // What is in the list keeps the bars it had (a table's).
                   child: ScrollbarTheme(
                     data: outerBars,
-                    child: SelectionArea(
+                    child: Actions(
+                      actions: {CopySelectionTextIntent: _CopySelectedImageAction(_copySelectedImage)},
+                      child: SelectionArea(
                       focusNode: _selectionFocusNode,
                       contextMenuBuilder: _contextMenu,
                       // Focus on click rather than hover so the composer keeps
@@ -2759,6 +2792,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView>
                           ),
                         ),
                       ),
+                    ),
                     ),
                   ),
                 ),
@@ -3042,6 +3076,21 @@ class _ItemRegistrar implements SelectionRegistrar, SelectionEndHolder {
   @override
   void remove(Selectable selectable) =>
       delegate._removeItemSelectable(selectable);
+}
+
+/// 图片选区复制原图，其余选区交还 Flutter 的原有复制动作。
+class _CopySelectedImageAction extends Action<CopySelectionTextIntent> {
+  _CopySelectedImageAction(this.copy);
+  final bool Function() copy;
+
+  @override
+  Object? invoke(CopySelectionTextIntent intent) {
+    if (!intent.collapseSelection && copy()) return null;
+    return callingAction?.invoke(intent);
+  }
+
+  @override
+  bool get isActionEnabled => callingAction?.isActionEnabled ?? false;
 }
 
 /// Selection across the whole history, not just the items that are built.

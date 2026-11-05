@@ -251,6 +251,35 @@ void main() {
       expect(usage.usedUp(now), isTrue);
     });
 
+    test('limit reached: back when the window that ran out starts over', () {
+      final soon = now.add(const Duration(minutes: 45));
+      final later = now.add(const Duration(days: 5));
+      CodexUsage usage(double short, double long, {bool reached = true}) =>
+          CodexUsage(
+            at: now,
+            limitReached: reached,
+            primary: CodexWindow(
+              usedPercent: short,
+              minutes: 300,
+              resetsAt: soon,
+            ),
+            secondary: CodexWindow(
+              usedPercent: long,
+              minutes: 10080,
+              resetsAt: later,
+            ),
+          );
+      // The week has room left: it is the five hours that are waited for.
+      expect(usage(100, 64).limitedUntil, soon);
+      // Told so before the percentage gets to 100: the fullest one.
+      expect(usage(99.6, 64).limitedUntil, soon);
+      expect(usage(64, 99.6).limitedUntil, later);
+      // Both out: not before the later.
+      expect(usage(100, 100).limitedUntil, later);
+      expect(usage(100, 64, reached: false).limitedUntil, soon);
+      expect(usage(99.6, 64, reached: false).limitedUntil, isNull);
+    });
+
     test('reset credits: their count, those that can be used', () {
       CodexUsage usage(int minutes) => CodexUsage.fromJson({
         'rate_limit': {

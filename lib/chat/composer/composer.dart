@@ -25,6 +25,7 @@ import '../floating/floating_registry.dart';
 import '../../workspace/window_controls.dart';
 import '../widgets/context_meter.dart';
 import '../widgets/hover_builder.dart';
+import '../widgets/image_thumbnails.dart' show copyChatImage;
 import 'composer_caret.dart';
 import 'composer_controller.dart';
 import 'composer_draft.dart';
@@ -820,6 +821,7 @@ class ChatComposerState extends State<ChatComposer>
   _ShownOfText _shownOfText() => (
     menu: (_trigger != null, _menuX, _menuKind, _matches, _highlighted),
     pool: _pool,
+    gallery: _images.map((image) => image.number).join(','),
     canSend: _canSend,
     polishable: ComposerPolishSetting.current() && _hasWords(),
   );
@@ -1660,7 +1662,7 @@ class ChatComposerState extends State<ChatComposer>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ComposerImages(images: _pool, child: _editor!),
+            ComposerImages(images: _pool, gallery: _images, child: _editor!),
             _buildToolbar(),
           ],
         ),
@@ -1864,6 +1866,19 @@ class ChatComposerState extends State<ChatComposer>
     );
   }
 
+  Future<bool> _copyImage(MdClip clip) async {
+    final pieces = composerPieces(clip.markdown)
+        .where((piece) => piece is! String || piece.trim().isNotEmpty).toList();
+    if (pieces case [ComposerEmbed(type: ComposerImageEmbed.type, :final data)]) {
+      final image = _pool[ComposerImageEmbed.decode(data)];
+      if (image != null) {
+        await copyChatImage(context, image);
+        return true;
+      }
+    }
+    return false;
+  }
+
   Widget _buildMarkdownEditor(BuildContext context) {
     final colors = themeColors;
     final base = DefaultTextStyle.of(context).style.merge(_textStyle);
@@ -1888,6 +1903,7 @@ class ChatComposerState extends State<ChatComposer>
         }.replaceAll(RegExp(r'[\x00-\x1f]+'), ' '),
         onKey: _handleKey,
         onPaste: _paste,
+        onCopy: _copyImage,
         onPasteCopy: (markdown) =>
             renumberPastes(markdown, from: _nextPastedNumber()),
         style: MarkdownEditorStyle(
@@ -2149,6 +2165,7 @@ class _SendButton extends StatelessWidget {
 typedef _ShownOfText = ({
   Object menu,
   Map<int, ImageAttachment> pool,
+  String gallery,
   bool canSend,
   bool polishable,
 });

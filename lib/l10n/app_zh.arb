@@ -748,6 +748,7 @@
   "pastedTextGone": "这段粘贴的内容已不在 {path}。",
   "pastedTextLines": "{count, plural, other{+{count} 行}}",
   "imageCopy": "复制图片",
+  "imageCopyFailed": "无法复制图片，请重试。",
   "stepsRead": "{count, plural, other{读取 {count} 个文件}}",
   "stepsSearched": "{count, plural, other{搜索 {count} 次}}",
   "stepsListed": "{count, plural, other{列出 {count} 个目录}}",
