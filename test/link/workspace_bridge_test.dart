@@ -96,6 +96,7 @@ void main() {
       label: 'Claude Code',
       icon: Icons.auto_awesome_rounded,
       description: '',
+      catalog: _KeptCatalog(),
       create: (context) => ClaudeCodeKernel(
         descriptor,
         KernelContext(
@@ -466,6 +467,34 @@ void main() {
     });
   });
 
+  test('a conversation read anew is followed anew, all of it sent', () async {
+    await workspace.refresh();
+    final kept = workspace.threads.firstWhere(
+      (thread) => thread.record?.id == 'k',
+    );
+    final keptId = WorkspaceBridge.idOf(kept);
+    await bridge.handle(LinkMethods.open, {'session': keptId, 'window': 2});
+    await settle();
+    final was = kept.session;
+    updates.clear();
+
+    workspace.reload(kept);
+    await settle();
+    expect(identical(kept.session, was), isFalse);
+    // All of it again, of the conversation read anew: as it opened, its
+    // history as it is read.
+    expect(updates, isNotEmpty);
+    expect(updates.map((update) => update.session), everyElement(keptId));
+    expect(updates.first.start, 0);
+    expect(texts(updates.last.items), ['u4', '-', 'u5', '-', 'u6', '-']);
+    // Earlier ones from the conversation read anew.
+    final earlier = await bridge.handle(LinkMethods.earlier, {
+      'session': keptId,
+      'count': 2,
+    });
+    expect(earlier, isNotNull);
+  });
+
   test('a message from the phone tells the agent so, unseen', () async {
     await bridge.handle(LinkMethods.send, {'session': id, 'text': 'go'});
     await settle();
@@ -826,4 +855,28 @@ Future<(LinkPeer, LinkPeer)> peers() async {
   final accepted = LinkPeer.accept(b);
   final connected = await LinkPeer.connect(a);
   return (connected, await accepted);
+}
+
+/// Lists one kept session in the project.
+class _KeptCatalog implements SessionCatalog {
+  @override
+  Future<List<ProjectRecord>> projects() async => [
+    ProjectRecord(
+      path: '/p',
+      sessions: [
+        SessionRecord(
+          id: 'k',
+          title: 'kept',
+          updatedAt: DateTime(2026),
+          cwd: '/p',
+        ),
+      ],
+    ),
+  ];
+
+  @override
+  Future<List<SessionRecord>> sessionsIn(String cwd) async => const [];
+
+  @override
+  Future<void> delete(String id) async {}
 }

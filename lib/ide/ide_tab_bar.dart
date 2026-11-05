@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as p;
 
 import '../chat/composer/composer_files.dart';
 import '../chat/composer/file_drag.dart';
@@ -13,10 +12,12 @@ import '../theme/workbench_theme.dart' show themeColors;
 import '../workspace/islands.dart';
 import '../workspace/window_controls.dart';
 import 'editor_minimap_setting.dart';
+import 'host_paths.dart';
 import 'ide_hover.dart';
 import 'ide_menu.dart';
 import 'ide_workspace.dart';
 import 'save_copy.dart';
+import 'tab_reorder.dart';
 import 'tab_strip_scroll.dart';
 
 /// The actions of a tab's context menu.
@@ -44,17 +45,18 @@ List<String?> ideTabDescriptions(
   List<String>? names,
 }) {
   List<String> parents(String path) {
-    final directory = p.dirname(path);
-    if (p.equals(directory, root)) return [p.basename(root)];
-    if (p.isWithin(root, directory)) {
-      return p.split(p.relative(directory, from: root));
+    final paths = hostContext(path);
+    final directory = paths.dirname(path);
+    if (paths.equals(directory, root)) return [paths.basename(root)];
+    if (paths.isWithin(root, directory)) {
+      return paths.split(paths.relative(directory, from: root));
     }
-    return p.split(directory);
+    return paths.split(directory);
   }
 
   final byName = <String, List<int>>{};
   for (var i = 0; i < paths.length; i++) {
-    byName.putIfAbsent(names?[i] ?? p.basename(paths[i]), () => []).add(i);
+    byName.putIfAbsent(names?[i] ?? hostBasename(paths[i]), () => []).add(i);
   }
   final descriptions = List<String?>.filled(paths.length, null);
   for (final group in byName.values) {
@@ -103,9 +105,13 @@ class IdeTabBar extends StatefulWidget {
     this.onMarkdownPreview,
     this.page,
     this.actions,
+    this.onMove,
   });
 
   final List<IdeDocument> documents;
+
+  /// A tab dragged to [index] among the others; none: they stay in order.
+  final void Function(IdeDocument doc, int index)? onMove;
 
   /// A tab after the files' that is not a file's (an extension's page):
   /// the one in front while [active] is null.
@@ -137,10 +143,23 @@ class IdeTabBar extends StatefulWidget {
   State<IdeTabBar> createState() => _IdeTabBarState();
 }
 
-class _IdeTabBarState extends State<IdeTabBar> {
+class _IdeTabBarState extends State<IdeTabBar>
+    with TabReorder<IdeTabBar, IdeDocument> {
   final ScrollController _scroll = ScrollController();
   final Map<IdeDocument, GlobalKey> _keys = {};
   final GlobalKey _pageKey = GlobalKey();
+
+  @override
+  ScrollController get tabScroll => _scroll;
+
+  @override
+  List<IdeDocument> get reorderedTabs => widget.documents;
+
+  @override
+  BuildContext? tabContext(IdeDocument doc) => _keys[doc]?.currentContext;
+
+  @override
+  void moveTab(IdeDocument doc, int index) => widget.onMove?.call(doc, index);
 
   @override
   void initState() {
@@ -173,14 +192,7 @@ class _IdeTabBarState extends State<IdeTabBar> {
           ? _pageKey.currentContext
           : _keys[active]?.currentContext;
       if (context == null) return;
-      Scrollable.ensureVisible(
-        context,
-        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
-      );
-      Scrollable.ensureVisible(
-        context,
-        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
-      );
+      TabStripScroll.reveal(context);
     });
   }
 
@@ -281,14 +293,18 @@ class _IdeTabBarState extends State<IdeTabBar> {
   }
 
   /// [tab], dragged onto the chat's composer, puts its file in; not a
-  /// revision's tab, whose text is not the file's.
-  Widget _draggable(IdeDocument doc, Widget tab) => doc.readRevision != null
-      ? KeyedSubtree(key: ObjectKey(doc), child: tab)
-      : FileDraggable(
-          key: ObjectKey(doc),
-          files: [ComposerFile(doc.path)],
-          child: tab,
-        );
+  /// revision's tab, whose text is not the file's. Dragged along the
+  /// tabs, it goes among them.
+  Widget _draggable(IdeDocument doc, Widget tab) {
+    if (widget.onMove != null) tab = reorderable(doc, tab);
+    return doc.readRevision != null
+        ? KeyedSubtree(key: ObjectKey(doc), child: tab)
+        : FileDraggable(
+            key: ObjectKey(doc),
+            files: [ComposerFile(doc.path)],
+            child: tab,
+          );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -315,23 +331,28 @@ class _IdeTabBarState extends State<IdeTabBar> {
                             !identical(docs[i - 1], widget.active) &&
                             !identical(doc, widget.active),
                       ),
+                    if (dropSpot == i) const TabDropLine(),
                     _draggable(
                       doc,
-                      IslandTabStart(
-                        atStart: i == 0,
-                        child: _Tab(
-                          key: _keys.putIfAbsent(doc, GlobalKey.new),
-                          doc: doc,
-                          description: descriptions[i],
-                          active: identical(doc, widget.active),
-                          onSelect: () => widget.onSelect(doc),
-                          onClose: () => widget.onClose(doc),
-                          onMenu: (position) =>
-                              _showMenu(doc, position: position),
+                      Opacity(
+                        opacity: identical(doc, draggedTab) ? .5 : 1,
+                        child: IslandTabStart(
+                          atStart: i == 0,
+                          child: _Tab(
+                            key: _keys.putIfAbsent(doc, GlobalKey.new),
+                            doc: doc,
+                            description: descriptions[i],
+                            active: identical(doc, widget.active),
+                            onSelect: () => widget.onSelect(doc),
+                            onClose: () => widget.onClose(doc),
+                            onMenu: (position) =>
+                                _showMenu(doc, position: position),
+                          ),
                         ),
                       ),
                     ),
                   ],
+                  if (dropSpot == docs.length) const TabDropLine(),
                   if (widget.page case final page?)
                     KeyedSubtree(key: _pageKey, child: page),
                   // Over a card, the last clear of its rounded corner, its
@@ -538,12 +559,15 @@ class IdeTabStrip extends StatelessWidget {
   static const height = IslandTab.height;
   static const smallHeight = 28.0;
 
-  /// A [flat] strip's inset from the card's edges on all sides, and
-  /// between its tabs: the card's corner and its tabs' concentric.
-  static const flatInset = Islands.radius - Islands.controlRadius;
+  /// A [flat] strip's inset from the card's top and sides: room around
+  /// its first tab. None under it: what is under it has its own.
+  static const flatInset = 8.0;
 
-  /// A [flat] strip's height: a segment's, inset.
-  static const flatHeight = IslandSegment.height + 2 * flatInset;
+  /// Between a [flat] strip's tabs.
+  static const flatGap = 4.0;
+
+  /// A [flat] strip's height: a segment's, inset at the top.
+  static const flatHeight = IslandSegment.height + flatInset;
 
   /// `editorGroupHeader.tabsBorder`, none by default.
   static Color? get border => themeColors.get('editorGroupHeader.tabsBorder');
@@ -564,7 +588,12 @@ class IdeTabStrip extends StatelessWidget {
         // panel's views: no strip of its own, no line under it.
         : flat
         ? Padding(
-            padding: const EdgeInsets.all(flatInset),
+            padding: const EdgeInsets.fromLTRB(
+              flatInset,
+              flatInset,
+              flatInset,
+              0,
+            ),
             child: _FlatTabs(child: child),
           )
         : DecoratedBox(
@@ -746,7 +775,7 @@ class _IdeEditorTabState extends State<IdeEditorTab> {
             ),
             // In a card's flat strip, a segment: a gap after it.
             margin: flat
-                ? const EdgeInsets.only(right: IdeTabStrip.flatInset)
+                ? const EdgeInsets.only(right: IdeTabStrip.flatGap)
                 : null,
             padding: EdgeInsets.only(
               left: padding,

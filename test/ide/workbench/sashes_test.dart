@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:baocode/ide/ide_columns.dart';
 import 'package:baocode/ide/ide_modern_ui.dart';
+import 'package:baocode/ide/ide_workbench.dart';
 import 'package:baocode/ide/ide_rows.dart';
 import 'package:baocode/theme/codicons.dart';
 import 'package:baocode/workspace/islands.dart';
@@ -31,12 +32,12 @@ void main() {
     final drag = await tester.startGesture(
       tester.getCenter(_part('ide-sidebar-sash')),
     );
-    // As far as the side bar goes: 672 of 1352 (the window less the
-    // activity bar, and half a gap at its right; see Islands).
+    // As far as the side bar goes: 676 of 1356 (the window less the
+    // activity bar's room, and half a gap at its right; see Islands).
     await drag.moveBy(const Offset(20, 0));
-    await drag.moveBy(const Offset(412, 0));
+    await drag.moveBy(const Offset(416, 0));
     await tester.pump();
-    expect(_width(tester, 'ide-sidebar'), 672);
+    expect(_width(tester, 'ide-sidebar'), 676);
     expect(_width(tester, 'ide-editor'), IdeColumns.minEditor);
     expect(_width(tester, 'ide-chat'), IdeColumns.minChat);
 
@@ -48,9 +49,9 @@ void main() {
     await tester.pump();
     expect(_width(tester, 'ide-chat'), 0);
     expect(find.byKey(chatKey), findsNothing);
-    expect(_width(tester, 'ide-sidebar'), 732);
+    expect(_width(tester, 'ide-sidebar'), 736);
 
-    await drag.moveBy(const Offset(-492, 0));
+    await drag.moveBy(const Offset(-496, 0));
     await tester.pump();
     expect(_width(tester, 'ide-sidebar'), IdeColumns.defaultSidebar);
     expect(_width(tester, 'ide-chat'), IdeColumns.defaultChat);
@@ -61,7 +62,7 @@ void main() {
     await tester.drag(_part('ide-chat-sash'), const Offset(-400, 0));
     await tester.pump();
     expect(_width(tester, 'ide-editor'), IdeColumns.minEditor);
-    expect(_width(tester, 'ide-sidebar'), 212);
+    expect(_width(tester, 'ide-sidebar'), 216);
     await tester.drag(_part('ide-chat-sash'), const Offset(-200, 0));
     await tester.pump();
     expect(_part('ide-sidebar'), findsNothing);
@@ -69,7 +70,7 @@ void main() {
     // Opened again, as wide as it was; the chat gives way to it.
     await tester.tap(find.byIcon(Codicons.files));
     await tester.pump();
-    expect(_width(tester, 'ide-sidebar'), 212);
+    expect(_width(tester, 'ide-sidebar'), 216);
     expect(_width(tester, 'ide-editor'), IdeColumns.minEditor);
     await tester.pump(kDoubleTapTimeout);
   });
@@ -118,7 +119,7 @@ void main() {
     expect(_part('ide-chat-sash'), findsNothing);
     expect(
       tester.getRect(_part('ide-editor')).right,
-      tester.view.physicalSize.width - Islands.gap / 2,
+      tester.view.physicalSize.width - IdeWorkbench.gap / 2,
     );
     await tester.tap(find.byIcon(Codicons.layoutSidebarRightOff));
     await tester.pump();
@@ -185,7 +186,7 @@ void main() {
     // Its sash in the middle of the gap over its card.
     expect(
       tester.getCenter(_part('ide-panel-sash')).dy,
-      closeTo(panel.top + Islands.gap / 2, 0.01),
+      closeTo(panel.top + IdeWorkbench.gap / 2, 0.01),
     );
     expect(tester.getSize(_part('ide-panel-sash')).height, IdeModernUI.gap);
     // The side bar and the chat keep the whole height; the chat down to

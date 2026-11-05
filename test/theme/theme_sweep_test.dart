@@ -91,8 +91,8 @@ void main() {
       );
       await tester.pump();
       expect(tester.takeException(), isNull, reason: theme.settingsId);
-      // The panel on TERMINAL, with two tabs: panelPart.ts paints it with
-      // `panel.background`, never the shell's: its card's color.
+      // The panel on TERMINAL, with two tabs: of the theme's
+      // `panel.background`, the IDE's parts not islands.
       await chord(tester, LogicalKeyboardKey.backquote, control: true);
       await chord(
         tester,

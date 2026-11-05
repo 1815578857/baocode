@@ -8,7 +8,6 @@ import 'package:path/path.dart' as p;
 
 import '../../base/shown_when_ready.dart';
 import '../../browser/browser_bridge.dart';
-import '../../browser/browser_mirror.dart';
 import '../../ide/file_service.dart';
 import '../../ide/git/git_model.dart';
 import '../../ide/git/commit_message.dart';
@@ -34,6 +33,7 @@ import '../../ide/ide_panes.dart';
 import '../../ide/ide_tab_bar.dart'
     show IdeEditorTab, IdeTabStrip, ideTabDescriptions;
 import '../../ide/save_copy.dart';
+import '../../ide/tab_reorder.dart';
 import '../../ide/tab_strip_scroll.dart';
 import '../../ide/terminal/links/terminal_links.dart' show TerminalLink;
 import '../../ide/terminal/terminal_hosts.dart';
@@ -43,6 +43,7 @@ import '../../workspace/islands.dart';
 import '../../workspace/terminal_deck.dart';
 import '../../workspace/title_bar_double_click.dart';
 import '../../workspace/window_controls.dart';
+import '../chat_screen.dart' show ChatScreen;
 import '../chat_models.dart' show CommandStatus;
 import '../../keybindings/chat_keybindings.dart';
 import '../../keybindings/keybinding_service.dart';
@@ -65,6 +66,10 @@ import 'file_open.dart';
 import 'file_preview.dart';
 import 'git_changes.dart';
 import 'side_panel_controller.dart';
+import '../../theme/svg_icons.dart';
+import '../../remote/remote_location.dart';
+import '../../remote/ports_view.dart';
+import 'chat_layout_picker.dart';
 
 /// [child] (the conversations) and, at its right (its left, as [panel] is
 /// [AgentSidePanel.atLeft]) while [panel] shows, the side panel [builder]
@@ -87,8 +92,9 @@ class AgentSidePanelArea extends StatefulWidget {
     required this.panel,
     required this.builder,
     this.rail,
-    this.railTop = AppMetrics.titleBarHeight + railRight,
+    this.railTop,
     this.hidden = false,
+    this.roomComing = false,
     this.conversation,
     this.bottom = 0,
     required this.child,
@@ -113,13 +119,25 @@ class AgentSidePanelArea extends StatefulWidget {
   /// which reach the edge.
   final Widget? rail;
 
-  /// How far down [rail] is: under the conversation's title bar, where it
-  /// has one.
-  final double railTop;
+  /// How far down [rail] is: [defaultRailTop] by default.
+  final double? railTop;
+
+  /// Under the row along the top of the conversation's card (see
+  /// [ChatScreen.cardHeaderHeight]), and the row over the card where there
+  /// is one: not under Windows' header.
+  static double get defaultRailTop =>
+      (WindowControls.drawsHeader ? 0 : AppMetrics.titleBarHeight) +
+      ChatScreen.cardHeaderHeight +
+      railRight;
 
   /// Whether it gave way to the window's sidebar, though shown: the rail
   /// is there instead, to ask for it again.
   final bool hidden;
+
+  /// Whether its room is growing (the window's sidebar giving way to it):
+  /// short meanwhile, it waits to go over the conversations. Else it goes
+  /// over them at once, not beside them first.
+  final bool roomComing;
   final Widget child;
 
   /// The least the conversations keep beside it.
@@ -128,8 +146,9 @@ class AgentSidePanelArea extends StatefulWidget {
   /// The gap between it and the conversations' cards, which takes the drag.
   static const sashWidth = Islands.gap;
 
-  /// How long the room is short before it goes over the conversations:
-  /// longer than the window's sidebar takes to give way.
+  /// How long the room is short before it goes over the conversations,
+  /// while it is coming ([roomComing]) or the window opens: longer than
+  /// the window's sidebar takes to give way.
   static const overlayDelay = Duration(milliseconds: 260);
 
   /// How far in from the right [rail] is, and from the conversation's
@@ -157,6 +176,10 @@ class _AgentSidePanelAreaState extends State<AgentSidePanelArea> {
   /// Runs while the room is short: over them once it ends.
   Timer? _short;
 
+  /// Runs a while from when it was built: a window opening gets its size
+  /// meanwhile.
+  Timer? _young;
+
   void _roomShort(bool short) {
     if (!short) {
       _short?.cancel();
@@ -165,6 +188,11 @@ class _AgentSidePanelAreaState extends State<AgentSidePanelArea> {
       return;
     }
     if (_overlay || _short != null) return;
+    // Short for good: over them at once, not beside them for a moment.
+    if (!widget.roomComing && _young == null) {
+      _overlay = true;
+      return;
+    }
     _short = Timer(AgentSidePanelArea.overlayDelay, () {
       _short = null;
       if (mounted) setState(() => _overlay = true);
@@ -172,8 +200,15 @@ class _AgentSidePanelAreaState extends State<AgentSidePanelArea> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _young = Timer(AgentSidePanelArea.overlayDelay, () => _young = null);
+  }
+
+  @override
   void dispose() {
     _short?.cancel();
+    _young?.cancel();
     super.dispose();
   }
 
@@ -253,7 +288,7 @@ class _AgentSidePanelAreaState extends State<AgentSidePanelArea> {
                 key: const ValueKey('rail'),
                 left: atLeft ? AgentSidePanelArea.railRight : null,
                 right: atLeft ? null : AgentSidePanelArea.railRight,
-                top: widget.railTop,
+                top: widget.railTop ?? AgentSidePanelArea.defaultRailTop,
                 child: widget.rail!,
               ),
             if (shown) ...[
@@ -597,10 +632,14 @@ class AgentSidePanelView extends StatelessWidget {
             key: ValueKey(('page', SidePanelSection.usage, session)),
             session: session,
           ),
-          SidePanelSection.browser => const BrowserMirror(
-            key: ValueKey(('page', SidePanelSection.browser)),
-          ),
           SidePanelSection.plan => _planPage(context, tabs.plan!),
+          SidePanelSection.ports => switch (_portsHost(session)) {
+            final host? => PortsView(
+              key: ValueKey(('page', SidePanelSection.ports, host)),
+              host: host,
+            ),
+            null => const SizedBox.shrink(),
+          },
         },
       );
     },
@@ -782,9 +821,9 @@ class AgentSidePanelView extends StatelessWidget {
     return KeyedSubtree(
       key: const ValueKey(('page', SidePanelSection.changes)),
       child: IdeGitLogView(
-        key: ValueKey(('git-log', session.root)),
+        key: ValueKey(('git-log', session.root, session)),
         host: host,
-        session: panel.scmOf(git),
+        session: panel.scmOf(session, git),
         notifications: notifications,
         background: AppColors.code,
         border: AppColors.partBorder,
@@ -803,10 +842,10 @@ class AgentSidePanelView extends StatelessWidget {
         onAddToChat: session.draft.insertFiles,
         worktrees: worktreesOf?.call(git) ?? const IdeGitWorktreeChoice(),
         changes: IdeGitCommitPanel(
-          key: ValueKey(('scm', session.root)),
+          key: ValueKey(('scm', session.root, session)),
           host: host,
-          session: panel.scmOf(git),
-          sessionOf: panel.scmOf,
+          session: panel.scmOf(session, git),
+          sessionOf: (git) => panel.scmOf(session, git),
           notifications: notifications,
           onOpen: (path, {focusEditor = false}) async =>
               panel.open(session, FileOpenRequest(path)),
@@ -834,7 +873,7 @@ class AgentSidePanelView extends StatelessWidget {
               },
           onShowDiff: (files, index) {
             panel.showLog(session);
-            panel.scmOf(git).log.showDiff(files, index);
+            panel.scmOf(session, git).log.showDiff(files, index);
           },
           onRevealInExplorer: _revealInFiles,
           revealInExplorerLabel: context.l10n.sidePanelRevealInFiles,
@@ -866,7 +905,7 @@ class AgentSidePanelView extends StatelessWidget {
     // In front of a change opened from the conversation.
     panel.showLog(session);
     panel
-        .scmOf(git)
+        .scmOf(session, git)
         .log
         .showDiff(
           [
@@ -1137,6 +1176,8 @@ class AgentSidePanelView extends StatelessWidget {
       key: ValueKey((tabs.section, session)),
       selected: active,
       leading: leading,
+      onMove: (tab, index) =>
+          panel.moveTab(session, tab as SidePanelTab, index),
       entries: [
         for (final (i, tab) in list.indexed)
           (
@@ -1349,9 +1390,9 @@ extension SidePanelSectionUi on SidePanelSection {
     SidePanelSection.files => Codicons.files,
     SidePanelSection.changes => Codicons.sourceControl,
     SidePanelSection.terminal => Codicons.terminal,
-    SidePanelSection.usage => Codicons.graph,
-    SidePanelSection.browser => Codicons.globe,
+    SidePanelSection.usage => SvgIcons.usage,
     SidePanelSection.plan => Codicons.checklist,
+    SidePanelSection.ports => Codicons.plug,
   };
 
   /// The command that shows it; none for the plan's, there only at times.
@@ -1360,7 +1401,7 @@ extension SidePanelSectionUi on SidePanelSection {
     SidePanelSection.changes => ChatCommandIds.sidePanelChanges,
     SidePanelSection.terminal => ChatCommandIds.sidePanelTerminal,
     SidePanelSection.usage => ChatCommandIds.sidePanelUsage,
-    SidePanelSection.browser || SidePanelSection.plan => null,
+    SidePanelSection.plan || SidePanelSection.ports => null,
   };
 
   String label(BuildContext context) => switch (this) {
@@ -1368,9 +1409,17 @@ extension SidePanelSectionUi on SidePanelSection {
     SidePanelSection.changes => context.l10n.sidePanelChanges,
     SidePanelSection.terminal => context.l10n.sidePanelTerminal,
     SidePanelSection.usage => context.l10n.sidePanelUsage,
-    SidePanelSection.browser => context.l10n.sidePanelBrowser,
     SidePanelSection.plan => context.l10n.sidePanelPlan,
+    SidePanelSection.ports => context.l10n.sidePanelPorts,
   };
+}
+
+/// The SSH host of [session]'s project, whose ports its ports page lists;
+/// null for one of this machine's (or of WSL, whose are this machine's).
+String? _portsHost(ChatSession? session) {
+  final cwd = session?.kernelContext.cwd;
+  final host = cwd == null ? null : RemoteLocation.hostOf(cwd);
+  return host == null || RemoteLocation.isWsl(host) ? null : host;
 }
 
 /// Whether [session]'s usage page is offered: once a call of it is kept
@@ -1415,8 +1464,8 @@ class SidePanelRail extends StatelessWidget {
           0,
     SidePanelSection.files ||
     SidePanelSection.usage ||
-    SidePanelSection.browser ||
-    SidePanelSection.plan => 0,
+    SidePanelSection.plan ||
+    SidePanelSection.ports => 0,
   };
 
   static const _button = 26.0;
@@ -1445,6 +1494,7 @@ class SidePanelRail extends StatelessWidget {
             for (final section in alwaysShownSections)
               if (section != SidePanelSection.usage || _usageOffered(session))
                 section,
+            if (_portsHost(session) != null) SidePanelSection.ports,
           ].indexed) ...[
             if (i > 0) const SizedBox(height: _gap),
             Stack(
@@ -1516,15 +1566,14 @@ class _SectionBar extends StatelessWidget {
   static const _actionsWidth = 2 * 22.0 + 2 + 6;
 
   /// The pages there: the usage's once a call of the conversation is kept,
-  /// the browser's once one of the user's has connected, the plan's once
-  /// there is one.
+  /// the plan's once there is one.
   List<SidePanelSection> get _sections => [
     for (final section in alwaysShownSections)
       if (section != SidePanelSection.usage ||
           _usageOffered(session, picked: tabs.section))
         section,
-    if (BrowserBridge.instance.used) SidePanelSection.browser,
     if (tabs.plan != null) SidePanelSection.plan,
+    if (_portsHost(session) != null) SidePanelSection.ports,
   ];
 
   /// What the tabs of [sections] take with their names (see
@@ -1621,8 +1670,8 @@ class _SectionBar extends StatelessWidget {
                   count: switch (section) {
                     SidePanelSection.files ||
                     SidePanelSection.usage ||
-                    SidePanelSection.browser ||
-                    SidePanelSection.plan => 0,
+                    SidePanelSection.plan ||
+                    SidePanelSection.ports => 0,
                     SidePanelSection.changes => changes,
                     SidePanelSection.terminal => running,
                   },
@@ -1631,18 +1680,24 @@ class _SectionBar extends StatelessWidget {
               ],
               const SizedBox(width: _SectionTab.spacing),
               const Spacer(),
-              // To the conversations' other side.
+              // Where it, the sidebar and the conversations are.
               Center(
-                child: IdeActionButton(
-                  key: const ValueKey('side-panel-move'),
-                  icon: Codicons.arrowSwap,
-                  tooltip: KeybindingService.instance.titleWithKeybinding(
-                    panel.atLeft
-                        ? l10n.sidePanelMoveRight
-                        : l10n.sidePanelMoveLeft,
-                    ChatCommandIds.toggleSidePanelPosition,
+                child: Builder(
+                  builder: (context) => IdeActionButton(
+                    key: const ValueKey('side-panel-layout'),
+                    icon: Codicons.layout,
+                    tooltip: l10n.chatLayout,
+                    onPressed: () {
+                      final box = context.findRenderObject()! as RenderBox;
+                      unawaited(
+                        showChatLayoutPicker(
+                          context,
+                          anchor: box.localToGlobal(Offset.zero) & box.size,
+                          panel: panel,
+                        ),
+                      );
+                    },
                   ),
-                  onPressed: () => panel.atLeft = !panel.atLeft,
                 ),
               ),
               const SizedBox(width: 2),
@@ -1686,14 +1741,14 @@ class _SectionTab extends StatelessWidget {
   final int count;
   final VoidCallback onTap;
 
-  static const padding = 14.0;
-  static const iconSize = 14.0;
-  static const gap = 7.0;
+  static const padding = 12.0;
+  static const iconSize = 13.0;
+  static const gap = 6.0;
 
   /// Between two tabs: room for the one in front's foot, and the line
   /// between two behind it.
   static const spacing = 2.0;
-  static const labelStyle = TextStyle(fontSize: 13);
+  static const labelStyle = TextStyle(fontSize: 12);
 
   @override
   Widget build(BuildContext context) {
@@ -1709,7 +1764,7 @@ class _SectionTab extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(section.icon, size: iconSize, color: foreground),
+            AppIcon(section.icon, size: iconSize, color: foreground),
             if (!compact) ...[
               const SizedBox(width: gap),
               Text(
@@ -1882,9 +1937,13 @@ class _TabStrip extends StatefulWidget {
     required this.selected,
     required this.entries,
     this.leading,
+    this.onMove,
   });
   final Object? selected;
   final List<({Object id, Widget child})> entries;
+
+  /// A tab dragged to [index] among the others; none: they stay in order.
+  final void Function(Object id, int index)? onMove;
 
   /// Before the tabs, not scrolled with them.
   final Widget? leading;
@@ -1893,9 +1952,24 @@ class _TabStrip extends StatefulWidget {
   State<_TabStrip> createState() => _TabStripState();
 }
 
-class _TabStripState extends State<_TabStrip> {
+class _TabStripState extends State<_TabStrip>
+    with TabReorder<_TabStrip, Object> {
   final _scroll = ScrollController();
   final Map<Object, GlobalKey> _keys = {};
+
+  @override
+  ScrollController get tabScroll => _scroll;
+
+  @override
+  List<Object> get reorderedTabs => [
+    for (final entry in widget.entries) entry.id,
+  ];
+
+  @override
+  BuildContext? tabContext(Object id) => _keys[id]?.currentContext;
+
+  @override
+  void moveTab(Object id, int index) => widget.onMove?.call(id, index);
 
   @override
   void initState() {
@@ -1942,11 +2016,23 @@ class _TabStripState extends State<_TabStrip> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final entry in widget.entries)
+          for (final (i, entry) in widget.entries.indexed) ...[
+            if (dropSpot == i) const TabDropLine(),
             KeyedSubtree(
               key: _keys.putIfAbsent(entry.id, GlobalKey.new),
-              child: entry.child,
+              child: switch (widget.onMove) {
+                null => entry.child,
+                _ => reorderable(
+                  entry.id,
+                  Opacity(
+                    opacity: identical(entry.id, draggedTab) ? .5 : 1,
+                    child: entry.child,
+                  ),
+                ),
+              },
             ),
+          ],
+          if (dropSpot == widget.entries.length) const TabDropLine(),
         ],
       ),
     );
@@ -1957,9 +2043,9 @@ class _TabStripState extends State<_TabStrip> {
         final leading? => Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // The strip's inset before it, as after.
+            // The gap after it, as after a tab.
             Center(child: leading),
-            const SizedBox(width: IdeTabStrip.flatInset),
+            const SizedBox(width: IdeTabStrip.flatGap),
             Expanded(child: tabs),
           ],
         ),

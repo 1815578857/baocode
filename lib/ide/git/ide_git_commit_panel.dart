@@ -43,7 +43,7 @@ import 'git_review.dart';
 import 'git_repository.dart';
 import 'git_service.dart';
 import 'ide_git_list_tree_switch.dart';
-import 'ide_git_log_view.dart' show IdeGitDiffFile;
+import 'ide_git_log_view.dart' show IdeGitDetailsFold, IdeGitDiffFile;
 import '../../workspace/islands.dart';
 import 'ide_git_merge_dialog.dart';
 import 'ide_git_stash_view.dart';
@@ -136,6 +136,10 @@ class IdeGitCommitPanel extends StatefulWidget {
   final void Function(List<IdeGitDiffFile> files, int index)? onShowDiff;
 
   static const rowHeight = 22.0;
+
+  /// Folded under the Git log's table: its tabs' row alone (see
+  /// [IdeGitDetailsFold]).
+  static const foldedHeight = 38.0;
 
   @override
   State<IdeGitCommitPanel> createState() => IdeGitCommitPanelState();
@@ -1559,6 +1563,9 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
           : Builder(
               builder: (context) {
                 final rows = _rows;
+                if (_fold case final fold? when fold.folded) {
+                  return _tabs(context, folded: true);
+                }
                 if (_stashTab && widget.onShowDiff != null) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1657,24 +1664,71 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
     );
   }
 
-  /// JetBrains' Commit and Stash tabs.
-  Widget _tabs(BuildContext context) {
+  /// Its fold, under the Git log's table (see [IdeGitDetailsFold]); none
+  /// beside it, or alone.
+  IdeGitDetailsFold? get _fold =>
+      widget.onShowDiff == null ? null : IdeGitDetailsFold.of(context);
+
+  /// JetBrains' Commit and Stash tabs; under the Git log's table, Fold at
+  /// their right. [folded]: all there is of it, a press on it unfolding it.
+  Widget _tabs(BuildContext context, {bool folded = false}) {
     final l10n = context.l10n;
+    final fold = _fold;
     Widget tab(String label, bool stash) => _PanelTab(
       label: label,
       selected: _stashTab == stash,
-      onTap: () => setState(() => _stashTab = stash),
+      onTap: () {
+        setState(() => _stashTab = stash);
+        if (folded) fold?.toggle();
+      },
     );
-    // A segmented control, as the panel's views'.
-    return Container(
-      height: 10 + IslandSegment.height + 4,
-      padding: const EdgeInsets.fromLTRB(Islands.inset, 10, Islands.inset, 4),
+    // A segmented control, as the panel's views'; not islands, tabs over a
+    // line.
+    final islands = Islands.on(context);
+    final row = Container(
+      height: folded
+          ? IdeGitCommitPanel.foldedHeight
+          : islands
+          ? 10 + IslandSegment.height + 4
+          : 28,
+      padding: !islands
+          ? const EdgeInsets.symmetric(horizontal: 6)
+          : folded
+          ? const EdgeInsets.symmetric(horizontal: Islands.inset)
+          : const EdgeInsets.fromLTRB(Islands.inset, 10, Islands.inset, 4),
+      decoration: islands
+          ? null
+          : BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: themeColors.get('panel.border') ?? Colors.transparent,
+                ),
+              ),
+            ),
       child: Row(
+        crossAxisAlignment: islands
+            ? CrossAxisAlignment.center
+            : CrossAxisAlignment.stretch,
         children: [
           tab(l10n.gitCommitTab, false),
-          const SizedBox(width: 2),
+          if (islands) const SizedBox(width: 2),
           tab(l10n.gitStashTab, true),
+          if (fold != null) ...[
+            const Spacer(),
+            Center(
+              child: _FoldButton(folded: folded, onTap: fold.toggle),
+            ),
+          ],
         ],
+      ),
+    );
+    if (!folded) return row;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: fold?.toggle,
+        child: row,
       ),
     );
   }
@@ -1687,7 +1741,7 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
       height: 30,
       child: Padding(
         // The icons as far in as the card's other controls.
-        padding: const EdgeInsets.symmetric(horizontal: Islands.inset - 4),
+        padding: EdgeInsets.symmetric(horizontal: _inset - 4),
         child: Row(
           children: [
             IdeActionButton(
@@ -1855,7 +1909,7 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
       height: 30,
       child: Padding(
         // The icons as far in as the card's other controls.
-        padding: const EdgeInsets.symmetric(horizontal: Islands.inset - 4),
+        padding: EdgeInsets.symmetric(horizontal: _inset - 4),
         child: GiveWayRow(
           children: [
             GiveWay(
@@ -2489,11 +2543,21 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
   /// The commit message's lines that fit in [height].
   static int lines(double height) => math.max(1, ((height - 8) / 20).floor());
 
-  /// The buttons under the message: [Islands.controlHeight] high.
+  /// The buttons under the message: [Islands.controlHeight] high on a
+  /// card, as [IdeButton]'s own else.
   static const _buttonPadding = EdgeInsets.symmetric(
     horizontal: 12,
     vertical: (Islands.controlHeight - 16 - 2) / 2,
   );
+
+  /// Whether it is as on a card (see [IslandStyle]): its controls in from
+  /// the edges by [Islands.inset], rounder; else as before the islands.
+  bool get _islands => Islands.on(context);
+  double get _inset => _islands ? Islands.inset : 8;
+  double get _radius => _islands ? Islands.controlRadius : 4;
+  EdgeInsets get _buttonPad => _islands
+      ? _buttonPadding
+      : const EdgeInsets.symmetric(horizontal: 8, vertical: 4);
 
   /// Under the tree: Amend, the commit message, and the buttons.
   Widget _commitArea(BuildContext context) {
@@ -2509,12 +2573,7 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
     final busy = _committing || _repositories.any((git) => git.busy);
     final branch = git?.state?.head.branch;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        Islands.inset,
-        6,
-        Islands.inset,
-        Islands.inset,
-      ),
+      padding: EdgeInsets.fromLTRB(_inset, 6, _inset, _inset),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -2620,11 +2679,11 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
                 minLines: lines(constraints.maxHeight),
                 maxLines: lines(constraints.maxHeight),
                 lineHeight: 20,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
+                padding: EdgeInsets.symmetric(
+                  horizontal: _islands ? 10 : 6,
                   vertical: 4,
                 ),
-                radius: Islands.controlRadius,
+                radius: _radius,
                 validation: _shownValidation,
                 floatingValidation: true,
                 shortcuts: {
@@ -2682,8 +2741,8 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
               GiveWay(
                 IdeButton(
                   label: l10n.gitCommitButton,
-                  padding: _buttonPadding,
-                  radius: Islands.controlRadius,
+                  padding: _buttonPad,
+                  radius: _radius,
                   onPressed: busy ? null : () => unawaited(_commit()),
                 ),
               ),
@@ -2692,8 +2751,8 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
                 IdeButton(
                   label: l10n.gitCommitAndPush,
                   secondary: true,
-                  padding: _buttonPadding,
-                  radius: Islands.controlRadius,
+                  padding: _buttonPad,
+                  radius: _radius,
                   onPressed: busy ? null : () => unawaited(_commit(push: true)),
                 ),
               ),
@@ -2730,8 +2789,8 @@ class IdeGitCommitPanelState extends State<IdeGitCommitPanel>
       icon: generating ? Codicons.debugStop : Codicons.sparkle,
       label: labeled ? label : '',
       secondary: true,
-      padding: _buttonPadding,
-      radius: Islands.controlRadius,
+      padding: _buttonPad,
+      radius: _radius,
       onPressed: () => unawaited(_generateMessage()),
     );
     return labeled ? button : IdeHover(message: label, child: button);
@@ -2940,6 +2999,60 @@ class _DividerState extends State<_Divider> {
 }
 
 /// A tab of the panel's: Commit, Stash.
+/// Fold, or Unfold: the panel to its tabs' row, or back.
+class _FoldButton extends StatefulWidget {
+  const _FoldButton({required this.folded, required this.onTap});
+
+  final bool folded;
+  final VoidCallback onTap;
+
+  @override
+  State<_FoldButton> createState() => _FoldButtonState();
+}
+
+class _FoldButtonState extends State<_FoldButton> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final foreground = IdeListColors.foreground;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          height: IslandSegment.height,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: Islands.segmentFill(selected: false, hovered: _hover),
+            borderRadius: BorderRadius.circular(Islands.controlRadius),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.folded
+                    ? l10n.gitCommitPanelUnfold
+                    : l10n.gitCommitPanelFold,
+                style: TextStyle(fontSize: 12, color: foreground),
+              ),
+              const SizedBox(width: 2),
+              Icon(
+                widget.folded ? Codicons.chevronUp : Codicons.chevronDown,
+                size: 14,
+                color: foreground,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _PanelTab extends StatefulWidget {
   const _PanelTab({
     required this.label,
@@ -2962,21 +3075,49 @@ class _PanelTabState extends State<_PanelTab> {
   Widget build(BuildContext context) {
     final colors = themeColors;
     final selected = widget.selected;
+    final label = Text(
+      widget.label,
+      style: TextStyle(
+        fontSize: 12,
+        color: selected || _hover
+            ? colors['panelTitle.activeForeground']
+            : colors['panelTitle.inactiveForeground'],
+      ),
+    );
+    // Not islands: JetBrains', a line under the one selected.
+    if (!Islands.on(context)) {
+      return MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  width: 2,
+                  color: selected
+                      ? colors['panelTitle.activeBorder']
+                      : Colors.transparent,
+                ),
+              ),
+            ),
+            alignment: Alignment.center,
+            child: label,
+          ),
+        ),
+      );
+    }
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: IslandSegment(
         selected: selected,
         onTap: widget.onTap,
-        child: Text(
-          widget.label,
-          style: TextStyle(
-            fontSize: 12,
-            color: selected || _hover
-                ? colors['panelTitle.activeForeground']
-                : colors['panelTitle.inactiveForeground'],
-          ),
-        ),
+        child: label,
       ),
     );
   }

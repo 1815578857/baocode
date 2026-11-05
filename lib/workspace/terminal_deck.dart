@@ -8,7 +8,8 @@ import '../chat/chat_session.dart';
 import '../chat/side_panel/terminal_preview.dart';
 import '../ide/file_service.dart';
 import '../ide/ide_button.dart';
-import '../ide/ide_chat_title.dart' show TabDragSource, TabDropLine;
+import '../ide/ide_chat_title.dart' show TabDragSource;
+import '../ide/tab_reorder.dart' show TabDropLine;
 import '../ide/ide_hover.dart';
 import '../ide/ide_list.dart' show IdeTitleBadge;
 import '../ide/ide_menu.dart';
@@ -213,7 +214,6 @@ class _TerminalDeckState extends State<TerminalDeck> {
     return IdeTabStrip(
       line: AppColors.partBorder,
       small: true,
-      flat: true,
       child: Row(
         children: [
           Expanded(
@@ -271,8 +271,6 @@ class _TerminalDeckState extends State<TerminalDeck> {
               ),
             ),
           ),
-          // Clear of the tabs scrolled under the actions.
-          const SizedBox(width: 4),
           if (terminals != null) ...[
             IdeActionButton(
               key: const ValueKey('terminal-deck-new'),
@@ -303,6 +301,7 @@ class _TerminalDeckState extends State<TerminalDeck> {
             const SizedBox(width: 2),
             trailing,
           ],
+          const SizedBox(width: 6),
         ],
       ),
     );

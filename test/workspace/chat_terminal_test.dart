@@ -141,6 +141,9 @@ void main() {
     final chat = find.byType(ChatScreen).first;
     Finder below() => find.byType(ChatQuotaBar);
     expect(find.descendant(of: chat, matching: below()), findsOneWidget);
+    // Its row down to the window's foot, as the IDE's status bar: no gap
+    // under it.
+    expect(tester.getRect(chat).bottom, 900);
 
     await tester.tap(_toggle);
     await _settle(tester);
@@ -458,12 +461,19 @@ void main() {
     expect(ptys, isEmpty);
   }, variant: _mac);
 
-  testWidgets('on Windows the header has the button by the pin, and View → '
-      'Terminal', (tester) async {
+  testWidgets('on Windows the button is on the conversation\'s card, as on '
+      'macOS, not in the header; and View → Terminal', (tester) async {
     final ptys = <FakePty>[];
     await _pumpApp(tester, terminalBackend: fakeTerminalBackend(ptys));
+    expect(
+      find.descendant(
+        of: find.byType(WindowHeader),
+        matching: find.byType(ChatTerminalToggle),
+      ),
+      findsNothing,
+    );
     final toggle = find.descendant(
-      of: find.byType(WindowHeader),
+      of: find.byType(ChatScreen),
       matching: find.byType(ChatTerminalToggle),
     );
     expect(toggle, findsOneWidget);

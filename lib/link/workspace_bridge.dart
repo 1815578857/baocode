@@ -165,12 +165,15 @@ class WorkspaceBridge {
   // --- Ids ------------------------------------------------------------------
 
   /// Each agent's id for the phones: its session's, else one given here
-  /// (a new agent's, until it has one), kept for the run.
+  /// (a new agent's, until it has one), kept for the run. Those given here
+  /// are this run's alone: a phone keeps what it had of the last run's
+  /// `new-0`, not to be shown as this one's.
   static final Expando<String> _ids = Expando('link id');
   static int _nextId = 0;
+  static final _run = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
 
   static String idOf(AgentThread thread) =>
-      _ids[thread] ??= thread.id ?? 'new-${_nextId++}';
+      _ids[thread] ??= thread.id ?? 'new-$_run-${_nextId++}';
 
   AgentThread _thread(Object? id) {
     if (id is String) {
@@ -302,7 +305,9 @@ class WorkspaceBridge {
       (throw LinkRemoteException(LinkErrors.notFound, 'No bot $id'));
 
   void _stateChanged() {
-    if (_disposed || _stateTimer != null) return;
+    if (_disposed) return;
+    _refollow();
+    if (_stateTimer != null) return;
     _stateTimer = Timer(throttle, () {
       _stateTimer = null;
       if (_disposed) return;
@@ -312,6 +317,25 @@ class WorkspaceBridge {
       _stateSent = text;
       peer.emit(LinkEvents.state, json);
     });
+  }
+
+  /// Follows anew the agents whose conversation was opened again (see
+  /// [Workspace.reload]): the phone sent all of it, as when it opened it.
+  void _refollow() {
+    for (final MapEntry(key: id, value: follow) in [..._follows.entries]) {
+      final AgentThread thread;
+      try {
+        thread = _thread(id);
+      } on LinkRemoteException {
+        continue;
+      }
+      if (!thread.isOpen || identical(thread.session, follow.session)) {
+        continue;
+      }
+      follow.dispose();
+      final fresh = _follows[id] = follow.over(thread.session);
+      peer.emit(LinkEvents.session, fresh.start());
+    }
   }
 
   // --- Requests -------------------------------------------------------------
@@ -1234,6 +1258,16 @@ class _Follow {
   final ChatSession session;
   final LinkPeer peer;
   final Duration throttle;
+
+  /// The same following, of [session] (its conversation read anew).
+  _Follow over(ChatSession session) => _Follow(
+    id: id,
+    session: session,
+    peer: peer,
+    throttle: throttle,
+    pathOf: pathOf,
+    window: window,
+  );
 
   /// How many of the last items the phone follows at first, if it pages
   /// back through the rest (see [earlier]); null for all of them.

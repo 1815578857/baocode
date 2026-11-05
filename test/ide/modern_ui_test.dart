@@ -4,6 +4,7 @@ import 'package:baocode/ide/ide_commands.dart';
 import 'package:baocode/ide/ide_hover.dart';
 import 'package:baocode/ide/ide_modern_ui.dart';
 import 'package:baocode/ide/ide_status_bar.dart';
+import 'package:baocode/ide/ide_workbench.dart';
 import 'package:baocode/ide/lsp_ui/hover_markdown.dart';
 import 'package:baocode/keybindings/default_keybindings.dart'
     show openSettingsCommandId;
@@ -31,8 +32,79 @@ void main() {
     expect(AppColors.windowCanvas.a, 0);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
+  testWidgets('as before the islands, the parts are flush with a line '
+      'between them; the status bar\'s row as high, the chat\'s branch in '
+      'it', (tester) async {
+    expect(IdeWorkbench.islands, isFalse);
+    await pumpWorkbench(tester, {'a.txt': 'a'});
+    Rect rect(String key) => tester.getRect(find.byKey(ValueKey(key)));
+    IdePart partOf(Finder of) => tester.widget<IdePart>(
+      find.ancestor(of: of, matching: find.byType(IdePart)).first,
+    );
+    HeadedIsland cardOf(String key) => tester.widget<HeadedIsland>(
+      find
+          .descendant(
+            of: find.byKey(ValueKey(key)),
+            matching: find.byType(HeadedIsland),
+          )
+          .first,
+    );
+    final sidebar = rect('ide-sidebar');
+    final editor = rect('ide-editor');
+    final chat = rect('ide-chat');
+    // The activity bar a part of its own, its line beside the side bar.
+    final activityBar = partOf(find.byIcon(Codicons.files));
+    expect(activityBar.color, IdeModernUI.activityBarBackground);
+    expect(activityBar.border, isNotNull);
+    expect(sidebar.left, IdeModernUI.activityBarWidth);
+    // Flush: no gap between them, nor at the window's right.
+    expect(editor.left, sidebar.right);
+    expect(chat.left, editor.right);
+    expect(chat.right, 1400);
+    // The side bar its color, its line at its right; the chat the side
+    // bar's line at its left.
+    final side = tester.widget<IdePart>(
+      find
+          .descendant(
+            of: find.byKey(const ValueKey('ide-sidebar')),
+            matching: find.byType(IdePart),
+          )
+          .first,
+    );
+    expect(side.color, themeColors['sideBar.background']);
+    expect(side.border!.right.style, BorderStyle.solid);
+    expect(cardOf('ide-chat').border?.left.style, BorderStyle.solid);
+    // The status bar's row under all but the chat, as high as the islands'
+    // and the agents' window's; the chat's branch in line with it.
+    final status = tester.getRect(find.byType(IdeStatusBar));
+    expect(status.height, Islands.belowHeight);
+    expect(status.right, chat.left);
+    expect(sidebar.bottom, status.top);
+    expect(chat.bottom, 800);
+    expect(cardOf('ide-chat').footer, Islands.belowHeight);
+    // The theme's status bar colors, under the chat's row too.
+    final bar = tester.widget<Container>(
+      find
+          .descendant(
+            of: find.byType(IdeStatusBar),
+            matching: find.byType(Container),
+          )
+          .first,
+    );
+    expect(
+      (bar.decoration! as BoxDecoration).color,
+      themeColors['statusBar.background'],
+    );
+    expect(cardOf('ide-chat').footerColor, themeColors['statusBar.background']);
+    // The activity bar's items upstream's: 24px icons, a 4px box.
+    final files = tester.widget<Icon>(find.byIcon(Codicons.files));
+    expect(files.size, IdeModernUI.flatActivityIconSize);
+  });
+
   testWidgets('the parts are cards a gap apart on the window\'s color, the '
       'activity bar VS Code\'s beside them', (tester) async {
+    IdeWorkbench.islands = true;
+    addTearDown(() => IdeWorkbench.islands = false);
     await pumpWorkbench(tester, {'a.txt': 'a'});
     Rect part(Finder of) => tester.getRect(
       find.ancestor(of: of, matching: find.byType(IdePart)).first,
@@ -76,7 +148,8 @@ void main() {
           .color,
       isNull,
     );
-    expect(sidebar.left, activityBar.right + Islands.gap / 2);
+    // Against the activity bar, its items as far from either side.
+    expect(sidebar.left, activityBar.right);
     expect(editor.left - sidebar.right, Islands.gap);
     expect(chat.left - editor.right, Islands.gap);
     expect(chat.right, 1400 - Islands.gap);
@@ -86,9 +159,10 @@ void main() {
     expect(cardOf('ide-chat').footer, Islands.belowHeight);
     expect(status.height, Islands.belowHeight);
     expect(status.right, chat.left - Islands.gap / 2);
-    // Their titles and tabs over them, as high as each other.
-    expect(cardOf('ide-sidebar').header, cardOf('ide-chat').header);
+    // The editor's and the chat's tabs over them, as high as each other;
+    // the side bar's title in its card.
     expect(cardOf('ide-editor').header, cardOf('ide-chat').header);
+    expect(cardOf('ide-sidebar').header, 0);
     expect(cardOf('ide-sidebar').color, AppColors.code);
     expect(cardOf('ide-editor').color, themeColors['editor.background']);
     // The status bar on the window's color too.
