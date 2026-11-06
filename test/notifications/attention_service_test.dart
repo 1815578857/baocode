@@ -98,6 +98,24 @@ void main() {
     opened.clear();
   });
 
+  testWidgets('seen on the phone, a finished agent is no longer unread', (
+    tester,
+  ) async {
+    start();
+    final background = _thread(workspace, 'Rate limit per API key');
+    background.session.send(const ComposerMessage(text: '加一个限流'));
+    await _runUntilQuestion(tester, background.session);
+    background.session.answer(_answer);
+    await _runUntilDone(tester, background.session);
+    expect(background.status, ThreadStatus.unread);
+
+    workspace.markSeen(background);
+    await tester.pump();
+    expect(background.status, ThreadStatus.idle);
+    // Its background task settles.
+    await tester.pump(const Duration(seconds: 5));
+  });
+
   testWidgets('notifies of a background agent that asks, then finishes', (
     tester,
   ) async {

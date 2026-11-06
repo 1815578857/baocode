@@ -490,6 +490,7 @@ class WorkspaceBridge {
         if (bots?.botAt(thread.project.path) case final bot?) {
           bots!.seen(bot);
         }
+        workspace.markSeen(thread);
         _follows.remove(id)?.dispose();
         final follow = _follows[id] = _Follow(
           id: id,
@@ -512,6 +513,10 @@ class WorkspaceBridge {
       case LinkMethods.close:
         if (params['session'] case final String id) {
           _follows.remove(id)?.dispose();
+          // Ended while it was open on the phone: seen there.
+          for (final thread in workspace.threads) {
+            if (idOf(thread) == id) workspace.markSeen(thread);
+          }
         }
         return null;
       case LinkMethods.send:
