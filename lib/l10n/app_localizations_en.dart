@@ -1801,6 +1801,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sidebarByStatus => 'By status';
 
   @override
+  String get sidebarProjectSortRecent => 'Recent activity';
+
+  @override
+  String get sidebarProjectSortManual => 'Manual';
+
+  @override
   String get sidebarTimeNow => 'now';
 
   @override
@@ -2308,6 +2314,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String chatSubagentSemantics(String description, String status) {
     return 'Subagent $description, $status';
+  }
+
+  @override
+  String get chatAgentMessageSent => 'sent';
+
+  @override
+  String chatAgentMessageSemantics(String agent) {
+    return 'Message from subagent $agent';
   }
 
   @override
@@ -5247,6 +5261,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String wbSelectedLines(int lines, int count) {
+    return '($lines lines, $count selected)';
+  }
+
+  @override
   String get wbGoToLineColumn => 'Go to Line/Column';
 
   @override
@@ -7060,7 +7079,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelsRoleSubagentDescription =>
-      'CLAUDE_CODE_SUBAGENT_MODEL: the model every subagent runs on, over the one its definition or the agent\'s call names (but inherit).';
+      'CLAUDE_CODE_SUBAGENT_MODEL: the model every subagent runs on, the built-in Explore and Plan and those defined as inherit too, over the one its definition or the agent\'s call names.';
 
   @override
   String get modelsRoleMissing =>
@@ -10229,6 +10248,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'The extension is newer than this BaoCode. Update BaoCode.';
 
   @override
+  String get browserSettingsNoFileAccess => 'File access is off';
+
+  @override
+  String get browserSettingsNoFileAccessDescription =>
+      'Agents can\'t open local HTML files or upload files. In chrome://extensions, click Details on BaoCode and turn on Allow access to file URLs.';
+
+  @override
   String get browserSettingsInstall => 'Get the Extension';
 
   @override
@@ -11622,6 +11648,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get diffUnified => 'Unified Viewer';
+
+  @override
+  String get gitDetailsLayout => 'Details Position';
+
+  @override
+  String get gitDetailsLayoutAuto => 'Right When Wide Enough';
+
+  @override
+  String get gitDetailsLayoutBeside => 'Right';
+
+  @override
+  String get gitDetailsLayoutBelow => 'Bottom';
 
   @override
   String get diffIgnoreWhitespace => 'Ignore Whitespace at Line Ends';
@@ -13109,6 +13147,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ustatSpaceEmpty => 'Nothing kept yet';
+
+  @override
+  String get ustatLoading => 'Reading the calls…';
 
   @override
   String get ustatClearEllipsis => 'Clear…';

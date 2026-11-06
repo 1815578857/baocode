@@ -141,6 +141,7 @@ class ClaudeCodeKernel
       emit: emit,
       nextSeq: () => nextSeq,
       goalSaid: _syncGoal,
+      ownModel: _ownModel,
     );
     _providers.addListener(_providersChanged);
     ExtensionSwitches.changes?.addListener(_applySwitches);
@@ -390,6 +391,11 @@ class ClaudeCodeKernel
   /// [_applyWindow]).
   String _launchedProvider = '';
   String? _reportedModel;
+
+  /// Whether the CLI sends a queued message now on its own (an interrupt
+  /// with `send_now`), sparing the tasks in the background, as its init
+  /// says (`interrupt_send_now_v1`).
+  bool _sendsNow = false;
 
   /// When the usage limit the last turn hit resets (see
   /// [ReportsUsageLimit]): the account's own plan's, or every ChatGPT
@@ -1190,6 +1196,25 @@ class ClaudeCodeKernel
       cancel();
       return;
     }
+    // Given the CLI, none before it there: the CLI makes way for it itself,
+    // the tasks in the background left at work. Taking it back to send it
+    // again could fail (the CLI keeping it), and then nothing was sent.
+    final given = _queued.where((id) => !_held.containsKey(id));
+    if (_sendsNow && given.firstOrNull == turnId) {
+      unawaited(
+        _control!
+            .request('interrupt', {'send_now': true, 'message_uuid': turnId})
+            .then<void>(
+              (_) {},
+              onError: (Object _) {
+                if (_queued.contains(turnId)) {
+                  _resendQueued([turnId, ...others], now: turnId);
+                }
+              },
+            ),
+      );
+      return;
+    }
     // The CLI takes up all it queued as one turn, in the order sent: the
     // others are taken back too, and sent again after it, held until it is
     // taken up. Those held first, for none to be given the CLI meanwhile.
@@ -1836,6 +1861,9 @@ class ClaudeCodeKernel
       case 'system' when message['subtype'] == 'init':
         _sessionId = message['session_id'] as String? ?? _sessionId;
         _reportedModel = message['model'] as String?;
+        _sendsNow = (message['capabilities'] as List? ?? const []).contains(
+          'interrupt_send_now_v1',
+        );
         if (message.containsKey('effort')) {
           _appliedEffort = message['effort'] as String?;
         }
@@ -2879,7 +2907,11 @@ class ClaudeCodeKernel
       var seq = 0;
       final items = Transcript();
       final translator =
-          ClaudeTranslator(emit: items.apply, nextSeq: () => ++seq)
+          ClaudeTranslator(
+              emit: items.apply,
+              nextSeq: () => ++seq,
+              ownModel: _ownModel,
+            )
             ..replaying = true
             ..keptTurns = kept;
       var counted = false;
@@ -3056,6 +3088,21 @@ class ClaudeCodeKernel
   };
 
   String get _providerKey => _providerKeyOf(_model);
+
+  /// [model], a bare id an upstream answered with, as the [modelRef] of
+  /// the upstream the conversation is on where that one has it: requests
+  /// of a bare id go there (the proxy sends only `@<id>/` ones elsewhere).
+  String _ownModel(String model) {
+    if (parseModelRef(model) != null) return model;
+    final id = _onProvider.split('|').first;
+    return switch (_providers.provider(id)) {
+      final provider? when provider.model(model) != null => modelRef(
+        provider.id,
+        model,
+      ),
+      _ => model,
+    };
+  }
 
   /// What the conversation is on now: the process's provider while one
   /// runs, whatever is picked since (a model of one removed, say), else
@@ -3291,7 +3338,7 @@ class ClaudeCodeKernel
           for (final info in provider.enabledModels)
             KernelOption(
               modelRef(provider.id, info.id),
-              info.displayName,
+              provider.labelOf(info),
               Icons.hub_outlined,
               [
                 info.id,

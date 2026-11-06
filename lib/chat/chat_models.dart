@@ -15,9 +15,14 @@ class UserMessageItem extends ChatItem {
     this.worked,
     this.usage,
     this.sentAt,
+    this.fromAgent,
   });
 
   final String text;
+
+  /// Sent by a subagent (SendMessage), not typed: what it was given to do,
+  /// else its id. Shown as its, and not to be edited.
+  final String? fromAgent;
 
   /// Pictures sent with it (screenshots, mockups…).
   final List<ImageAttachment> images;
@@ -44,6 +49,7 @@ class UserMessageItem extends ChatItem {
         worked: worked ?? this.worked,
         usage: usage ?? this.usage,
         sentAt: sentAt,
+        fromAgent: fromAgent,
       );
 }
 
@@ -732,9 +738,9 @@ class FileChange {
   /// that over.
   final bool conflict;
 
-  String get fileName => path.split('/').last;
+  String get fileName => path.split(RegExp(r'[/\\]')).last;
   String get directory {
-    final index = path.lastIndexOf('/');
+    final index = path.lastIndexOf(RegExp(r'[/\\]'));
     return index < 0 ? '' : path.substring(0, index);
   }
 }
