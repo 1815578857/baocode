@@ -29,6 +29,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
+  test('a bot promises word of its agent only if it will hear of it', () {
+    const off = Bot(id: 'b', name: 'Mia', folder: '/b');
+    final on = off.copyWith(abilities: {BotAbility.proactive});
+    expect(BotTools.startedNote(on), contains('You will be told'));
+    expect(BotTools.startedNote(off), contains('You will not be told'));
+  });
+
   group('BotPacer', () {
     final start = DateTime(2026, 10, 29, 14);
     BotEvent event(String chat, BotEventKind kind, DateTime at) => BotEvent(

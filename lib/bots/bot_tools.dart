@@ -47,6 +47,14 @@ abstract final class BotTools {
   /// [thread]'s id, as the phones have it.
   static String idOf(AgentThread thread) => WorkspaceBridge.idOf(thread);
 
+  /// What [bot] may promise of an agent it started: without
+  /// [BotAbility.proactive] nothing of it reaches the bot by itself.
+  static String startedNote(Bot bot) => bot.can(BotAbility.proactive)
+      ? 'You will be told when it is done or needs the user.'
+      : 'You will not be told what becomes of it: the user has not let you '
+            'hear of their agents. Say so, and look (bot_read_chat) when they '
+            'ask.';
+
   static void register(Bots bots) {
     unregister();
     for (final (tool, access) in _tools(bots)) {
@@ -512,9 +520,10 @@ abstract final class BotTools {
           (input, call) async {
             final thread = workspace.startAgent(project(input));
             thread.session.send(ComposerMessage(text: text(input, 'text')));
-            bots.watch(botOf(call), thread);
-            return 'Started: ${idOf(thread)}. You will be told when it is '
-                'done or needs the user.';
+            final bot = botOf(call);
+            bots.watch(bot, thread);
+            return 'Started: ${idOf(thread)}. '
+                '${startedNote(bot)}';
           },
           required: ['project', 'text'],
           summary: (input, _) => '${input['project'] ?? ''}',
